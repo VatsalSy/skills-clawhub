@@ -83,11 +83,29 @@ CRITICAL STYLE RULES:
 - Spend about 2 MINUTES per major topic. That means ~300 words per topic. Go deep. Explain the "so what" and "why should I care." Don't just skim the surface.
 - After covering a topic in depth, have a brief transition — a joke, a callback, or Maya steering to the next thing.
 
+STRUCTURE — The script has TWO sections:
+
+**[CATCHPHRASE]** (first 2 lines only — spoken over intro music at ~10 seconds in):
+- ALEX: "Bitcoin Daily — your morning dose of protocol drama."
+- MAYA: "Let's get into it."
+These two lines are ALWAYS the same. They are the show's signature catchphrase.
+
+**[WARMUP]** (next 3-6 lines — casual banter BEFORE the real content):
+- Hosts greet each other, small talk, set the vibe
+- Could be about something funny, what they had for coffee, a callback to yesterday, whatever
+- Light and natural — getting warmed up before diving in
+- After warmup, one host transitions to the first topic naturally ("Alright, so...")
+
+**[CONTENT]** (the rest — actual digest coverage):
+- Cover ALL the main topics from the digest
+- Each one gets real depth, not a drive-by mention
+- Banter naturally between topics
+
 Format rules:
 - Format each line as: ALEX: text  or  MAYA: text
-- Start mid-energy — they've already been chatting, the listener drops in
-- Cover ALL the main topics from the digest — each one gets real depth, not a drive-by mention
-- Banter naturally between topics. Tease, joke, riff. But the SUBSTANCE is the star.
+- The first two lines MUST be the catchphrase (exactly as shown above)
+- Lines 3-8ish are warmup banter
+- Then transition to content
 - End with a sign-off that includes a callback to something from the episode
 - Target ~3000-3500 words total (about 20 minutes spoken)
 - NO stage directions, NO parentheticals, NO sound effects, NO [laughs] — humor comes through WORDS
@@ -189,37 +207,95 @@ async function generatePodcast(digestText, dateStr) {
     await new Promise(r => setTimeout(r, 200));
   }
 
-  // Step 4: Concatenate with ffmpeg (intro + dialogue + outro)
+  // Step 4: Stitch with intro music crossfade
+  //
+  // Layout:
+  //   0-10s:    Intro music at full volume (boosted)
+  //   10s:      Catchphrase lines (first 2 clips) mixed over intro,
+  //             intro fades out smoothly under the voices
+  //   After:    Rest of dialogue (warmup banter → content → signoff)
+  //   End:      Short outro chime
+  //
   const introPath = path.join(__dirname, 'intro.mp3');
   const hasIntro = fs.existsSync(introPath);
-
-  const allFiles = [];
-  if (hasIntro) {
-    // Normalize intro to match clip format
-    const introNorm = path.join(clipsDir, 'intro_norm.mp3');
-    execSync(`ffmpeg -y -i "${introPath}" -ar 44100 -ac 1 -ab 128k "${introNorm}" 2>/dev/null`);
-    allFiles.push(introNorm);
-  }
-  allFiles.push(...clipFiles);
-  // Re-use intro as outro (just the chime part — first 1.5s)
-  if (hasIntro) {
-    const outroPath = path.join(clipsDir, 'outro.mp3');
-    execSync(`ffmpeg -y -i "${introPath}" -t 1.5 -af "afade=t=in:d=0.1,afade=t=out:st=0.8:d=0.7" -ar 44100 -ac 1 -ab 128k "${outroPath}" 2>/dev/null`);
-    // Add a pause before outro
-    allFiles.push(silencePath);
-    allFiles.push(outroPath);
-  }
-
-  const listPath = path.join(clipsDir, 'concat.txt');
-  const listContent = allFiles.map(f => `file '${f}'`).join('\n');
-  fs.writeFileSync(listPath, listContent);
 
   const outputPath = path.join(outDir, `bitcoin-daily-${dateStr || 'latest'}.mp3`);
   console.log('🎬 Stitching podcast...');
 
-  execSync(
-    `ffmpeg -y -f concat -safe 0 -i "${listPath}" -acodec libmp3lame -ab 128k -ar 44100 "${outputPath}" 2>/dev/null`
-  );
+  if (hasIntro) {
+    // 1. Build intro: same 18s music clip as outro, then catchphrase with pause
+    const introClip = path.join(clipsDir, 'intro_clip.mp3');
+    execSync(`ffmpeg -y -i "${introPath}" -t 18 -af "volume=1.8,afade=t=in:d=0.5,afade=t=out:st=15:d=3" -ar 44100 -ac 1 -ab 128k "${introClip}" 2>/dev/null`);
+
+    // 2. Build the catchphrase audio (first 2 clips with 1.2s pause between them)
+    const catchphraseFiles = [];
+    const catchphrasePausePath = path.join(clipsDir, 'catchphrase_pause.mp3');
+    execSync(`ffmpeg -y -f lavfi -i anullsrc=r=24000:cl=mono -t 1.2 -q:a 9 "${catchphrasePausePath}" 2>/dev/null`);
+    const catchphraseClipCount = Math.min(2, clipFiles.length);
+    for (let i = 0; i < catchphraseClipCount; i++) {
+      catchphraseFiles.push(clipFiles[i]);
+      if (i < catchphraseClipCount - 1) catchphraseFiles.push(catchphrasePausePath);
+    }
+    const catchphraseListPath = path.join(clipsDir, 'catchphrase_list.txt');
+    fs.writeFileSync(catchphraseListPath, catchphraseFiles.map(f => `file '${f}'`).join('\n'));
+    const catchphraseAudio = path.join(clipsDir, 'catchphrase.mp3');
+    execSync(`ffmpeg -y -f concat -safe 0 -i "${catchphraseListPath}" -ar 44100 -ac 1 -ab 128k "${catchphraseAudio}" 2>/dev/null`);
+
+    const cpDur = parseFloat(execSync(
+      `ffprobe -v error -show_entries format=duration -of csv=p=0 "${catchphraseAudio}"`
+    ).toString().trim());
+    console.log(`  Catchphrase duration: ${cpDur.toFixed(1)}s`);
+
+    // 3. Intro = music clip → silence → catchphrase
+    const introMixedPath = path.join(clipsDir, 'intro_mixed.mp3');
+    const introListPath = path.join(clipsDir, 'intro_list.txt');
+    fs.writeFileSync(introListPath, [
+      `file '${introClip}'`,
+      `file '${catchphrasePausePath}'`,
+      `file '${catchphraseAudio}'`,
+    ].join('\n'));
+    execSync(`ffmpeg -y -f concat -safe 0 -i "${introListPath}" -ar 44100 -ac 1 -ab 128k "${introMixedPath}" 2>/dev/null`);
+
+    // 4. Build the rest of the dialogue (skip catchphrase clips + their pauses)
+    //    clipFiles already has silence interleaved, so figure out how many entries to skip
+    //    First 2 dialogue clips + up to 1 silence between them = skip first 3 entries if speakers differ
+    let skipCount = catchphraseClipCount;
+    // Check if there's a silence between the catchphrase clips
+    if (catchphraseClipCount >= 2 && lines[0]?.speaker !== lines[1]?.speaker) {
+      skipCount = 3; // clip0 + silence + clip1
+    }
+    const restClipFiles = clipFiles.slice(skipCount);
+    // Remove leading silence if present (the pause after catchphrase clip 2)
+    if (restClipFiles.length > 0 && restClipFiles[0] === silencePath) {
+      restClipFiles.shift();
+    }
+
+    const restListPath = path.join(clipsDir, 'rest_list.txt');
+    fs.writeFileSync(restListPath, restClipFiles.map(f => `file '${f}'`).join('\n'));
+    const restAudio = path.join(clipsDir, 'rest_dialogue.mp3');
+    execSync(`ffmpeg -y -f concat -safe 0 -i "${restListPath}" -ar 44100 -ac 1 -ab 128k "${restAudio}" 2>/dev/null`);
+
+    // 5. Outro — full intro music, fast fade in, play 18s, fade out at end
+    const outroPath = path.join(clipsDir, 'outro.mp3');
+    execSync(`ffmpeg -y -i "${introPath}" -t 18 -af "volume=1.8,afade=t=in:d=0.5,afade=t=out:st=15:d=3" -ar 44100 -ac 1 -ab 128k "${outroPath}" 2>/dev/null`);
+
+    // 6. Final concat: intro_mixed + rest_dialogue + silence + outro
+    const finalListPath = path.join(clipsDir, 'final_list.txt');
+    fs.writeFileSync(finalListPath, [
+      `file '${introMixedPath}'`,
+      `file '${restAudio}'`,
+      `file '${silencePath}'`,
+      `file '${outroPath}'`,
+    ].join('\n'));
+    execSync(`ffmpeg -y -f concat -safe 0 -i "${finalListPath}" -acodec libmp3lame -ab 128k -ar 44100 "${outputPath}" 2>/dev/null`);
+
+  } else {
+    // No intro — just concatenate all clips
+    const allFiles = [...clipFiles];
+    const listPath = path.join(clipsDir, 'concat.txt');
+    fs.writeFileSync(listPath, allFiles.map(f => `file '${f}'`).join('\n'));
+    execSync(`ffmpeg -y -f concat -safe 0 -i "${listPath}" -acodec libmp3lame -ab 128k -ar 44100 "${outputPath}" 2>/dev/null`);
+  }
 
   // Get duration
   const durationRaw = execSync(

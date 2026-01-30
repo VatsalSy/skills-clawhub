@@ -1,6 +1,6 @@
 ---
 name: bitcoin-daily
-description: Daily digest of the Bitcoin Development mailing list and Bitcoin Core commits. Use when asked about recent bitcoin-dev discussions, mailing list activity, Bitcoin Core code changes, or to set up daily summaries. Fetches threads from groups.google.com/g/bitcoindev and commits from github.com/bitcoin/bitcoin.
+description: Daily digest and Podcast of the Bitcoin Development mailing list and Bitcoin Core commits sent straight to your chat. Use when asked about recent bitcoin-dev discussions, mailing list activity, Bitcoin Core code changes, or to set up daily summaries. Fetches threads from groups.google.com/g/bitcoindev and commits from github.com/bitcoin/bitcoin.
 metadata: {"clawdbot":{"emoji":"📰"}}
 ---
 
@@ -61,6 +61,15 @@ The podcast features two hosts:
 - **Maya** (nova voice): Wickedly smart, faster wit. Teases Alex, connects dots, makes it accessible.
 
 Their dynamic: lifelong friends, dry humor, flirty banter. Think Han Solo and Princess Leia discussing BIPs. **Never say "crypto" — bitcoin only.**
+
+### Episode Structure
+
+1. **Intro music** — 18s of the theme song (boosted volume, fade in/out)
+2. **Catchphrase** — Alex: "Bitcoin Daily — your morning dose of protocol drama." Maya: "Let's get into it." (1.2s pause between hosts)
+3. **Warmup** — 3-6 lines of casual banter (coffee talk, callbacks, vibes)
+4. **Content** — Deep coverage of each digest topic (~2 min each)
+5. **Sign-off** — Callback to something from the episode
+6. **Outro music** — Same 18s theme song clip as intro
 
 ## Archive
 
