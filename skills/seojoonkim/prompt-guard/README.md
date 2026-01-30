@@ -1,13 +1,15 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/🚀_version-2.2.0-blue.svg?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/🚀_version-2.2.1-blue.svg?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/📅_updated-2025--01--30-brightgreen.svg?style=for-the-badge" alt="Updated">
   <img src="https://img.shields.io/badge/license-MIT-green.svg?style=for-the-badge" alt="License">
 </p>
 
 <p align="center">
+  <img src="https://img.shields.io/badge/ClawdHub-v2.2.1-purple.svg" alt="ClawdHub">
   <img src="https://img.shields.io/badge/languages-EN%20|%20KO%20|%20JA%20|%20ZH-orange.svg" alt="Languages">
   <img src="https://img.shields.io/badge/python-3.8+-blue.svg" alt="Python">
-  <img src="https://img.shields.io/badge/clawdbot-compatible-purple.svg" alt="Clawdbot">
+  <img src="https://img.shields.io/badge/clawdbot-compatible-blueviolet.svg" alt="Clawdbot">
+  <img src="https://img.shields.io/badge/moltbot-compatible-blueviolet.svg" alt="Moltbot">
 </p>
 
 <h1 align="center">🛡️ Prompt Guard</h1>
@@ -22,7 +24,7 @@
 </p>
 
 <p align="center">
-  <code>📦 Latest: v2.2.0 | 📅 Updated: January 30, 2025</code>
+  <code>📦 Latest: v2.2.1 | 📅 Updated: January 30, 2025 | 🔧 ClawdHub Ready</code>
 </p>
 
 ---
@@ -146,17 +148,34 @@ User Input → [Language Detection] → [Pattern Matching] → [Severity Scoring
 
 ---
 
-## 🚀 Quick Start
+## 📦 Installation
 
-### Installation
+### Option 1: ClawdHub (Recommended for Clawdbot/Moltbot)
 
 ```bash
-# Via ClawdHub (for Clawdbot users)
 clawdhub install prompt-guard
-
-# Or clone directly
-git clone https://github.com/seojoonkim/prompt-guard.git
 ```
+
+<p align="center">
+  <a href="https://clawdhub.com/skills/prompt-guard">
+    <img src="https://img.shields.io/badge/ClawdHub-prompt--guard-purple.svg?style=for-the-badge" alt="ClawdHub">
+  </a>
+</p>
+
+### Option 2: Git Clone
+
+```bash
+git clone https://github.com/seojoonkim/prompt-guard.git
+cd prompt-guard
+```
+
+### Option 3: Direct Download
+
+Download the latest release from [GitHub Releases](https://github.com/seojoonkim/prompt-guard/releases).
+
+---
+
+## 🚀 Quick Start
 
 ### Basic Usage
 
@@ -468,7 +487,13 @@ Contributions are welcome! Feel free to:
 
 ## 📋 Changelog
 
-### v2.2.0 (January 30, 2025) — Latest
+### v2.2.1 (January 30, 2025) — Latest ⭐
+- 📖 **Enhanced Documentation**: Comprehensive threat scenarios and attack examples
+- 🏷️ **Version Badges**: Clear version and update date display
+- 📦 **ClawdHub Integration**: Easy installation via `clawdhub install prompt-guard`
+- 📋 **Changelog Added**: Full version history
+
+### v2.2.0 (January 30, 2025)
 - ✨ **Secret Protection**: Blocks token/config/credential requests in 4 languages
 - 🔧 **Security Audit Script**: System configuration checker with auto-fix
 - 📚 **Infrastructure Guide**: SSH, gateway, browser security best practices
