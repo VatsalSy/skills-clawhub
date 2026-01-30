@@ -25,6 +25,7 @@ from pathlib import Path
 DEFAULT_COOKIE_FILE = Path.home() / ".openclaw/workspace/credentials/csdn-cookie.json"
 DEFAULT_QR_OUTPUT = Path.home() / ".openclaw/workspace/credentials/csdn-qr.png"
 DEFAULT_CONFIG_FILE = Path.home() / ".openclaw/workspace/credentials/telegram-notify.json"
+DEFAULT_PROXY = "http://127.0.0.1:20171"  # 默认代理
 
 
 def send_telegram_notification(message: str, config_file: str = None):
@@ -68,7 +69,8 @@ def send_telegram_notification(message: str, config_file: str = None):
 
 
 async def csdn_login(cookie_file: str = None, qr_output: str = None, headless: bool = True, 
-                     timeout: int = 120, notify: bool = False, config_file: str = None):
+                     timeout: int = 120, notify: bool = False, config_file: str = None,
+                     proxy: str = None):
     """
     打开 CSDN 登录页面，截取二维码，等待用户扫码登录，保存 Cookie
     
@@ -79,6 +81,7 @@ async def csdn_login(cookie_file: str = None, qr_output: str = None, headless: b
         timeout: 等待登录的超时时间（秒）
         notify: 登录成功后是否发送 Telegram 通知
         config_file: Telegram 配置文件路径
+        proxy: 代理服务器地址
     
     Returns:
         dict: {"success": bool, "qr_path": str or None, "message": str}
@@ -87,21 +90,24 @@ async def csdn_login(cookie_file: str = None, qr_output: str = None, headless: b
     
     cookie_path = Path(cookie_file) if cookie_file else DEFAULT_COOKIE_FILE
     qr_path = Path(qr_output) if qr_output else DEFAULT_QR_OUTPUT
+    proxy_server = proxy or os.environ.get('https_proxy') or os.environ.get('HTTPS_PROXY') or DEFAULT_PROXY
     cookie_path.parent.mkdir(parents=True, exist_ok=True)
     qr_path.parent.mkdir(parents=True, exist_ok=True)
     
     print("🚀 启动浏览器...", file=sys.stderr)
+    print(f"   代理: {proxy_server}", file=sys.stderr)
     
     async with async_playwright() as p:
         browser = await p.chromium.launch(
             headless=headless,
-            args=['--no-sandbox', '--disable-setuid-sandbox']
+            args=['--no-sandbox', '--disable-setuid-sandbox'],
+            proxy={"server": proxy_server} if proxy_server else None
         )
         context = await browser.new_context()
         page = await context.new_page()
         
         print("🌐 打开 CSDN 登录页面...", file=sys.stderr)
-        await page.goto("https://passport.csdn.net/login")
+        await page.goto("https://passport.csdn.net/login", timeout=60000)
         await asyncio.sleep(3)
         
         # 尝试切换到扫码登录
@@ -266,6 +272,7 @@ def main():
     login_parser.add_argument('--timeout', '-t', type=int, default=120, help='登录超时时间（秒）')
     login_parser.add_argument('--notify', '-n', action='store_true', help='登录成功后发送 Telegram 通知')
     login_parser.add_argument('--config', '-c', help='Telegram 配置文件路径')
+    login_parser.add_argument('--proxy', '-p', help='代理服务器地址')
     
     # check 命令
     check_parser = subparsers.add_parser('check', help='检查 Cookie 是否有效')
@@ -286,7 +293,8 @@ def main():
             headless=not args.no_headless,
             timeout=args.timeout,
             notify=args.notify,
-            config_file=args.config
+            config_file=args.config,
+            proxy=args.proxy
         ))
         if result["success"]:
             print("LOGIN_SUCCESS")

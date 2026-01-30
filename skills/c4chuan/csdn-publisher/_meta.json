@@ -3,9 +3,15 @@
   "slug": "csdn-publisher",
   "displayName": "CSDN Publisher",
   "latest": {
-    "version": "1.3.0",
-    "publishedAt": 1769786546271,
-    "commit": "https://github.com/clawdbot/skills/commit/955da78060d0a2708516776da25a1ec30095e806"
+    "version": "1.3.1",
+    "publishedAt": 1769786970787,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.3.0",
+      "publishedAt": 1769786546271,
+      "commit": "https://github.com/clawdbot/skills/commit/955da78060d0a2708516776da25a1ec30095e806"
+    }
+  ]
 }
