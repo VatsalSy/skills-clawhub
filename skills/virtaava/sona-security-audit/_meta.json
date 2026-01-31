@@ -1,0 +1,11 @@
+{
+  "owner": "virtaava",
+  "slug": "sona-security-audit",
+  "displayName": "Security Audit (Sona)",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1769872613729,
+    "commit": null
+  },
+  "history": []
+}
