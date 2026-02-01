@@ -3,9 +3,15 @@
   "slug": "openclaw-hardener",
   "displayName": "OpenClaw Hardener",
   "latest": {
-    "version": "0.1.0",
-    "publishedAt": 1769904803038,
-    "commit": "https://github.com/clawdbot/skills/commit/928ac2b6690ac52d02093c1a5b9f705449abb7fd"
+    "version": "0.1.2",
+    "publishedAt": 1769905417081,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.1.0",
+      "publishedAt": 1769904803038,
+      "commit": "https://github.com/clawdbot/skills/commit/928ac2b6690ac52d02093c1a5b9f705449abb7fd"
+    }
+  ]
 }

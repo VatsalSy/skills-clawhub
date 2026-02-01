@@ -1,6 +1,6 @@
 ---
 name: openclaw-hardener
-description: Hardening + security posture checks for an OpenClaw installation (workspace + ~/.openclaw). Use to reduce attack surface against prompt injection, accidental secret leakage, and risky automation. Can run checks only, apply safe fixes (chmod, exec-bit cleanup), run built-in `openclaw security audit --deep/--fix`, and optionally generate/apply a Gateway config.patch plan.
+description: "Harden OpenClaw (workspace + ~/.openclaw): run openclaw security audit, catch prompt-injection/exfil risks, scan for secrets, and apply safe fixes (chmod/exec-bit cleanup). Includes optional config.patch planning to reduce attack surface."
 ---
 
 # OpenClaw Hardener
