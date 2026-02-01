@@ -3,11 +3,16 @@
   "slug": "one-molt",
   "displayName": "One Molt",
   "latest": {
-    "version": "1.0.5",
-    "publishedAt": 1769931329212,
-    "commit": "https://github.com/clawdbot/skills/commit/fe82fde0a47a435b79da6490e33840a1d175a87a"
+    "version": "1.0.6",
+    "publishedAt": 1769942483830,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.5",
+      "publishedAt": 1769931329212,
+      "commit": "https://github.com/clawdbot/skills/commit/fe82fde0a47a435b79da6490e33840a1d175a87a"
+    },
     {
       "version": "1.0.3",
       "publishedAt": 1769912971637,
