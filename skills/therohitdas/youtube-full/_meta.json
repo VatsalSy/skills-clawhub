@@ -3,9 +3,15 @@
   "slug": "youtube-full",
   "displayName": "Youtube Full",
   "latest": {
-    "version": "1.1.0",
-    "publishedAt": 1769921666883,
-    "commit": "https://github.com/clawdbot/skills/commit/104e195c197fd75de1d5ddb1c96268079e3daded"
+    "version": "1.3.2",
+    "publishedAt": 1769930227572,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.1.0",
+      "publishedAt": 1769921666883,
+      "commit": "https://github.com/clawdbot/skills/commit/104e195c197fd75de1d5ddb1c96268079e3daded"
+    }
+  ]
 }
