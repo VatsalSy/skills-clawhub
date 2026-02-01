@@ -3,9 +3,15 @@
   "slug": "coolify",
   "displayName": "Coolify",
   "latest": {
-    "version": "2.0.1",
-    "publishedAt": 1769171364811,
-    "commit": "https://github.com/clawdbot/skills/commit/e45d1943d6dadf03303e72276c33631d3b0bb6a0"
+    "version": "2.0.3",
+    "publishedAt": 1769939799421,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "2.0.1",
+      "publishedAt": 1769171364811,
+      "commit": "https://github.com/clawdbot/skills/commit/e45d1943d6dadf03303e72276c33631d3b0bb6a0"
+    }
+  ]
 }
