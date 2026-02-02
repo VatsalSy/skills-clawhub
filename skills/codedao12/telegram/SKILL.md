@@ -1,35 +1,43 @@
 ---
 name: telegram
-description: Guidance for basic Telegram Bot integrations: webhook/polling setup, messaging, security, and operations.
+description: OpenClaw skill for designing Telegram Bot API workflows and command-driven conversations using direct HTTPS requests (no SDKs).
 ---
 
-# Telegram Bot Guide
+# Telegram Bot Skill (Advanced)
 
-## Goal
-Provide a practical baseline for Telegram Bot integrations: bot creation, webhook/polling setup, message handling, and safe operations.
+## Purpose
+Provide a clean, production-oriented guide for building Telegram bot workflows via the Bot API, focusing on command UX, update handling, and safe operations using plain HTTPS.
 
-## Use when
-- You need a Telegram bot for notifications or ops.
-- You need to describe webhook flow and event handling.
-- You want a security/rate-limit checklist.
+## Best fit
+- You want a command-first bot that behaves professionally.
+- You need a reliable update flow (webhook or polling).
+- You prefer direct HTTP calls instead of libraries.
 
-## Do not use when
-- The request involves policy violations or spam.
+## Not a fit
+- You require a full SDK or framework integration.
+- You need complex media uploads and streaming in-process.
 
-## Core topics
-- Bot token handling: secure storage and rotation.
-- Webhook vs polling: trade-offs and use cases.
-- Message handling: commands, callbacks, files.
-- Ops: rate limits, retries, logging, admin controls.
+## Quick orientation
+- Read `references/telegram-bot-api.md` for endpoints, update types, and request patterns.
+- Read `references/telegram-commands-playbook.md` for command UX and messaging style.
+- Read `references/telegram-update-routing.md` for update normalization and routing rules.
+- Read `references/telegram-request-templates.md` for HTTP payload templates.
+- Keep this SKILL.md short and use references for details.
 
 ## Required inputs
-- Bot purpose (notify/ops/support).
-- Deployment model (serverless/server).
-- Security posture and access control.
+- Bot token and base API URL.
+- Update strategy: webhook or long polling.
+- Command list and conversation tone.
+- Allowed update types and rate-limit posture.
 
 ## Expected output
-- A clear integration plan with a technical checklist.
+- A clear command design, update flow plan, and operational checklist.
 
-## Notes
-- Never commit tokens to a repo.
-- Avoid sending sensitive data over chat.
+## Operational notes
+- Prefer strict command routing: `/start`, `/help`, `/settings`, `/status`.
+- Always validate incoming update payloads and chat context.
+- Handle 429s with backoff and avoid message bursts.
+
+## Security notes
+- Never log tokens.
+- Use webhooks with a secret token header when possible.
