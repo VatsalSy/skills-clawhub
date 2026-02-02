@@ -1,0 +1,11 @@
+{
+  "owner": "robnew",
+  "slug": "proxmox-skill",
+  "displayName": "Proxmox Management",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770023423332,
+    "commit": null
+  },
+  "history": []
+}
