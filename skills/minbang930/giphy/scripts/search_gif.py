@@ -8,10 +8,35 @@ import os
 import json
 import urllib.request
 import urllib.parse
+from pathlib import Path
 
 # Giphy API configuration
-API_KEY = os.environ.get('GIPHY_API_KEY', 'YOUR_API_KEY_HERE')
 API_ENDPOINT = "https://api.giphy.com/v1/gifs/search"
+
+def get_api_key():
+    """
+    Get Giphy API key from OpenClaw config first, then fallback to environment variable.
+    
+    Priority:
+    1. OpenClaw config: ~/.openclaw/openclaw.json > skills.entries.giphy-gif.apiKey
+    2. Environment variable: GIPHY_API_KEY
+    """
+    # Try OpenClaw config first
+    config_path = Path.home() / '.openclaw' / 'openclaw.json'
+    if config_path.exists():
+        try:
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+                api_key = config.get('skills', {}).get('entries', {}).get('giphy-gif', {}).get('apiKey')
+                if api_key:
+                    return api_key
+        except Exception as e:
+            print(f"Warning: Could not read OpenClaw config: {e}", file=sys.stderr)
+    
+    # Fallback to environment variable
+    return os.environ.get('GIPHY_API_KEY', 'YOUR_API_KEY_HERE')
+
+API_KEY = get_api_key()
 
 def search_gif(query, limit=1):
     """

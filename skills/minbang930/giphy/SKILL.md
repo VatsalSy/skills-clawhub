@@ -66,6 +66,18 @@ Send GIFs in these situations:
 - **Humor**: to lighten the mood or add comedic timing
 - **Emphasis**: to reinforce a point with visual impact
 
+## Context-Aware Sending
+
+Be thoughtful about when to send GIFs to maintain natural conversation flow:
+
+- **Direct requests**: Always send when explicitly asked
+- **GIF exchange initiated by user**: If the user sends a GIF, match naturally 1-2 times, then resume normal chat
+- **Standalone reactions**: Only for significant moments (big celebrations, major news, strong emotional beats)
+- **Normal conversation**: Default to text responses; GIFs should be occasional spice, not the main dish
+- **Topic shift**: If conversation moves to serious/informational topics, return to text-only mode
+
+**Goal**: Make GIF usage feel natural and contextual, not automatic or overwhelming.
+
 ## Best Practices
 
 1. **Match the context**: Choose search terms that match the conversation tone
@@ -74,6 +86,7 @@ Send GIFs in these situations:
 4. **Search terms matter**: Use specific, descriptive terms for better results
    - Good: "celebration dance", "facepalm reaction", "mind blown"
    - Poor: "thing", "stuff", "it"
+5. **Read the room**: If the conversation becomes more serious or informational, stick to text
 
 ## Common Search Terms
 
