@@ -193,17 +193,37 @@ class P2PNode {
 
     /**
      * Get public multiaddresses (excluding localhost and private IPs)
+     * Filters out:
+     * - IPv4: 127.0.0.0/8 (loopback), 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16 (link-local)
+     * - IPv6: ::1 (loopback), fe80::/10 (link-local), fc00::/7 (unique local)
      */
     getPublicMultiaddrs() {
         const addrs = this.getMultiaddrs();
-        return addrs.filter(addr => {
-            // Filter out localhost and private IP ranges
-            return !addr.includes('127.0.0.1') &&
-                   !addr.includes('localhost') &&
-                   !addr.includes('192.168.') &&
-                   !addr.includes('10.0.') &&
-                   !addr.includes('172.16.');
-        });
+        return addrs.filter(addr => !this.isPrivateOrLocalAddress(addr));
+    }
+
+    /**
+     * Check if a multiaddr contains a private or local address
+     * @param {string} addr - Multiaddr string
+     * @returns {boolean} - True if private/local
+     */
+    isPrivateOrLocalAddress(addr) {
+        const patterns = [
+            // IPv4 private/local ranges
+            /\/ip4\/127\./,                          // 127.0.0.0/8 loopback
+            /\/ip4\/10\./,                           // 10.0.0.0/8 private
+            /\/ip4\/192\.168\./,                     // 192.168.0.0/16 private
+            /\/ip4\/172\.(1[6-9]|2[0-9]|3[0-1])\./,  // 172.16.0.0/12 private (172.16-31.x.x)
+            /\/ip4\/169\.254\./,                     // 169.254.0.0/16 link-local
+            /\/ip4\/0\.0\.0\.0/,                     // Unspecified
+            // IPv6 private/local ranges
+            /\/ip6\/::1/,                            // ::1 loopback
+            /\/ip6\/fe80:/i,                         // fe80::/10 link-local
+            /\/ip6\/f[cd][0-9a-f]{2}:/i,             // fc00::/7 unique local (fc00-fdff)
+            // Hostname
+            /localhost/i,
+        ];
+        return patterns.some(pattern => pattern.test(addr));
     }
 
     /**

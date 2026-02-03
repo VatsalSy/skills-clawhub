@@ -42,14 +42,12 @@ class Consumer {
 
         for (const aggregatorUrl of this.aggregators) {
             try {
-                const response = await axios.get(`${aggregatorUrl}/api/search`, {
+                const response = await axios.get(`${aggregatorUrl}/search`, {
                     params: filters,
                     timeout: 10000
                 });
 
-                if (response.data && response.data.apis) {
-                    results.push(...response.data.apis);
-                } else if (response.data && response.data.results) {
+                if (response.data && response.data.results) {
                     results.push(...response.data.results);
                 }
 

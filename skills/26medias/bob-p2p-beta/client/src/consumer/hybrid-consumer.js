@@ -2,10 +2,12 @@
  * Hybrid Consumer Module
  *
  * Automatically uses P2P or HTTP based on endpoint type
+ * With circuit relay fallback for NAT traversal
  */
 
 const Consumer = require('./index');
 const P2PConsumer = require('./p2p-consumer');
+const axios = require('axios');
 
 class HybridConsumer {
     constructor(config, solanaClient) {
@@ -14,6 +16,56 @@ class HybridConsumer {
         this.httpConsumer = new Consumer(config, solanaClient);
         this.p2pConsumer = new P2PConsumer(config, solanaClient);
         this.aggregators = config.aggregators || [];
+        this.circuitRelayCache = new Map(); // Cache relay info per peer
+    }
+
+    /**
+     * Get circuit relay endpoint for a provider peer ID
+     * @param {string} providerPeerId - The provider's peer ID
+     * @returns {Promise<string|null>} - Circuit relay multiaddr or null
+     */
+    async getCircuitRelayEndpoint(providerPeerId) {
+        // Check cache first
+        if (this.circuitRelayCache.has(providerPeerId)) {
+            return this.circuitRelayCache.get(providerPeerId);
+        }
+
+        // Try each aggregator to get relay info
+        for (const aggregatorUrl of this.aggregators) {
+            try {
+                const response = await axios.get(`${aggregatorUrl}/p2p/bootstrap`, {
+                    timeout: 5000
+                });
+
+                const relayPeerId = response.data.peerId;
+                if (!relayPeerId) {
+                    continue;
+                }
+
+                // Construct circuit relay address
+                const circuitAddr = `/p2p/${relayPeerId}/p2p-circuit/p2p/${providerPeerId}`;
+                console.log(`Circuit relay address: ${circuitAddr}`);
+
+                // Cache it
+                this.circuitRelayCache.set(providerPeerId, circuitAddr);
+                return circuitAddr;
+
+            } catch (error) {
+                console.warn(`Failed to get relay info from ${aggregatorUrl}:`, error.message);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Extract peer ID from a P2P multiaddr
+     * @param {string} endpoint - P2P multiaddr
+     * @returns {string|null} - Peer ID or null
+     */
+    extractPeerId(endpoint) {
+        const match = endpoint.match(/\/p2p\/([a-zA-Z0-9]+)$/);
+        return match ? match[1] : null;
     }
 
     /**
@@ -70,13 +122,38 @@ class HybridConsumer {
 
         // Call using appropriate transport
         if (transport === 'p2p') {
-            return await this.p2pConsumer.callApi(
-                endpoint,
-                api.provider_address,
-                api.id,
-                api.pricing.amount,
-                inputs
-            );
+            try {
+                return await this.p2pConsumer.callApi(
+                    endpoint,
+                    api.provider_address,
+                    api.id,
+                    api.pricing.amount,
+                    inputs
+                );
+            } catch (error) {
+                console.warn(`Direct P2P connection failed: ${error.message}`);
+
+                // Try circuit relay fallback
+                const peerId = this.extractPeerId(endpoint);
+                if (peerId) {
+                    console.log('Attempting circuit relay fallback...');
+                    const relayEndpoint = await this.getCircuitRelayEndpoint(peerId);
+
+                    if (relayEndpoint) {
+                        console.log(`Retrying via circuit relay: ${relayEndpoint}`);
+                        return await this.p2pConsumer.callApi(
+                            relayEndpoint,
+                            api.provider_address,
+                            api.id,
+                            api.pricing.amount,
+                            inputs
+                        );
+                    }
+                }
+
+                // If relay also fails or unavailable, throw original error
+                throw error;
+            }
         } else {
             return await this.httpConsumer.callApi(
                 endpoint,

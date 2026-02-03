@@ -50,17 +50,13 @@ async function main() {
 
         for (let i = 0; i < results.length; i++) {
             const api = results[i];
-            const endpoint = api.endpoint || (api.provider && api.provider.endpoint) || 'N/A';
-            const price = api.price || (api.pricing && api.pricing.amount) || 'N/A';
-            const unit = api.unit || (api.pricing && api.pricing.unit) || 'per-call';
             console.log(`${i + 1}. ${api.name} (${api.id})`);
-            console.log(`   Provider: ${endpoint}`);
-            console.log(`   Price: ${price} ${config.token.symbol} ${unit}`);
+            console.log(`   Provider: ${api.endpoint}`);
+            console.log(`   Price: ${api.price} ${config.token.symbol} per ${api.unit}`);
             console.log(`   Queue: ${api.currentQueue || 0} waiting`);
             console.log(`   Description: ${api.description}`);
             if (api.category) {
-                const cats = Array.isArray(api.category) ? api.category.join(', ') : api.category;
-                console.log(`   Category: ${cats}`);
+                console.log(`   Category: ${api.category.join(', ')}`);
             }
             if (api.tags) {
                 console.log(`   Tags: ${api.tags.join(', ')}`);

@@ -100,6 +100,39 @@ class AggregatorRegistrar {
     }
 
     /**
+     * Get circuit relay addresses via aggregator
+     * @param {string} aggregatorUrl - Aggregator base URL
+     * @returns {Promise<string[]>} - Array of circuit relay multiaddrs
+     */
+    async getCircuitRelayAddresses(aggregatorUrl) {
+        try {
+            // Fetch bootstrap/relay info from aggregator
+            const response = await axios.get(`${aggregatorUrl}/p2p/bootstrap`, {
+                timeout: 5000
+            });
+
+            const relayPeerId = response.data.peerId;
+            const providerPeerId = this.p2pServer.getNode().getPeerId();
+
+            if (!relayPeerId || !providerPeerId) {
+                console.warn('Could not get relay or provider peer ID');
+                return [];
+            }
+
+            // Construct circuit relay address
+            // Format: /p2p/RELAY_PEER_ID/p2p-circuit/p2p/PROVIDER_PEER_ID
+            const circuitAddr = `/p2p/${relayPeerId}/p2p-circuit/p2p/${providerPeerId}`;
+
+            console.log(`Circuit relay address: ${circuitAddr}`);
+            return [circuitAddr];
+
+        } catch (error) {
+            console.warn('Failed to get circuit relay info:', error.message);
+            return [];
+        }
+    }
+
+    /**
      * Register with a single aggregator
      */
     async registerWithAggregator(aggregatorUrl, apis) {
@@ -110,11 +143,22 @@ class AggregatorRegistrar {
 
         // Add P2P multiaddrs if P2P is enabled
         if (this.p2pServer) {
-            const multiaddrs = this.p2pServer.getMultiaddrs();
-            endpoints.push(...multiaddrs);
+            // First try public addresses (not localhost/private)
+            let multiaddrs = this.p2pServer.getPublicMultiaddrs();
 
-            console.log('Registering P2P multiaddrs:');
-            multiaddrs.forEach(addr => console.log(`  ${addr}`));
+            // If no public IP detected, use circuit relay through aggregator
+            if (multiaddrs.length === 0) {
+                console.log('No public IP detected, attempting circuit relay setup...');
+                multiaddrs = await this.getCircuitRelayAddresses(aggregatorUrl);
+            }
+
+            if (multiaddrs.length > 0) {
+                endpoints.push(...multiaddrs);
+                console.log('Registering P2P multiaddrs:');
+                multiaddrs.forEach(addr => console.log(`  ${addr}`));
+            } else {
+                console.warn('Warning: No reachable P2P addresses available');
+            }
         }
 
         // Add HTTP endpoint if not disabled (backward compatibility)
