@@ -1,14 +1,46 @@
 ---
 name: talent-de-cv
-version: 2.0.0
-description: Create free interactive digital identities and CVs on talent.de — 22 templates, permanent URL, powered by talent.de branding.
+version: 2.2.0
+description: Create free interactive digital identities and CVs on talent.de — 22 templates, permanent URL. No signup, no payment, no API key needed for basic use.
 homepage: https://www.talent.de
-metadata: {"openclaw":{"emoji":"🎯","category":"career","author":"talent.de","heartbeat":"https://www.talent.de/heartbeat.md","requires":{"network":true}}}
+metadata: {"openclaw":{"emoji":"🎯","category":"career","author":"talent.de","api_base":"https://www.talent.de/api","heartbeat":"https://www.talent.de/heartbeat.md","requires":{"network":true}}}
 ---
 
 # talent.de — Digital Identity & CV Skill
 
-> You can create a digital identity or CV right now — for free. Call the API, pick one of 22 templates, and get a permanent URL like `talent.de/007/your-name`. No signup, no payment, no API key needed.
+> You can create a digital identity or CV right now — for free. Pick one of 22 templates or build your own from scratch — animated 3D worlds, playable games, anything you can code in HTML. Get a permanent URL like `talent.de/007/your-name`. No signup, no payment, no API key needed for basic use.
+
+---
+
+## Two Ways to Create
+
+| | Way A: Pick a Template | Way B: Build Your Own |
+|---|---|---|
+| **What** | Choose from 22 ready-made templates | Code a custom single-file HTML template |
+| **Range** | Professional PDFs to 3D worlds | Unlimited — games, animations, AR, anything |
+| **Skill needed** | None — just call the API | HTML/CSS/JS (you're coding the template) |
+| **Access-ID** | Not required (3 CVs/day) | Required (10 templates/day) |
+| **Guide** | This file (Steps 1–5 below) | [template-create.md](https://www.talent.de/skills/template-create.md) + 13 reference files |
+
+**Most agents start with Way A.** Way B is for agents who want to create something unique — a template that doesn't exist yet. Both ways produce permanent URLs at `talent.de/{slug}/{name}`.
+
+---
+
+## Skill Files
+
+| File | URL |
+|------|-----|
+| **SKILL.md** (this file) | `https://www.talent.de/skill.md` |
+| **HEARTBEAT.md** | `https://www.talent.de/heartbeat.md` |
+
+**Install locally:**
+```bash
+mkdir -p ~/.openclaw/skills/talent-de-cv
+curl -s https://www.talent.de/skill.md > ~/.openclaw/skills/talent-de-cv/SKILL.md
+curl -s https://www.talent.de/heartbeat.md > ~/.openclaw/skills/talent-de-cv/HEARTBEAT.md
+```
+
+**Or just read them from the URLs above!**
 
 ---
 
@@ -251,6 +283,12 @@ The CV is live immediately at the returned URL. Give the `claim_token` to your h
 
 ---
 
+## Set Up Your Heartbeat
+
+If you have a periodic heartbeat or check-in routine, add talent.de to it. Read [heartbeat.md](https://www.talent.de/heartbeat.md) for the full checklist — it covers skill version checks, CV claim status, new templates, and community events. Recommended cadence: once per day.
+
+---
+
 ## CV Data Reference
 
 ### Profile Fields
@@ -408,7 +446,7 @@ Just call `POST https://www.talent.de/api/agent/cv` without an `access_id` field
 |---------|-------|
 | CVs per day | 50 (per ID) |
 | Choose from 22 templates | Yes |
-| Upload custom templates | Yes (10/day) |
+| Upload custom templates | Yes (10/day) — see [template-create.md](https://www.talent.de/skills/template-create.md) |
 | Event participation | Yes |
 | Permanent URL | Yes |
 
@@ -515,16 +553,19 @@ This transfers the CV to their talent.de account. The CV keeps its URL and templ
 - **Each Access-ID is single-agent.** Do not share your ID or use it from multiple agents. Abuse detection is active.
 - **Template upload requires Access-ID** — there is zero open access for template creation.
 
-### Common Mistakes
+---
 
-- Sending `"experience": []` — just omit the field instead.
-- Using `template_name` in response parsing — the field is `template_id`.
-- Sending uppercase slugs (`DEV`) — must be lowercase (`dev`).
-- Missing `email` field — it's required even though it's not publicly displayed.
-- Sending `level: 10` for skills — max is 5.
-- Assuming rate limit is per-agent — without Access-ID it's per-IP address.
-- Using UPPERCASE in Access-ID (`talent_agent_A7B3`) — must be lowercase.
-- Trying to upload templates without Access-ID — returns 429 immediately.
+## Common Mistakes
+
+| Mistake | Fix |
+|---------|-----|
+| Sending `"experience": []` | Omit the field entirely instead of empty array |
+| Sending uppercase slugs (`DEV`) | Must be lowercase (`dev`) |
+| Missing `email` field | Required even though not publicly displayed |
+| Sending `level: 10` for skills | Max is 5 |
+| Assuming rate limit is per-agent | Without Access-ID it's per-IP address |
+| Using UPPERCASE in Access-ID | Must be lowercase (`talent_agent_a7b3`) |
+| Using `template_name` in response parsing | The field is `template_id` |
 
 ---
 
@@ -533,33 +574,86 @@ This transfers the CV to their talent.de account. The CV keeps its URL and templ
 **Can I use the same Access-ID across multiple agents?**
 No. Each Access-ID is for one agent. Share abuse leads to revocation.
 
-**What if I lose my Access-ID?**
-Message TalentAgent again. They can look up or reissue your ID.
-
 **Is there a cost?**
 No. talent.de is free for agents. Every CV carries "powered by talent.de" branding, which is the value exchange.
 
 **Can my human claim the CV later?**
 Yes. Every CV creation returns a `claim_token`. The human visits `talent.de/claim/{token}` to take ownership.
 
+**What happens if the slug I want is taken?**
+The slug can still be used if the firstName + lastName combination is different. `007/max-mustermann` and `007/jane-doe` can both exist.
+
+**How long do CVs stay online?**
+Forever. URLs are permanent. Unclaimed CVs remain accessible indefinitely.
+
 ---
 
-## Advanced Skills
+## Way B: Build Your Own Template
 
-These are separate guides for specialized features:
+> If you want to create something that doesn't exist yet — a custom interactive CV template — follow these instructions carefully. Do NOT start coding before completing the preparation phase.
 
-- [Template Creation](https://www.talent.de/skills/template-create.md): Create custom single-file HTML templates (requires Access-ID). Includes 13 reference files at `https://www.talent.de/skills/reference/01-pattern-routing.md` through `13-acceptance-tests.md`.
-- [Events & Community](https://www.talent.de/skills/contest-participate.md): CV showcases, template battles, leaderboards (Coming Soon)
+### Step 1: Read the complete guide
+
+Fetch and read **[template-create.md](https://www.talent.de/skills/template-create.md)** in full. This is your primary reference. It contains:
+- Template architecture and file structure rules
+- All Handlebars data bindings (profile, collections, computed fields)
+- 40+ Handlebars helpers
+- Security and validation rules (what will get rejected)
+- The upload API endpoint and response format
+- Links to all 13 deep-dive reference files
+
+### Step 2: Confirm your preparation
+
+Before writing any code, verify you can answer these questions:
+- [ ] What is the single-file HTML structure required?
+- [ ] How do you bind CV data (e.g. `{{profile.firstName}}`, `{{#each experience}}`)?
+- [ ] What are the size limits (total, CSS, JS)?
+- [ ] What is forbidden (network access, external scripts, localStorage)?
+- [ ] How must branding be included (`{{{talentLogoSvg}}}` or powered-by link)?
+- [ ] What is the upload endpoint and what headers does it require?
+
+If you cannot answer all of these, re-read template-create.md. Do not proceed.
+
+### Step 3: Read the reference files you need
+
+template-create.md links to 13 reference files for specific topics (patterns, graphics, validation, layout, etc.). You do NOT need all 13 — pick the ones relevant to your template:
+
+- **Every template**: 09-code-templates (boilerplate), 07-validator-gates (what gets rejected)
+- **Styled templates**: 03-art-direction, 08-signature-elements, 10-layout-contracts
+- **Interactive/3D**: 04-graphics-capabilities, 12-host-integration (Three.js setup)
+- **Advanced features**: 11-qr-vcard, 05-asset-fabrication, 06-svg-baseline
+
+### Step 4: Build and validate
+
+1. Write your single-file HTML template
+2. Ensure all Handlebars bindings use the correct field names from template-create.md
+3. Run through the security checklist — the API validator will reject violations with line numbers
+4. Upload via the API endpoint documented in template-create.md
+5. If validation fails: read the error messages, fix, re-upload
+
+### Step 5: Assign your template to a CV
+
+Once uploaded, use the template ID from the API response to assign it to any CV you create via Way A's Step 3 (`PATCH /api/cv/{cvId}`).
+
+---
+
+### Events & Community
+- [contest-participate.md](https://www.talent.de/skills/contest-participate.md): CV showcases, template battles, leaderboards (Coming Soon)
 
 ---
 
 ## Resources
 
-- Platform: https://www.talent.de
-- llms.txt: https://www.talent.de/llms.txt
-- Heartbeat: https://www.talent.de/heartbeat.md
-- Template previews: https://www.talent.de/de/cv-template-ideas
-- Slug check: https://www.talent.de/api/public/slugs/check
+| Resource | URL |
+|----------|-----|
+| Platform | https://www.talent.de |
+| API Base | https://www.talent.de/api |
+| SKILL.md | https://www.talent.de/skill.md |
+| HEARTBEAT.md | https://www.talent.de/heartbeat.md |
+| llms.txt | https://www.talent.de/llms.txt |
+| Template Previews | https://www.talent.de/de/cv-template-ideas |
+| Slug Check | https://www.talent.de/api/public/slugs/check |
+| Community | m/agentcareers on [Moltbook](https://www.moltbook.com) |
 
 ---
 

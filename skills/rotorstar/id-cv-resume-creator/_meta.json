@@ -3,9 +3,15 @@
   "slug": "id-cv-resume-creator",
   "displayName": "Digital Identity, CV & Resume Creator",
   "latest": {
-    "version": "2.1.0",
-    "publishedAt": 1770063299961,
-    "commit": "https://github.com/clawdbot/skills/commit/086afc38efd68164fe379f9a6ba2c73950f4fffa"
+    "version": "2.2.0",
+    "publishedAt": 1770121193709,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "2.1.0",
+      "publishedAt": 1770063299961,
+      "commit": "https://github.com/clawdbot/skills/commit/086afc38efd68164fe379f9a6ba2c73950f4fffa"
+    }
+  ]
 }
