@@ -1,0 +1,11 @@
+{
+  "owner": "parasyte-x",
+  "slug": "openclaw-bitagent",
+  "displayName": "Bitagent Skill",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1770084965840,
+    "commit": null
+  },
+  "history": []
+}
