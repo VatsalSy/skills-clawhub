@@ -49,7 +49,8 @@ fi
 IDENTITY_FILE="$HOME/.openclaw/workspace/IDENTITY.md"
 IDENTITY_NAME=""
 if [[ -f "$IDENTITY_FILE" ]]; then
-    IDENTITY_NAME=$(grep -m1 -E '^\s*-\s*\*\*Name:\*\*' "$IDENTITY_FILE" | sed -E 's/^\s*-\s*\*\*Name:\*\*\s*//')
+    # Extract name after "**Name:**" pattern, handling various formats
+    IDENTITY_NAME=$(grep -m1 '\*\*Name:\*\*' "$IDENTITY_FILE" | sed -E 's/^.*\*\*Name:\*\*[[:space:]]*//' | tr -d '\r')
 fi
 DEFAULT_NAME="${IDENTITY_NAME:-$MACHINE_ID}"
 
