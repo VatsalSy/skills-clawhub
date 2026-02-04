@@ -1,5 +1,65 @@
 # Changelog
 
+## [1.11.0] - 2026-02-03
+
+### Added
+- **Provider Abstraction Layer**: All email and calendar operations now go through wrapper scripts
+  - New `scripts/utils/email_ops.py`: Provider-agnostic email operations (read, search, modify, send)
+  - New `scripts/utils/calendar_ops.py`: Provider-agnostic calendar operations (search, create, update, delete)
+  - New shell wrappers: `email_read.sh`, `email_search.sh`, `email_modify.sh`, `email_send.sh`
+  - New shell wrappers: `calendar_search.sh`, `calendar_delete.sh`
+- **Provider Configuration**: New `provider` field in config.json (default: "gog")
+- **`--provider` Parameter**: All scripts now accept optional `--provider` override
+
+### Changed
+- **create_event.sh**: Now uses `calendar_ops.py` instead of direct `gog` calls
+- **undo.sh**: Now uses `calendar_ops.py` for all calendar operations
+- **check_duplicate.sh**: Now uses `calendar_search.sh` wrapper
+- **event_tracking.py**: Validation now uses `calendar_ops.search_events()` instead of subprocess
+- **SKILL.md**: All `gog` command examples replaced with wrapper script calls
+  - LLM should NEVER call `gog` directly - always use scripts for proper tracking
+
+### Documentation
+- `SETUP.md`: Added `provider` configuration option documentation
+- Updated all example configs to include `provider` field
+
+### Future Extension
+To add a new provider (e.g., Outlook):
+1. Add implementation in `email_ops.py` and `calendar_ops.py`
+2. Set `"provider": "outlook"` in config
+3. No script changes needed
+
+## [1.10.0] - 2026-02-03
+
+### Added
+- **Deadline Detection**: Automatically detects RSVP, registration, and ticket deadlines from emails
+  - Scans for patterns like "RSVP by [date]", "Register by [date]", "Tickets available until [date]"
+  - Extracts deadline_date, deadline_action, and deadline_url fields
+- **Deadline Reminder Events**: Creates separate calendar events for action-required deadlines
+  - Title format: `DEADLINE: [Action] for [Event Name]`
+  - Set at 9:00 AM on the deadline date (30 min duration)
+  - Includes email reminder 1 day before + popup reminder 1 hour before
+- **Action Required Warnings**: Main events with deadlines include prominent capital letter warnings
+  - Format: `*** ACTION REQUIRED: [ACTION] BY [DATE] ***`
+  - Warning placed at the beginning of event description
+- **Email Notifications**: Optional email alerts for events requiring user action
+  - New config: `deadline_notifications.enabled` and `deadline_notifications.email_recipient`
+  - Uses `gog gmail send` command
+  - Includes event details, deadline, action required, and link
+- **Improved URL Extraction**: URLs now placed at the beginning of event descriptions
+  - Format: `Event Link: [URL]` appears right after any deadline warning
+  - Makes action links more visible and accessible
+
+### Changed
+- **Event Description Format**: Structured format with clear sections
+  1. Action warning (if deadline exists)
+  2. Event link (if URL found)
+  3. Event details from email
+
+### Documentation
+- `references/gog-commands.md`: Added `gog gmail send` command documentation
+- `SETUP.md`: Added `deadline_notifications` configuration section with examples
+
 ## [1.9.1] - 2026-02-02
 
 ### Added

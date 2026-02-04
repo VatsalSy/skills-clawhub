@@ -1,7 +1,7 @@
 ---
 name: email-to-calendar
-version: 1.9.1
-description: Extract calendar events from emails and create calendar entries. Supports two modes: (1) Direct inbox monitoring - scans all emails for events, or (2) Forwarded emails - processes emails you forward to a dedicated address. Features smart onboarding, event tracking, pending invite reminders, undo support, and silent activity logging.
+version: 1.11.0
+description: Extract calendar events from emails and create calendar entries. Supports two modes: (1) Direct inbox monitoring - scans all emails for events, or (2) Forwarded emails - processes emails you forward to a dedicated address. Features smart onboarding, event tracking, pending invite reminders, undo support, silent activity logging, deadline detection with separate reminder events, email notifications for action-required items, and provider abstraction for future extensibility.
 ---
 
 > **CRITICAL RULES - READ BEFORE PROCESSING ANY EMAIL**
@@ -15,10 +15,10 @@ description: Extract calendar events from emails and create calendar entries. Su
 > 7. **TRACK ALL CREATED EVENTS** - The `create_event.sh` script automatically tracks events; use tracked IDs for updates/deletions
 > 8. **SHOW DAY-OF-WEEK** - Always include the day of week when presenting events for user verification
 
-> **Tool Flexibility:** This skill is designed for Gmail and Google Calendar.
-> The `gog` CLI commands shown below are reference examples. If your agent
-> has alternative tools for email/calendar access (MCP servers, other CLIs),
-> use those instead - the workflow and logic remain the same.
+> **Tool Flexibility:** This skill uses a provider abstraction layer.
+> All email and calendar operations should go through the wrapper scripts in
+> `scripts/`. This ensures proper tracking and prevents duplicate events.
+> **NEVER call `gog` or other provider CLIs directly** - always use the scripts.
 
 # Email to Calendar Skill
 
@@ -28,18 +28,16 @@ Extract calendar events and action items from emails, present them for review, a
 
 ## Reading Email Content
 
-**IMPORTANT:** Before you can extract events, you must read the email body.
+**IMPORTANT:** Before you can extract events, you must read the email body. Use the wrapper scripts.
 
 ```bash
-# Read config for Gmail account
-CONFIG_FILE="$HOME/.config/email-to-calendar/config.json"
-GMAIL_ACCOUNT=$(jq -r '.gmail_account' "$CONFIG_FILE")
+SCRIPTS_DIR="$HOME/.openclaw/workspace/skills/email-to-calendar/scripts"
 
 # Get a single email by ID (PREFERRED)
-gog gmail get <messageId> --account "$GMAIL_ACCOUNT"
+"$SCRIPTS_DIR/email_read.sh" --email-id "<messageId>"
 
 # Search with body content included
-gog gmail messages search "in:inbox is:unread" --max 20 --include-body --account "$GMAIL_ACCOUNT"
+"$SCRIPTS_DIR/email_search.sh" --query "in:inbox is:unread" --max 20 --include-body
 ```
 
 **Note on stale forwards:** Don't use `newer_than:1d` because it checks the email's original date header, not when it was received. Process all UNREAD emails and rely on the "already processed" check.
@@ -87,6 +85,32 @@ Read the email and extract events as structured data. Include for each event:
 - **is_multi_day**: Whether it spans multiple days
 - **is_recurring**: Whether it repeats (and pattern)
 - **confidence**: high/medium/low
+- **urls**: Any URLs found in the email (REQUIRED - always look for registration links, info pages, ticketing sites, etc.)
+- **deadline_date**: RSVP/registration/ticket deadline date (if found)
+- **deadline_action**: What user needs to do (e.g., "RSVP", "get tickets", "register")
+- **deadline_url**: Direct link for taking action (often same as event URL)
+
+**URL Extraction Rule:** ALWAYS scan the email for URLs and include the most relevant one at the BEGINNING of the event description.
+
+### 2.1 Deadline Detection
+
+Scan the email for deadline patterns that indicate action is required before the event:
+
+**Common Deadline Patterns:**
+- "RSVP by [date]", "Please RSVP by [date]"
+- "Register by [date]", "Registration closes [date]"
+- "Tickets available until [date]", "Get tickets by [date]"
+- "Early bird ends [date]", "Early registration deadline [date]"
+- "Must respond by [date]", "Respond by [date]"
+- "Sign up by [date]", "Sign up deadline [date]"
+- "Deadline: [date]", "Due by [date]"
+- "Last day to [action]: [date]"
+
+When a deadline is found:
+1. Extract the deadline date
+2. Determine the required action (RSVP, register, buy tickets, etc.)
+3. Find the URL for taking that action
+4. Flag the event for special handling (see sections below)
 
 ### 3. Present Items to User and WAIT
 
@@ -126,9 +150,9 @@ if [ -z "$EXISTING_EVENT_ID" ]; then
     TRACKED=$("$SCRIPTS_DIR/lookup_event.sh" --summary "$EVENT_TITLE")
 fi
 
-# Step 3: Fall back to calendar search
+# Step 3: Fall back to calendar search using wrapper script
 if [ -z "$EXISTING_EVENT_ID" ]; then
-    gog calendar events "$CALENDAR_ID" --from "${EVENT_DATE}T00:00:00" --to "${EVENT_DATE}T23:59:59" --json
+    "$SCRIPTS_DIR/calendar_search.sh" --calendar-id "$CALENDAR_ID" --from "${EVENT_DATE}T00:00:00" --to "${EVENT_DATE}T23:59:59"
 fi
 ```
 
@@ -175,8 +199,8 @@ For direct gog commands and advanced options, see [references/gog-commands.md](r
     --event-title "Event Title" \
     --status created
 
-# Mark email as read (per config)
-gog gmail modify "$EMAIL_ID" --remove-labels UNREAD --account "$GMAIL_ACCOUNT"
+# Mark email as read (per config) using wrapper script
+"$SCRIPTS_DIR/email_modify.sh" --email-id "$EMAIL_ID" --remove-labels "UNREAD"
 
 # End activity session
 "$SCRIPTS_DIR/activity_log.sh" end-session
@@ -189,11 +213,133 @@ gog gmail modify "$EMAIL_ID" --remove-labels UNREAD --account "$GMAIL_ACCOUNT"
 - **Multi-day events** (e.g., Feb 2-6): Use `--rrule "RRULE:FREQ=DAILY;COUNT=N"`
 - **Events with specific times**: Use exact time from email
 
+### Event Descriptions
+
+**Format event descriptions in this order:**
+
+1. **ACTION WARNING** (if deadline exists):
+   ```
+   *** ACTION REQUIRED: [ACTION] BY [DATE] ***
+   ```
+
+2. **Event Link** (if URL found):
+   ```
+   Event Link: [URL]
+   ```
+
+3. **Event Details**: Information extracted from the email
+
+**Example WITH deadline:**
+```
+*** ACTION REQUIRED: GET TICKETS BY FEB 15 ***
+
+Event Link: https://example.com/tickets
+
+Spring Concert at Downtown Theater
+Doors open at 7 PM
+VIP meet & greet available
+```
+
+**Example WITHOUT deadline:**
+```
+Event Link: https://example.com/event
+
+Spring Concert at Downtown Theater
+Doors open at 7 PM
+```
+
 ### Duplicate Detection
 Consider it a duplicate if:
 - Same date AND similar title (semantic matching) AND overlapping time
 
 Always update existing events rather than creating duplicates.
+
+### Creating Deadline Events
+
+When an event has a deadline (RSVP, registration, ticket purchase, etc.), create TWO calendar events:
+
+**1. Main Event** (as normal, but with warning in description):
+```bash
+"$SCRIPTS_DIR/create_event.sh" \
+    "$CALENDAR_ID" \
+    "Spring Concert" \
+    "March 1, 2026" \
+    "7:00 PM" \
+    "10:00 PM" \
+    "*** ACTION REQUIRED: GET TICKETS BY FEB 15 ***
+
+Event Link: https://example.com/tickets
+
+Spring Concert at Downtown Theater
+Doors open at 7 PM" \
+    "$ATTENDEE_EMAILS" \
+    "" \
+    "$EMAIL_ID"
+```
+
+**2. Deadline Reminder Event** (separate event on the deadline date):
+```bash
+# Use create_event.sh for deadline reminders too (ensures tracking)
+"$SCRIPTS_DIR/create_event.sh" \
+    "$CALENDAR_ID" \
+    "DEADLINE: Get tickets for Spring Concert" \
+    "2026-02-15" \
+    "09:00" \
+    "09:30" \
+    "Action required: Get tickets
+
+Event Link: https://example.com/tickets
+
+Main event: Spring Concert on March 1, 2026" \
+    "" \
+    "" \
+    "$EMAIL_ID"
+```
+
+**Deadline Event Properties:**
+- **Title format**: `DEADLINE: [Action] for [Event Name]`
+- **Date**: The deadline date
+- **Time**: 9:00 AM (30 minute duration)
+- **Reminders**: Email 1 day before + popup 1 hour before
+- **Description**: Action required, URL, reference to main event
+
+### Email Notifications for Deadlines
+
+When creating events with deadlines, send a notification email to alert the user:
+
+```bash
+# Load config
+CONFIG_FILE="$HOME/.config/email-to-calendar/config.json"
+USER_EMAIL=$(jq -r '.deadline_notifications.email_recipient // .gmail_account' "$CONFIG_FILE")
+NOTIFICATIONS_ENABLED=$(jq -r '.deadline_notifications.enabled // false' "$CONFIG_FILE")
+
+# Send notification if enabled (using wrapper script)
+if [ "$NOTIFICATIONS_ENABLED" = "true" ]; then
+    "$SCRIPTS_DIR/email_send.sh" \
+        --to "$USER_EMAIL" \
+        --subject "ACTION REQUIRED: Get tickets for Spring Concert by Feb 15" \
+        --body "A calendar event has been created that requires your action.
+
+Event: Spring Concert
+Date: March 1, 2026
+Deadline: February 15, 2026
+Action Required: Get tickets
+
+Link: https://example.com/tickets
+
+Calendar events created:
+- Main event: Spring Concert (March 1)
+- Deadline reminder: DEADLINE: Get tickets for Spring Concert (Feb 15)
+
+---
+This notification was sent by the email-to-calendar skill."
+fi
+```
+
+**When to send notifications:**
+- Only when `deadline_notifications.enabled` is `true` in config
+- Only for events that have action-required deadlines
+- Include the deadline date, action, URL, and event details
 
 ## Activity Log
 

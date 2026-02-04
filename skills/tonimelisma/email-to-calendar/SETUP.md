@@ -43,6 +43,7 @@ The skill stores settings in `~/.config/email-to-calendar/config.json`.
 
 ```json
 {
+  "provider": "gog",
   "email_mode": "direct",
   "gmail_account": "your-email@gmail.com",
   "calendar_id": "primary",
@@ -65,6 +66,10 @@ The skill stores settings in `~/.config/email-to-calendar/config.json`.
   "email_handling": {
     "mark_read": true,
     "archive": false
+  },
+  "deadline_notifications": {
+    "enabled": true,
+    "email_recipient": "your-email@gmail.com"
   }
 }
 ```
@@ -73,6 +78,7 @@ The skill stores settings in `~/.config/email-to-calendar/config.json`.
 
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
+| `provider` | string | `"gog"` | Email/calendar provider backend (currently only "gog" supported) |
 | `email_mode` | `"direct"` / `"forwarded"` | `"direct"` | Direct scans your inbox; Forwarded only processes forwarded emails |
 | `gmail_account` | string | (auto-detected) | Gmail account to monitor |
 | `calendar_id` | string | `"primary"` | Calendar to create events in |
@@ -86,6 +92,8 @@ The skill stores settings in `~/.config/email-to-calendar/config.json`.
 | `event_rules.auto_create_patterns` | string[] | `[]` | Event types to auto-create |
 | `email_handling.mark_read` | boolean | `true` | Mark processed emails as read |
 | `email_handling.archive` | boolean | `false` | Archive processed emails |
+| `deadline_notifications.enabled` | boolean | `false` | Send email notifications for events with deadlines |
+| `deadline_notifications.email_recipient` | string | (gmail_account) | Email address to send notifications to |
 
 ### Email Mode Detection
 
@@ -113,6 +121,7 @@ The skill guesses the best mode based on your email pattern:
 
 ```json
 {
+  "provider": "gog",
   "email_mode": "direct",
   "gmail_account": "family@gmail.com",
   "calendar_id": "primary",
@@ -135,6 +144,10 @@ The skill guesses the best mode based on your email pattern:
   "email_handling": {
     "mark_read": true,
     "archive": false
+  },
+  "deadline_notifications": {
+    "enabled": true,
+    "email_recipient": "parent1@gmail.com"
   }
 }
 ```
@@ -143,6 +156,7 @@ The skill guesses the best mode based on your email pattern:
 
 ```json
 {
+  "provider": "gog",
   "email_mode": "direct",
   "gmail_account": "work@company.com",
   "calendar_id": "primary",
@@ -165,6 +179,10 @@ The skill guesses the best mode based on your email pattern:
   "email_handling": {
     "mark_read": true,
     "archive": true
+  },
+  "deadline_notifications": {
+    "enabled": true,
+    "email_recipient": "work@company.com"
   }
 }
 ```
@@ -173,6 +191,7 @@ The skill guesses the best mode based on your email pattern:
 
 ```json
 {
+  "provider": "gog",
   "email_mode": "direct",
   "gmail_account": "personal@gmail.com",
   "calendar_id": "primary",
@@ -205,6 +224,7 @@ If you prefer to skip the interactive setup:
 mkdir -p ~/.config/email-to-calendar
 cat > ~/.config/email-to-calendar/config.json << 'EOF'
 {
+  "provider": "gog",
   "email_mode": "direct",
   "gmail_account": "your-email@gmail.com",
   "calendar_id": "primary",
@@ -227,6 +247,10 @@ cat > ~/.config/email-to-calendar/config.json << 'EOF'
   "email_handling": {
     "mark_read": true,
     "archive": false
+  },
+  "deadline_notifications": {
+    "enabled": false,
+    "email_recipient": "your-email@gmail.com"
   }
 }
 EOF
