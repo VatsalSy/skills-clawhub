@@ -16,7 +16,7 @@ description: Create a Starknet account to your agent through Typhoon anonymous d
 ## Prerequisites
 
 ```bash
-npm install starknet@^9.2.1 typhoon-sdk@^1.1.12
+npm install starknet@^9.2.1 typhoon-sdk@^1.1.13
 ```
 
 This skill provides **agent-facing scripts** for:
@@ -57,6 +57,8 @@ Tell the user:
 Then **wait for the user to paste the note content**.
 
 ### Step 3: Create the account
+
+> Note: **Account creation can take a few minutes**. Typhoon proof generation + Starknet deployment/finality are not instant; tell the user to wait and avoid retrying unless it fails.
 
 Once the user pastes the note JSON, run:
 
