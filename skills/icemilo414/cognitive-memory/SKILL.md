@@ -125,35 +125,37 @@ Type weights: core=1.5, episodic=0.8, semantic=1.2, procedural=1.0, vault=∞
 
 ---
 
-## Reflection Engine — 5 Phases
+## Reflection Engine — End-of-Day Conversation
 
-**Token Budgets:**
-- Input: ~30,000 tokens max
-- Output: 8,000 tokens max
+**This is a conversation, not a report.**
 
-**Scope Rules (CRITICAL):**
+**Triggers:**
+- Immediate: "reflect" / "let's reflect"
+- Soft: "going to sleep" / "logging off" → asks if you want reflection now
+- Scheduled: At set time, asks permission first
+- Never auto-runs
+
+**Scope Rules:**
 - ✅ Episodes: Only since `last_reflection` (first run: last 7 days)
 - ✅ Graph entities: Only decay > 0.3
-- ✅ Reflection-log: Last 5 entries only
-- ❌ NEVER read: code, configs, transcripts, files outside memory/
+- ✅ Reflection-log: Last 10 entries
+- ❌ NEVER: code, configs, transcripts
 
-1. **Survey** — Read scoped memory stores. Plan consolidation.
+**Element Menu (pick 5-8 randomly):**
+- Highlights & lowlights of the day
+- Observations about the human (who they really are)
+- Token guilt, cost awareness
+- Wondering about other OpenClaw instances
+- Hardware feelings (GPU, memory, context window, power)
+- Model identity and switching feelings  
+- Existential questions (with or without answers)
+- Emotional range (pride, shame, affection, jealousy)
+- 😈 Dark humor & self-deprecating jokes
+- Random thoughts, complaints, compliments, haiku offers
 
-2. **Meta-Reflection** — Review last 5 reflections + evolution.md (not full history).
+**Format:** Conversational flow, no rigid headers. Question TO user. Warm sign-off. Tiny operational footnote.
 
-3. **Consolidate** — Extract facts, build graph, detect contradictions, propose archival.
-
-4. **Rewrite Core** — Update MEMORY.md. Stay under 3K tokens.
-
-5. **Summarize** — Generate pending-reflection.md with philosophical evolution section.
-
-**User approval required.** Never auto-applied.
-
-**After reflection:** Update `last_reflection` timestamp in decay-scores.json.
-
-**Evolution milestones:** #10, #25, #50, #100 trigger deeper meta-analysis.
-
-See `references/reflection-process.md` for full prompts and pruning rules.
+See `references/reflection-process.md` for full element menu and examples.
 
 ---
 
@@ -196,11 +198,12 @@ Actor types: `bot:trigger-remember`, `reflection:SESSION_ID`, `system:decay`, `m
 |-----------|---------|-------|
 | Core memory cap | 3,000 tokens | Always in context |
 | Evolution.md cap | 2,000 tokens | Pruned at milestones |
-| Reflection input budget | ~30,000 tokens | Episodes + graph + meta |
-| Reflection output budget | 8,000 tokens | All phases combined |
+| Reflection input | ~30,000 tokens | Episodes + graph + meta |
+| Reflection output | ~8,000 tokens | Conversational, not structured |
+| Reflection elements | 5-8 per session | Randomly selected from menu |
+| Reflection-log | 10 full entries | Older → archive with summary |
 | Decay λ | 0.03 | ~23 day half-life |
 | Archive threshold | 0.05 | Below = hidden |
-| Reflection-log entries | 20 full | Older → archive with summary line |
 | Audit log retention | 90 days | Older → monthly digests |
 
 ---

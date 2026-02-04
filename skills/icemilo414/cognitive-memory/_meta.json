@@ -3,9 +3,15 @@
   "slug": "cognitive-memory",
   "displayName": "Cognitive Memory",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1770137760498,
-    "commit": "https://github.com/clawdbot/skills/commit/99afa5cb0e11af21ed2986eac628a5cfcad0de85"
+    "version": "1.0.5",
+    "publishedAt": 1770145323090,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1770137760498,
+      "commit": "https://github.com/clawdbot/skills/commit/99afa5cb0e11af21ed2986eac628a5cfcad0de85"
+    }
+  ]
 }
