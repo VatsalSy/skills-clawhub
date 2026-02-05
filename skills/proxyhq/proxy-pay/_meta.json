@@ -1,0 +1,11 @@
+{
+  "owner": "proxyhq",
+  "slug": "proxy-pay",
+  "displayName": "Proxy Pay",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770216988550,
+    "commit": null
+  },
+  "history": []
+}
