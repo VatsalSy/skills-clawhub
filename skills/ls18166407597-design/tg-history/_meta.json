@@ -1,0 +1,11 @@
+{
+  "owner": "ls18166407597-design",
+  "slug": "tg-history",
+  "displayName": "Telegram History Reader",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770267547426,
+    "commit": null
+  },
+  "history": []
+}
