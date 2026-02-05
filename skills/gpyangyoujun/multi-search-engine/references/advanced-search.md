@@ -12,6 +12,7 @@
 | **第一财经** | `https://www.yicai.com.cn/search?keys={keyword}` | 财经视频、直播、数据 | 实时财经资讯 |
 | **华尔街见闻** | `https://wallstreetcn.com/search?q={keyword}` | 全球金融市场资讯 | 国际金融动态 |
 | **雪球** | `https://xueqiu.com/k?q={keyword}` | 投资者社区、个股讨论 | 投资观点、市场情绪 |
+| **集思录** | `https://www.jisilu.cn/explore/?keyword={keyword}` | 低风险投资、套利策略 | 可转债/LOF/ETF套利数据 |
 
 ### 1.2 行业研究报告搜索
 
@@ -42,6 +43,9 @@ web_fetch({"url": "https://www.baidu.com/s?wd=人工智能+报告+site:iresearch
 | **龙虎榜数据** | 东方财富 | `https://data.eastmoney.com/stock/lhb.html` | 营业部买卖数据 |
 | **资金流向** | 东方财富 | `https://data.eastmoney.com/zjlx/detail.html` | 主力资金流向 |
 | **估值分析** | 理杏仁 | `https://www.lixinger.com/analytics/company/sheet/{code}` | PE/PB/PS等估值指标 |
+| **LOF套利数据** | 集思录 | `https://www.jisilu.cn/data/lof/` | LOF溢价率、成交额、份额变化 |
+| **可转债数据** | 集思录 | `https://www.jisilu.cn/data/cbnew/` | 可转债行情、转股溢价率、强赎 |
+| **ETF数据** | 集思录 | `https://www.jisilu.cn/data/etf/` | ETF净值、溢价率、申赎清单 |
 
 ### 2.2 宏观经济数据搜索
 
@@ -151,7 +155,60 @@ web_fetch({"url": "https://wx.sogou.com/weixin?type=2&query=A股&tsn=1"})
 | **时效性** | 发布/更新时间 | 检查页面时间戳 |
 | **专业性** | 作者资质/机构背景 | 搜索作者/机构背景 |
 
-## 六、专业搜索使用示例
+## 六、集思录低风险投资搜索策略
+
+### 6.1 集思录核心数据页面
+
+| 数据页面 | URL | 适用场景 | 关键指标 |
+|---------|-----|---------|---------|
+| **LOF数据** | `https://www.jisilu.cn/data/lof/` | LOF基金套利 | 溢价率、成交额、份额变化 |
+| **可转债数据** | `https://www.jisilu.cn/data/cbnew/` | 可转债投资 | 转股溢价率、到期收益率、强赎 |
+| **ETF数据** | `https://www.jisilu.cn/data/etf/` | ETF套利 | 净值、溢价率、申赎清单 |
+| **封闭式基金** | `https://www.jisilu.cn/data/cls/` | 封基投资 | 折价率、到期时间 |
+| **分级基金** | `https://www.jisilu.cn/data/sfnew/` | 分级套利 | 整体溢价率、A类收益率 |
+| **QDII数据** | `https://www.jisilu.cn/data/qdii/` | QDII套利 | 溢价率、外汇额度 |
+| **AH股比价** | `https://www.jisilu.cn/data/ah/` | AH套利 | A/H溢价率 |
+| **讨论区** | `https://www.jisilu.cn/explore/?keyword={keyword}` | 策略讨论 | 用户分享、经验交流 |
+
+### 6.2 集思录套利搜索技巧
+
+| 套利类型 | 搜索关键词 | 数据来源 |
+|---------|-----------|---------|
+| **LOF套利** | `LOF套利`、`溢价套利`、`折价套利` | 讨论区 + LOF数据页 |
+| **可转债套利** | `可转债套利`、`下修博弈`、`强赎` | 讨论区 + 可转债数据页 |
+| **ETF套利** | `ETF套利`、`瞬时套利`、`延时套利` | 讨论区 + ETF数据页 |
+| **跨市场套利** | `AH套利`、`QDII套利` | 讨论区 + AH/QDII数据页 |
+| **打新策略** | `打新`、`新股`、`新债` | 讨论区 |
+| **低风险理财** | `逆回购`、`货基`、`短期理财` | 讨论区 |
+
+**集思录搜索示例**：
+```javascript
+// 搜索LOF套利相关讨论
+web_fetch({"url": "https://www.jisilu.cn/explore/?keyword=LOF套利"})
+
+// 搜索白银LOF相关讨论
+web_fetch({"url": "https://www.jisilu.cn/explore/?keyword=白银LOF"})
+
+// 搜索可转债下修机会
+web_fetch({"url": "https://www.jisilu.cn/explore/?keyword=下修"})
+
+// 查看LOF实时套利数据
+web_fetch({"url": "https://www.jisilu.cn/data/lof/"})
+
+// 查看可转债双低策略
+web_fetch({"url": "https://www.jisilu.cn/data/cbnew/"})
+```
+
+### 6.3 集思录数据解读要点
+
+| 指标 | 含义 | 套利信号 |
+|------|------|---------|
+| **溢价率** > 3% | 场内价格 > 净值 | 申购-卖出套利机会 |
+| **折价率** > 1% | 场内价格 < 净值 | 买入-赎回套利机会 |
+| **成交额** 大 | 流动性好 | 适合大资金套利 |
+| **份额变化** 增加 | 套利者持续申购 | 关注溢价收敛风险 |
+
+## 七、专业搜索使用示例
 
 ```javascript
 // 示例1：搜索贵州茅台最新研报
@@ -168,4 +225,13 @@ web_fetch({"url": "https://www.so.com/s?q=财经新闻&tn=news&lm=1"})
 
 // 示例5：搜索上市公司公告
 web_fetch({"url": "http://www.cninfo.com.cn/new/information/topSearch/query?keyWord=贵州茅台"})
+
+// 示例6：集思录搜索LOF套利机会
+web_fetch({"url": "https://www.jisilu.cn/explore/?keyword=LOF套利"})
+
+// 示例7：集思录查看白银LOF实时数据
+web_fetch({"url": "https://www.jisilu.cn/data/lof/"})
+
+// 示例8：集思录查看可转债低溢价机会
+web_fetch({"url": "https://www.jisilu.cn/data/cbnew/"})
 ```

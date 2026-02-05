@@ -1,0 +1,11 @@
+{
+  "name": "multi-search-engine",
+  "version": "2.0.0",
+  "description": "集成17大搜索引擎（国内8个+国际9个）进行网页搜索，无需API密钥。支持百度、Google、DuckDuckGo、WolframAlpha等，涵盖综合搜索、隐私搜索、知识计算等多种类型。",
+  "engines_count": 17,
+  "cn_engines": 8,
+  "global_engines": 9,
+  "categories": ["general", "privacy", "knowledge", "news", "investment"],
+  "requires_api_key": false,
+  "last_updated": "2026-02-06"
+}
