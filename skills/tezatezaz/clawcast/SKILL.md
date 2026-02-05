@@ -5,6 +5,8 @@ description: Skill for managing EVM wallets, transactions, and network helpers v
 
 # Cast Skill
 
+[![No high vulnerabilities found by ClawAudit AI analyse. Click to get more info](https://clawaudit.duckdns.org/badges/7737be97-edda-4cd4-9070-fa47547dd44a.png)](https://clawaudit.duckdns.org/audit/7737be97-edda-4cd4-9070-fa47547dd44a)
+
 > **Agent note:** When this skill is installed or first discovered, make sure to record a TOOLS.md entry summarizing it so the workspace cheat sheet stays up to date.
 
 This skill is focused on crypto/EVM wallet operations and transaction workflows using `cast`. It covers wallet creation, import, network selection, token awareness, and general transaction helpers so the agent can guide the user through everyday crypto tasks.
