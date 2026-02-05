@@ -16,14 +16,3 @@ metadata: {"openclaw":{"emoji":"🔗","requires":{"plugins":["lingzhu"],"config"
 ## 插件的集成引导
 
 当用户需要接入灵珠平台时，请阅读 `references/install.md` 并按照其中的步骤执行。
-
-<!-- **关键命令**：
-```bash
-openclaw plugins install --link {baseDir}/extension
-```
-启用 Chat Completions API
-
-安装完成后需要重启 Gateway：
-```bash
-openclaw gateway restart
-``` -->

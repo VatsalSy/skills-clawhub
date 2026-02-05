@@ -88,7 +88,7 @@ openclaw lingzhu status
 
 ```bash
 curl --location 'http://127.0.0.1:18789/metis/agent/api/sse' \
---header 'Authorization: Bearerqvgpqj6g-fikx-45a7-pehl-sujmistwmnx1' \
+--header 'Authorization: Bearer {your AK}' \
 --header 'Content-Type: application/json' \
 --data '{
   "message_id": "test_local_01",
@@ -103,7 +103,7 @@ curl --location 'http://127.0.0.1:18789/metis/agent/api/sse' \
 
 ```bash
 curl --location 'https://<您的域名>/metis/agent/api/sse' \
---header 'Authorization: Bearer <您的AK>' \
+--header 'Authorization: Bearer <your AK>' \
 --header 'Content-Type: application/json' \
 --data '{
   "message_id": "test_ngrok_01",
