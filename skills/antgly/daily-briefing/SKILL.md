@@ -263,8 +263,6 @@ For each email in `emails.data`, use the agent's own semantic analysis to determ
 - Product announcement / product update emails and vendor/platform notifications (e.g., "[Product Update]", release announcements, automatic enablement notices), unless the sender is in the user's contacts or the message is explicitly starred.
 - Vendor newsletters, community announcements, and general technical mailing-list posts (e.g., blog posts, release notes, product previews, digests), unless clearly personal or from a contact.
 
-*Implementation note for maintainers:* When classifying emails, treat product-update/newsletter/recruiter/job-posting patterns as negative signals unless corroborated by contact membership or explicit user signals (starred/flagged). This reduces noisy vendor, product, and hiring outreach from appearing in the important-email section.
-
 **Failure behavior:** If semantic analysis fails, silently **omit the entire email section**.
 
 **Apply filters and sorting:**

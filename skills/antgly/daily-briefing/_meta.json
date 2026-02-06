@@ -3,11 +3,16 @@
   "slug": "daily-briefing",
   "displayName": "Daily Briefing",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1770316752242,
-    "commit": "https://github.com/clawdbot/skills/commit/03f40f5c96f1b319e1f21376aefa87d884b44f01"
+    "version": "1.0.3",
+    "publishedAt": 1770336743058,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1770316752242,
+      "commit": "https://github.com/clawdbot/skills/commit/03f40f5c96f1b319e1f21376aefa87d884b44f01"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1770227716977,
