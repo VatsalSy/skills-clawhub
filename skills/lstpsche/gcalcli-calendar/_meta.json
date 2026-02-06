@@ -1,0 +1,11 @@
+{
+  "owner": "lstpsche",
+  "slug": "gcalcli-calendar",
+  "displayName": "Google Calendar (via gcalcli)",
+  "latest": {
+    "version": "0.1.1",
+    "publishedAt": 1770333955497,
+    "commit": null
+  },
+  "history": []
+}
