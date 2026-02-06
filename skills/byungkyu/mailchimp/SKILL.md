@@ -1,7 +1,7 @@
 ---
 name: mailchimp
 description: |
-  Mailchimp Marketing API integration with managed OAuth. Access audiences, campaigns, templates, automations, reports, and manage subscribers. Use this skill when users want to manage email marketing, subscriber lists, or automate email campaigns.
+  Mailchimp Marketing API integration with managed OAuth. Access audiences, campaigns, templates, automations, reports, and manage subscribers. Use this skill when users want to manage email marketing, subscriber lists, or automate email campaigns. For other third party apps, use the api-gateway skill (https://clawhub.ai/byungkyu/api-gateway).
 compatibility: Requires network access and valid Maton API key
 metadata:
   author: maton
@@ -16,8 +16,12 @@ Access the Mailchimp Marketing API with managed OAuth authentication. Manage aud
 
 ```bash
 # List all audiences
-curl -s -X GET 'https://gateway.maton.ai/mailchimp/3.0/lists' \
-  -H 'Authorization: Bearer YOUR_API_KEY'
+python <<'EOF'
+import urllib.request, os, json
+req = urllib.request.Request('https://gateway.maton.ai/mailchimp/3.0/lists')
+req.add_header('Authorization', f'Bearer {os.environ["MATON_API_KEY"]}')
+print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
+EOF
 ```
 
 ## Base URL
@@ -33,7 +37,7 @@ Replace `{native-api-path}` with the actual Mailchimp API endpoint path (e.g., `
 All requests require the Maton API key in the Authorization header:
 
 ```
-Authorization: Bearer YOUR_API_KEY
+Authorization: Bearer $MATON_API_KEY
 ```
 
 **Environment Variable:** Set your API key as `MATON_API_KEY`:
@@ -54,44 +58,37 @@ Manage your Mailchimp OAuth connections at `https://ctrl.maton.ai`.
 
 ### List Connections
 
-```python
-import requests
-import os
-
-response = requests.get(
-    "https://ctrl.maton.ai/connections",
-    headers={"Authorization": f"Bearer {os.environ['MATON_API_KEY']}"},
-    params={"app": "mailchimp", "status": "ACTIVE"}
-)
-connections = response.json()
+```bash
+python <<'EOF'
+import urllib.request, os, json
+req = urllib.request.Request('https://ctrl.maton.ai/connections?app=mailchimp&status=ACTIVE')
+req.add_header('Authorization', f'Bearer {os.environ["MATON_API_KEY"]}')
+print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
+EOF
 ```
 
 ### Create Connection
 
-```python
-import requests
-import os
-
-response = requests.post(
-    "https://ctrl.maton.ai/connections",
-    headers={"Authorization": f"Bearer {os.environ['MATON_API_KEY']}"},
-    json={"app": "mailchimp"}
-)
-connection = response.json()
+```bash
+python <<'EOF'
+import urllib.request, os, json
+data = json.dumps({'app': 'mailchimp'}).encode()
+req = urllib.request.Request('https://ctrl.maton.ai/connections', data=data, method='POST')
+req.add_header('Authorization', f'Bearer {os.environ["MATON_API_KEY"]}')
+req.add_header('Content-Type', 'application/json')
+print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
+EOF
 ```
 
 ### Get Connection
 
-```python
-import requests
-import os
-
-connection_id = "21fd90f9-5935-43cd-b6c8-bde9d915ca80"
-response = requests.get(
-    f"https://ctrl.maton.ai/connections/{connection_id}",
-    headers={"Authorization": f"Bearer {os.environ['MATON_API_KEY']}"}
-)
-connection = response.json()
+```bash
+python <<'EOF'
+import urllib.request, os, json
+req = urllib.request.Request('https://ctrl.maton.ai/connections/{connection_id}')
+req.add_header('Authorization', f'Bearer {os.environ["MATON_API_KEY"]}')
+print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
+EOF
 ```
 
 **Response:**
@@ -113,32 +110,27 @@ Open the returned `url` in a browser to complete OAuth authorization.
 
 ### Delete Connection
 
-```python
-import requests
-import os
-
-connection_id = "21fd90f9-5935-43cd-b6c8-bde9d915ca80"
-response = requests.delete(
-    f"https://ctrl.maton.ai/connections/{connection_id}",
-    headers={"Authorization": f"Bearer {os.environ['MATON_API_KEY']}"}
-)
+```bash
+python <<'EOF'
+import urllib.request, os, json
+req = urllib.request.Request('https://ctrl.maton.ai/connections/{connection_id}', method='DELETE')
+req.add_header('Authorization', f'Bearer {os.environ["MATON_API_KEY"]}')
+print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
+EOF
 ```
 
 ### Specifying Connection
 
 If you have multiple Mailchimp connections, specify which one to use with the `Maton-Connection` header:
 
-```python
-import requests
-import os
-
-response = requests.get(
-    "https://gateway.maton.ai/mailchimp/3.0/lists",
-    headers={
-        "Authorization": f"Bearer {os.environ['MATON_API_KEY']}",
-        "Maton-Connection": "21fd90f9-5935-43cd-b6c8-bde9d915ca80"
-    }
-)
+```bash
+python <<'EOF'
+import urllib.request, os, json
+req = urllib.request.Request('https://gateway.maton.ai/mailchimp/3.0/lists')
+req.add_header('Authorization', f'Bearer {os.environ["MATON_API_KEY"]}')
+req.add_header('Maton-Connection', '21fd90f9-5935-43cd-b6c8-bde9d915ca80')
+print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
+EOF
 ```
 
 If omitted, the gateway uses the default (oldest) active connection.
@@ -163,16 +155,13 @@ Query parameters:
 
 **Example:**
 
-```python
-import requests
-import os
-
-response = requests.get(
-    "https://gateway.maton.ai/mailchimp/3.0/lists",
-    headers={"Authorization": f"Bearer {os.environ['MATON_API_KEY']}"},
-    params={"count": 10}
-)
-lists = response.json()
+```bash
+python <<'EOF'
+import urllib.request, os, json
+req = urllib.request.Request('https://gateway.maton.ai/mailchimp/3.0/lists?count=10')
+req.add_header('Authorization', f'Bearer {os.environ["MATON_API_KEY"]}')
+print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
+EOF
 ```
 
 **Response:**
@@ -205,16 +194,13 @@ GET /mailchimp/3.0/lists/{list_id}
 
 **Example:**
 
-```python
-import requests
-import os
-
-list_id = "abc123def4"
-response = requests.get(
-    f"https://gateway.maton.ai/mailchimp/3.0/lists/{list_id}",
-    headers={"Authorization": f"Bearer {os.environ['MATON_API_KEY']}"}
-)
-list_data = response.json()
+```bash
+python <<'EOF'
+import urllib.request, os, json
+req = urllib.request.Request('https://gateway.maton.ai/mailchimp/3.0/lists/abc123def4')
+req.add_header('Authorization', f'Bearer {os.environ["MATON_API_KEY"]}')
+print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
+EOF
 ```
 
 #### Create a List
@@ -273,17 +259,13 @@ Query parameters:
 
 **Example:**
 
-```python
-import requests
-import os
-
-list_id = "abc123def4"
-response = requests.get(
-    f"https://gateway.maton.ai/mailchimp/3.0/lists/{list_id}/members",
-    headers={"Authorization": f"Bearer {os.environ['MATON_API_KEY']}"},
-    params={"status": "subscribed", "count": 50}
-)
-members = response.json()
+```bash
+python <<'EOF'
+import urllib.request, os, json
+req = urllib.request.Request('https://gateway.maton.ai/mailchimp/3.0/lists/abc123def4/members?status=subscribed&count=50')
+req.add_header('Authorization', f'Bearer {os.environ["MATON_API_KEY"]}')
+print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
+EOF
 ```
 
 **Response:**
@@ -317,20 +299,14 @@ The `subscriber_hash` is the MD5 hash of the lowercase email address.
 
 **Example:**
 
-```python
-import requests
-import os
-import hashlib
-
-list_id = "abc123def4"
-email = "john@example.com"
-subscriber_hash = hashlib.md5(email.lower().encode()).hexdigest()
-
-response = requests.get(
-    f"https://gateway.maton.ai/mailchimp/3.0/lists/{list_id}/members/{subscriber_hash}",
-    headers={"Authorization": f"Bearer {os.environ['MATON_API_KEY']}"}
-)
-member = response.json()
+```bash
+# For email "john@example.com", subscriber_hash = md5("john@example.com")
+python <<'EOF'
+import urllib.request, os, json
+req = urllib.request.Request('https://gateway.maton.ai/mailchimp/3.0/lists/abc123def4/members/b4c9a0d1e2f3g4h5')
+req.add_header('Authorization', f'Bearer {os.environ["MATON_API_KEY"]}')
+print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
+EOF
 ```
 
 #### Add a Member
@@ -352,24 +328,15 @@ Content-Type: application/json
 
 **Example:**
 
-```python
-import requests
-import os
-
-list_id = "abc123def4"
-response = requests.post(
-    f"https://gateway.maton.ai/mailchimp/3.0/lists/{list_id}/members",
-    headers={"Authorization": f"Bearer {os.environ['MATON_API_KEY']}"},
-    json={
-        "email_address": "newuser@example.com",
-        "status": "subscribed",
-        "merge_fields": {
-            "FNAME": "Jane",
-            "LNAME": "Smith"
-        }
-    }
-)
-member = response.json()
+```bash
+python <<'EOF'
+import urllib.request, os, json
+data = json.dumps({'email_address': 'newuser@example.com', 'status': 'subscribed', 'merge_fields': {'FNAME': 'Jane', 'LNAME': 'Smith'}}).encode()
+req = urllib.request.Request('https://gateway.maton.ai/mailchimp/3.0/lists/abc123def4/members', data=data, method='POST')
+req.add_header('Authorization', f'Bearer {os.environ["MATON_API_KEY"]}')
+req.add_header('Content-Type', 'application/json')
+print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
+EOF
 ```
 
 #### Update a Member
@@ -380,26 +347,15 @@ PATCH /mailchimp/3.0/lists/{list_id}/members/{subscriber_hash}
 
 **Example:**
 
-```python
-import requests
-import os
-import hashlib
-
-list_id = "abc123def4"
-email = "jane@example.com"
-subscriber_hash = hashlib.md5(email.lower().encode()).hexdigest()
-
-response = requests.patch(
-    f"https://gateway.maton.ai/mailchimp/3.0/lists/{list_id}/members/{subscriber_hash}",
-    headers={"Authorization": f"Bearer {os.environ['MATON_API_KEY']}"},
-    json={
-        "merge_fields": {
-            "FNAME": "Jane",
-            "LNAME": "Doe"
-        }
-    }
-)
-updated_member = response.json()
+```bash
+python <<'EOF'
+import urllib.request, os, json
+data = json.dumps({'merge_fields': {'FNAME': 'Jane', 'LNAME': 'Doe'}}).encode()
+req = urllib.request.Request('https://gateway.maton.ai/mailchimp/3.0/lists/abc123def4/members/b4c9a0d1e2f3g4h5', data=data, method='PATCH')
+req.add_header('Authorization', f'Bearer {os.environ["MATON_API_KEY"]}')
+req.add_header('Content-Type', 'application/json')
+print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
+EOF
 ```
 
 #### Add or Update a Member (Upsert)
@@ -470,16 +426,13 @@ GET /mailchimp/3.0/lists/{list_id}/segments
 
 **Example:**
 
-```python
-import requests
-import os
-
-list_id = "abc123def4"
-response = requests.get(
-    f"https://gateway.maton.ai/mailchimp/3.0/lists/{list_id}/segments",
-    headers={"Authorization": f"Bearer {os.environ['MATON_API_KEY']}"}
-)
-segments = response.json()
+```bash
+python <<'EOF'
+import urllib.request, os, json
+req = urllib.request.Request('https://gateway.maton.ai/mailchimp/3.0/lists/abc123def4/segments')
+req.add_header('Authorization', f'Bearer {os.environ["MATON_API_KEY"]}')
+print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
+EOF
 ```
 
 #### Create a Segment
@@ -541,16 +494,13 @@ Query parameters:
 
 **Example:**
 
-```python
-import requests
-import os
-
-response = requests.get(
-    "https://gateway.maton.ai/mailchimp/3.0/campaigns",
-    headers={"Authorization": f"Bearer {os.environ['MATON_API_KEY']}"},
-    params={"status": "sent", "count": 20}
-)
-campaigns = response.json()
+```bash
+python <<'EOF'
+import urllib.request, os, json
+req = urllib.request.Request('https://gateway.maton.ai/mailchimp/3.0/campaigns?status=sent&count=20')
+req.add_header('Authorization', f'Bearer {os.environ["MATON_API_KEY"]}')
+print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
+EOF
 ```
 
 **Response:**
@@ -605,26 +555,15 @@ Content-Type: application/json
 
 **Example:**
 
-```python
-import requests
-import os
-
-response = requests.post(
-    "https://gateway.maton.ai/mailchimp/3.0/campaigns",
-    headers={"Authorization": f"Bearer {os.environ['MATON_API_KEY']}"},
-    json={
-        "type": "regular",
-        "recipients": {
-            "list_id": "abc123def4"
-        },
-        "settings": {
-            "subject_line": "February Newsletter",
-            "from_name": "Acme Corp",
-            "reply_to": "newsletter@acme.com"
-        }
-    }
-)
-campaign = response.json()
+```bash
+python <<'EOF'
+import urllib.request, os, json
+data = json.dumps({'type': 'regular', 'recipients': {'list_id': 'abc123def4'}, 'settings': {'subject_line': 'February Newsletter', 'from_name': 'Acme Corp', 'reply_to': 'newsletter@acme.com'}}).encode()
+req = urllib.request.Request('https://gateway.maton.ai/mailchimp/3.0/campaigns', data=data, method='POST')
+req.add_header('Authorization', f'Bearer {os.environ["MATON_API_KEY"]}')
+req.add_header('Content-Type', 'application/json')
+print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
+EOF
 ```
 
 #### Update a Campaign
@@ -721,16 +660,13 @@ Query parameters:
 
 **Example:**
 
-```python
-import requests
-import os
-
-response = requests.get(
-    "https://gateway.maton.ai/mailchimp/3.0/templates",
-    headers={"Authorization": f"Bearer {os.environ['MATON_API_KEY']}"},
-    params={"type": "user"}
-)
-templates = response.json()
+```bash
+python <<'EOF'
+import urllib.request, os, json
+req = urllib.request.Request('https://gateway.maton.ai/mailchimp/3.0/templates?type=user')
+req.add_header('Authorization', f'Bearer {os.environ["MATON_API_KEY"]}')
+print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
+EOF
 ```
 
 #### Get a Template
@@ -783,15 +719,13 @@ GET /mailchimp/3.0/automations
 
 **Example:**
 
-```python
-import requests
-import os
-
-response = requests.get(
-    "https://gateway.maton.ai/mailchimp/3.0/automations",
-    headers={"Authorization": f"Bearer {os.environ['MATON_API_KEY']}"}
-)
-automations = response.json()
+```bash
+python <<'EOF'
+import urllib.request, os, json
+req = urllib.request.Request('https://gateway.maton.ai/mailchimp/3.0/automations')
+req.add_header('Authorization', f'Bearer {os.environ["MATON_API_KEY"]}')
+print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
+EOF
 ```
 
 #### Get an Automation
@@ -846,16 +780,13 @@ Query parameters:
 
 **Example:**
 
-```python
-import requests
-import os
-
-response = requests.get(
-    "https://gateway.maton.ai/mailchimp/3.0/reports",
-    headers={"Authorization": f"Bearer {os.environ['MATON_API_KEY']}"},
-    params={"count": 20}
-)
-reports = response.json()
+```bash
+python <<'EOF'
+import urllib.request, os, json
+req = urllib.request.Request('https://gateway.maton.ai/mailchimp/3.0/reports?count=20')
+req.add_header('Authorization', f'Bearer {os.environ["MATON_API_KEY"]}')
+print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
+EOF
 ```
 
 **Response:**
@@ -959,16 +890,13 @@ Returns `204 No Content` on success.
 
 Mailchimp uses offset-based pagination:
 
-```python
-import requests
-import os
-
-response = requests.get(
-    "https://gateway.maton.ai/mailchimp/3.0/lists",
-    headers={"Authorization": f"Bearer {os.environ['MATON_API_KEY']}"},
-    params={"count": 50, "offset": 100}
-)
-data = response.json()
+```bash
+python <<'EOF'
+import urllib.request, os, json
+req = urllib.request.Request('https://gateway.maton.ai/mailchimp/3.0/lists?count=50&offset=100')
+req.add_header('Authorization', f'Bearer {os.environ["MATON_API_KEY"]}')
+print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
+EOF
 ```
 
 Response includes `total_items` for calculating total pages:
@@ -980,6 +908,56 @@ Response includes `total_items` for calculating total pages:
 }
 ```
 
+## Code Examples
+
+### JavaScript
+
+```javascript
+const response = await fetch(
+  'https://gateway.maton.ai/mailchimp/3.0/lists',
+  {
+    headers: {
+      'Authorization': `Bearer ${process.env.MATON_API_KEY}`
+    }
+  }
+);
+const data = await response.json();
+```
+
+### Python
+
+```python
+import os
+import requests
+import hashlib
+
+# Get lists
+response = requests.get(
+    'https://gateway.maton.ai/mailchimp/3.0/lists',
+    headers={'Authorization': f'Bearer {os.environ["MATON_API_KEY"]}'}
+)
+data = response.json()
+
+# Add a subscriber
+list_id = 'abc123def4'
+email = 'newuser@example.com'
+
+response = requests.post(
+    f'https://gateway.maton.ai/mailchimp/3.0/lists/{list_id}/members',
+    headers={
+        'Authorization': f'Bearer {os.environ["MATON_API_KEY"]}',
+        'Content-Type': 'application/json'
+    },
+    json={
+        'email_address': email,
+        'status': 'subscribed'
+    }
+)
+
+# Get subscriber hash for updates
+subscriber_hash = hashlib.md5(email.lower().encode()).hexdigest()
+```
+
 ## Notes
 
 - List IDs are 10-character alphanumeric strings
@@ -989,6 +967,8 @@ Response includes `total_items` for calculating total pages:
 - Maximum 1000 records per request for list endpoints
 - "Audience" and "list" are used interchangeably (app vs API terminology)
 - "Contact" and "member" are used interchangeably (app vs API terminology)
+- IMPORTANT: When using curl commands, use `curl -g` when URLs contain brackets (`fields[]`, `sort[]`, `records[]`) to disable glob parsing
+- IMPORTANT: When piping curl output to `jq` or other commands, environment variables like `$MATON_API_KEY` may not expand correctly in some shell environments. You may get "Invalid API key" errors when piping.
 
 ## Response Codes
 
@@ -1020,6 +1000,27 @@ Mailchimp error responses include detailed information:
     }
   ]
 }
+```
+
+### Troubleshooting: Invalid API Key
+
+**When you receive a "Invalid API key" error, ALWAYS follow these steps before concluding there is an issue:**
+
+1. Check that the `MATON_API_KEY` environment variable is set:
+
+```bash
+echo $MATON_API_KEY
+```
+
+2. Verify the API key is valid by listing connections:
+
+```bash
+python <<'EOF'
+import urllib.request, os, json
+req = urllib.request.Request('https://ctrl.maton.ai/connections')
+req.add_header('Authorization', f'Bearer {os.environ["MATON_API_KEY"]}')
+print(json.dumps(json.load(urllib.request.urlopen(req)), indent=2))
+EOF
 ```
 
 ## Resources
