@@ -1,0 +1,11 @@
+{
+  "owner": "aleph8",
+  "slug": "virustotal",
+  "displayName": "VirusTotal",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770329213065,
+    "commit": null
+  },
+  "history": []
+}
