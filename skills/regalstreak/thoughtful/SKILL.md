@@ -186,12 +186,13 @@ When a user first installs the skill, guide them through interactive setup:
 
 3. **Configure preferences**
    - Ask about priority contacts
-   - Confirm summary timing (default: 1pm daily)
+   - Confirm summary timing (default: 11am daily)
    - Confirm tracking features (sentiment, commitments, etc.)
 
-4. **Create cron job**
-   - Set up daily summary cron (isolated session)
-   - Confirm it's scheduled correctly
+4. **Create cron jobs**
+   - Set up WhatsApp sync cron (10:30 AM, isolated session)
+   - Set up daily summary cron (11:00 AM, isolated session)
+   - Confirm both are scheduled correctly
 
 5. **Test run**
    - Generate first summary to verify setup
@@ -222,23 +223,55 @@ The skill will:
 - **Always use `sessionTarget: "isolated"`** - runs independently
 - **Never use `sessionTarget: "main"`** - will not deliver properly
 - All operations run in sandbox
+- **Two crons total:** sync + summary, each running 3x daily
+- **Sync runs 30 minutes before each summary** to ensure fresh data
 
-Daily summary at 1 PM (default):
+### WhatsApp Sync (3x daily)
+Runs at 10:30 AM, 5:30 PM, 10:30 PM
 ```json
 {
-  "name": "thoughtful-daily",
-  "schedule": {"kind": "cron", "expr": "0 13 * * *", "tz": "Asia/Calcutta"},
+  "name": "wacli-sync-daily",
+  "schedule": {"kind": "cron", "expr": "30 10,17,22 * * *", "tz": "Asia/Calcutta"},
   "sessionTarget": "isolated",
   "payload": {
     "kind": "agentTurn",
-    "message": "1. Run wacli-readonly sync in sandbox (wait for finish).\n2. Run ~/clawd/skills/thoughtful/scripts/generate-summary.sh in sandbox.\n3. Read generated prompt and create thoughtful summary via Telegram.",
+    "message": "Run WhatsApp sync:\n\n1. Kill any stuck wacli processes: `pkill -9 wacli-readonly` (sandbox)\n2. Run `wacli-readonly sync` in sandbox (let it complete)\n3. Report: 'WhatsApp sync completed' or any errors",
     "deliver": true,
-    "channel": "telegram"
+    "channel": "telegram",
+    "to": "-1003893728810:topic:38"
   }
 }
 ```
 
-**Note:** The agent will set this up automatically during first-time configuration. Users can adjust the time preference during setup.
+### Thoughtful Summary (3x daily)
+Runs at 11:00 AM, 6:00 PM, 11:00 PM
+```json
+{
+  "name": "thoughtful-daily",
+  "schedule": {"kind": "cron", "expr": "0 11,18,23 * * *", "tz": "Asia/Calcutta"},
+  "sessionTarget": "isolated",
+  "payload": {
+    "kind": "agentTurn",
+    "message": "Run thoughtful summary:\n\n1. Kill any stuck wacli processes: `pkill -9 wacli-readonly` (sandbox)\n2. Run `~/clawd/skills/thoughtful/scripts/generate-summary.sh` in sandbox\n3. Read the generated prompt from `thoughtful-data/context/last-prompt.txt`\n4. Create a warm, thoughtful summary following the communication coach framework\n5. Deliver via Telegram to Clawdgroup topic",
+    "deliver": true,
+    "channel": "telegram",
+    "to": "-1003893728810:topic:38"
+  }
+}
+```
+
+**Why 3x daily?**
+- Catch messages throughout the day without missing important updates
+- Morning (11 AM): Start your day informed
+- Evening (6 PM): Stay on top of afternoon conversations
+- Night (11 PM): End-of-day catch-up before bed
+
+**Why separate sync + summary?**
+- WhatsApp sync can take time and needs fresh data before analysis
+- 30-minute gap allows sync to complete before summary generation
+- Using comma-separated hours in cron keeps it simple (2 crons total)
+
+**Note:** The agent will set this up automatically during first-time configuration. Users can adjust the timing during setup.
 
 ## Privacy & Security
 
