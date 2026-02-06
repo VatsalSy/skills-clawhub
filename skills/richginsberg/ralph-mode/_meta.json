@@ -3,9 +3,15 @@
   "slug": "ralph-mode",
   "displayName": "Ralph Mode - Autonomous Development Loops",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1770077097379,
-    "commit": "https://github.com/clawdbot/skills/commit/1fc05765c8ec24c6fa70885ad1e0baaa2f337e97"
+    "version": "1.1.0",
+    "publishedAt": 1770355960425,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1770077097379,
+      "commit": "https://github.com/clawdbot/skills/commit/1fc05765c8ec24c6fa70885ad1e0baaa2f337e97"
+    }
+  ]
 }

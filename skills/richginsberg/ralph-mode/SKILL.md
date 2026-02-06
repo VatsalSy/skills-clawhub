@@ -319,6 +319,123 @@ async function createReview(config: {
 
 Sub-agents discover and use this pattern for binary pass/fail checks.
 
+## Critical Operational Requirements
+
+Based on empirical usage, enforce these practices to avoid silent failures:
+
+### 1. Mandatory Progress Logging
+
+**Ralph MUST write to PROGRESS.md after EVERY iteration.** This is non-negotiable.
+
+Create `PROGRESS.md` in project root at start:
+
+```markdown
+# Ralph: [Task Name]
+
+## Iteration [N] - [Timestamp]
+
+### Status
+- [ ] In Progress | [ ] Blocked | [ ] Complete
+
+### What Was Done
+- [Item 1]
+- [Item 2]
+
+### Blockers
+- None | [Description]
+
+### Next Step
+[Specific next task from IMPLEMENTATION_PLAN.md]
+
+### Files Changed
+- `path/to/file.ts` - [brief description]
+```
+
+**Why:** External observers (parent agents, crons, humans) can tail one file instead of scanning directories or inferring state from session logs.
+
+### 2. Session Isolation & Cleanup
+
+Before spawning a new Ralph session:
+- Check for existing Ralph sub-agents via `sessions_list`
+- Kill or verify completion of previous sessions
+- Do NOT spawn overlapping Ralph sessions on same codebase
+
+**Anti-pattern:** Spawning Ralph v2 while v1 is still running = file conflicts, race conditions, lost work.
+
+### 3. Explicit Path Verification
+
+Never assume directory structure. At start of each iteration:
+
+```typescript
+// Verify current working directory
+const cwd = process.cwd();
+console.log(`Working in: ${cwd}`);
+
+// Verify expected paths exist
+if (!fs.existsSync('./src/app')) {
+  console.error('Expected ./src/app, found:', fs.readdirSync('.'));
+  // Adapt or fail explicitly
+}
+```
+
+**Why:** Ralph may be spawned from different contexts with different working directories.
+
+### 4. Completion Signal Protocol
+
+When done, Ralph MUST:
+
+1. Write final `PROGRESS.md` with "## Status: COMPLETE"
+2. List all created/modified files
+3. Exit cleanly (no hanging processes)
+
+Example completion PROGRESS.md:
+
+```markdown
+# Ralph: Influencer Detail Page
+
+## Status: COMPLETE ✅
+
+**Finished:** [ISO timestamp]
+
+### Final Verification
+- [x] TypeScript: Pass
+- [x] Tests: Pass  
+- [x] Build: Pass
+
+### Files Created
+- `src/app/feature/page.tsx`
+- `src/app/api/feature/route.ts`
+
+### Testing Instructions
+1. Run: `npm run dev`
+2. Visit: `http://localhost:3000/feature`
+3. Verify: [specific checks]
+```
+
+### 5. Error Handling Requirements
+
+If Ralph encounters unrecoverable errors:
+
+1. Log to PROGRESS.md with "## Status: BLOCKED"
+2. Describe blocker in detail
+3. List attempted solutions
+4. Exit cleanly (don't hang)
+
+**Do not silently fail.** A Ralph that stops iterating with no progress log is indistinguishable from one still working.
+
+### 6. Iteration Time Limits
+
+Set explicit iteration timeouts:
+
+```markdown
+## Operational Parameters
+- Max iteration time: 10 minutes
+- Total session timeout: 60 minutes
+- If iteration exceeds limit: Log blocker, exit
+```
+
+**Why:** Prevents infinite loops on stuck tasks, allows parent agent to intervene.
+
 ## Memory Updates
 
 After each Ralph Mode session, document:
@@ -334,3 +451,16 @@ After each Ralph Mode session, document:
 - What needs adjustment
 - Patterns to add to AGENTS.md
 ```
+
+## Appendix: Hall of Failures
+
+Common anti-patterns observed:
+
+| Anti-Pattern | Consequence | Prevention |
+|--------------|-------------|------------|
+| No progress logging | Parent agent cannot determine status | Mandatory PROGRESS.md |
+| Silent failure | Work lost, time wasted | Explicit error logging |
+| Overlapping sessions | File conflicts, corrupt state | Check/cleanup before spawn |
+| Path assumptions | Wrong directory, wrong files | Explicit verification |
+| No completion signal | Parent waits indefinitely | Clear COMPLETE status |
+| Infinite iteration | Resource waste, no progress | Time limits + blockers |
