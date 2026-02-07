@@ -5,10 +5,11 @@ Usage: python3 bitaxe_status.py [ip_address] [--format {json,text}] [--set-ip IP
 
 IP resolution order:
 1. Command line argument
-2. BITAXE_IP environment variable
-3. Prompt for IP (if none of the above)
+2. Config file (~/.config/bitaxe-monitor/config.json)
+3. BITAXE_IP environment variable
+4. Prompt for IP (if none of the above)
 
-Use --set-ip to save IP to your shell profile (~/.bashrc or ~/.zshrc)
+Use --set-ip to save IP to config file
 """
 
 import sys
@@ -17,63 +18,57 @@ import urllib.request
 import urllib.error
 import argparse
 import os
-import subprocess
 
 
-def get_shell_profile() -> str | None:
-    """Get the user's shell profile file path."""
-    home = os.path.expanduser("~")
-    shell = os.environ.get("SHELL", "/bin/bash")
-    
-    if "zsh" in shell:
-        return os.path.join(home, ".zshrc")
-    elif "bash" in shell:
-        bash_profile = os.path.join(home, ".bash_profile")
-        bashrc = os.path.join(home, ".bashrc")
-        # Prefer .bash_profile if it exists, otherwise .bashrc
-        return bash_profile if os.path.exists(bash_profile) else bashrc
-    else:
-        # Default to .profile
-        return os.path.join(home, ".profile")
+def get_config_dir() -> str:
+    """Get the config directory path."""
+    config_dir = os.path.expanduser("~/.config/bitaxe-monitor")
+    os.makedirs(config_dir, exist_ok=True)
+    return config_dir
+
+
+def get_config_file() -> str:
+    """Get the config file path."""
+    return os.path.join(get_config_dir(), "config.json")
+
+
+def load_config() -> dict:
+    """Load config from file."""
+    config_file = get_config_file()
+    if os.path.exists(config_file):
+        try:
+            with open(config_file, 'r') as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError):
+            return {}
+    return {}
+
+
+def save_config(config: dict) -> None:
+    """Save config to file."""
+    config_file = get_config_file()
+    with open(config_file, 'w') as f:
+        json.dump(config, f, indent=2)
 
 
 def get_saved_ip() -> str | None:
-    """Get IP from environment variable."""
-    return os.environ.get("BITAXE_IP")
+    """Get IP from config file or environment variable."""
+    # Priority 1: Config file
+    config = load_config()
+    if 'bitaxe_ip' in config:
+        return config['bitaxe_ip']
+    
+    # Priority 2: Environment variable (for backwards compatibility)
+    return os.environ.get('BITAXE_IP')
 
 
-def set_ip_in_profile(ip: str) -> None:
-    """Add export statement to shell profile for persistence."""
-    profile = get_shell_profile()
-    if not profile:
-        raise RuntimeError("Could not determine shell profile file")
-    
-    export_line = f'export BITAXE_IP="{ip}"'
-    
-    # Check if BITAXE_IP is already set in profile
-    existing_line = None
-    if os.path.exists(profile):
-        with open(profile, 'r') as f:
-            for line in f:
-                if 'BITAXE_IP=' in line:
-                    existing_line = line.strip()
-                    break
-    
-    if existing_line:
-        # Replace existing line
-        with open(profile, 'r') as f:
-            content = f.read()
-        content = content.replace(existing_line, export_line)
-        with open(profile, 'w') as f:
-            f.write(content)
-        print(f"📝 Updated BITAXE_IP in {profile}")
-    else:
-        # Append new line
-        with open(profile, 'a') as f:
-            f.write(f"\n# Bitaxe Gamma Monitor\n{export_line}\n")
-        print(f"📝 Added BITAXE_IP to {profile}")
-    
-    print(f"⚠️  Run 'source {profile}' or restart your terminal to apply changes")
+def set_ip_in_config(ip: str) -> None:
+    """Save IP to config file."""
+    config = load_config()
+    config['bitaxe_ip'] = ip
+    save_config(config)
+    print(f"📝 Saved Bitaxe IP to {get_config_file()}")
+    print(f"📡 IP: {ip}")
 
 
 def fetch_bitaxe_status(ip: str) -> dict:
@@ -124,21 +119,21 @@ def format_text(data: dict) -> str:
 def main():
     parser = argparse.ArgumentParser(
         description="Bitaxe Gamma Status Monitor",
-        epilog="IP resolution: 1) Command argument 2) BITAXE_IP env var"
+        epilog="IP resolution: 1) Command argument 2) Config file 3) BITAXE_IP env var"
     )
-    parser.add_argument("ip", nargs="?", help="Bitaxe IP address (optional if BITAXE_IP is set)")
+    parser.add_argument("ip", nargs="?", help="Bitaxe IP address (optional if configured)")
     parser.add_argument("--format", choices=["json", "text"], default="text",
                         help="Output format (default: text)")
     parser.add_argument("--set-ip", metavar="IP",
-                        help="Save IP to shell profile as BITAXE_IP environment variable")
+                        help="Save IP to config file (~/.config/bitaxe-monitor/config.json)")
     args = parser.parse_args()
 
     # Handle --set-ip first
     if args.set_ip:
-        set_ip_in_profile(args.set_ip)
+        set_ip_in_config(args.set_ip)
         return
 
-    # Determine which IP to use (priority: arg > env var)
+    # Determine which IP to use (priority: arg > config file > env var)
     ip = args.ip
     if not ip:
         ip = get_saved_ip()
@@ -146,10 +141,11 @@ def main():
             parser.error(
                 "No IP provided. Either:\n"
                 "  - Pass IP as argument: bitaxe_status.py <IP>\n"
-                "  - Set BITAXE_IP environment variable\n"
-                "  - Save IP permanently: bitaxe_status.py --set-ip <IP>"
+                "  - Save IP to config: bitaxe_status.py --set-ip <IP>\n"
+                "  - Set BITAXE_IP environment variable"
             )
-        print(f"📡 Using BITAXE_IP from environment: {ip}\n")
+        source = "config file" if load_config().get('bitaxe_ip') else "environment variable"
+        print(f"📡 Using Bitaxe IP from {source}: {ip}\n")
 
     # Fetch and display status
     try:

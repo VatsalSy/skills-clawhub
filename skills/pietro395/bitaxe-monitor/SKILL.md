@@ -1,6 +1,6 @@
 ---
 name: bitaxe-monitor
-description: Monitor Bitaxe Gamma Bitcoin miner status via HTTP API. Use when the user wants to check the status, hashrate, temperature, power consumption, or statistics of a Bitaxe Gamma miner. Supports BITAXE_IP environment variable for device IP configuration, fetching system info, and formatting output as human-readable text or JSON.
+description: Monitor Bitaxe Gamma Bitcoin miner status via HTTP API. Use when the user wants to check the status, hashrate, temperature, power consumption, or statistics of a Bitaxe Gamma miner. Supports config file or environment variable for device IP configuration, fetching system info, and formatting output as human-readable text or JSON.
 ---
 
 # Bitaxe Monitor
@@ -33,23 +33,21 @@ python3 scripts/bitaxe_status.py [ip_address] [--format {json,text}] [--set-ip I
 
 The script looks for the Bitaxe IP in this order:
 1. Command line argument
-2. `BITAXE_IP` environment variable
-3. Error (if none found)
+2. Config file (`~/.config/bitaxe-monitor/config.json`)
+3. `BITAXE_IP` environment variable
+4. Error (if none found)
 
-### Setting BITAXE_IP Environment Variable
+### Saving IP Configuration
 
-**Option 1: Save permanently to shell profile**
+**Option 1: Save to config file (recommended)**
 ```bash
 python3 scripts/bitaxe_status.py --set-ip 192.168.1.100
 ```
-This adds `export BITAXE_IP="192.168.1.100"` to your `~/.bashrc` or `~/.zshrc`.
+This saves the IP to `~/.config/bitaxe-monitor/config.json`.
 
-After running `--set-ip`, reload your shell:
-```bash
-source ~/.bashrc  # or source ~/.zshrc
-```
+The config file is stored in a dedicated directory and does not modify your shell profile files.
 
-**Option 2: Set temporarily for current session**
+**Option 2: Set environment variable**
 ```bash
 export BITAXE_IP=192.168.1.100
 python3 scripts/bitaxe_status.py
@@ -62,7 +60,7 @@ BITAXE_IP=192.168.1.100 python3 scripts/bitaxe_status.py
 
 ### Checking Status
 
-**With environment variable set:**
+**With IP configured:**
 ```bash
 python3 scripts/bitaxe_status.py
 ```
@@ -112,15 +110,25 @@ The Bitaxe API provides these main endpoints:
   - Supports both text (human-readable) and JSON output formats
   - Handles connection errors gracefully
   - Formats key metrics with emoji indicators
-  - Reads IP from `BITAXE_IP` environment variable
-  - Saves IP to shell profile with `--set-ip`
+  - Reads IP from config file or `BITAXE_IP` environment variable
+  - Saves IP to config file with `--set-ip`
 
-## Environment Variables
+## Configuration
+
+### Config File Location
+
+The script stores configuration in:
+```
+~/.config/bitaxe-monitor/config.json
+```
+
+This directory is created automatically when using `--set-ip`.
+
+### Environment Variables
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `BITAXE_IP` | IP address of your Bitaxe miner | Yes (if not provided as argument) |
-| `SHELL` | Used to detect shell type for `--set-ip` | No |
+| `BITAXE_IP` | IP address of your Bitaxe miner | Alternative to config file |
 
 ## Error Handling
 
@@ -128,15 +136,15 @@ The script handles common errors:
 - Connection failures (wrong IP, device offline)
 - Invalid JSON responses
 - Network timeouts
-- Missing IP (prompts user to set BITAXE_IP or use --set-ip)
+- Missing IP (prompts user to configure IP)
 
 ## Command Reference
 
 | Command | Description |
 |---------|-------------|
-| `bitaxe_status.py` | Check status using BITAXE_IP env var |
+| `bitaxe_status.py` | Check status using saved configuration |
 | `bitaxe_status.py <IP>` | Check status of specific IP (one-time) |
-| `bitaxe_status.py --set-ip <IP>` | Save IP to shell profile |
+| `bitaxe_status.py --set-ip <IP>` | Save IP to config file |
 | `bitaxe_status.py --format json` | Output raw JSON |
 | `bitaxe_status.py --format text` | Output formatted text (default) |
 
@@ -145,7 +153,6 @@ The script handles common errors:
 **Quick setup (do once):**
 ```bash
 python3 scripts/bitaxe_status.py --set-ip 192.168.1.100
-source ~/.bashrc  # or ~/.zshrc
 ```
 
 **Daily usage:**
