@@ -1,11 +1,23 @@
 {
   "name": "voice-notes-pro",
-  "version": "2.0.0",
-  "description": "Voice notes with 6 categories + people database",
-  "main": "voice-notes-pro.js",
-  "dependencies": {},
-  "openclaw": {
-    "skill": true,
-    "platforms": ["whatsapp"]
+  "version": "1.0.0",
+  "description": "Inteligentna transkrypcja i kategoryzacja notatek g³osowych przez WhatsApp",
+  "main": "skill.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "openclaw",
+    "skill",
+    "whisper",
+    "transcription",
+    "whatsapp",
+    "voice-notes",
+    "markdown"
+  ],
+  "author": "Toniacz",
+  "license": "MIT",
+  "dependencies": {
+    "openai": "^4.28.0"
   }
 }
