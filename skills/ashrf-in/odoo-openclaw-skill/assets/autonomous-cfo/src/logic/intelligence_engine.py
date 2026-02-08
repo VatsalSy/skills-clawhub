@@ -1,20 +1,20 @@
 from src.connectors.odoo_client import OdooClient
 from datetime import datetime, timedelta
 import collections
-from src.logic.gemini_intelligence import GeminiIntelligence
+from src.logic.openclaw_intelligence import OpenClawIntelligence
 
 class IntelligenceEngine:
     def __init__(self, client: OdooClient):
         self.client = client
         try:
-            self.gemini = GeminiIntelligence()
+            self.ai = OpenClawIntelligence()
         except Exception:
-            self.gemini = None
+            self.ai = None
 
     def get_ai_anomaly_report(self):
-        """Use Gemini to perform advanced anomaly detection on recent moves."""
-        if not self.gemini:
-            return "Gemini AI not configured."
+        """Use OpenClaw intelligence to perform advanced anomaly detection on recent moves."""
+        if not self.ai:
+            return "OpenClaw intelligence not configured."
         
         moves = self.client.search_read(
             'account.move',
@@ -23,14 +23,14 @@ class IntelligenceEngine:
             limit=50
         )
         try:
-            return self.gemini.analyze_anomalies(moves)
+            return self.ai.analyze_anomalies(moves)
         except Exception as e:
             return f"AI Analysis failed: {str(e)}"
 
     def ask(self, query: str):
         """Perform a natural language query using Odoo data as context."""
-        if not self.gemini:
-            return "Gemini AI not configured."
+        if not self.ai:
+            return "OpenClaw intelligence not configured."
 
         # Strategy: Fetch a broad set of recent data as context
         context = {
@@ -46,7 +46,7 @@ class IntelligenceEngine:
                 fields=['name', 'code', 'current_balance']
             )
         }
-        return self.gemini.natural_language_query(query, context)
+        return self.ai.natural_language_query(query, context)
 
     def get_vat_report(self, date_from, date_to):
         """

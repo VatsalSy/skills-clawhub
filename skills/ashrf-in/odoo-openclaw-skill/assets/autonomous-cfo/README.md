@@ -1,34 +1,44 @@
-# Autonomous CFO
+# Autonomous CFO Engine (Odoo)
 
-## Overview
-An AI-driven ERP layer that acts as an active financial controller. It bridges OpenClaw with Odoo (or similar ERPs) to provide real-time financial intelligence, anomaly detection, and automated operations.
+## Purpose
 
-## Architecture
+Reliable, evidence-backed financial intelligence on top of Odoo for OpenClaw skills.
 
-### 1. The Nervous System (Integrations)
-- **Odoo/ERP Bridge:** XML-RPC/API Python connectors.
-- **Access:** Read/Write for Invoices, Expenses, Bank Logs.
+## Current capabilities
 
-### 2. The Brain (Reasoning Loop)
-- **Anomaly Detection:** Monitors transactions for spikes or duplicates.
-- **Smart Invoicing:** Drafts invoices based on calendar events.
-- **Financial Health:** Real-time cash flow analysis.
+- Odoo financial summary (sales/expenses/unpaid/overdue)
+- VAT computation (output/input/net)
+- Cash-flow status
+- Trend analysis with chart output
+- Rules anomalies + AI-assisted anomaly narrative
+- Natural-language financial Q&A grounded in Odoo data
 
-### 3. The Interface (Conversational BI)
-- **Chat:** Natural language queries via WhatsApp/Telegram.
-- **Visuals:** Matplotlib/Plotly graphs generated on the fly.
-- **Actions:** Approve/Reject polls for critical financial decisions.
+## API backends
 
-## Tech Stack
-- **Core:** Python (FastAPI/Scripts)
-- **AI:** OpenClaw (Gemini/GPT models)
-- **ERP:** Odoo (XML-RPC)
-- **Database:** PostgreSQL (if local caching needed)
+- `json2` (preferred on Odoo 19+)
+- `xmlrpc` (fallback for older Odoo)
+- `auto` routing in `cfo-cli` chooses backend by server version
 
-## Roadmap
-- [ ] **Phase 1: Connectivity.** Establish secure link to ERP. Read basic ledger data.
-- [ ] **Phase 2: Intelligence.** Implement "Cash Flow" query and graphing.
-- [ ] **Phase 3: Action.** Build the "Invoice Drafter" and "Expense Approver."
+## AI runtime
 
----
-*Maintained by ashrf & OpenClaw*
+AI analysis is routed through **OpenClaw native local agent runtime** (`openclaw agent --local`), not standalone Gemini API flows.
+
+## Key files
+
+- `src/connectors/odoo_client.py` — JSON-2 + XML-RPC connector
+- `src/tools/cfo_cli.py` — command interface
+- `src/logic/finance_engine.py` — deterministic accounting logic
+- `src/logic/intelligence_engine.py` — VAT/trend/anomaly orchestration
+- `src/logic/openclaw_intelligence.py` — OpenClaw-native AI adapter
+
+## Dependencies
+
+See `requirements.txt`:
+- `python-dotenv`
+- `requests`
+- `matplotlib`
+
+## Notes
+
+- Read-only by default in skill workflows.
+- Use `rpc-call --allow-write` only for explicit user-approved mutating operations.

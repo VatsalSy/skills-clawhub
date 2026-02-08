@@ -3,37 +3,110 @@ import json
 import os
 import sys
 from datetime import datetime, timedelta
+
+import requests
+
 from dotenv import load_dotenv
 
 # Add project root to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 from src.connectors.odoo_client import OdooClient
 from src.logic.finance_engine import FinanceEngine
 from src.logic.intelligence_engine import IntelligenceEngine
 from src.tools.visualizer import generate_revenue_vs_expense_chart
 
+
 def load_settings():
-    path = os.path.join(os.path.dirname(__file__), '../../config/settings.json')
+    path = os.path.join(os.path.dirname(__file__), "../../config/settings.json")
     if os.path.exists(path):
-        with open(path, 'r') as f:
+        with open(path, "r") as f:
             return json.load(f)
     return {}
 
+
 def save_settings(settings):
-    path = os.path.join(os.path.dirname(__file__), '../../config/settings.json')
+    path = os.path.join(os.path.dirname(__file__), "../../config/settings.json")
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, 'w') as f:
+    with open(path, "w") as f:
         json.dump(settings, f, indent=2)
 
+
+MUTATING_METHODS = {"create", "write", "unlink"}
+
+
+def method_requires_write_guard(method: str) -> bool:
+    return (method or "").strip().lower() in MUTATING_METHODS
+
+
+def _print_json(data):
+    print(json.dumps(data, indent=2, default=str))
+
+
+def _resolve_rpc_backend(args) -> str:
+    if args.rpc_backend != "auto":
+        return args.rpc_backend
+
+    url = os.getenv("ODOO_URL", "").rstrip("/")
+    if not url:
+        return "xmlrpc"
+
+    try:
+        resp = requests.get(f"{url}/web/version", timeout=min(args.timeout, 10), verify=not args.insecure)
+        resp.raise_for_status()
+        payload = resp.json() if resp.text else {}
+        version = str(payload.get("version", ""))
+        if version.startswith("19"):
+            return "json2"
+    except Exception:
+        pass
+
+    return "xmlrpc"
+
+
+def _build_client(args):
+    load_dotenv()
+
+    context = {}
+    if args.lang:
+        context["lang"] = args.lang
+    if args.tz:
+        context["tz"] = args.tz
+    if args.company_id:
+        context["allowed_company_ids"] = [args.company_id]
+
+    backend = _resolve_rpc_backend(args)
+
+    return OdooClient.from_env(
+        timeout=args.timeout,
+        retries=args.retries,
+        verify_ssl=not args.insecure,
+        context=context or None,
+        rpc_backend=backend,
+    )
+
+
 def main():
-    parser = argparse.ArgumentParser(description="Autonomous CFO CLI")
+    parser = argparse.ArgumentParser(description="Autonomous CFO CLI (Odoo Native RPC)")
+
+    parser.add_argument("--timeout", type=int, default=30, help="RPC timeout in seconds")
+    parser.add_argument("--retries", type=int, default=2, help="Retries for transient RPC failures")
+    parser.add_argument("--insecure", action="store_true", help="Disable SSL certificate verification (only for trusted internal environments)")
+    parser.add_argument("--lang", type=str, help="Odoo context language (e.g., en_US)")
+    parser.add_argument("--tz", type=str, help="Odoo context timezone (e.g., Asia/Dubai)")
+    parser.add_argument("--company-id", type=int, help="Restrict RPC context to a specific company id")
+    parser.add_argument("--rpc-backend", choices=["auto", "xmlrpc", "json2"], default=os.getenv("ODOO_RPC_BACKEND", "auto"), help="Odoo API backend to use")
+
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
+
+    # Health / doctor command
+    doctor_parser = subparsers.add_parser("doctor", help="Validate Odoo connection/auth and inspect capabilities")
+    doctor_parser.add_argument("--model", type=str, default="account.move", help="Model to probe")
 
     # Config command
     config_parser = subparsers.add_parser("config", help="Manage settings")
     config_parser.add_argument("--get", action="store_true", help="View current settings")
-    config_parser.add_argument("--set", nargs=2, metavar=('KEY', 'VALUE'), help="Set a config value (e.g., anomalies.petty_cash_limit 1000)")
+    config_parser.add_argument("--set", nargs=2, metavar=("KEY", "VALUE"), help="Set a config value (e.g., anomalies.petty_cash_limit 1000)")
 
     # Summary command
     summary_parser = subparsers.add_parser("summary", help="Get financial summary")
@@ -60,95 +133,143 @@ def main():
     ask_parser = subparsers.add_parser("ask", help="Ask a question in natural language")
     ask_parser.add_argument("query", type=str, help="Your question")
 
+    # Power mode: raw rpc call
+    rpc_parser = subparsers.add_parser("rpc-call", help="Advanced: execute raw model/method payload")
+    rpc_parser.add_argument("--model", required=True, type=str, help="Odoo model (e.g., res.partner)")
+    rpc_parser.add_argument("--method", required=True, type=str, help="Model method (e.g., search_read)")
+    rpc_parser.add_argument("--payload", type=str, default="{}", help="JSON object payload (JSON-2: named args, XML-RPC: {args:[], kwargs:{}})")
+    rpc_parser.add_argument("--allow-write", action="store_true", help="Required for mutating methods (create/write/unlink)")
+
     args = parser.parse_args()
-
-    # Load Odoo Client
-    load_dotenv()
-    
-    url = os.getenv("ODOO_URL")
-    db = os.getenv("ODOO_DB")
-    user = os.getenv("ODOO_USER")
-    pwd = os.getenv("ODOO_PASSWORD")
-    
-    if not all([url, db, user, pwd]):
-        print(json.dumps({"error": "Missing Odoo credentials in environment variables"}))
-        return
-
-    client = OdooClient(url, db, user, pwd)
-    if not client.authenticate():
-        print(json.dumps({"error": "Authentication failed"}))
-        return
-
-    finance = FinanceEngine(client)
-    intelligence = IntelligenceEngine(client)
 
     if args.command == "config":
         settings = load_settings()
         if args.get:
-            print(json.dumps(settings, indent=2))
-        elif args.set:
+            _print_json(settings)
+            return
+        if args.set:
             key_path, value = args.set
-            keys = key_path.split('.')
+            keys = key_path.split(".")
             d = settings
             for k in keys[:-1]:
                 d = d.setdefault(k, {})
-            
-            # Try to parse value as int/float/bool
-            if value.lower() == 'true': value = True
-            elif value.lower() == 'false': value = False
+
+            if value.lower() == "true":
+                value = True
+            elif value.lower() == "false":
+                value = False
             else:
                 try:
-                    if '.' in value: value = float(value)
-                    else: value = int(value)
+                    value = float(value) if "." in value else int(value)
                 except ValueError:
                     pass
-            
+
             d[keys[-1]] = value
             save_settings(settings)
-            print(json.dumps({"status": "updated", "key": key_path, "value": value}))
+            _print_json({"status": "updated", "key": key_path, "value": value})
+            return
 
-    elif args.command == "summary":
-        result = finance.get_invoice_expense_summary(days=args.days)
-        print(json.dumps(result, indent=2))
+    try:
+        client = _build_client(args)
+        finance = FinanceEngine(client)
+        intelligence = IntelligenceEngine(client)
 
-    elif args.command == "cash_flow":
-        result = finance.get_cash_flow_status()
-        print(json.dumps(result, indent=2))
+        if args.command == "doctor":
+            version = client.version()
+            ok = client.authenticate()
+            sample = client.search_read(args.model, domain=[], fields=["id"], limit=1)
+            fields = client.get_fields(args.model, attributes=["string", "type"])
+            _print_json(
+                {
+                    "connection": "ok" if ok else "failed",
+                    "url": client.url,
+                    "db": client.db,
+                    "uid": client.uid,
+                    "server_version": version,
+                    "model_probe": {
+                        "model": args.model,
+                        "sample_count": len(sample),
+                        "fields_count": len(fields),
+                    },
+                    "context": client.context,
+                    "rpc": {
+                        "backend": client.rpc_backend,
+                        "timeout_seconds": client.timeout,
+                        "retries": client.retries,
+                        "ssl_verify": client.verify_ssl,
+                    },
+                    "notes": [
+                        "Use Odoo API keys as ODOO_PASSWORD for production integrations.",
+                        "Odoo 19 docs mark XML-RPC/JSON-RPC for removal in Odoo 20; plan migration to External JSON-2 API."
+                    ],
+                }
+            )
 
-    elif args.command == "vat":
-        date_to = args.date_to or datetime.now().strftime('%Y-%m-%d')
-        date_from = args.date_from or (datetime.now() - timedelta(days=90)).strftime('%Y-%m-%d')
-        result = intelligence.get_vat_report(date_from, date_to)
-        print(json.dumps(result, indent=2))
+        elif args.command == "summary":
+            result = finance.get_invoice_expense_summary(days=args.days)
+            _print_json(result)
 
-    elif args.command == "trends":
-        result = intelligence.get_trend_analysis(months=args.months)
-        chart_path = None
-        if args.visualize:
-            os.makedirs("output", exist_ok=True)
-            output_file = f"output/revenue_vs_expense_{datetime.now().strftime('%Y%m%d')}.png"
-            chart_path = generate_revenue_vs_expense_chart(result, output_file)
-        
-        output = {
-            "trends": result,
-            "chart_path": chart_path
-        }
-        print(json.dumps(output, indent=2))
+        elif args.command == "cash_flow":
+            result = finance.get_cash_flow_status()
+            _print_json(result)
 
-    elif args.command == "anomalies":
-        if args.ai:
-            result = intelligence.get_ai_anomaly_report()
-            print(json.dumps({"ai_report": result}, indent=2))
+        elif args.command == "vat":
+            date_to = args.date_to or datetime.now().strftime("%Y-%m-%d")
+            date_from = args.date_from or (datetime.now() - timedelta(days=90)).strftime("%Y-%m-%d")
+            result = intelligence.get_vat_report(date_from, date_to)
+            _print_json(result)
+
+        elif args.command == "trends":
+            result = intelligence.get_trend_analysis(months=args.months)
+            chart_path = None
+            if args.visualize:
+                os.makedirs("output", exist_ok=True)
+                output_file = f"output/revenue_vs_expense_{datetime.now().strftime('%Y%m%d')}.png"
+                chart_path = generate_revenue_vs_expense_chart(result, output_file)
+
+            _print_json({"trends": result, "chart_path": chart_path})
+
+        elif args.command == "anomalies":
+            if args.ai:
+                result = intelligence.get_ai_anomaly_report()
+                _print_json({"ai_report": result})
+            else:
+                result = intelligence.detect_anomalies()
+                _print_json(result)
+
+        elif args.command == "ask":
+            result = intelligence.ask(args.query)
+            _print_json({"answer": result})
+
+        elif args.command == "rpc-call":
+            method = args.method.strip()
+            if method_requires_write_guard(method) and not args.allow_write:
+                raise PermissionError(
+                    f"Method '{method}' is mutating. Re-run with --allow-write if you explicitly want to modify Odoo data."
+                )
+
+            try:
+                payload = json.loads(args.payload or "{}")
+                if not isinstance(payload, dict):
+                    raise ValueError("payload must be a JSON object")
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Invalid payload JSON: {e}") from e
+
+            result = client.call_raw(args.model, method, payload)
+            _print_json({
+                "model": args.model,
+                "method": method,
+                "backend": client.rpc_backend,
+                "result": result,
+            })
+
         else:
-            result = intelligence.detect_anomalies()
-            print(json.dumps(result, indent=2))
+            parser.print_help()
 
-    elif args.command == "ask":
-        result = intelligence.ask(args.query)
-        print(json.dumps({"answer": result}, indent=2))
+    except Exception as e:
+        _print_json({"error": str(e), "command": args.command})
+        sys.exit(1)
 
-    else:
-        parser.print_help()
 
 if __name__ == "__main__":
     main()
