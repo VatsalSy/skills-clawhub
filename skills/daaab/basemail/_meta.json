@@ -1,11 +1,17 @@
 {
   "owner": "daaab",
   "slug": "basemail",
-  "displayName": "BaseMail - Email for AI Agents",
+  "displayName": "Basemail",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1770482801947,
-    "commit": "https://github.com/openclaw/skills/commit/55b5680dec18db0efb5da0f2ade93d48e5b03652"
+    "version": "1.5.1",
+    "publishedAt": 1770525525589,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1770482801947,
+      "commit": "https://github.com/openclaw/skills/commit/55b5680dec18db0efb5da0f2ade93d48e5b03652"
+    }
+  ]
 }

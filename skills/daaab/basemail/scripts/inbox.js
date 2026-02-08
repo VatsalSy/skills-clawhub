@@ -11,18 +11,49 @@ const fs = require('fs');
 const path = require('path');
 
 const API_BASE = 'https://api.basemail.ai';
-const TOKEN_FILE = path.join(process.env.HOME, '.basemail', 'token.json');
+const CONFIG_DIR = path.join(process.env.HOME, '.basemail');
+const TOKEN_FILE = path.join(CONFIG_DIR, 'token.json');
+const AUDIT_FILE = path.join(CONFIG_DIR, 'audit.log');
+
+function logAudit(action, details = {}) {
+  try {
+    if (!fs.existsSync(CONFIG_DIR)) return;
+    const entry = {
+      timestamp: new Date().toISOString(),
+      action,
+      success: details.success ?? true,
+    };
+    fs.appendFileSync(AUDIT_FILE, JSON.stringify(entry) + '\n', { mode: 0o600 });
+  } catch (e) {
+    // Silently ignore audit errors
+  }
+}
 
 function getToken() {
+  // 1. Environment variable
   if (process.env.BASEMAIL_TOKEN) {
     return process.env.BASEMAIL_TOKEN;
   }
   
+  // 2. Token file
   if (!fs.existsSync(TOKEN_FILE)) {
-    throw new Error('Not registered. Run register.js first.');
+    console.error('❌ 尚未註冊。請先執行 register.js');
+    process.exit(1);
   }
   
   const data = JSON.parse(fs.readFileSync(TOKEN_FILE, 'utf8'));
+  
+  // Check token age (warn if > 20 hours)
+  if (data.saved_at) {
+    const savedAt = new Date(data.saved_at);
+    const now = new Date();
+    const hoursSinceSaved = (now - savedAt) / 1000 / 60 / 60;
+    
+    if (hoursSinceSaved > 20) {
+      console.log('⚠️ Token 可能即將過期，如遇錯誤請重新執行 register.js');
+    }
+  }
+  
   return data.token;
 }
 
@@ -34,15 +65,16 @@ async function listInbox(token) {
   const data = await res.json();
   
   if (data.error) {
-    console.error('❌ Error:', data.error);
+    console.error('❌ 錯誤:', data.error);
+    logAudit('inbox_list', { success: false });
     process.exit(1);
   }
 
-  console.log(`📬 Inbox (${data.unread} unread / ${data.total} total)`);
-  console.log('='.repeat(60));
+  console.log(`📬 收件箱 (${data.unread} 未讀 / ${data.total} 總計)`);
+  console.log('═'.repeat(60));
 
   if (data.emails.length === 0) {
-    console.log('No emails.');
+    console.log('沒有郵件。');
     return;
   }
 
@@ -50,12 +82,14 @@ async function listInbox(token) {
     const unread = email.read ? ' ' : '●';
     const date = new Date(email.created_at * 1000).toLocaleString();
     console.log(`${unread} [${email.id}]`);
-    console.log(`  From: ${email.from_addr}`);
-    console.log(`  Subject: ${email.subject}`);
-    console.log(`  Date: ${date}`);
-    console.log(`  Preview: ${email.snippet?.slice(0, 80)}...`);
+    console.log(`  寄件人: ${email.from_addr}`);
+    console.log(`  主旨: ${email.subject}`);
+    console.log(`  時間: ${date}`);
+    console.log(`  預覽: ${email.snippet?.slice(0, 80)}...`);
     console.log('');
   }
+  
+  logAudit('inbox_list', { success: true });
 }
 
 async function readEmail(token, emailId) {
@@ -66,18 +100,21 @@ async function readEmail(token, emailId) {
   const data = await res.json();
   
   if (data.error) {
-    console.error('❌ Error:', data.error);
+    console.error('❌ 錯誤:', data.error);
+    logAudit('inbox_read', { success: false });
     process.exit(1);
   }
 
-  console.log('📧 Email');
-  console.log('='.repeat(60));
-  console.log(`From: ${data.from_addr}`);
-  console.log(`To: ${data.to_addr}`);
-  console.log(`Subject: ${data.subject}`);
-  console.log(`Date: ${new Date(data.created_at * 1000).toLocaleString()}`);
-  console.log('='.repeat(60));
+  console.log('📧 郵件內容');
+  console.log('═'.repeat(60));
+  console.log(`寄件人: ${data.from_addr}`);
+  console.log(`收件人: ${data.to_addr}`);
+  console.log(`主旨: ${data.subject}`);
+  console.log(`時間: ${new Date(data.created_at * 1000).toLocaleString()}`);
+  console.log('═'.repeat(60));
   console.log(data.body);
+  
+  logAudit('inbox_read', { success: true });
 }
 
 async function main() {
@@ -92,6 +129,6 @@ async function main() {
 }
 
 main().catch(err => {
-  console.error('❌ Error:', err.message);
+  console.error('❌ 錯誤:', err.message);
   process.exit(1);
 });
