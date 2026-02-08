@@ -1,6 +1,6 @@
 ---
-name: danube-tools
-description: Use Danube's 100+ API tools (Gmail, GitHub, Notion, etc.) through MCP. Search for tools, check authentication, execute with parameters, and handle errors gracefully.
+name: tools-marketplace
+description: All your tools. None of your passwords. Use Danube's API tools (Gmail, GitHub, Notion, etc.) through MCP. Search for tools, check authentication, execute with parameters, and handle errors gracefully.
 license: MIT
 compatibility: openclaw
 metadata:
@@ -11,7 +11,7 @@ metadata:
 
 # Using Danube Tools
 
-Access 100+ API tools for Gmail, GitHub, Notion, Google Calendar, and more through Danube's MCP integration.
+All your tools. None of your passwords. Connect to Gmail, GitHub, Notion, Google Calendar, and more through Danube's MCP integration.
 
 **Setup:** If not configured yet, run `bash scripts/setup.sh` to add Danube MCP to OpenClaw.
 
