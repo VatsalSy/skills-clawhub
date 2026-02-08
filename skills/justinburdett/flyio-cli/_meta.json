@@ -3,11 +3,16 @@
   "slug": "flyio-cli",
   "displayName": "Fly.io CLI",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1770497675190,
-    "commit": "https://github.com/openclaw/skills/commit/83009573f1850617c96e65e17fe4b3fda27b5057"
+    "version": "1.0.3",
+    "publishedAt": 1770510835432,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1770497675190,
+      "commit": "https://github.com/openclaw/skills/commit/83009573f1850617c96e65e17fe4b3fda27b5057"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1769314716010,
