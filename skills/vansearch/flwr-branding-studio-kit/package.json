@@ -1,6 +1,6 @@
 {
   "name": "flwr-branding-studio-kit",
-  "version": "1.0.3",
+  "version": "1.0.0",
   "description": "Transform your AI coding assistant into a Senior Brand Strategist.",
   "main": "bin/cli.js",
   "bin": {
