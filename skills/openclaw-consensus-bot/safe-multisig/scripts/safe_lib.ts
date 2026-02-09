@@ -1,4 +1,5 @@
 import { Command } from 'commander';
+import { getAddress, isHexString } from 'ethers';
 
 // ── Types ──
 
@@ -128,8 +129,16 @@ export function requirePrivateKey(): string {
 
 // FIX SM-006: Validate Ethereum addresses
 export function validateAddress(addr: string, label: string): void {
-  if (!/^0x[0-9a-fA-F]{40}$/.test(addr)) {
-    throw new Error(`Invalid ${label} address: "${addr}". Expected 0x + 40 hex characters.`);
+  try {
+    getAddress(addr);
+  } catch {
+    throw new Error(`Invalid ${label} address: "${addr}"`);
+  }
+}
+
+export function validateTxHash(hash: string, label = 'safeTxHash'): void {
+  if (!isHexString(hash, 32)) {
+    throw new Error(`Invalid ${label}: "${hash}". Expected 0x-prefixed 32-byte hex.`);
   }
 }
 

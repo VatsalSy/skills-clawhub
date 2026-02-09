@@ -1,15 +1,15 @@
 ---
 name: safe-multisig-skill
-description: Propose, confirm, and execute Safe multisig transactions using the Safe Transaction Service API and Safe{Core} SDK (protocol-kit/api-kit). Use when an agent needs to operate a Safe smart account: (1) fetch Safe owners/threshold/nonce, (2) list queued/executed multisig txs, (3) build + propose a tx, (4) add confirmations, (5) execute a tx onchain, or (6) troubleshoot Safe nonce/signature/service-url issues across chains (Base/Ethereum/etc.).
+description: Propose, confirm, and execute Safe multisig transactions using the Safe{Core} SDK (protocol-kit v6 / api-kit v4). TypeScript strict. Use when an agent needs to operate a Safe smart account — (1) create/predict a new Safe, (2) fetch Safe owners/threshold/nonce, (3) list pending multisig txs, (4) build + propose a tx, (5) add confirmations, (6) execute a tx onchain, or (7) troubleshoot Safe nonce/signature issues across chains (Base/Ethereum/Optimism/Arbitrum/Polygon/etc.).
 ---
 
 # Safe Multisig Skill
 
-This skill packages a small, reliable set of scripts for interacting with Safe multisig accounts via:
+TypeScript-strict scripts for interacting with Safe multisig accounts via:
 - **Safe Transaction Service** (read state, propose txs, submit confirmations)
-- **Safe{Core} SDK** (create txs, compute hashes, sign, execute)
+- **Safe{Core} SDK** (create Safes, create txs, compute hashes, sign, execute)
 
-The scripts are designed to be used from the command line by an agent.
+All scripts use `ethers v6`, validate inputs (addresses, tx hashes), and output JSON.
 
 ## Quick start
 
@@ -21,55 +21,75 @@ cd <this-skill>
 ./scripts/safe_about.sh --chain base
 ```
 
+## Core scripts
+
+| Script | Description |
+|--------|-------------|
+| `create-safe.ts` | Predict address + optionally deploy a new Safe |
+| `safe-info.ts` | Fetch Safe info (owners/threshold/nonce) |
+| `list-pending.ts` | List pending (queued) multisig transactions |
+| `safe_txs_list.ts` | List all multisig transactions (queued + executed) |
+| `propose-tx.ts` | Create + propose a multisig tx |
+| `approve-tx.ts` | Add an off-chain confirmation for a tx hash |
+| `execute-tx.ts` | Execute a fully-confirmed tx onchain |
+
+All scripts: `npx tsx scripts/<name>.ts --help`
+
 ## Common tasks
 
-### 1) Get Safe info (owners / threshold / nonce)
+### 1) Create a new Safe
 
 ```bash
-node scripts/safe_info.mjs \
+npx tsx scripts/create-safe.ts \
   --chain base \
-  --safe 0xYourSafe
+  --owners 0xOwner1,0xOwner2,0xOwner3 \
+  --threshold 2
 ```
 
-### 2) List multisig transactions (queued + executed)
+Add `--deploy` + `SAFE_SIGNER_PRIVATE_KEY` to send the deployment tx.
+
+### 2) Get Safe info
 
 ```bash
-node scripts/safe_txs_list.mjs \
-  --chain base \
-  --safe 0xYourSafe \
-  --limit 10
+npx tsx scripts/safe-info.ts --chain base --safe 0xYourSafe
 ```
 
-### 3) Propose a new transaction
+### 3) List pending transactions
+
+```bash
+npx tsx scripts/list-pending.ts --chain base --safe 0xYourSafe
+```
+
+### 4) Propose a new transaction
 
 Create a tx request JSON (see `references/tx_request.schema.json` and `references/examples.md`).
 
 ```bash
-export SAFE_SIGNER_PRIVATE_KEY="..."   # never paste keys into chat logs
+export SAFE_SIGNER_PRIVATE_KEY="..."
 
-node scripts/safe_tx_propose.mjs \
+npx tsx scripts/propose-tx.ts \
   --chain base \
   --rpc-url "$BASE_RPC_URL" \
   --tx-file ./references/example.tx.json
 ```
 
-### 4) Confirm a proposed transaction
+### 5) Confirm (approve) a proposed transaction
 
 ```bash
 export SAFE_SIGNER_PRIVATE_KEY="..."
 
-node scripts/safe_tx_confirm.mjs \
+npx tsx scripts/approve-tx.ts \
   --chain base \
   --safe 0xYourSafe \
   --safe-tx-hash 0x...
 ```
 
-### 5) Execute a confirmed transaction (onchain)
+### 6) Execute a confirmed transaction (onchain)
 
 ```bash
 export SAFE_SIGNER_PRIVATE_KEY="..."
 
-node scripts/safe_tx_execute.mjs \
+npx tsx scripts/execute-tx.ts \
   --chain base \
   --rpc-url "$BASE_RPC_URL" \
   --safe 0xYourSafe \
@@ -78,24 +98,20 @@ node scripts/safe_tx_execute.mjs \
 
 ## Configuration
 
-All scripts accept either:
-- `--chain <slug>` (recommended) where slug matches Safe’s tx-service slugs (e.g. `base`, `base-sepolia`, `mainnet`, `arbitrum`, `optimism`), OR
-- explicit `--tx-service-url <url>`.
-
-You can verify the correct per-chain base URL from Safe docs. Example for Base:
-`https://api.safe.global/tx-service/base`.
+All scripts accept:
+- `--chain <slug>` (recommended): e.g. `base`, `base-sepolia`, `mainnet`, `arbitrum`, `optimism`
+- `--tx-service-url <url>`: Override the transaction service URL
+- `--rpc-url <url>`: RPC endpoint (or `RPC_URL` env var)
+- `--api-key <key>`: Safe Transaction Service API key (or `SAFE_TX_SERVICE_API_KEY` env var)
 
 ## Security rules
 
 - **Never paste private keys into chat.** Use env vars or files.
-- Prefer low-privilege signers and spending limits when possible.
-- Always verify:
-  - Safe address
-  - chainId / RPC
-  - nonce (mismatch is the #1 cause of failures)
+- Prefer low-privilege signers and spending limits.
+- Always verify Safe address, chainId / RPC, and nonce before signing.
 
 ## References
 
 - `references/examples.md` — example requests + workflows
-- `references/tx_request.schema.json` — tx request JSON shape used by scripts
-- `references/tx_service_slugs.md` — common chain slugs + notes
+- `references/tx_request.schema.json` — tx request JSON shape
+- `references/tx_service_slugs.md` — chain slugs + notes

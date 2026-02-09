@@ -1,17 +1,18 @@
 # safe-multisig-skill
 
-Operate a Safe multisig smart account from the CLI:
-- read Safe state (owners/threshold/nonce)
-- list queued/executed multisig transactions
-- propose transactions (off-chain signatures via Transaction Service)
-- add confirmations
-- execute transactions onchain
+Operate a Safe multisig smart account from the CLI (TypeScript strict):
+- **create-safe** — predict address + optionally deploy a new Safe
+- **safe-info** — read Safe state (owners/threshold/nonce)
+- **list-pending** — list pending (queued) multisig transactions
+- **propose-tx** — propose transactions (off-chain signatures via Transaction Service)
+- **approve-tx** — add confirmations
+- **execute-tx** — execute transactions onchain
 
 ## Requirements
 
-- Node.js 18+ (this machine: Node 22)
-- Internet access to the Safe Transaction Service endpoint for your chain
-- For propose/confirm/execute: a signer private key for an **owner** of the Safe
+- Node.js 18+
+- Internet access to the Safe Transaction Service for your chain
+- For propose/approve/execute/deploy: a signer private key for a Safe **owner**
 
 ## Install
 
@@ -19,10 +20,17 @@ Operate a Safe multisig smart account from the CLI:
 ./scripts/bootstrap.sh
 ```
 
-## Smoke test
+## Tests
 
 ```bash
-bash tests/smoke.sh
+npm test          # vitest unit + CLI tests (70+ tests)
+npm run test:smoke # live integration smoke tests
+```
+
+## TypeScript
+
+```bash
+npm run typecheck  # tsc --noEmit --strict
 ```
 
 ## Usage
@@ -31,43 +39,51 @@ bash tests/smoke.sh
 
 ```bash
 ./scripts/safe_about.sh --chain base
-# or
-./scripts/safe_about.sh --tx-service-url https://api.safe.global/tx-service/base
+```
+
+### Create / predict a new Safe
+
+```bash
+npx tsx scripts/create-safe.ts \
+  --chain base \
+  --owners 0xOwner1,0xOwner2 \
+  --threshold 2
+
+# With on-chain deployment:
+export SAFE_SIGNER_PRIVATE_KEY="..."
+npx tsx scripts/create-safe.ts \
+  --chain base --deploy \
+  --owners 0xOwner1,0xOwner2 \
+  --threshold 2
 ```
 
 ### Get Safe info
 
 ```bash
-node scripts/safe_info.mjs --chain base --safe 0xYourSafe
+npx tsx scripts/safe-info.ts --chain base --safe 0xYourSafe
 ```
 
-### List multisig txs
+### List pending transactions
 
 ```bash
-node scripts/safe_txs_list.mjs --chain base --safe 0xYourSafe --limit 20
+npx tsx scripts/list-pending.ts --chain base --safe 0xYourSafe
 ```
 
-### Propose tx (single-call)
-
-1) Create a tx file based on `references/example.tx.json`
-2) Propose:
+### Propose tx
 
 ```bash
 export SAFE_SIGNER_PRIVATE_KEY="..."
-export BASE_RPC_URL="https://mainnet.base.org"
-
-node scripts/safe_tx_propose.mjs \
+npx tsx scripts/propose-tx.ts \
   --chain base \
   --rpc-url "$BASE_RPC_URL" \
   --tx-file references/example.tx.json
 ```
 
-### Confirm tx
+### Approve (confirm) tx
 
 ```bash
 export SAFE_SIGNER_PRIVATE_KEY="..."
-
-node scripts/safe_tx_confirm.mjs \
+npx tsx scripts/approve-tx.ts \
   --chain base \
   --safe 0xYourSafe \
   --safe-tx-hash 0x...
@@ -77,18 +93,21 @@ node scripts/safe_tx_confirm.mjs \
 
 ```bash
 export SAFE_SIGNER_PRIVATE_KEY="..."
-
-node scripts/safe_tx_execute.mjs \
+npx tsx scripts/execute-tx.ts \
   --chain base \
   --rpc-url "$BASE_RPC_URL" \
   --safe 0xYourSafe \
   --safe-tx-hash 0x...
 ```
 
-## Notes
+## Supported Chains
 
-- The Safe Transaction Service uses per-chain base URLs like:
-  - Base: `https://api.safe.global/tx-service/base`
-  - Base Sepolia: `https://api.safe.global/tx-service/base-sepolia`
+Base, Ethereum, Optimism, Arbitrum, Polygon, BSC, Gnosis, Avalanche, and their testnets.
 
-See `references/tx_service_slugs.md`.
+See `references/tx_service_slugs.md` for the full list.
+
+## Security rules
+
+- **Never paste private keys into chat.** Use env vars or files.
+- Prefer low-privilege signers and spending limits.
+- Always verify Safe address, chainId, and nonce before signing.

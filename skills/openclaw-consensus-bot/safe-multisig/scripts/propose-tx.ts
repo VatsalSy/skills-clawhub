@@ -30,7 +30,7 @@ interface TxRequest {
 }
 
 const program = addCommonOptions(
-  createCommand('safe_tx_propose', 'Create + propose a Safe multisig tx via Transaction Service')
+  createCommand('propose-tx', 'Create + propose a Safe multisig tx via Transaction Service')
 )
   .requiredOption('--tx-file <path>', 'Path to tx request JSON (see references/tx_request.schema.json)')
   .parse();

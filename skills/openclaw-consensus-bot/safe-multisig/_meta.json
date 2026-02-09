@@ -3,9 +3,15 @@
   "slug": "safe-multisig",
   "displayName": "Safe Multisig Skill",
   "latest": {
-    "version": "2.0.0",
-    "publishedAt": 1770611249478,
-    "commit": "https://github.com/openclaw/skills/commit/7113164e4229b33b311cce272b815d7809082d8e"
+    "version": "2.1.0",
+    "publishedAt": 1770635576317,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "2.0.0",
+      "publishedAt": 1770611249478,
+      "commit": "https://github.com/openclaw/skills/commit/7113164e4229b33b311cce272b815d7809082d8e"
+    }
+  ]
 }

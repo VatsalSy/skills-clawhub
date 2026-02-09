@@ -16,11 +16,11 @@ const SafeApiKit = (SafeApiKitPkg as any).default ?? SafeApiKitPkg;
 import {
   addCommonOptions, createCommand, requirePrivateKey,
   resolveTxServiceUrl, resolveChainId, resolveRpcUrl,
-  validateAddress, validateApiKey, type TxHashOptions
+  validateAddress, validateApiKey, validateTxHash, type TxHashOptions
 } from './safe_lib.js';
 
 const program = addCommonOptions(
-  createCommand('safe_tx_execute', 'Execute a Safe tx onchain (requires enough confirmations)')
+  createCommand('execute-tx', 'Execute a Safe tx onchain (requires enough confirmations)')
 )
   .requiredOption('--safe <address>', 'Safe address')
   .requiredOption('--safe-tx-hash <hash>', 'Safe transaction hash')
@@ -30,6 +30,7 @@ const opts = program.opts() as TxHashOptions;
 
 try {
   if (opts.safe) validateAddress(opts.safe, 'safe');
+  if (opts.safeTxHash) validateTxHash(opts.safeTxHash, 'safe-tx-hash');
   validateApiKey(opts);
 
   const txServiceUrl = resolveTxServiceUrl(opts);

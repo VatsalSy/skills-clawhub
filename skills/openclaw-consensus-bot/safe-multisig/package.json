@@ -1,6 +1,6 @@
 {
   "name": "safe-multisig-skill",
-  "version": "1.0.0",
+  "version": "2.1.0",
   "description": "OpenClaw skill for operating Safe multisig wallets — propose, confirm, and execute transactions across multiple chains",
   "license": "MIT",
   "type": "module",
@@ -9,8 +9,9 @@
   },
   "scripts": {
     "build": "tsc --noEmit",
-    "typecheck": "tsc --noEmit",
-    "test": "bash tests/smoke.sh"
+    "typecheck": "tsc --noEmit --strict",
+    "test": "vitest run",
+    "test:smoke": "bash tests/smoke.sh"
   },
   "dependencies": {
     "@safe-global/api-kit": "^4.0.1",
@@ -21,6 +22,7 @@
   "devDependencies": {
     "@types/node": "^22.0.0",
     "tsx": "^4.0.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "vitest": "^4.0.0"
   }
 }

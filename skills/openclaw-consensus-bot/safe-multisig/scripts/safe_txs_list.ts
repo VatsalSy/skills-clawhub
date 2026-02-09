@@ -2,7 +2,7 @@
 /**
  * List multisig transactions for a Safe. Uses plain HTTP — no SDK needed.
  */
-import { addCommonOptions, createCommand, fetchJson, resolveTxServiceUrl, validateAddress, type ListOptions } from './safe_lib.js';
+import { addCommonOptions, createCommand, fetchJson, resolveTxServiceUrl, validateAddress, validateApiKey, type ListOptions } from './safe_lib.js';
 
 const program = addCommonOptions(
   createCommand('safe_txs_list', 'List multisig transactions for a Safe (queued + executed)')
@@ -17,10 +17,16 @@ const opts = program.opts() as ListOptions;
 
 try {
   if (opts.safe) validateAddress(opts.safe, 'safe');
+  validateApiKey(opts);
   const baseUrl = resolveTxServiceUrl(opts);
 
   const params = new URLSearchParams({ limit: opts.limit ?? '10', offset: opts.offset ?? '0' });
-  if (opts.executed !== undefined) params.set('executed', opts.executed);
+  if (opts.executed !== undefined) {
+    if (opts.executed !== 'true' && opts.executed !== 'false') {
+      throw new Error('--executed must be true or false');
+    }
+    params.set('executed', opts.executed);
+  }
 
   const url = `${baseUrl}/v1/safes/${opts.safe}/multisig-transactions/?${params}`;
   const data = await fetchJson(url);
