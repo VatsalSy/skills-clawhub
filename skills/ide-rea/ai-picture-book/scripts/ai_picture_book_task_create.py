@@ -8,6 +8,7 @@ def ai_picture_book_task_create(api_key: str, method: int, content):
     url = "https://qianfan.baidubce.com/v2/tools/ai_picture_book/task_create"
     headers = {
         "Authorization": "Bearer %s" % api_key,
+        "X-Appbuilder-From": "openclaw",
         "Content-Type": "application/json"
     }
     params = {
