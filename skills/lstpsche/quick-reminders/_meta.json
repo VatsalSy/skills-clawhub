@@ -3,9 +3,15 @@
   "slug": "quick-reminders",
   "displayName": "Quick Reminders",
   "latest": {
-    "version": "1.1.1",
-    "publishedAt": 1770495072244,
-    "commit": "https://github.com/openclaw/skills/commit/bedcdc3445a39fe9f40d4816256cfb49816e48e3"
+    "version": "1.1.2",
+    "publishedAt": 1770767529171,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.1.1",
+      "publishedAt": 1770495072244,
+      "commit": "https://github.com/openclaw/skills/commit/bedcdc3445a39fe9f40d4816256cfb49816e48e3"
+    }
+  ]
 }
