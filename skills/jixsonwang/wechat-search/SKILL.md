@@ -1,24 +1,27 @@
 ---
 name: wechat-search
-description: Search WeChat Official Account articles using OpenClaw's web search and fetch capabilities with compliance-focused design.
+description: Search WeChat Official Account articles using OpenClaw's web search, Tavily API, and web fetch capabilities with compliance-focused design.
 ---
 
 # WeChat Search Skill
 
-Search for WeChat Official Account (微信公众号) articles using a compliant, two-layer approach that prioritizes legal search APIs and falls back to respectful web scraping when needed.
+Search for WeChat Official Account (微信公众号) articles using a compliant, three-layer approach that prioritizes legal search APIs and falls back to respectful web scraping when needed.
 
 ## Features
 - **Compliant Design**: Prioritizes legal search APIs, respects robots.txt and rate limits
-- **Two-Layer Strategy**: 
-  - Primary: Web search with `site:mp.weixin.qq.com` filter
-  - Fallback: Direct page fetching with proper delays and headers
+- **Three-Layer Strategy**: 
+  - Primary: OpenClaw web_search (Brave Search API)
+  - Secondary: Tavily Search API (if Brave unavailable)
+  - Fallback: Direct page fetching from WeChat search
 - **Recent Results**: Returns the 5 most recent articles by default (configurable)
 - **Time Filtering**: Support for date range and recency filters
 - **Multiple Output Formats**: Text, JSON, and markdown formats available
 
 ## Prerequisites
-- **OpenClaw Web Tools**: Requires `web_search` and `web_fetch` tools to be available
-- **Tavily API Key** (optional): For enhanced search capabilities via Tavily integration
+- **OpenClaw Web Tools**: Requires `web_search`, `web_fetch` tools to be available
+- **API Keys** (optional but recommended):
+  - Brave Search API Key (for primary search)
+  - Tavily API Key (for secondary search, already configured in your environment)
 
 ## Usage
 
@@ -41,8 +44,8 @@ wechat-search "AI应用" --from 2026-01-01 --to 2026-02-01
 # JSON output format
 wechat-search "开源AI" --output json
 
-# Force web fetch strategy
-wechat-search "最新技术" --strategy web_fetch
+# Force specific strategy
+wechat-search "最新技术" --strategy tavily_only
 ```
 
 ## Configuration
@@ -58,6 +61,24 @@ Create `~/.openclaw/wechat-search-config.json` to customize behavior:
 }
 ```
 
+## Search Strategy Details
+
+### Layer 1: OpenClaw Web Search (Brave Search)
+- Uses Brave Search API with `site:mp.weixin.qq.com` filter
+- Fastest and most reliable when API key is configured
+- Respects search engine's indexing and ranking
+
+### Layer 2: Tavily Search API
+- Activated when Brave Search is unavailable or fails
+- Uses Tavily's AI-powered search with WeChat site restriction
+- Provides high-quality, relevant results with good coverage
+
+### Layer 3: Direct Web Fetch
+- Final fallback when both APIs are unavailable
+- Scrapes WeChat search results directly from搜狗微信搜索
+- Implements proper delays and respects robots.txt
+- Parses HTML to extract article metadata
+
 ## Compliance & Ethics
 - **Respects robots.txt**: Checks and follows robots.txt directives
 - **Rate limiting**: Minimum 5-second delay between requests
@@ -67,8 +88,9 @@ Create `~/.openclaw/wechat-search-config.json` to customize behavior:
 
 ## Error Handling
 - Automatic retry on network failures (up to 3 attempts)
-- Graceful fallback between search strategies
+- Graceful fallback between all three search strategies
 - Clear error messages for debugging
+- Handles API key missing scenarios gracefully
 
 ## Future Enhancements
 - RSS feed integration support

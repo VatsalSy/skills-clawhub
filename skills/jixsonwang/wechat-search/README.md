@@ -1,19 +1,22 @@
 # WeChat Search Skill
 
-Search for WeChat Official Account (微信公众号) articles using a compliant, two-layer approach that prioritizes legal search APIs and falls back to respectful web scraping when needed.
+Search for WeChat Official Account (微信公众号) articles using a compliant, three-layer approach that prioritizes legal search APIs and falls back to respectful web scraping when needed.
 
 ## Features
 - **Compliant Design**: Prioritizes legal search APIs, respects robots.txt and rate limits
-- **Two-Layer Strategy**: 
-  - Primary: Web search with `site:mp.weixin.qq.com` filter
-  - Fallback: Direct page fetching with proper delays and headers
+- **Three-Layer Strategy**: 
+  - Primary: OpenClaw web_search (Brave Search API)
+  - Fallback 1: Tavily Search API (if Brave API unavailable)
+  - Fallback 2: Direct web fetch from WeChat search results
 - **Recent Results**: Returns the 5 most recent articles by default (configurable)
 - **Time Filtering**: Support for date range and recency filters
 - **Multiple Output Formats**: Text, JSON, and markdown formats available
 
 ## Prerequisites
 - **OpenClaw Web Tools**: Requires `web_search` and `web_fetch` tools to be available
-- **Tavily API Key** (optional): For enhanced search capabilities via Tavily integration
+- **API Keys** (optional but recommended):
+  - Brave Search API Key: Set via `openclaw configure --section web`
+  - Tavily API Key: Set as `TAVILY_API_KEY` environment variable
 
 ## Usage
 
@@ -36,8 +39,8 @@ wechat-search "AI应用" --from 2026-01-01 --to 2026-02-01
 # JSON output format
 wechat-search "开源AI" --output json
 
-# Force web fetch strategy
-wechat-search "最新技术" --strategy web_fetch
+# Force specific strategy
+wechat-search "最新技术" --strategy tavily_only
 ```
 
 ## Configuration
@@ -53,32 +56,22 @@ Create `~/.openclaw/wechat-search-config.json` to customize behavior:
 }
 ```
 
-## Testing
+## Search Strategy Details
 
-The skill includes comprehensive test coverage:
+### Layer 1: OpenClaw Web Search (Brave Search)
+- Uses `web_search` tool with `site:mp.weixin.qq.com` filter
+- Requires Brave Search API key
+- Fastest and most reliable option
 
-### Running Tests
-```bash
-# Run all tests
-python3 run_tests.py
+### Layer 2: Tavily Search API
+- Uses Tavily API with `site:mp.weixin.qq.com` filter  
+- Requires TAVILY_API_KEY environment variable
+- Good alternative when Brave API is unavailable
 
-# Run specific test categories
-python3 -m pytest tests/test_wechat_search.py::test_success_cases -v
-python3 -m pytest tests/test_wechat_search.py::test_failure_cases -v
-python3 -m pytest tests/test_wechat_search.py::test_edge_cases -v
-```
-
-### Test Coverage
-- ✅ **Success Cases**: Valid searches with expected results
-- ✅ **Failure Cases**: Invalid inputs, network errors, empty results
-- ✅ **Edge Cases**: Boundary conditions, special characters, large inputs
-- ✅ **Integration Tests**: Real OpenClaw tool integration
-- ✅ **Compliance Tests**: robots.txt respect, rate limiting validation
-
-### Test Requirements
-```bash
-pip install pytest pytest-mock
-```
+### Layer 3: Direct Web Fetch
+- Fetches results directly from WeChat search (sogou.com)
+- Parses HTML to extract article information
+- Slowest but always available as last resort
 
 ## Compliance & Ethics
 - **Respects robots.txt**: Checks and follows robots.txt directives
