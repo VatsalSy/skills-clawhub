@@ -1,0 +1,11 @@
+{
+  "owner": "oakencore",
+  "slug": "switchboard-data-operator",
+  "displayName": "Switchboard Skills",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770746704299,
+    "commit": null
+  },
+  "history": []
+}
