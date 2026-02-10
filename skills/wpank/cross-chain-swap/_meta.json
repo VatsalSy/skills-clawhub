@@ -1,0 +1,11 @@
+{
+  "owner": "wpank",
+  "slug": "cross-chain-swap",
+  "displayName": "Uniswap Cross Chain Swap",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1770745375396,
+    "commit": null
+  },
+  "history": []
+}
