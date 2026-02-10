@@ -1,0 +1,11 @@
+{
+  "owner": "anton-abyzov",
+  "slug": "sw-prometheus-configuration",
+  "displayName": "Prometheus Configuration",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770713686549,
+    "commit": null
+  },
+  "history": []
+}
