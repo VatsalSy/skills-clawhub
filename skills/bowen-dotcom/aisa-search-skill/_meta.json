@@ -1,0 +1,11 @@
+{
+  "owner": "bowen-dotcom",
+  "slug": "aisa-search-skill",
+  "displayName": "Intelligent Search Agent",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1770709735557,
+    "commit": null
+  },
+  "history": []
+}
