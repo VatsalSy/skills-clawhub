@@ -1,6 +1,19 @@
 ---
 name: mpc-accept-crypto-payments
 description: Accept crypto payments on Solana via MoonPay Commerce (formerly Helio). Create Pay Links, generate checkout URLs, check transactions, and list supported currencies. Use when the user wants to accept crypto payments, create payment links, charge for products/services with crypto, or query payment transactions. Requires a MoonPay Commerce account with API key and secret.
+metadata:
+  openclaw:
+    requires:
+      bins:
+        - jq
+        - curl
+      env:
+        - HELIO_API_KEY
+        - HELIO_API_SECRET
+    credentials:
+      storage: ~/.mpc/helio/config
+      setup: bash scripts/setup.sh
+      permissions: "600"
 ---
 
 # MPC Accept Crypto Payments

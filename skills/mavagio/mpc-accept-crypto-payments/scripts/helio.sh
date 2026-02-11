@@ -18,10 +18,70 @@ command -v jq &>/dev/null || { echo "❌ jq required. Install: brew install jq (
 BASE="https://api.hel.io/v1"
 CONFIG_FILE="$HOME/.mpc/helio/config"
 
+# Safe config loader — only parses whitelisted KEY="value" lines
+load_config() {
+  local cfg="$1"
+  [[ -f "$cfg" ]] || return 1
+
+  # Validate file ownership (must be current user)
+  local file_owner
+  if stat --version &>/dev/null 2>&1; then
+    file_owner=$(stat -c '%u' "$cfg")  # GNU
+  else
+    file_owner=$(stat -f '%u' "$cfg")  # BSD/macOS
+  fi
+  if [[ "$file_owner" != "$(id -u)" ]]; then
+    echo "WARNING: Config $cfg is not owned by you — skipping" >&2
+    return 1
+  fi
+
+  # Reject world-readable or world-writable
+  local perms
+  if stat --version &>/dev/null 2>&1; then
+    perms=$(stat -c '%a' "$cfg")  # GNU
+  else
+    perms=$(stat -f '%A' "$cfg")  # BSD/macOS
+  fi
+  local other="${perms: -1}"
+  if [[ "$other" != "0" ]]; then
+    echo "WARNING: Config $cfg has unsafe permissions ($perms) — skipping" >&2
+    echo "  Fix with: chmod 600 $cfg" >&2
+    return 1
+  fi
+
+  # Parse only whitelisted KEY="value" lines
+  while IFS='=' read -r key value; do
+    # Strip leading/trailing whitespace from key
+    key="${key// /}"
+    # Skip comments and blank lines
+    [[ -z "$key" || "$key" == \#* ]] && continue
+    # Strip surrounding quotes from value
+    value="${value%\"}"
+    value="${value#\"}"
+    case "$key" in
+      HELIO_API_KEY)       HELIO_API_KEY="$value" ;;
+      HELIO_API_SECRET)    HELIO_API_SECRET="$value" ;;
+      HELIO_WALLET_ID)     HELIO_WALLET_ID="$value" ;;
+      HELIO_WALLET_PUBKEY) HELIO_WALLET_PUBKEY="$value" ;;
+    esac
+  done < "$cfg"
+}
+
+# Reject input containing shell metacharacters or URL traversal
+validate_input() {
+  local label="$1" value="$2"
+  if [[ "$value" =~ [^a-zA-Z0-9._@:/-] ]]; then
+    echo "ERROR: Invalid $label: contains unsafe characters" >&2
+    exit 1
+  fi
+  if [[ "$value" == *..* ]]; then
+    echo "ERROR: Invalid $label: path traversal not allowed" >&2
+    exit 1
+  fi
+}
+
 # Auto-load config if exists
-if [[ -f "$CONFIG_FILE" ]]; then
-  source "$CONFIG_FILE"
-fi
+load_config "$CONFIG_FILE" || true
 
 # Check credentials
 check_auth() {
@@ -56,6 +116,7 @@ case "$cmd" in
 
   currency-id)
     symbol="${1:?Usage: helio.sh currency-id <SYMBOL>}"
+    validate_input "symbol" "$symbol"
     curl -s "$BASE/currency" | jq -r --arg s "$symbol" '.[] | select(.symbol == $s and .blockchain.symbol == "SOL") | .id'
     ;;
 
@@ -63,6 +124,8 @@ case "$cmd" in
     name="${1:?Usage: helio.sh create-paylink <name> <amount> <symbol>}"
     amount="${2:?Missing amount}"
     symbol="${3:-USDC}"
+    validate_input "amount" "$amount"
+    validate_input "symbol" "$symbol"
     check_auth
     check_wallet
 
@@ -79,7 +142,10 @@ case "$cmd" in
     decimals=$(echo "$currency_info" | jq -r '.decimals')
 
     # Convert human-readable amount to base units
-    price=$(awk "BEGIN {printf \"%.0f\", $amount * (10 ^ $decimals)}")
+    price=$(awk -v amt="$amount" -v dec="$decimals" 'BEGIN {
+      p = 1; for (i = 0; i < dec; i++) p *= 10
+      printf "%.0f", amt * p
+    }')
 
     echo "Creating Pay Link: $name — $amount $symbol ($price base units, currency=$currency_id, swap=on)"
 
@@ -121,6 +187,7 @@ case "$cmd" in
 
   charge)
     paylink_id="${1:?Usage: helio.sh charge <paylink-id>}"
+    validate_input "paylink-id" "$paylink_id"
     check_auth
 
     echo "Creating charge for paylink $paylink_id..."
@@ -140,6 +207,7 @@ case "$cmd" in
 
   transactions)
     paylink_id="${1:?Usage: helio.sh transactions <paylink-id>}"
+    validate_input "paylink-id" "$paylink_id"
     check_auth
 
     echo "Fetching transactions for paylink $paylink_id..."
@@ -149,6 +217,7 @@ case "$cmd" in
 
   disable)
     paylink_id="${1:?Usage: helio.sh disable <paylink-id>}"
+    validate_input "paylink-id" "$paylink_id"
     check_auth
 
     echo "Disabling paylink $paylink_id..."
@@ -159,6 +228,7 @@ case "$cmd" in
 
   enable)
     paylink_id="${1:?Usage: helio.sh enable <paylink-id>}"
+    validate_input "paylink-id" "$paylink_id"
     check_auth
 
     echo "Enabling paylink $paylink_id..."

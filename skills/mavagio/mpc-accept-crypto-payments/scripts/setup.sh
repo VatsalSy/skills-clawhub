@@ -16,10 +16,59 @@ BASE="https://api.hel.io/v1"
 die() { echo "❌ $1" >&2; exit 1; }
 ok()  { echo "✅ $1"; }
 
+# Safe config loader — only parses whitelisted KEY="value" lines
+load_config() {
+  local cfg="$1"
+  [[ -f "$cfg" ]] || return 1
+
+  # Validate file ownership (must be current user)
+  local file_owner
+  if stat --version &>/dev/null 2>&1; then
+    file_owner=$(stat -c '%u' "$cfg")  # GNU
+  else
+    file_owner=$(stat -f '%u' "$cfg")  # BSD/macOS
+  fi
+  if [[ "$file_owner" != "$(id -u)" ]]; then
+    echo "WARNING: Config $cfg is not owned by you — skipping" >&2
+    return 1
+  fi
+
+  # Reject world-readable or world-writable
+  local perms
+  if stat --version &>/dev/null 2>&1; then
+    perms=$(stat -c '%a' "$cfg")  # GNU
+  else
+    perms=$(stat -f '%A' "$cfg")  # BSD/macOS
+  fi
+  local other="${perms: -1}"
+  if [[ "$other" != "0" ]]; then
+    echo "WARNING: Config $cfg has unsafe permissions ($perms) — skipping" >&2
+    echo "  Fix with: chmod 600 $cfg" >&2
+    return 1
+  fi
+
+  # Parse only whitelisted KEY="value" lines
+  while IFS='=' read -r key value; do
+    # Strip leading/trailing whitespace from key
+    key="${key// /}"
+    # Skip comments and blank lines
+    [[ -z "$key" || "$key" == \#* ]] && continue
+    # Strip surrounding quotes from value
+    value="${value%\"}"
+    value="${value#\"}"
+    case "$key" in
+      HELIO_API_KEY)       HELIO_API_KEY="$value" ;;
+      HELIO_API_SECRET)    HELIO_API_SECRET="$value" ;;
+      HELIO_WALLET_ID)     HELIO_WALLET_ID="$value" ;;
+      HELIO_WALLET_PUBKEY) HELIO_WALLET_PUBKEY="$value" ;;
+    esac
+  done < "$cfg"
+}
+
 cmd_status() {
     echo "=== Helio Configuration ==="
     if [[ -f "$CONFIG_FILE" ]]; then
-        source "$CONFIG_FILE"
+        load_config "$CONFIG_FILE"
         echo "Config: $CONFIG_FILE"
         echo "API Key: ${HELIO_API_KEY:0:8}...${HELIO_API_KEY: -4}"
         echo "API Secret: ${HELIO_API_SECRET:0:8}...${HELIO_API_SECRET: -4}"
