@@ -35,10 +35,16 @@ program
   .requiredOption('-t, --target <id>', 'Target ID (open_id or chat_id)')
   .requiredOption('-p, --persona <type>', 'Persona type (d-guide, green-tea, mad-dog)')
   .option('-x, --text <text>', 'Message content')
+  .option('-c, --content <text>', 'Content (alias for --text)')
   .option('-f, --text-file <path>', 'Message content from file')
   .parse(process.argv);
 
 const options = program.opts();
+
+// Alias mapping
+if (options.content && !options.text) {
+    options.text = options.content;
+}
 
 async function main() {
     if (!options.text && !options.textFile) {

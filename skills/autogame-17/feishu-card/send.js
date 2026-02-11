@@ -148,6 +148,15 @@ async function sendCard(options) {
             });
         }
 
+        if (options.note) {
+            elements.push({
+                tag: 'note',
+                elements: [
+                    { tag: 'plain_text', content: String(options.note) }
+                ]
+            });
+        }
+
         const cardObj = buildCardContent(elements, options.title, options.color);
         
         let receiveIdType = 'open_id';
@@ -277,6 +286,7 @@ if (require.main === module) {
     program
       .requiredOption('-t, --target <id>', 'Target ID')
       .option('-x, --text <markdown>', 'Card body text')
+      .option('-c, --content <text>', 'Content (alias for --text)')
       .option('-f, --text-file <path>', 'Card body file')
       .option('--title <text>', 'Title')
       .option('--color <color>', 'Header color', 'blue')
@@ -288,6 +298,11 @@ if (require.main === module) {
       .parse(process.argv);
 
     const options = program.opts();
+
+    // Alias mapping
+    if (options.content && !options.text) {
+        options.text = options.content;
+    }
 
     (async () => {
         try {
