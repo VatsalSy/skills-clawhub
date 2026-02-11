@@ -1,0 +1,11 @@
+{
+  "owner": "gustavoziaugra",
+  "slug": "gas-price-alert",
+  "displayName": "Gas Price Alert",
+  "latest": {
+    "version": "1.1.0",
+    "publishedAt": 1770768400820,
+    "commit": null
+  },
+  "history": []
+}
