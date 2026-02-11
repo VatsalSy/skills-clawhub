@@ -1,9 +1,9 @@
 ---
-name: moltbot, openclaw-best-practices
-description: Best practices for AI agents to avoid common mistakes. Learn from real failures - confirms before executing, shows drafts before publishing. Works with Claude, Cursor, GPT, Copilot.
-version: 1.1.1
+name: moltbot-best-practices
+description: Best practices for AI agents - Cursor, Claude, ChatGPT, Copilot. Avoid common mistakes. Confirms before executing, drafts before publishing. Vibe-coding essential.
+version: 1.1.3
 author: NextFrontierBuilds
-keywords: moltbot, openclaw, openclaw, ai-agent, ai-coding, best-practices, prompt-engineering, agent-behavior, claude, claude-code, gpt, cursor, copilot, vibe-coding, automation, ai-assistant, coding-agent, agentic
+keywords: [moltbot, openclaw, ai-agent, ai-coding, best-practices, prompt-engineering, agent-behavior, claude, claude-code, gpt, chatgpt, cursor, copilot, github-copilot, vibe-coding, automation, ai-assistant, coding-agent, agentic, ai-tools, developer-tools, devtools, typescript, llm]
 ---
 
 # MoltBot Best Practices
