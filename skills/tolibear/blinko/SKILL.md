@@ -1,13 +1,21 @@
 ---
 name: blinko
-version: 1.0.0
+version: 1.1.0
 description: Play Blinko (on-chain Plinko) headlessly on Abstract chain. Use when an agent wants to play Blinko games, check game stats, view leaderboards, or track honey rewards. Handles the full commit-reveal flow including API auth, on-chain game creation, simulation, and settlement.
 author: Bearish (@BearishAF)
+metadata: {"clawdbot":{"env":["WALLET_PRIVATE_KEY"]}}
 ---
 
 # Blinko
 
 Play [Blinko](https://blinko.gg) headlessly on Abstract. Provably fair Plinko with on-chain settlement.
+
+## Important
+
+- **This skill signs on-chain transactions that spend real ETH.** Use a dedicated hot wallet with only the funds you're willing to risk.
+- Each game costs gas (Abstract chain) on top of your bet amount.
+- Your private key is used locally to sign messages and transactions. It is sent to the Abstract RPC and Blinko API as signed outputs only, never as plaintext.
+- Agents can invoke this skill autonomously when installed.
 
 ## Quick Start
 
@@ -90,9 +98,16 @@ All games are provably fair via commit-reveal scheme.
 | Item | Value |
 |------|-------|
 | Chain | Abstract (2741) |
+| RPC | `https://api.abs.xyz` (hardcoded) |
 | Contract | `0x1859072d67fdD26c8782C90A1E4F078901c0d763` |
 | API | `https://api.blinko.gg` |
 | Game | [blinko.gg](https://blinko.gg) |
+
+## Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `WALLET_PRIVATE_KEY` | Yes (for play) | Private key for signing transactions. Use a hot wallet. |
 
 ## Dependencies
 
