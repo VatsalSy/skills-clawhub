@@ -3,11 +3,16 @@
   "slug": "feishu-chat-forwarder",
   "displayName": "Feishu Chat Forwarder",
   "latest": {
-    "version": "1.0.4",
-    "publishedAt": 1770790945417,
-    "commit": "https://github.com/openclaw/skills/commit/78255a10e474881022d368eda393801a01c03d83"
+    "version": "1.0.5",
+    "publishedAt": 1770791206968,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.4",
+      "publishedAt": 1770790945417,
+      "commit": "https://github.com/openclaw/skills/commit/78255a10e474881022d368eda393801a01c03d83"
+    },
     {
       "version": "1.0.3",
       "publishedAt": 1770561254748,
