@@ -43,15 +43,18 @@ node skills/ai-quota-check/index.js --task=reasoning
 ### Coding / Debugging
 | Priority | Model | Fallback Condition |
 |----------|-------|-------------------|
-| 1st | `openai-codex/gpt-5.2-codex` | - |
-| 2nd | `google-antigravity/gemini-3-pro-high` | Primary < 20% |
+| 1st | `openai-codex/gpt-5.3-codex` | - |
+| 2nd | `openai-codex/gpt-5.2-codex` | Primary < 20% |
+| 3rd | `google-antigravity/gemini-3-pro-high` | All above < 20% |
 
 ### Complex Reasoning / Analysis
 | Priority | Model | Fallback Condition |
 |----------|-------|-------------------|
-| 1st | `google-antigravity/claude-opus-4-5-thinking` | - |
-| 2nd | `github-copilot/claude-3.5-opus` | Primary < 20% |
-| 3rd | `openai-codex/gpt-5.2` | All above < 20% |
+| 1st | `google-antigravity/claude-opus-4.6-thinking` | - |
+| 2nd | `github-copilot/claude-4.6-opus` | Primary < 20% |
+| 3rd | `github-copilot/claude-3.5-opus` | If 4.6 unavailable |
+| 4th | `openai-codex/gpt-5.3` | All above < 20% |
+| 5th | `openai-codex/gpt-5.2` | Last fallback |
 
 ## Fallback Threshold
 

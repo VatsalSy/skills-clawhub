@@ -22,13 +22,18 @@ const FALLBACK_THRESHOLD = 20; // Switch to fallback if below 20%
 // Model routing rules
 const ROUTING_RULES = {
   coding: {
-    primary: { provider: 'openai-codex', model: 'openai-codex/gpt-5.2-codex' },
-    fallback: { provider: 'google-antigravity', model: 'google-antigravity/gemini-3-pro-high' }
+    primary: { provider: 'openai-codex', model: 'openai-codex/gpt-5.3-codex' },
+    fallbacks: [
+      { provider: 'openai-codex', model: 'openai-codex/gpt-5.2-codex' },
+      { provider: 'google-antigravity', model: 'google-antigravity/gemini-3-pro-high' }
+    ]
   },
   reasoning: {
-    primary: { provider: 'google-antigravity', model: 'google-antigravity/claude-opus-4-5-thinking' },
+    primary: { provider: 'google-antigravity', model: 'google-antigravity/claude-opus-4.6-thinking' },
     fallbacks: [
+      { provider: 'github-copilot', model: 'github-copilot/claude-4.6-opus' },
       { provider: 'github-copilot', model: 'github-copilot/claude-3.5-opus' },
+      { provider: 'openai-codex', model: 'openai-codex/gpt-5.3' },
       { provider: 'openai-codex', model: 'openai-codex/gpt-5.2' }
     ]
   }
