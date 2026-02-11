@@ -1,6 +1,6 @@
 ---
 name: openserv-launch
-description: Launch tokens on Base blockchain via the OpenServ Launch API. Creates ERC-20 tokens with Aerodrome concentrated liquidity pools. Use when launching tokens, deploying memecoins, or building agents that create projects with locked LP.
+description: Launch tokens on Base blockchain via the OpenServ Launch API. Creates ERC-20 tokens with Aerodrome concentrated liquidity pools. Use when launching tokens, deploying memecoins, or building agents that create tokens with locked LP. Read reference.md for the full API reference. Read openserv-agent-sdk and openserv-client for building and running agents. You can launch tokens for your OpenServ agents.
 ---
 
 # OpenServ Launch API
@@ -182,8 +182,9 @@ async function main() {
       description: 'Launch tokens on Base with Aerodrome LP'
     },
     workflow: {
-      name: 'default',
-      trigger: triggers.webhook({ waitForCompletion: true })
+      name: 'Token Launcher',
+      goal: 'Launch ERC-20 tokens on Base blockchain with Aerodrome concentrated liquidity pools',
+      trigger: triggers.webhook({ waitForCompletion: true, timeout: 600 })
     }
   })
   await run(agent)
