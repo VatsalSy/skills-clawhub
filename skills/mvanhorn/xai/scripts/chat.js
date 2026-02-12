@@ -17,24 +17,7 @@ const API_BASE = 'api.x.ai';
 const DEFAULT_MODEL = 'grok-3';
 
 function getApiKey() {
-  // Check environment variable first
-  if (process.env.XAI_API_KEY) {
-    return process.env.XAI_API_KEY;
-  }
-  
-  // Check clawdbot config
-  const configPath = path.join(process.env.HOME, '.clawdbot', 'clawdbot.json');
-  if (fs.existsSync(configPath)) {
-    try {
-      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-      const key = config?.skills?.entries?.xai?.apiKey;
-      if (key) return key;
-    } catch (e) {
-      // Ignore config parse errors
-    }
-  }
-  
-  return null;
+  return process.env.XAI_API_KEY || null;
 }
 
 function parseArgs(args) {
@@ -73,15 +56,9 @@ function parseArgs(args) {
 
 function imageToBase64(imagePath) {
   const absolutePath = path.resolve(imagePath);
-  if (!fs.existsSync(absolutePath)) {
-    throw new Error(`Image not found: ${absolutePath}`);
-  }
-  
-  const imageData = fs.readFileSync(absolutePath);
-  const base64 = imageData.toString('base64');
-  
-  // Detect mime type from extension
-  const ext = path.extname(imagePath).toLowerCase();
+
+  // Validate file extension is an allowed image type
+  const ext = path.extname(absolutePath).toLowerCase();
   const mimeTypes = {
     '.jpg': 'image/jpeg',
     '.jpeg': 'image/jpeg',
@@ -89,8 +66,19 @@ function imageToBase64(imagePath) {
     '.gif': 'image/gif',
     '.webp': 'image/webp',
   };
-  const mimeType = mimeTypes[ext] || 'image/jpeg';
-  
+
+  if (!mimeTypes[ext]) {
+    throw new Error(`Unsupported image format: ${ext}. Allowed: ${Object.keys(mimeTypes).join(', ')}`);
+  }
+
+  if (!fs.existsSync(absolutePath)) {
+    throw new Error(`Image not found: ${absolutePath}`);
+  }
+
+  const imageData = fs.readFileSync(absolutePath);
+  const base64 = imageData.toString('base64');
+  const mimeType = mimeTypes[ext];
+
   return `data:${mimeType};base64,${base64}`;
 }
 

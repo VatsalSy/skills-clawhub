@@ -23,13 +23,7 @@ Chat with xAI's Grok models. Supports text and vision.
 
 ## Setup
 
-Set your API key in the skill config:
-
 ```bash
-# Via clawdbot config
-clawdbot config set skills.entries.xai.apiKey "xai-YOUR-KEY"
-
-# Or environment variable
 export XAI_API_KEY="xai-YOUR-KEY"
 ```
 
@@ -101,7 +95,8 @@ xAI API Docs: https://docs.x.ai/api
 - `scripts/models.js` lists available models (read-only)
 
 **What this skill does NOT do:**
-- Does not access local files (except images you explicitly pass with `--image`)
+- Does not read arbitrary local files — `--image` only accepts files with image extensions (`.jpg`, `.jpeg`, `.png`, `.gif`, `.webp`)
+- Does not read config files or access the filesystem beyond the specified image path
 - Does not store conversation history or logs
 - Does not send credentials to any endpoint other than `api.x.ai`
 - Cannot be invoked autonomously by the agent (`disable-model-invocation: true`)

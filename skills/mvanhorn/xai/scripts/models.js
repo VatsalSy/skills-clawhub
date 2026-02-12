@@ -4,26 +4,11 @@
  */
 
 const https = require('https');
-const fs = require('fs');
-const path = require('path');
 
 const API_BASE = 'api.x.ai';
 
 function getApiKey() {
-  if (process.env.XAI_API_KEY) {
-    return process.env.XAI_API_KEY;
-  }
-  
-  const configPath = path.join(process.env.HOME, '.clawdbot', 'clawdbot.json');
-  if (fs.existsSync(configPath)) {
-    try {
-      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-      const key = config?.skills?.entries?.xai?.apiKey;
-      if (key) return key;
-    } catch (e) {}
-  }
-  
-  return null;
+  return process.env.XAI_API_KEY || null;
 }
 
 async function listModels() {

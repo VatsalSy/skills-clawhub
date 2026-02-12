@@ -1,13 +1,18 @@
 {
   "owner": "mvanhorn",
   "slug": "xai",
-  "displayName": "Clawdbot Skill Xai",
+  "displayName": "OpenClaw xAI",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1770779236733,
-    "commit": "https://github.com/openclaw/skills/commit/8ca73e290d1dd81e02f96323f768052ac2f806bb"
+    "version": "1.0.6",
+    "publishedAt": 1770827722165,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1770779236733,
+      "commit": "https://github.com/openclaw/skills/commit/8ca73e290d1dd81e02f96323f768052ac2f806bb"
+    },
     {
       "version": "1.1.0",
       "publishedAt": 1769195975976,
