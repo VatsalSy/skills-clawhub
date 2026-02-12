@@ -62,6 +62,71 @@ def export_group_csv(group_id: str):
     return r.text
 
 
+def get_custom_group(group_id: str):
+    """Get custom group details."""
+    r = requests.get(f"{BASE_URL}/api/v2/custom-groups/{group_id}", headers=headers)
+    r.raise_for_status()
+    return r.json()
+
+
+def update_custom_group(group_id: str, name: str):
+    """Update custom group name."""
+    r = requests.patch(
+        f"{BASE_URL}/api/v2/custom-groups/{group_id}",
+        headers=headers,
+        json={"name": name},
+    )
+    r.raise_for_status()
+    return r.json()
+
+
+def delete_custom_group(group_id: str):
+    """Delete a custom group."""
+    r = requests.delete(f"{BASE_URL}/api/v2/custom-groups/{group_id}", headers=headers)
+    r.raise_for_status()
+    return r.json()
+
+
+def remove_members(group_id: str, member_ids: list):
+    """Remove members from a custom group. member_ids = list of member UUID strings."""
+    r = requests.post(
+        f"{BASE_URL}/api/v2/custom-groups/{group_id}/members/remove",
+        headers=headers,
+        json={"member_ids": member_ids},
+    )
+    r.raise_for_status()
+    return r.json()
+
+
+def list_contacts():
+    """List all available contacts for group building."""
+    r = requests.get(f"{BASE_URL}/api/v2/custom-groups/contacts", headers=headers)
+    r.raise_for_status()
+    return r.json()
+
+
+def list_wa_groups():
+    """List WhatsApp groups across all working sessions (for import into custom groups)."""
+    r = requests.get(f"{BASE_URL}/api/v2/custom-groups/wa-groups", headers=headers)
+    r.raise_for_status()
+    return r.json()
+
+
+def create_group_from_wa_groups(name: str, wa_groups: list):
+    """Create a custom group by importing members from WhatsApp groups.
+
+    wa_groups: list of {"wa_group_id": str, "session_id": str} dicts.
+    Members are resolved from each WA group's participant list and deduplicated.
+    """
+    r = requests.post(
+        f"{BASE_URL}/api/v2/custom-groups/from-wa-groups",
+        headers=headers,
+        json={"name": name, "wa_groups": wa_groups},
+    )
+    r.raise_for_status()
+    return r.json()
+
+
 def export_group_json(group_id: str):
     """Export group members as JSON."""
     r = requests.get(
@@ -126,6 +191,13 @@ def resume_bulk_job(job_id: str):
 def cancel_bulk_job(job_id: str):
     """Cancel a bulk send job."""
     r = requests.post(f"{BASE_URL}/api/v2/bulk-send/{job_id}/cancel", headers=headers)
+    r.raise_for_status()
+    return r.json()
+
+
+def get_bulk_progress(job_id: str):
+    """Get real-time progress of a bulk send job."""
+    r = requests.get(f"{BASE_URL}/api/v2/bulk-send/{job_id}/progress", headers=headers)
     r.raise_for_status()
     return r.json()
 
@@ -204,6 +276,38 @@ def cancel_scheduled(message_id: str):
         f"{BASE_URL}/api/v2/scheduled-messages/{message_id}/cancel",
         headers=headers,
     )
+    r.raise_for_status()
+    return r.json()
+
+
+def get_scheduled_message(message_id: str):
+    """Get scheduled message details."""
+    r = requests.get(f"{BASE_URL}/api/v2/scheduled-messages/{message_id}", headers=headers)
+    r.raise_for_status()
+    return r.json()
+
+
+def update_scheduled_message(message_id: str, **kwargs):
+    """Update a scheduled message. Accepts: name, message_content, scheduled_time, cron_expression, timezone."""
+    r = requests.patch(
+        f"{BASE_URL}/api/v2/scheduled-messages/{message_id}",
+        headers=headers,
+        json={k: v for k, v in kwargs.items() if v is not None},
+    )
+    r.raise_for_status()
+    return r.json()
+
+
+def delete_scheduled(message_id: str):
+    """Delete a scheduled message."""
+    r = requests.delete(f"{BASE_URL}/api/v2/scheduled-messages/{message_id}", headers=headers)
+    r.raise_for_status()
+    return r.json()
+
+
+def get_scheduled_history(message_id: str):
+    """Get execution history for a scheduled message."""
+    r = requests.get(f"{BASE_URL}/api/v2/scheduled-messages/{message_id}/history", headers=headers)
     r.raise_for_status()
     return r.json()
 

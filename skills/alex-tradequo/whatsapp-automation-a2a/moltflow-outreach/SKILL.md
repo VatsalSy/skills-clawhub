@@ -2,7 +2,7 @@
 name: moltflow-outreach
 description: "Bulk messaging, scheduled messages, and custom groups for WhatsApp outreach. Use when: bulk send, broadcast, schedule message, cron, custom group, contact list, ban-safe messaging."
 source: "MoltFlow Team"
-version: "2.0.0"
+version: "2.1.0"
 risk: safe
 requiredEnv:
   - MOLTFLOW_API_KEY
@@ -57,6 +57,8 @@ Build targeted contact lists for Bulk Send and Scheduled Messages. Custom Groups
 | GET | `/custom-groups` | List all custom groups |
 | POST | `/custom-groups` | Create group (with optional initial members) |
 | GET | `/custom-groups/contacts` | List all unique contacts across sessions |
+| GET | `/custom-groups/wa-groups` | List WhatsApp groups for import |
+| POST | `/custom-groups/from-wa-groups` | Create group by importing WA group members |
 | GET | `/custom-groups/{id}` | Group details with members |
 | PATCH | `/custom-groups/{id}` | Update group name |
 | DELETE | `/custom-groups/{id}` | Delete group and members |
@@ -80,6 +82,28 @@ Build targeted contact lists for Bulk Send and Scheduled Messages. Custom Groups
 ```
 
 Members is an array of objects with `phone` (required) and `name` (optional). Omit `members` to create an empty group.
+
+### Create Group from WhatsApp Groups
+
+**POST** `/custom-groups/from-wa-groups`
+
+```json
+{
+  "name": "Imported Leads",
+  "wa_groups": [
+    {"wa_group_id": "120363012345@g.us", "session_id": "session-uuid-..."},
+    {"wa_group_id": "120363067890@g.us", "session_id": "session-uuid-..."}
+  ]
+}
+```
+
+Resolves participants from each WhatsApp group, deduplicates by phone number, and creates the custom group with all unique members.
+
+### List WhatsApp Groups
+
+**GET** `/custom-groups/wa-groups`
+
+Returns all WhatsApp groups across your connected sessions with participant counts. Use this to discover groups available for import.
 
 **Response** `201 Created`:
 

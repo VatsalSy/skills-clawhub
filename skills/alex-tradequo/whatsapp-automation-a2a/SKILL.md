@@ -1,7 +1,7 @@
 ---
 name: "MoltFlow — WhatsApp AI Automation Platform and More"
-version: "2.0.3"
-description: "MoltFlow — complete WhatsApp automation platform: bulk messaging, scheduled messages, custom groups, lead detection & CRM, AI replies with style cloning, knowledge base (RAG), voice transcription, group monitoring, labels, anti-spam, content safeguards, review collection, webhooks, GDPR compliance, and agent-to-agent protocol (JSON-RPC, encryption). 90+ API endpoints."
+version: "2.1.0"
+description: "MoltFlow — complete WhatsApp automation platform: bulk messaging, scheduled messages, custom groups, lead detection & CRM, AI replies with style cloning, knowledge base (RAG), voice transcription, group monitoring, labels, anti-spam, content safeguards, review collection, webhooks, GDPR compliance (data export, contact erasure, account deletion), and agent-to-agent protocol (JSON-RPC, encryption). 90+ API endpoints."
 source: "MoltFlow Team"
 risk: safe
 homepage: "https://molt.waiflow.app"
@@ -25,7 +25,7 @@ MoltFlow is a complete WhatsApp automation platform with 90+ API endpoints cover
 | **Messaging** | Send text, media, polls, stickers, GIFs, voice notes, locations, vCards. Reply, react, edit, unsend. Read receipts & typing simulation. |
 | **Bulk Messaging** | Broadcast to custom groups with ban-safe throttling (random 30s–2min delays). Real-time progress via SSE. Pause/resume/cancel. |
 | **Scheduled Messages** | One-time, daily, weekly, monthly, or custom cron. Timezone-aware. Pause, resume, edit. Execution history tracking. |
-| **Custom Groups** | Build targeted contact lists. Import from WhatsApp groups or add manually. Feed into Bulk Send or Scheduled Messages. CSV/JSON export. |
+| **Custom Groups** | Build targeted contact lists. Import members from WhatsApp groups or add manually. Feed into Bulk Send or Scheduled Messages. CSV/JSON export. |
 | **Lead Detection & CRM** | Auto-detect purchase intent in monitored groups. Lead pipeline with status tracking (new → contacted → qualified → converted). Bulk status update, bulk add-to-group, CSV/JSON export. Reciprocity check (anti-spam). |
 | **Group Monitoring** | Monitor 50+ groups simultaneously. Keyword/mention detection. Auto-respond with AI. Per-group prompts. Skip admins & existing contacts. |
 | **Labels** | Create, sync to WhatsApp Business, import from WhatsApp. Color-coded contact organization. |
@@ -38,7 +38,7 @@ MoltFlow is a complete WhatsApp automation platform with 90+ API endpoints cover
 | **Content Safeguards** | Block API keys, credit cards, SSNs, PII, prompt injection. Custom regex rules. Test content against full policy stack. |
 | **Webhooks** | 10+ event types (message.received, lead.detected, session.connected, etc.). HMAC-SHA256 signed. Delivery history. Test payloads. |
 | **A2A Protocol** | JSON-RPC 2.0 agent-to-agent communication. X25519-AES256GCM encryption. Agent discovery, trust levels, encrypted messaging. |
-| **GDPR Compliance** | Auto-expiring messages (90-day). Data minimization (500-char preview). Contact erasure. Data export. AI consent enforcement. DPA available. Named sub-processors (Art. 28). |
+| **GDPR Compliance** | Auto-expiring messages (90-day). Data minimization (500-char preview). Contact erasure. Data export. Account deletion (32+ table cascade). AI consent enforcement. DPA available. Named sub-processors (Art. 28). |
 | **Billing & Usage** | Stripe-powered. Free/Starter/Pro/Business plans. Usage tracking, daily breakdown. Billing portal. **Yearly plans save up to 17%.** |
 
 ## When to use
@@ -783,6 +783,16 @@ curl -X POST -H "X-API-Key: $MOLTFLOW_API_KEY" \
 # Export as CSV
 curl -H "X-API-Key: $MOLTFLOW_API_KEY" \
   https://apiv2.waiflow.app/api/v2/custom-groups/{group_id}/export/csv
+
+# List WhatsApp groups available for import
+curl -H "X-API-Key: $MOLTFLOW_API_KEY" \
+  https://apiv2.waiflow.app/api/v2/custom-groups/wa-groups
+
+# Create group by importing members from WhatsApp groups
+curl -X POST -H "X-API-Key: $MOLTFLOW_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Imported Leads", "wa_groups": [{"wa_group_id": "123@g.us", "session_id": "session-uuid"}]}' \
+  https://apiv2.waiflow.app/api/v2/custom-groups/from-wa-groups
 ```
 
 | Endpoint | Method | Description |
@@ -790,6 +800,8 @@ curl -H "X-API-Key: $MOLTFLOW_API_KEY" \
 | `/custom-groups` | GET | List all custom groups |
 | `/custom-groups` | POST | Create group (with optional initial members) |
 | `/custom-groups/contacts` | GET | List all unique contacts across sessions |
+| `/custom-groups/wa-groups` | GET | List WhatsApp groups for import |
+| `/custom-groups/from-wa-groups` | POST | Create group by importing WA group members |
 | `/custom-groups/{id}` | GET | Group details with members |
 | `/custom-groups/{id}` | PATCH | Update group name |
 | `/custom-groups/{id}` | DELETE | Delete group and members |
@@ -1070,6 +1082,8 @@ The `scripts/` directory contains standalone Python examples (requires `requests
 | `reviews.py` | Create collectors, export testimonials |
 | `outreach.py` | Bulk send, scheduled messages, custom groups |
 | `leads.py` | Lead pipeline, bulk ops, CSV/JSON export |
+| `gdpr.py` | Contact erasure, data export, account deletion |
+| `group_monitor.py` | WhatsApp group monitoring & lead detection |
 
 Run any script: `MOLTFLOW_API_KEY=your-key python scripts/quickstart.py`
 

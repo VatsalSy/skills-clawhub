@@ -4,6 +4,26 @@ All notable changes to the **MoltFlow Skills** package are documented here.
 
 ---
 
+## [2.1.0] - 2026-02-12 — "Import & Delete"
+
+> Import contacts from WhatsApp groups, delete your account with full cascade, and GDPR scripts for everything.
+
+### Added
+
+- **WhatsApp Group Import** — `GET /custom-groups/wa-groups` lists all WA groups across sessions; `POST /custom-groups/from-wa-groups` creates a custom group by resolving and deduplicating participants from selected WA groups
+- **Account Deletion** — `DELETE /users/me` with password confirmation cascades through 32+ tables (GDPR Article 17)
+- `outreach.py` — added `list_wa_groups()` and `create_group_from_wa_groups()` functions
+- `gdpr.py` — added `delete_account(password)` function
+- Scripts table — added `gdpr.py` and `group_monitor.py` to main SKILL.md documentation
+- moltflow-outreach sub-skill — documented WA group import endpoints and examples
+
+### Changed
+
+- Custom Groups endpoint table expanded from 10 to 12 endpoints (both main SKILL.md and moltflow-outreach)
+- Version bumped to 2.1.0 across package.json, main SKILL.md, and moltflow-outreach
+
+---
+
 ## [2.0.0] - 2026-02-12 — "The Full Platform"
 
 > Every feature, every endpoint, every workflow — v2 is the complete MoltFlow experience.

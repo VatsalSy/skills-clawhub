@@ -1,13 +1,18 @@
 {
   "owner": "alex-tradequo",
   "slug": "whatsapp-automation-a2a",
-  "displayName": "MoltFlow — WhatsApp AI Automation Platform and More",
+  "displayName": "WhatsApp All-in-One — AI Messaging, Leads, Bulk Send & A2A",
   "latest": {
-    "version": "2.0.3",
-    "publishedAt": 1770851950703,
-    "commit": "https://github.com/openclaw/skills/commit/6fdeda9162cef136e944cd95877599e36b5d29cb"
+    "version": "2.1.2",
+    "publishedAt": 1770885750132,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.0.3",
+      "publishedAt": 1770851950703,
+      "commit": "https://github.com/openclaw/skills/commit/6fdeda9162cef136e944cd95877599e36b5d29cb"
+    },
     {
       "version": "1.4.1",
       "publishedAt": 1770491025311,
