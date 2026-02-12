@@ -1,12 +1,13 @@
 ---
 name: deck-tracker
+version: 0.1.1
 description: Track OpenClaw tasks on NextCloud Deck board. Auto-add tasks to Queue, move through states.
 metadata:
   openclaw:
     emoji: "📋"
 ---
 
-# Deck Tracker
+# Deck Tracker v1.0.0
 
 Track tasks on a NextCloud Deck board.
 
@@ -88,6 +89,13 @@ deck log <card_id> <status> "Message"
 ```
 **Statuses:** `progress`, `success`, `error`, `warning`, `info`.
 
+### Start automated heartbeat monitoring
+
+```bash
+deck monitor <card_id> [target_id]
+```
+Spawns a background process that appends a "Still working..." log entry every 60 seconds. Additionally, it sends a chat notification to the specified `target_id` (defaults to Skander) every 120 seconds. The process terminates automatically when the card is moved out of the "In Progress" stack (to Done or Waiting). Use for tasks expected to take >2 minutes.
+
 ### Dump all completed tasks as JSON
 
 ```bash
@@ -117,3 +125,17 @@ deck delete <card_id>
 4. **Closing Task:** Use `deck update <id> --description "Rich Summary"` to include **Technical Summary**, **Operations Performed**, and **Outcome**.
 5. **Memory Synthesis:** Before archiving, use `deck dump-done` to parse the day's work and reinforce long-term memory.
 6. **Daily cleanup** → `deck archive-done`.
+
+### 🚨 AI Protocol: Complex Descriptions
+
+When updating cards with multi-line markdown descriptions, ALWAYS use the **temp file method** to prevent shell expansion errors:
+
+```bash
+# 1. Write rich description to temp file
+cat > /tmp/deck_desc_<id>.txt << 'EOF'
+[Rich Markdown]
+EOF
+
+# 2. Update deck using the temp file
+deck update <id> --description "$(cat /tmp/deck_desc_<id>.txt)"
+```
