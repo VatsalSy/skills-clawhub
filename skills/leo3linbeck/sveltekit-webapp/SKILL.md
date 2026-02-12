@@ -1,24 +1,29 @@
 ---
 name: sveltekit-webapp
-version: 1.0.1
+version: 1.1.0
 description: |
   Scaffold and configure a production-ready SvelteKit PWA with opinionated defaults.
   Use when: creating a new web application, setting up a SvelteKit project, building a PWA,
   or when a user asks to "build me an app/site/webapp". Handles full setup including TypeScript,
   Tailwind, Skeleton + Bits UI components, testing, linting, and Vercel deployment.
-  Generates a PRD with user stories for review, then upon user approval, builds and deploys
-  through development, staging, and production environments with coordinated sub-agents.
+  Generates a PRD with user stories for review, then upon user approval, builds through
+  development, staging, and production with user approval at each stage.
+requires_tools: [exec, Write, Edit, browser]
+safety_notes: |
+  This skill executes shell commands to scaffold and deploy web applications.
+  All commands require user approval via the agent's safety framework.
+  No commands are executed without user confirmation of the PRD.
 ---
 
 # SvelteKit Webapp Skill
 
-Scaffold production-ready SvelteKit PWAs with opinionated defaults and autonomous execution.
+Scaffold production-ready SvelteKit PWAs with opinionated defaults and guided execution.
 
 ## Quick Start
 
 1. **Describe your app** — Tell me what you want to build
 2. **Review the PRD** — I'll generate a plan with user stories
-3. **Approve** — I build, test, and deploy autonomously
+3. **Approve** — I build, test, and deploy with your oversight
 4. **Done** — Get a live URL + admin documentation
 
 > "Build me a task tracker with due dates and priority labels"
@@ -68,7 +73,7 @@ Check `~/.openclaw/workspace/SKILL-CONFIG.json` for user-specific defaults befor
 2. **Plan**: Generate complete PRD (scaffold, configure, features, tests as stories)
 3. **Iterate**: Refine PRD with user until confirmed
 4. **Preflight**: Verify all required auths and credentials
-5. **Execute**: Autonomous build-deploy-verify cycle (development → staging → production)
+5. **Execute**: Guided build-deploy-verify cycle with user checkpoints (development → staging → production)
 
 ---
 
@@ -376,20 +381,7 @@ Verify all dependencies. Development can start with mocks; staging needs real cr
 
 ### Run Checks
 
-```bash
-# Required for development
-gh auth status 2>/dev/null && echo "✓ GitHub" || echo "✗ GitHub"
-command -v pnpm &>/dev/null && echo "✓ pnpm" || echo "⚠ pnpm (will use npm)"
-
-# Required for staging/production
-vercel whoami 2>/dev/null && echo "✓ Vercel" || echo "✗ Vercel"
-
-# If using Turso
-turso auth status 2>/dev/null && echo "✓ Turso" || echo "✗ Turso"
-
-# File system access
-touch /tmp/.test-write && rm /tmp/.test-write && echo "✓ Write access"
-```
+Verify authentication for required CLIs (GitHub, pnpm, Vercel, and optionally Turso). See [references/cli-commands.md](references/cli-commands.md#preflight-checks) for specific commands.
 
 ### Present Status
 
@@ -424,7 +416,7 @@ touch /tmp/.test-write && rm /tmp/.test-write && echo "✓ Write access"
 
 ## Phase 5: Execute
 
-Autonomous build-deploy-verify cycle with live progress updates.
+Guided build-deploy-verify cycle with user checkpoints and live progress updates.
 
 ```
 EXECUTE
@@ -454,14 +446,7 @@ Build everything locally with mock data.
 
 #### Setup
 
-```bash
-# Create and checkout dev branch
-git init
-git checkout -b dev
-
-# Create execution files
-touch progress.txt
-```
+Initialize a git repository on a `dev` branch and create a `progress.txt` tracking file. See [references/cli-commands.md](references/cli-commands.md#initialize-repository) for commands.
 
 #### Execute Stories via Sub-Agents
 
@@ -507,12 +492,7 @@ If a story cannot be completed:
 
 #### Stage 1 Exit Criteria
 
-```bash
-# All must pass before proceeding
-pnpm check        # TypeScript
-pnpm test         # Unit tests  
-pnpm test:e2e     # E2E tests (against local dev server with mocks)
-```
+All checks must pass before proceeding: TypeScript verification, unit tests, and E2E tests against the local dev server with mocks. See [references/cli-commands.md](references/cli-commands.md#verify-build) for commands.
 
 ---
 
@@ -533,17 +513,7 @@ If missing, pause and request from user.
 
 **One-time setup (recommended over CLI deploys):**
 
-```bash
-# Create GitHub repo and push
-gh repo create [project-name] --private --source=. --push
-
-# Create Vercel project
-vercel link  # or create via dashboard
-
-# Connect GitHub in Vercel dashboard:
-# Settings → Git → Connect Git Repository → Select repo
-# Set production branch to: main
-```
+Create a private GitHub repository, link to a Vercel project, and connect GitHub in the Vercel dashboard (Settings → Git → Connect Git Repository). Set the production branch to `main`. See [references/cli-commands.md](references/cli-commands.md#create-github-repo-and-push) for commands.
 
 **Benefits of GitHub integration:**
 - Push to deploy (no CLI needed after setup)
@@ -553,14 +523,7 @@ vercel link  # or create via dashboard
 
 **Deploy to staging:**
 
-```bash
-# Merge dev to main
-git checkout -b main
-git merge dev
-git push -u origin main  # Triggers automatic Vercel deployment
-```
-
-The push triggers Vercel to build and deploy. No `vercel` CLI command needed.
+Merge the `dev` branch into `main` and push. The push triggers Vercel to build and deploy automatically. See [references/cli-commands.md](references/cli-commands.md#merge-and-deploy-to-staging) for commands.
 
 **Dev branch preview URL:**
 After connecting GitHub, the `dev` branch gets a persistent preview URL:
@@ -588,10 +551,7 @@ Common issues in deployed environments:
 
 #### Stage 2 Exit Criteria
 
-```bash
-# E2E tests pass against preview URL
-PLAYWRIGHT_BASE_URL=https://[project]-[hash].vercel.app pnpm test:e2e
-```
+E2E tests must pass against the Vercel preview URL. See [references/cli-commands.md](references/cli-commands.md#run-e2e-against-preview) for commands.
 
 ---
 
@@ -601,25 +561,11 @@ Deploy to production URL and hand off to user.
 
 #### Deploy Production
 
-With GitHub-Vercel integration, production deploys automatically when you push to `main`:
-
-```bash
-git push origin main  # Triggers production deployment
-```
-
-**Custom domain (via Vercel dashboard):**
-Settings → Domains → Add domain
-
-Or via CLI:
-```bash
-vercel domains add [domain]
-```
+With GitHub-Vercel integration, production deploys automatically when you push to `main`. Custom domains can be configured via the Vercel dashboard (Settings → Domains) or CLI. See [references/cli-commands.md](references/cli-commands.md#deploy-to-production) for commands.
 
 #### Final Verification
 
-```bash
-PLAYWRIGHT_BASE_URL=https://[production-url] pnpm test:e2e
-```
+Run E2E tests against the production URL to confirm everything works. See [references/cli-commands.md](references/cli-commands.md#final-verification) for commands.
 
 #### Completion Report
 
@@ -744,22 +690,7 @@ If any stage fails and cannot be automatically resolved:
 
 ## Quick Reference
 
-### CLI Commands
-```bash
-pnpx sv create [name]   # Scaffold project
-pnpx sv add [addon]     # Add functionality
-pnpm check              # TypeScript check
-pnpm test               # Unit tests
-pnpm test:e2e           # E2E tests
-pnpm build              # Production build
-```
-
-### Auth Checks
-```bash
-gh auth status          # GitHub
-vercel whoami           # Vercel
-turso auth status       # Turso
-```
+For all CLI commands and auth checks, see [references/cli-commands.md](references/cli-commands.md#quick-reference).
 
 ### Default Adapter
 

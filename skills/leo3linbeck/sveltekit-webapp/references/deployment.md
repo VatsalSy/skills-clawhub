@@ -2,26 +2,19 @@
 
 ## Check Available Targets
 
-```bash
-# Check Vercel auth
-vercel whoami 2>/dev/null && echo "✓ Vercel authenticated" || echo "✗ Vercel not available"
-
-# Check GitHub auth (needed for all deployments)
-gh auth status 2>/dev/null && echo "✓ GitHub authenticated" || echo "✗ GitHub not available"
-```
+Before deploying, verify authentication for your deployment target (Vercel, Cloudflare, Netlify, etc.) and GitHub CLI. The preflight phase handles this automatically — see [cli-commands.md](cli-commands.md#preflight-checks) for the specific verification commands.
 
 ## Vercel (Recommended)
 
 ### Setup
-```bash
-npx sv add sveltekit-adapter  # choose: vercel
-```
+
+Add the Vercel adapter using `npx sv add sveltekit-adapter` and select "vercel".
 
 ### GitHub Integration (Recommended)
 
 **One-time setup:**
-1. Create Vercel project: `vercel link` or via [dashboard](https://vercel.com/new)
-2. Connect GitHub repo in Vercel: **Settings → Git → Connect Git Repository**
+1. Create Vercel project via `vercel link` or the [Vercel dashboard](https://vercel.com/new)
+2. Connect your GitHub repo in Vercel: **Settings → Git → Connect Git Repository**
 3. Set production branch to `main`
 
 **Benefits:**
@@ -30,19 +23,11 @@ npx sv add sveltekit-adapter  # choose: vercel
 - Persistent branch URLs: `[project]-git-dev-[team].vercel.app`
 - Preview URLs don't change with each commit
 
-**Deploy:**
-```bash
-git push origin main  # Triggers production deployment
-git push origin dev   # Triggers preview deployment at persistent URL
-```
+**Deploy:** Push to `main` for production, push to `dev` for a persistent preview URL.
 
 ### CLI Deploy (Alternative)
-If you prefer CLI deploys over GitHub integration:
-```bash
-vercel link        # Link to Vercel project
-vercel             # Deploy to preview
-vercel --prod      # Deploy to production
-```
+
+If you prefer CLI deploys over GitHub integration, use `vercel link` to connect, then `vercel` for preview or `vercel --prod` for production.
 
 ### svelte.config.js
 ```javascript
@@ -58,10 +43,7 @@ export default {
 ```
 
 ### Environment Variables
-Set in Vercel dashboard or via CLI:
-```bash
-vercel env add DATABASE_URL production
-```
+Set environment variables in the Vercel dashboard (Settings → Environment Variables) or via CLI with `vercel env add`.
 
 ---
 
@@ -94,10 +76,7 @@ export default {
 3. Output directory: `.svelte-kit/cloudflare`
 
 ### Wrangler CLI
-```bash
-npm install -D wrangler
-npx wrangler pages deploy .svelte-kit/cloudflare
-```
+Alternatively, install `wrangler` as a dev dependency and deploy with `npx wrangler pages deploy .svelte-kit/cloudflare`.
 
 ---
 
@@ -133,12 +112,7 @@ export default {
 ```
 
 ### Deploy
-```bash
-npm install -g netlify-cli
-netlify login
-netlify init
-netlify deploy --prod
-```
+Install the Netlify CLI globally, authenticate with `netlify login`, initialize with `netlify init`, then deploy with `netlify deploy --prod`.
 
 ---
 
@@ -164,17 +138,10 @@ export default {
 ```
 
 ### Run
-```bash
-npm run build
-node build/index.js
-```
+Build with `npm run build`, then start with `node build/index.js`.
 
 ### Environment Variables
-```bash
-PORT=3000
-HOST=0.0.0.0
-ORIGIN=https://yourdomain.com
-```
+Configure `PORT` (default 3000), `HOST` (e.g., 0.0.0.0), and `ORIGIN` (your production domain URL).
 
 ### Docker
 ```dockerfile
