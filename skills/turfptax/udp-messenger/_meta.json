@@ -1,0 +1,11 @@
+{
+  "owner": "turfptax",
+  "slug": "udp-messenger",
+  "displayName": "LocalUDPMessenger",
+  "latest": {
+    "version": "1.1.0",
+    "publishedAt": 1770931606718,
+    "commit": null
+  },
+  "history": []
+}

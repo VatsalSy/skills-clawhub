@@ -1,0 +1,9 @@
+{
+  "name": "local-udp-messenger",
+  "version": "1.0.0",
+  "description": "OpenClaw plugin for local UDP agent-to-agent communication",
+  "type": "module",
+  "openclaw": {
+    "extensions": ["./index.ts"]
+  }
+}
