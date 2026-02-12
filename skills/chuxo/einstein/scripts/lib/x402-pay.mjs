@@ -20,50 +20,42 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const SKILL_ROOT = join(__dirname, '..', '..');
 
 // ---------------------------------------------------------------------------
-// Config loading (skill-local config.json → env vars)
+// Config loading (env vars → skill-local config.json)
 // ---------------------------------------------------------------------------
 
 /**
- * Load configuration from config.json or environment variables.
- * Priority: config.json > env vars
+ * Load configuration from environment variables or skill-local config.json.
+ *
+ * Sources checked (highest priority first):
+ *   1. Environment variables: EINSTEIN_X402_PRIVATE_KEY, EINSTEIN_BASE_URL,
+ *      EINSTEIN_DEFAULT_CHAIN, EINSTEIN_AUTO_CONFIRM
+ *   2. Skill-local config.json (adjacent to package.json)
+ *
+ * No paths outside the skill directory are scanned.
  */
 export function loadConfig() {
-  // 1. Skill-local config
+  // 1. Start with env vars (highest priority)
+  const envKey = process.env.EINSTEIN_X402_PRIVATE_KEY;
+  const envBaseUrl = process.env.EINSTEIN_BASE_URL;
+  const envChain = process.env.EINSTEIN_DEFAULT_CHAIN;
+  const envAutoConfirm = process.env.EINSTEIN_AUTO_CONFIRM === 'true';
+
+  // 2. Fall back to skill-local config.json for any missing values
+  let fileCfg = {};
   const localConfig = join(SKILL_ROOT, 'config.json');
   if (existsSync(localConfig)) {
     try {
-      const cfg = JSON.parse(readFileSync(localConfig, 'utf-8'));
-      return {
-        privateKey: cfg.privateKey || process.env.EINSTEIN_X402_PRIVATE_KEY,
-        baseUrl: cfg.baseUrl || process.env.EINSTEIN_BASE_URL || 'https://emc2ai.io',
-        defaultChain: cfg.defaultChain || process.env.EINSTEIN_DEFAULT_CHAIN || 'base',
-      };
+      fileCfg = JSON.parse(readFileSync(localConfig, 'utf-8'));
     } catch {
-      // Fall through to env vars
+      // Ignore parse errors — env vars still apply
     }
   }
 
-  // 2. ClawdBot skill config (~/.clawdbot/skills/einstein/config.json)
-  const home = process.env.HOME || process.env.USERPROFILE || '';
-  const clawdConfig = join(home, '.clawdbot', 'skills', 'einstein', 'config.json');
-  if (existsSync(clawdConfig)) {
-    try {
-      const cfg = JSON.parse(readFileSync(clawdConfig, 'utf-8'));
-      return {
-        privateKey: cfg.privateKey || process.env.EINSTEIN_X402_PRIVATE_KEY,
-        baseUrl: cfg.baseUrl || process.env.EINSTEIN_BASE_URL || 'https://emc2ai.io',
-        defaultChain: cfg.defaultChain || process.env.EINSTEIN_DEFAULT_CHAIN || 'base',
-      };
-    } catch {
-      // Fall through to env vars
-    }
-  }
-
-  // 3. Environment variables
   return {
-    privateKey: process.env.EINSTEIN_X402_PRIVATE_KEY,
-    baseUrl: process.env.EINSTEIN_BASE_URL || 'https://emc2ai.io',
-    defaultChain: process.env.EINSTEIN_DEFAULT_CHAIN || 'base',
+    privateKey: envKey || fileCfg.privateKey,
+    baseUrl: envBaseUrl || fileCfg.baseUrl || 'https://emc2ai.io',
+    defaultChain: envChain || fileCfg.defaultChain || 'base',
+    autoConfirm: envAutoConfirm || fileCfg.autoConfirm || false,
   };
 }
 

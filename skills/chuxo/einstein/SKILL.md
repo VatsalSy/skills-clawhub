@@ -9,7 +9,8 @@ description: >
   x402 protocol on Base.
 metadata:
   author: project-einstein
-  version: "1.0.0"
+  version: "1.1.0"
+  disable-model-invocation: true
   clawdbot:
     emoji: "🧠"
     homepage: "https://emc2ai.io"
@@ -25,20 +26,27 @@ Einstein provides 27 blockchain analytics services accessible via x402 micropaym
 ## Quick Start
 
 ```bash
-# First-time setup
+# 1. Install dependencies (manual step — the setup wizard will NOT run npm for you)
+cd packages/project-einstein/openclaw-skill/einstein && npm install
+
+# 2. Set your private key via environment variable (recommended)
+export EINSTEIN_X402_PRIVATE_KEY=0x_your_private_key_here
+
+# 3. Or run the interactive setup wizard
 node scripts/einstein-setup.mjs
 
-# List all services (free)
+# 4. List all services (free)
 node scripts/einstein.mjs services
 
-# Run a query
+# 5. Run a query (will prompt for payment confirmation)
 node scripts/einstein.mjs top-movers --chain base --limit 10
 ```
 
 **Requirements:**
 - Node.js 18+
-- A wallet private key with USDC on Base network
-- Set `EINSTEIN_X402_PRIVATE_KEY` environment variable or run setup
+- Dependencies installed via `npm install` (not auto-installed)
+- A **dedicated** wallet private key with USDC on Base network (do NOT use your main wallet)
+- Set `EINSTEIN_X402_PRIVATE_KEY` environment variable (preferred) or run setup with `--save-config`
 
 ## Service Categories
 
@@ -51,6 +59,30 @@ node scripts/einstein.mjs top-movers --chain base --limit 10
 | Comprehensive | $1.00 | $1.15 | Investment report, NFT analytics, MEV detection, arbitrage scanner, rug pull scanner, Polymarket compare |
 
 **Raw** = structured data only. **+AI** = includes AI-generated analysis and insights (default).
+
+## Free Services
+
+These commands are free and do not require x402 payment or a wallet key.
+
+### Epstein Files Search
+
+Search 44,886+ DOJ-released Jeffrey Epstein documents (Jan 2026 release) via the DugganUSA public index.
+
+```bash
+# Search by name
+node scripts/einstein.mjs epstein-search --query "Ghislaine Maxwell" --limit 10
+
+# Search by topic
+node scripts/einstein.mjs epstein-search --query "flight logs" --limit 20
+
+# Search by location
+node scripts/einstein.mjs epstein-search --query "Little St James"
+```
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--query <terms>` | Search query (required) | — |
+| `--limit <N>` | Number of results (1-500) | `10` |
 
 ## Usage Examples
 
@@ -163,6 +195,8 @@ Einstein uses the **x402 protocol** — an HTTP-native micropayment standard. Pa
 
 ## Options Reference
 
+### `einstein.mjs` (query CLI)
+
 | Flag | Description | Default |
 |------|-------------|---------|
 | `--chain <chain>` | Blockchain network | `base` |
@@ -172,22 +206,55 @@ Einstein uses the **x402 protocol** — an HTTP-native micropayment standard. Pa
 | `--wallet <address>` | Wallet address | — |
 | `--chains <c1,c2>` | Comma-separated chains | — |
 | `--raw` | Data-only response (cheaper) | `false` |
+| `--yes` / `-y` | Skip payment confirmation prompt | `false` |
+
+To skip the confirmation prompt globally, set `EINSTEIN_AUTO_CONFIRM=true` or add `"autoConfirm": true` to config.json.
+
+### `einstein-setup.mjs` (setup wizard)
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--key <privateKey>` | Private key (skips interactive prompt) | — |
+| `--url <baseUrl>` | Base URL for Einstein API | `https://emc2ai.io` |
+| `--chain <chain>` | Default blockchain network | `base` |
+| `--save-config` | Write config.json to disk (otherwise prints env var exports) | `false` |
 
 **Supported chains:** base, ethereum, bsc, solana, arbitrum, polygon, optimism, zksync
+
+## Security Best Practices
+
+**Use a dedicated wallet.** Create a separate wallet funded with a small amount of USDC for this skill. Do NOT use your primary wallet or any wallet holding significant funds.
+
+**Prefer environment variables over config.json.** Environment variables (`EINSTEIN_X402_PRIVATE_KEY`) are not persisted to disk and are harder to accidentally commit to git. If you must use config.json (`--save-config`), restrict file permissions:
+
+```bash
+chmod 600 config.json
+```
+
+**What gets signed.** Each paid query signs an EIP-3009 `TransferWithAuthorization` message that authorizes a USDC transfer of the exact query price (shown before confirmation) from your wallet to the Einstein service address. The signature is single-use (unique nonce) and time-limited. No blanket approvals are granted.
+
+**Payment confirmation.** By default, the CLI prompts before every paid query showing the exact cost. To skip the prompt for scripted/automated use, pass `--yes` / `-y` per-command or set `EINSTEIN_AUTO_CONFIRM=true` globally.
+
+**No auto-installed packages.** The setup wizard does NOT run `npm install` automatically. You must install dependencies yourself so you can audit what is being installed.
+
+**No home directory scanning.** Configuration is loaded only from environment variables and the skill-local `config.json`. No paths outside the skill directory are read.
 
 ## Troubleshooting
 
 **"No private key configured"**
-Run `node scripts/einstein-setup.mjs` or set `EINSTEIN_X402_PRIVATE_KEY`.
+Set `EINSTEIN_X402_PRIVATE_KEY` environment variable or run `node scripts/einstein-setup.mjs --save-config`.
 
 **"Payment rejected" / "Insufficient balance"**
-Your wallet needs USDC on Base. Bridge via https://bridge.base.org.
+Your wallet needs USDC on Base. Bridge via https://bridge.base.org. Use a dedicated wallet with a small balance.
 
 **"Cannot reach emc2ai.io"**
 Check internet connection. The service may have temporary downtime.
 
 **"Unknown service"**
 Run `node scripts/einstein.mjs services` to see all available commands.
+
+**"Dependencies not installed"**
+Run `npm install` in the skill directory: `cd packages/project-einstein/openclaw-skill/einstein && npm install`
 
 ## References
 

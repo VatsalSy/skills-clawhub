@@ -12,7 +12,7 @@
  *   6. Test connectivity to emc2ai.io
  *
  * Usage:
- *   node scripts/einstein-setup.mjs [--key <privateKey>] [--url <baseUrl>] [--chain <chain>]
+ *   node scripts/einstein-setup.mjs [--key <privateKey>] [--url <baseUrl>] [--chain <chain>] [--save-config]
  */
 
 import { existsSync, writeFileSync, readFileSync } from 'node:fs';
@@ -82,17 +82,12 @@ async function checkDependencies() {
     console.error('Dependencies installed — OK');
     return true;
   } catch {
-    console.error('Dependencies not installed. Installing...');
-    const { execSync } = await import('node:child_process');
-    try {
-      execSync('npm install', { cwd: SKILL_ROOT, stdio: 'inherit' });
-      console.error('Dependencies installed — OK');
-      return true;
-    } catch (err) {
-      console.error(`Failed to install dependencies: ${err.message}`);
-      console.error('Run manually: cd packages/project-einstein/openclaw-skill/einstein && npm install');
-      return false;
-    }
+    console.error('Dependencies not installed.');
+    console.error('');
+    console.error('   Please install dependencies manually, then re-run setup:');
+    console.error(`   cd ${SKILL_ROOT} && npm install`);
+    console.error('');
+    return false;
   }
 }
 
@@ -243,20 +238,38 @@ async function main() {
   }
   console.error('');
 
-  // Step 5: Write config
-  console.error('5. Writing config.json...');
+  // Step 5: Save configuration
   const baseUrl = args.url || process.env.EINSTEIN_BASE_URL || 'https://emc2ai.io';
   const defaultChain = args.chain || process.env.EINSTEIN_DEFAULT_CHAIN || 'base';
+  const saveConfig = args['save-config'] === true;
 
-  const config = {
-    privateKey,
-    baseUrl,
-    defaultChain,
-  };
+  if (saveConfig) {
+    console.error('5. Writing config.json (--save-config flag detected)...');
+    const config = {
+      privateKey,
+      baseUrl,
+      defaultChain,
+    };
 
-  writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2) + '\n', 'utf-8');
-  console.error(`   Written to: ${CONFIG_PATH}`);
-  console.error('   IMPORTANT: Add config.json to .gitignore — it contains your private key!');
+    writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2) + '\n', 'utf-8');
+    console.error(`   Written to: ${CONFIG_PATH}`);
+    console.error('   IMPORTANT: Add config.json to .gitignore — it contains your private key!');
+    console.error('   IMPORTANT: chmod 600 config.json to restrict read access.');
+  } else {
+    console.error('5. Configuration (env vars — recommended)...');
+    console.error('');
+    console.error('   Set these environment variables in your shell profile:');
+    console.error('');
+    console.error(`   export EINSTEIN_X402_PRIVATE_KEY="${privateKey}"`);
+    if (baseUrl !== 'https://emc2ai.io') {
+      console.error(`   export EINSTEIN_BASE_URL="${baseUrl}"`);
+    }
+    if (defaultChain !== 'base') {
+      console.error(`   export EINSTEIN_DEFAULT_CHAIN="${defaultChain}"`);
+    }
+    console.error('');
+    console.error('   To save to config.json instead, re-run with: --save-config');
+  }
   console.error('');
 
   // Step 6: Test connectivity
@@ -273,6 +286,10 @@ async function main() {
   // Done
   console.error('Setup complete!');
   console.error('');
+  if (!saveConfig) {
+    console.error('Remember to export your env vars before running queries.');
+    console.error('');
+  }
   console.error('Quick test:');
   console.error('  node scripts/einstein.mjs services');
   console.error('');

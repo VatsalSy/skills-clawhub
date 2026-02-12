@@ -17,6 +17,7 @@
  *   --wallet <address>      Wallet address
  *   --chains <c1,c2>        Comma-separated chains (investment-report only)
  *   --raw                   Get data-only response (cheaper, no AI analysis)
+ *   --yes / -y              Skip payment confirmation prompt
  *
  * Examples:
  *   node scripts/einstein.mjs top-movers --chain base --limit 10
@@ -24,7 +25,23 @@
  *   node scripts/einstein.mjs services
  */
 
+import { createInterface } from 'node:readline';
 import { x402Fetch, loadConfig } from './lib/x402-pay.mjs';
+
+// ---------------------------------------------------------------------------
+// Confirmation prompt helper
+// ---------------------------------------------------------------------------
+
+function confirmPayment(question) {
+  const rl = createInterface({ input: process.stdin, output: process.stderr });
+  return new Promise((resolve) => {
+    rl.question(question, (answer) => {
+      rl.close();
+      const a = answer.trim().toLowerCase();
+      resolve(a === '' || a === 'y' || a === 'yes');
+    });
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Service routing map — maps command aliases to endpoint paths
@@ -91,7 +108,10 @@ function parseArgs(argv) {
   let i = 2; // skip node and script path
   while (i < argv.length) {
     const arg = argv[i];
-    if (arg.startsWith('--')) {
+    if (arg === '-y') {
+      args.yes = true;
+      i += 1;
+    } else if (arg.startsWith('--')) {
       const key = arg.slice(2);
       const next = argv[i + 1];
       if (next && !next.startsWith('--')) {
@@ -227,6 +247,9 @@ Services:
   polymarket            Polymarket contract events
   polymarket-compare    Polymarket API vs chain compare
 
+Free Services:
+  epstein-search        Search DOJ Epstein documents (free, no payment)
+
 Options:
   --chain <chain>       Network: base, ethereum, bsc, solana, arbitrum, polygon, optimism, zksync
   --limit <N>           Results count (1-500, default: 10)
@@ -234,7 +257,12 @@ Options:
   --token <address>     Token contract address
   --wallet <address>    Wallet address
   --chains <c1,c2>      Comma-separated chains (investment-report)
+  --query <terms>       Search query (epstein-search only)
   --raw                 Data-only response (no AI analysis, cheaper)
+  --yes / -y            Skip payment confirmation prompt
+
+Auto-confirm (skip prompt for all commands):
+  Set EINSTEIN_AUTO_CONFIRM=true or add "autoConfirm": true to config.json
 `);
     process.exit(0);
   }
@@ -242,6 +270,34 @@ Options:
   // Handle "services" command (free, no payment)
   if (command === 'services') {
     console.log(listServices());
+    process.exit(0);
+  }
+
+  // Handle "epstein-search" command (free — uses public DugganUSA API)
+  if (command === 'epstein-search') {
+    const query = args.query || args.q || args._.slice(1).join(' ');
+    if (!query) {
+      process.stderr.write('Error: --query <search terms> is required\n');
+      process.stderr.write('Example: node scripts/einstein.mjs epstein-search --query "flight logs"\n');
+      process.exit(1);
+    }
+    const limit = parseInt(args.limit || '10', 10);
+    const apiUrl = `https://analytics.dugganusa.com/api/v1/search?q=${encodeURIComponent(query)}&indexes=epstein_files`;
+    process.stderr.write(`Searching Epstein files for: "${query}" (limit: ${limit}) — FREE\n`);
+
+    try {
+      const res = await fetch(apiUrl, { signal: AbortSignal.timeout(15000) });
+      if (!res.ok) throw new Error(`API returned ${res.status}: ${res.statusText}`);
+      const body = await res.json();
+      const hits = (body?.data?.hits || []).slice(0, limit);
+      const result = { query: body?.data?.query || query, totalHits: body?.data?.totalHits ?? 0, hits };
+      console.log(JSON.stringify(result, null, 2));
+      process.stderr.write(`\nFound ${result.totalHits} documents (showing ${hits.length})\n`);
+    } catch (err) {
+      process.stderr.write(`\nError: ${err.message}\n`);
+      process.stderr.write('The DugganUSA API may be temporarily unavailable.\n');
+      process.exit(1);
+    }
     process.exit(0);
   }
 
@@ -273,6 +329,16 @@ Options:
   process.stderr.write(`Querying: ${command} (${isRaw ? 'raw' : 'analyzed'}) — $${price} USDC\n`);
   process.stderr.write(`Endpoint: ${url}${isRaw ? '/raw' : ''}\n`);
   process.stderr.write(`Params: ${JSON.stringify(body)}\n`);
+
+  // Payment confirmation — skip with --yes, -y, EINSTEIN_AUTO_CONFIRM=true, or autoConfirm in config
+  const skipConfirm = args.yes === true || config.autoConfirm === true;
+  if (!skipConfirm) {
+    const confirmed = await confirmPayment(`\nThis will spend ~$${price} USDC. Proceed? (Y/n): `);
+    if (!confirmed) {
+      process.stderr.write('Aborted.\n');
+      process.exit(0);
+    }
+  }
 
   try {
     const result = await x402Fetch(url, body, config.privateKey, { raw: isRaw });
