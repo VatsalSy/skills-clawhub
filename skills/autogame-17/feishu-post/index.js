@@ -1,4 +1,4 @@
-const { sendPost } = require('../common/feishu-client');
+const { sendPost } = require('../feishu-common/index.js');
 
 async function main() {
     const args = require('minimist')(process.argv.slice(2));

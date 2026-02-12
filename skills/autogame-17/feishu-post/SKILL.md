@@ -4,6 +4,11 @@ Send Rich Text (Post) messages to Feishu.
 This format is distinct from Cards. It supports native rich text elements but is less flexible in layout than cards.
 It is better for long-form text mixed with images/links.
 
+## Prerequisites
+
+- Install `feishu-common` first.
+- This skill depends on `../feishu-common/index.js` via `utils/feishu-client.js`.
+
 ## Features
 - **Native Emoji Support**: Automatically converts `[微笑]`, `[得意]` etc. to Feishu native emoji tags.
 - **Markdown-like Parsing**: Supports simple newlines and paragraphs.

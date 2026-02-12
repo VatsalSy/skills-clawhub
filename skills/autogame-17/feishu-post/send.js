@@ -20,6 +20,9 @@ async function sendPost(options) {
     if (options.content && !options.text) {
         options.text = options.content;
     }
+    if (options.markdown && !options.text) {
+        options.text = options.markdown;
+    }
 
     let contentText = options.text || '';
     if (options.textFile) {
@@ -102,16 +105,48 @@ async function sendPost(options) {
 
         const text = await res.text();
         let data;
+        // ... (existing code)
+        
         try {
             data = JSON.parse(text);
         } catch (e) {
              throw new Error(`Invalid JSON response: ${text.slice(0, 200)}...`);
         }
         
-        if (data.code !== 0) throw new Error(`API Error ${data.code}: ${data.msg}`);
+        if (data.code !== 0) {
+            // Hotfix: If invalid emoji detected (230001), fallback to plain text stripping emojis
+            if (data.code === 230001 && data.msg && data.msg.includes("emoji_type is invalid")) {
+                 console.warn("Detected invalid emoji in Feishu post. Retrying as plain text fallback...");
+                 // Fallback strategy: Send as plain text message, which renders emoji codes as text [Code]
+                 // This ensures the message gets through even if the specific emoji is not supported.
+                 const fallbackBody = {
+                     receive_id: messageBody.receive_id,
+                     msg_type: 'text',
+                     content: JSON.stringify({ text: contentText })
+                 };
+                 
+                 // Reuse URL (it might be a reply URL)
+                 if (options.replyTo) {
+                      delete fallbackBody.receive_id;
+                 }
+                 
+                 const res2 = await fetchWithAuth(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(fallbackBody)
+                 });
+                 
+                 const text2 = await res2.text();
+                 const data2 = JSON.parse(text2);
+                 if (data2.code === 0) return data2.data;
+                 // If fallback fails, throw original error (or new one)
+                 throw new Error(`API Error ${data.code}: ${data.msg} (Fallback also failed: ${data2.code} ${data2.msg})`);
+            }
+            throw new Error(`API Error ${data.code}: ${data.msg}`);
+        }
         
-        // console.log(`Success: Message sent (ID: ${data.data.message_id})`);
-        return data.data;
+        // ... (rest of function)
+
     } catch (e) {
         console.error(`Send Failed: ${e.message}`);
         throw e;
@@ -125,6 +160,7 @@ if (require.main === module) {
         .option('-t, --target <id>', 'Target ID')
         .option('-x, --text <text>', 'Text content')
         .option('-c, --content <text>', 'Content (alias for --text)')
+        .option('-m, --markdown <text>', 'Markdown content (alias for --text)')
         .option('-f, --text-file <path>', 'File content')
         .option('--title <text>', 'Title')
         .option('--reply-to <id>', 'Message ID to reply to')
