@@ -14,8 +14,12 @@ Addresses: https://github.com/clawdbot/clawdbot/issues/1808
 """
 
 import argparse
+import glob
 import json
 import os
+import platform
+import re
+import subprocess
 import sys
 import shutil
 from collections import Counter, defaultdict
@@ -23,7 +27,12 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Optional
 
-__version__ = "0.2.0"
+try:
+    import yaml as _yaml
+except ImportError:
+    _yaml = None
+
+__version__ = "0.3.0"
 
 # ─── Defaults ────────────────────────────────────────────────────────────────
 
@@ -1079,6 +1088,414 @@ def parse_size(s: str) -> int:
     return int(s)
 
 
+# ─── Skill Health Check ──────────────────────────────────────────────────────
+
+DEFAULT_SKILL_DIRS = [
+    os.path.expanduser("/opt/homebrew/lib/node_modules/openclaw/skills"),
+    os.path.expanduser("~/workspace/skills"),
+]
+
+
+def _get_skill_dirs(extra_dirs=None):
+    """Build skill directory list from OpenClaw config + defaults + extra dirs."""
+    dirs = list(DEFAULT_SKILL_DIRS)
+    for config_path in [
+        os.path.expanduser("~/.openclaw/openclaw.json"),
+        os.path.expanduser("~/.clawdbot/clawdbot.json"),
+    ]:
+        try:
+            with open(config_path) as f:
+                config = json.load(f)
+            agents_cfg = config.get("agents", {}).get("defaults", {})
+            skill_dirs_cfg = agents_cfg.get("skillDirs", [])
+            if isinstance(skill_dirs_cfg, list):
+                dirs.extend([os.path.expanduser(p) for p in skill_dirs_cfg])
+            elif isinstance(skill_dirs_cfg, str):
+                dirs.append(os.path.expanduser(skill_dirs_cfg))
+            skills_cfg = config.get("skills", {})
+            if isinstance(skills_cfg, dict):
+                for key in ("dirs", "paths", "directories"):
+                    paths = skills_cfg.get(key, [])
+                    if isinstance(paths, list):
+                        dirs.extend([os.path.expanduser(p) for p in paths])
+                    elif isinstance(paths, str):
+                        dirs.append(os.path.expanduser(paths))
+            break
+        except (FileNotFoundError, json.JSONDecodeError, KeyError):
+            continue
+    if extra_dirs:
+        dirs.extend([os.path.expanduser(d) for d in extra_dirs])
+    seen = set()
+    unique = []
+    for d in dirs:
+        real = os.path.realpath(d)
+        if real not in seen:
+            seen.add(real)
+            unique.append(d)
+    return unique
+
+
+def _parse_skill_frontmatter(path):
+    """Extract YAML frontmatter from SKILL.md."""
+    try:
+        with open(path) as f:
+            content = f.read()
+    except Exception:
+        return None
+    if not content.startswith("---"):
+        return None
+    end = content.find("---", 3)
+    if end == -1:
+        return None
+    fm_text = content[3:end].strip()
+    try:
+        if _yaml:
+            return _yaml.safe_load(fm_text)
+        return _parse_simple_fm(fm_text)
+    except Exception:
+        return _parse_simple_fm(fm_text)
+
+
+def _parse_simple_fm(text):
+    """Minimal frontmatter parser without PyYAML."""
+    result = {}
+    for line in text.split("\n"):
+        m = re.match(r'^(\w[\w-]*)\s*:\s*(.+)$', line)
+        if m:
+            key, val = m.group(1), m.group(2).strip()
+            if val.startswith('"') and val.endswith('"'):
+                val = val[1:-1]
+            result[key] = val
+    json_match = re.search(r'"openclaw"\s*:\s*(\{[^}]*(?:\{[^}]*\}[^}]*)*\})', text)
+    if json_match:
+        try:
+            oc = json.loads(json_match.group(1))
+            if "metadata" not in result or not isinstance(result.get("metadata"), dict):
+                result["metadata"] = {}
+            result["metadata"]["openclaw"] = oc
+        except json.JSONDecodeError:
+            pass
+    meta_match = re.search(r'metadata\s*:\s*\n\s*(\{[\s\S]*?\})\s*\n---', text + "\n---")
+    if meta_match and not isinstance(result.get("metadata"), dict):
+        try:
+            result["metadata"] = json.loads(meta_match.group(1))
+        except json.JSONDecodeError:
+            pass
+    return result if result else None
+
+
+def _scan_skills(skill_dirs):
+    """Scan skill directories and return skill info list."""
+    skills = []
+    current_os = platform.system().lower()
+    for skill_dir in skill_dirs:
+        if not os.path.isdir(skill_dir):
+            continue
+        for skill_path in sorted(glob.glob(os.path.join(skill_dir, "*/SKILL.md"))):
+            skill_name = os.path.basename(os.path.dirname(skill_path))
+            source = "builtin" if "node_modules" in skill_path else "custom"
+            fm = _parse_skill_frontmatter(skill_path)
+            meta = {}
+            if fm and isinstance(fm, dict):
+                m = fm.get("metadata", {})
+                if isinstance(m, dict):
+                    meta = m.get("openclaw", {})
+            requires = meta.get("requires", {}) if meta else {}
+            skill = {
+                "name": skill_name,
+                "path": os.path.dirname(skill_path),
+                "skill_md_path": skill_path,
+                "source": source,
+                "description": fm.get("description", "") if fm else "",
+                "os_req": meta.get("os", []),
+                "required_bins": requires.get("bins", []),
+                "optional_bins": requires.get("optional_bins", []),
+                "bin_versions": requires.get("bin_versions", {}),
+                "install_info": meta.get("install", []) if meta else [],
+                "bins_status": {},
+                "optional_bins_status": {},
+                "version_issues": [],
+                "os_ok": True,
+                "healthy": True,
+                "warnings": [],
+                "issues": [],
+                "inferred_bins": [],
+                "inferred_bins_status": {},
+            }
+            if skill["os_req"]:
+                os_map = {"darwin": "darwin", "linux": "linux", "win32": "windows"}
+                if current_os not in [os_map.get(o, o) for o in skill["os_req"]]:
+                    skill["os_ok"] = False
+                    skill["healthy"] = False
+                    skill["issues"].append(f"OS mismatch: needs {skill['os_req']}, have {current_os}")
+            for bin_name in skill["required_bins"]:
+                found = shutil.which(bin_name) is not None
+                skill["bins_status"][bin_name] = found
+                if not found:
+                    skill["healthy"] = False
+                    skill["issues"].append(f"Missing binary: {bin_name}")
+            for bin_name in skill["optional_bins"]:
+                found = shutil.which(bin_name) is not None
+                skill["optional_bins_status"][bin_name] = found
+                if not found:
+                    skill["warnings"].append(f"Optional missing: {bin_name}")
+            skills.append(skill)
+    return skills
+
+
+def _infer_deps_from_body(skill_md_path):
+    """Scan SKILL.md body text for CLI tool references when no deps are declared."""
+    try:
+        with open(skill_md_path) as f:
+            content = f.read()
+    except Exception:
+        return []
+    # Strip frontmatter
+    if content.startswith("---"):
+        end = content.find("---", 3)
+        if end != -1:
+            content = content[end + 3:]
+    inferred = set()
+    # Pattern: "requires `tool`", "uses `tool`", "install `tool`", "needs `tool`",
+    # "depends on `tool`", "`tool` must be installed"
+    for m in re.finditer(r'(?:requires|uses|install|needs|depends\s+on)\s+`([a-zA-Z0-9_-]+)`', content, re.IGNORECASE):
+        inferred.add(m.group(1))
+    for m in re.finditer(r'`([a-zA-Z0-9_-]+)`\s+must\s+be\s+installed', content, re.IGNORECASE):
+        inferred.add(m.group(1))
+    # Code block patterns: brew install X, npm install -g X, pip install X, apt install X
+    # Skip brew tap patterns like "steipete/tap/camsnap" — only take the last segment
+    for m in re.finditer(r'(?:brew|apt|apt-get)\s+install\s+(?:-\S+\s+)*([a-zA-Z0-9_/-]+)', content):
+        pkg = m.group(1).split("/")[-1]  # handle tap paths like user/tap/formula
+        inferred.add(pkg)
+    for m in re.finditer(r'npm\s+install\s+(?:-g\s+)?([a-zA-Z0-9_@/-]+)', content):
+        pkg = m.group(1).split("/")[-1]  # handle scoped packages
+        inferred.add(pkg)
+    for m in re.finditer(r'pip\s+install\s+([a-zA-Z0-9_-]+)', content):
+        inferred.add(m.group(1))
+    # Filter out common non-tool words and false positives
+    noise = {"the", "a", "an", "and", "or", "for", "to", "in", "on", "it", "is", "be", "this", "that",
+             "your", "you", "with", "from", "not", "can", "will", "all", "use", "run", "set", "get",
+             "add", "new", "see", "e", "g", "i", "s", "t", "v", "commands", "export", "requests",
+             "install", "update", "config", "setup", "build", "test", "check", "start", "stop",
+             "init", "create", "delete", "list", "show", "help", "version", "status", "enable",
+             "disable", "reset", "clean", "clear", "remove", "search", "find", "open", "close",
+             "file", "path", "name", "key", "value", "type", "mode", "level", "output", "input",
+             "server", "client", "source", "target", "local", "remote", "global", "default"}
+    filtered = set()
+    for item in inferred - noise:
+        # Skip ALL_CAPS (env vars like GOOGLE_PLACES_API_KEY)
+        if item.isupper() and len(item) > 1:
+            continue
+        # Skip items starting with - (flags like -e, -g)
+        if item.startswith("-"):
+            continue
+        # Skip date-like patterns (2025-09-03)
+        if re.match(r'^\d{4}(-\d{2}){0,2}$', item):
+            continue
+        # Skip pure numbers
+        if item.isdigit():
+            continue
+        # Skip very short items (likely noise)
+        if len(item) <= 1:
+            continue
+        # Skip items with underscores (likely env vars or internal names)
+        if "_" in item and item == item.upper():
+            continue
+        filtered.add(item)
+    return sorted(filtered)
+
+
+def _check_bin_version(bin_name, version_spec):
+    """Run `tool --version` and compare against a minimum version spec like '>=6.0'."""
+    try:
+        result = subprocess.run(
+            [bin_name, "--version"], capture_output=True, text=True, timeout=5
+        )
+        output = result.stdout.strip() or result.stderr.strip()
+    except Exception:
+        return None, "could not run --version"
+    # Parse version from output
+    ver_match = re.search(r'(\d+(?:\.\d+)+)', output)
+    if not ver_match:
+        return None, f"could not parse version from: {output[:80]}"
+    actual_ver = ver_match.group(1)
+    # Parse spec
+    spec_match = re.match(r'(>=|>|==|<=|<)\s*(.+)', version_spec.strip())
+    if not spec_match:
+        return actual_ver, f"invalid version spec: {version_spec}"
+    op, required_ver = spec_match.group(1), spec_match.group(2)
+    # Compare versions
+    actual_parts = [int(x) for x in actual_ver.split(".")]
+    required_parts = [int(x) for x in required_ver.split(".")]
+    # Pad to same length
+    max_len = max(len(actual_parts), len(required_parts))
+    actual_parts.extend([0] * (max_len - len(actual_parts)))
+    required_parts.extend([0] * (max_len - len(required_parts)))
+    if op == ">=" and actual_parts >= required_parts:
+        return actual_ver, None
+    elif op == ">" and actual_parts > required_parts:
+        return actual_ver, None
+    elif op == "==" and actual_parts == required_parts:
+        return actual_ver, None
+    elif op == "<=" and actual_parts <= required_parts:
+        return actual_ver, None
+    elif op == "<" and actual_parts < required_parts:
+        return actual_ver, None
+    return actual_ver, f"have {actual_ver}, need {version_spec}"
+
+
+def _skill_install_hint(skill):
+    """Get install hints for a broken skill."""
+    hints = []
+    for inst in skill.get("install_info", []):
+        if isinstance(inst, dict):
+            kind = inst.get("kind", "")
+            if kind == "brew":
+                hints.append(f"brew install {inst.get('formula', '')}")
+            elif kind == "npm":
+                hints.append(f"npm install -g {inst.get('package', '')}")
+            elif kind == "pip":
+                hints.append(f"pip install {inst.get('package', '')}")
+            elif kind == "shell":
+                hints.append(inst.get("cmd", ""))
+    return [h for h in hints if h.strip()]
+
+
+def cmd_skills(args):
+    """Skill dependency health check."""
+    skill_dirs = _get_skill_dirs(extra_dirs=getattr(args, 'dirs', None))
+    skills = _scan_skills(skill_dirs)
+    do_infer = getattr(args, 'infer', False)
+    do_versions = getattr(args, 'check_versions', False)
+
+    # Inference pass: scan SKILL.md body for deps when none declared
+    if do_infer:
+        for s in skills:
+            if not s["required_bins"] and not s["optional_bins"]:
+                inferred = _infer_deps_from_body(s["skill_md_path"])
+                s["inferred_bins"] = inferred
+                for bin_name in inferred:
+                    found = shutil.which(bin_name) is not None
+                    s["inferred_bins_status"][bin_name] = found
+                    if not found:
+                        s["warnings"].append(f"Inferred missing: {bin_name}")
+
+    # Version check pass
+    if do_versions:
+        for s in skills:
+            for bin_name, spec in s.get("bin_versions", {}).items():
+                if shutil.which(bin_name):
+                    actual, err = _check_bin_version(bin_name, spec)
+                    if err:
+                        s["version_issues"].append(f"{bin_name}: {err}")
+                        s["warnings"].append(f"Version mismatch: {bin_name} ({err})")
+
+    if getattr(args, 'skill', None):
+        skills = [s for s in skills if s["name"] == args.skill]
+        if not skills:
+            print(f"Skill '{args.skill}' not found")
+            sys.exit(1)
+
+    # Apply filter
+    filt = getattr(args, 'filter', None)
+    if filt == "broken":
+        skills = [s for s in skills if not s["healthy"]]
+    elif filt == "healthy":
+        skills = [s for s in skills if s["healthy"]]
+
+    healthy = [s for s in skills if s["healthy"]]
+    broken = [s for s in skills if not s["healthy"]]
+    no_deps = [s for s in skills if not s["required_bins"] and not s["os_req"] and not s["inferred_bins"]]
+    with_warnings = [s for s in skills if s["warnings"]]
+
+    # Fix-hints mode: just print install commands
+    if getattr(args, 'fix_hints', False):
+        any_hints = False
+        for s in [sk for sk in skills if not sk["healthy"]]:
+            hints = _skill_install_hint(s)
+            if hints:
+                print(f"# {s['name']}")
+                for h in hints:
+                    print(h)
+                print()
+                any_hints = True
+            else:
+                missing = [b for b, ok in s["bins_status"].items() if not ok]
+                if missing:
+                    print(f"# {s['name']} — no install info, missing: {', '.join(missing)}")
+                    print()
+                    any_hints = True
+        if not any_hints:
+            print("All skills healthy! Nothing to fix.")
+        return
+
+    # JSON output
+    if getattr(args, 'json_out', None):
+        target = sys.stdout if args.json_out == "-" else open(args.json_out, "w")
+        json.dump(skills, target, indent=2)
+        if args.json_out == "-":
+            print()
+        return
+
+    print(f"\n🩺 Skill Health Report")
+    print(f"{'='*60}")
+    print(f"📦 Total skills scanned: {len(skills)}")
+    print(f"✅ Healthy: {len(healthy)}")
+    print(f"❌ Broken:  {len(broken)}")
+    if with_warnings:
+        print(f"⚠️  Warnings: {len(with_warnings)}")
+    print(f"📝 No deps declared: {len(no_deps)}")
+    print(f"📂 Directories: {', '.join(skill_dirs)}")
+    print()
+
+    if broken:
+        print(f"❌ BROKEN SKILLS ({len(broken)})")
+        print(f"{'-'*60}")
+        for s in broken:
+            print(f"\n  🔴 {s['name']} ({s['source']})")
+            for issue in s["issues"]:
+                print(f"     ⚠️  {issue}")
+            hints = _skill_install_hint(s)
+            for h in hints:
+                print(f"     💡 Fix: {h}")
+        print()
+
+    if with_warnings:
+        print(f"⚠️  SKILLS WITH WARNINGS ({len(with_warnings)})")
+        print(f"{'-'*60}")
+        for s in with_warnings:
+            if s in broken:
+                continue  # already shown above
+            print(f"\n  🟡 {s['name']} ({s['source']})")
+            for w in s["warnings"]:
+                print(f"     ⚠️  {w}")
+        print()
+
+    if do_infer:
+        inferred_skills = [s for s in skills if s["inferred_bins"]]
+        if inferred_skills:
+            print(f"🔍 INFERRED DEPENDENCIES ({len(inferred_skills)} skills)")
+            print(f"{'-'*60}")
+            for s in inferred_skills:
+                found = [b for b, ok in s["inferred_bins_status"].items() if ok]
+                missing = [b for b, ok in s["inferred_bins_status"].items() if not ok]
+                status_parts = []
+                if found:
+                    status_parts.append(f"✅ {', '.join(found)}")
+                if missing:
+                    status_parts.append(f"❌ {', '.join(missing)}")
+                print(f"  {s['name']}: {' | '.join(status_parts)}")
+            print()
+
+    if getattr(args, 'verbose', False):
+        print(f"✅ HEALTHY SKILLS ({len(healthy)})")
+        print(f"{'-'*60}")
+        for s in healthy:
+            bins = ", ".join(s["required_bins"]) if s["required_bins"] else "none"
+            print(f"  🟢 {s['name']} ({s['source']}) — bins: {bins}")
+        print()
+
+
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
 def main():
@@ -1169,6 +1586,18 @@ Examples:
     p_history.add_argument("--dir", **dir_kwargs)
     p_history.add_argument("--days", type=int, default=30, help="Number of days of history (default: 30)")
     p_history.set_defaults(func=cmd_history)
+
+    # skills
+    p_skills = subparsers.add_parser("skills", help="Skill dependency health check")
+    p_skills.add_argument("--dirs", nargs="+", metavar="DIR", help="Additional skill directories to scan")
+    p_skills.add_argument("--skill", help="Check a specific skill by name")
+    p_skills.add_argument("--json", metavar="FILE", dest="json_out", help="Export as JSON (use - for stdout)")
+    p_skills.add_argument("--verbose", action="store_true", help="Show healthy skills too")
+    p_skills.add_argument("--fix-hints", action="store_true", help="Show only install commands for broken skills")
+    p_skills.add_argument("--filter", choices=["broken", "healthy"], help="Filter by status")
+    p_skills.add_argument("--infer", action="store_true", help="Infer deps from SKILL.md body text")
+    p_skills.add_argument("--check-versions", action="store_true", help="Check binary versions against requirements")
+    p_skills.set_defaults(func=cmd_skills)
 
     # watch
     p_watch = subparsers.add_parser("watch", help="Watch sessions and alert on threshold crossings")
