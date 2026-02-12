@@ -3,9 +3,15 @@
   "slug": "smalltalk",
   "displayName": "Smalltalk",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1769327035344,
-    "commit": "https://github.com/clawdbot/skills/commit/3a423e583deb6b6a1480d879548d800491c7edc1"
+    "version": "1.7.0",
+    "publishedAt": 1770840265873,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1769327035344,
+      "commit": "https://github.com/clawdbot/skills/commit/3a423e583deb6b6a1480d879548d800491c7edc1"
+    }
+  ]
 }
