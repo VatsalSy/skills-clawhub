@@ -3,11 +3,16 @@
   "slug": "rednote",
   "displayName": "小红书 - RedNote",
   "latest": {
-    "version": "1.2.1",
-    "publishedAt": 1770689411199,
-    "commit": "https://github.com/openclaw/skills/commit/6b8a0bc6777f862c65313c5b6dfc4995e526bc53"
+    "version": "1.2.2",
+    "publishedAt": 1770819056863,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.2.1",
+      "publishedAt": 1770689411199,
+      "commit": "https://github.com/openclaw/skills/commit/6b8a0bc6777f862c65313c5b6dfc4995e526bc53"
+    },
     {
       "version": "1.2.0",
       "publishedAt": 1770655680453,
