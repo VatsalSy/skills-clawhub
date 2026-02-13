@@ -2,6 +2,11 @@
 
 Unified search interface for Feishu (Lark) resources.
 
+## Prerequisites
+
+- Install `feishu-common` first.
+- This skill depends on `../feishu-common/index.js` for token and API auth.
+
 ## Features
 
 - **Search Messages**: Find chat history across private and group chats.
@@ -21,4 +26,4 @@ node skills/feishu-search/index.js search_docs --query "Q3 Roadmap"
 ## Configuration
 
 Requires standard Feishu environment variables (`FEISHU_APP_ID`, `FEISHU_APP_SECRET`) or a valid `FEISHU_TOKEN`.
-The skill uses the shared `skills/common/feishu-client.js` if available, or falls back to local auth.
+The skill uses shared auth from `../feishu-common/index.js`.

@@ -1,10 +1,10 @@
 const fs = require('fs');
 const path = require('path');
-const { getTenantAccessToken } = require('../../common/feishu-client');
+const { getToken } = require('../feishu-common/index.js');
 const axios = require('axios');
 
 async function searchMessages(query, limit = 10) {
-    const token = await getTenantAccessToken();
+    const token = await getToken();
     // https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v1/message/read_users
     // Note: Feishu strict message search API is complex/restricted. 
     // We will use the 'search' API suite if available, or simulate via message iteration if needed.
@@ -55,7 +55,7 @@ async function searchMessages(query, limit = 10) {
 }
 
 async function searchDocs(query, limit = 10) {
-    const token = await getTenantAccessToken();
+    const token = await getToken();
     // POST /open-apis/suite/docs-api/search/object
     console.log(`Searching docs for: "${query}" (limit: ${limit})`);
 
