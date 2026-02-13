@@ -1,15 +1,25 @@
 ---
-name: idfm-journey
-description: Query Île-de-France Mobilités (IDFM) PRIM/Navitia for place resolution, journey planning, and disruptions/incident checks. Use when asked to find routes in Île-de-France (e.g., "itinéraire de X à Y"), resolve station/stop ids, or check RER/metro line disruptions, and you have an IDFM PRIM API key.
+id: idfm-journey-skill
+name: IDFM Journey
+description: Query Île-de-France Mobilités (IDFM) PRIM/Navitia for Paris + suburbs public transport (Île-de-France) — place resolution, journey planning, and disruptions/incident checks.
+env: ['IDFM_PRIM_API_KEY']
+license: MIT
+metadata:
+  author: anthonymq
+  category: "Transport"
+  tags: ["idfm", "navitia", "paris", "transport"]
 ---
 
 # IDFM Journey (PRIM/Navitia)
 
 Use the bundled script to call PRIM/Navitia endpoints without extra dependencies.
 
-## Prereqs
+## Prereqs / security
 
-- Set `IDFM_PRIM_API_KEY` in the environment before running.
+- **Required secret:** `IDFM_PRIM_API_KEY` (treat as a secret; don’t commit it).
+- **Scope it:** set it only in the shell/session that runs the command.
+- **Do not override `--base-url`** unless you fully trust the endpoint.
+  The script sends `apikey: <IDFM_PRIM_API_KEY>` to whatever base URL you provide, so a malicious URL would exfiltrate your key.
 
 ## Quick commands
 
