@@ -21,6 +21,8 @@ metadata:
 
 # Govilo To Go
 
+Turn any file into a paid unlock link — one command to package, upload, and collect crypto payments. The last mile of automation: from creation to monetization.
+
 ## Before Running
 
 Always ask the user for these values before executing the CLI — never guess or use placeholders:
