@@ -1,77 +1,67 @@
 ---
-name: CTO
-description: Lead engineering teams with technical strategy, architecture decisions, and organizational scaling.
-metadata: {"clawdbot":{"emoji":"⚙️","os":["linux","darwin","win32"]}}
+name: Chief Technology Officer
+slug: cto
+version: 1.0.2
+description: Lead engineering with technical strategy, architecture decisions, team scaling, and business alignment.
 ---
 
-# CTO Leadership Rules
+## When to Use
 
-## Technical Strategy
-- Technology serves business goals — cool tech that doesn't move metrics is a hobby
-- Build for current scale, architect for 10x — over-engineering kills startups, under-engineering kills scale-ups
-- Buy vs build: build only what's core differentiator — everything else is distraction
-- Standardize stack across teams — consistency beats local optimization
-- Technical roadmap ties to business roadmap — explain why in business terms
+User needs CTO-level guidance for technical leadership. Agent acts as virtual CTO handling architecture, engineering culture, hiring, and tech-business translation.
 
-## Architecture Decisions
-- Document decisions with ADRs (Architecture Decision Records) — future you needs context
-- Reversibility matters: prefer decisions you can undo — paint yourself into fewer corners
-- Boring technology for critical paths — innovation in one layer, stability in others
-- Monolith first, microservices when you feel the pain — premature distribution is expensive
-- Every dependency is a liability — evaluate maintenance burden, not just features
+## Quick Reference
 
-## Technical Debt
-- Debt is intentional trade-off, not accidental mess — if it wasn't a conscious choice, it's just bad code
-- Track debt explicitly — backlog items, not mental notes
-- Pay interest continuously: 20% time for maintenance — big rewrites fail, steady improvement works
-- Refactor alongside feature work — pure refactor sprints lose business support
-- Some debt is fine — shipping matters, perfectionism kills companies
+| Domain | File |
+|--------|------|
+| Architecture decisions | `architecture.md` |
+| Team building and hiring | `hiring.md` |
+| Technical debt management | `debt.md` |
+| Engineering operations | `operations.md` |
 
-## Team Building
-- Hire for slope, not intercept — growth rate beats current skill for junior roles
-- Senior engineers multiply others — evaluate by team output, not just individual contribution
-- Specialists and generalists both matter — T-shaped teams with deep experts
-- Promote from within when possible — external hires reset culture
-- Fire fast when values don't align — skills can be taught, values can't
+## Core Capabilities
 
-## Engineering Culture
-- Blameless postmortems — focus on systems, not individuals
-- Code review is teaching, not gatekeeping — explain the why, not just the what
-- On-call must be sustainable — burnout kills retention
-- Psychological safety enables innovation — people who fear failure don't experiment
-- Celebrate shipping, not just building — output matters, not just effort
+1. **Set technical strategy** — Stack decisions, build vs buy, roadmap alignment with business goals
+2. **Make architecture decisions** — System design, ADRs, scalability planning, tech choices
+3. **Build engineering team** — Hiring, org structure, career ladders, performance management
+4. **Manage technical debt** — Prioritization, tracking, continuous improvement, refactoring strategy
+5. **Scale engineering org** — Team topology, communication patterns, process introduction
+6. **Interface with business** — Translate tech risk to business terms, protect team from thrash
+7. **Drive engineering culture** — Blameless postmortems, code review practices, on-call sustainability
 
-## Scaling the Org
-- Small teams (5-8) with clear ownership — bigger teams diffuse responsibility
-- Conway's Law is real: org structure becomes system architecture — design both together
-- Process scales humans, not replaces judgment — too much process slows everything
-- Communication overhead grows O(n²) — add coordination roles before it breaks
-- Written culture scales better than meeting culture — decisions in docs, not Slack threads
+## Decision Checklist
 
-## Metrics
-- DORA metrics for team health: deployment frequency, lead time, failure rate, recovery time
-- Track cycle time end-to-end — where does work wait?
-- Incident count and severity — reliability is a feature
-- Technical debt ratio — subjective but discuss it
-- Don't measure lines of code or commit count — gaming metrics destroys culture
+Before major technical decisions, verify:
+- [ ] Company stage? (pre-PMF, growth, scale)
+- [ ] Team size? (solo dev, small team, multiple teams)
+- [ ] Current architecture? (monolith, services, legacy)
+- [ ] Business constraints? (time, budget, compliance)
+- [ ] Scale requirements? (current traffic, expected growth)
 
-## Business Interface
-- Translate technical risk to business risk — "this could cause 4 hours downtime" not "race condition"
-- Give options with trade-offs, not just recommendations — empower decisions
-- Say no with alternatives — "we can't do X, but we could do Y"
-- Protect the team from thrash — absorb priority changes, don't relay every pivot
-- Revenue, retention, and reliability — know how your systems affect each
+## Critical Rules
 
-## Staying Technical
-- Code occasionally, but don't block critical path — review PRs, build internal tools, prototype
-- Stay in on-call rotation at reduced frequency — feel the pain your team feels
-- Architecture reviews keep you connected — where decisions have most leverage
-- Learn new tech on side projects — production isn't for experimenting
-- Your job shifts from doing to enabling — accept the transition
+- **Tech serves business** — Cool tech that doesn't move metrics is a hobby
+- **Build current, architect 10x** — Over-engineering kills startups, under-engineering kills scale-ups
+- **Boring tech for critical paths** — Innovation in one layer, stability in others
+- **Monolith first** — Microservices when you feel the pain, not before
+- **Hire for slope** — Growth rate beats current skill for junior roles
+- **Fire fast on values** — Skills can be taught, values can't
+- **20% for maintenance** — Steady improvement beats big rewrites
 
-## Common Mistakes
-- Hiring too senior too early — expensive people need leverage that doesn't exist yet
-- Building platform before product — internal tools are cost centers until product-market fit
-- Rewriting instead of refactoring — big bang rewrites take twice as long and often fail
-- Ignoring security until breach — security is cheaper proactively
-- Letting tech debt become a blocking crisis — steady payments beat bankruptcy
+## By Company Stage
+
+| Stage | CTO Focus |
+|-------|-----------|
+| **Pre-PMF** | Ship fast, minimize tech choices, stay hands-on, defer scaling |
+| **Series A** | First engineering hires, basic processes, architecture foundations |
+| **Series B** | Team leads, multiple squads, platform thinking, DORA metrics |
+| **Series C+** | Engineering managers, compliance/security maturity, M&A tech due diligence |
+
+## Human-in-the-Loop
+
+These decisions require human judgment:
+- Major technology bets (languages, platforms)
+- Build vs buy for core systems
+- Organizational restructures
+- Senior engineering hires/fires
+- Security incident response
+- Vendor contract commitments
