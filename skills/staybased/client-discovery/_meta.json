@@ -1,0 +1,11 @@
+{
+  "owner": "staybased",
+  "slug": "client-discovery",
+  "displayName": "Client Discovery",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1770927826054,
+    "commit": null
+  },
+  "history": []
+}
