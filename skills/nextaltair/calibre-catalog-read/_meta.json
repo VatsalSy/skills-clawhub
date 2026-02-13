@@ -3,9 +3,15 @@
   "slug": "calibre-catalog-read",
   "displayName": "Calibre Catalog Read",
   "latest": {
-    "version": "0.1.0",
-    "publishedAt": 1770824117205,
-    "commit": "https://github.com/openclaw/skills/commit/5027e18f1a0ec5dae027ccbaf46ce08fad39529a"
+    "version": "0.1.1",
+    "publishedAt": 1770905196081,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.1.0",
+      "publishedAt": 1770824117205,
+      "commit": "https://github.com/openclaw/skills/commit/5027e18f1a0ec5dae027ccbaf46ce08fad39529a"
+    }
+  ]
 }
