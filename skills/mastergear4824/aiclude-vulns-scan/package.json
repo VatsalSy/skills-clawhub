@@ -1,6 +1,6 @@
 {
   "name": "@aiclude/security-skill",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "AIclude Security Vulnerability Scanner - Claude Code Skill for inline security scanning",
   "type": "module",
   "main": "./dist/index.js",
@@ -47,15 +47,17 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsup",
+    "build": "tsup src/index.ts --format esm --dts",
     "dev": "tsup src/index.ts --format esm --dts --watch",
     "test": "vitest run",
     "clean": "rm -rf dist",
     "prepublishOnly": "npm run build"
   },
-  "devDependencies": {
+  "dependencies": {
     "@asvs/core": "workspace:*",
-    "@asvs/reporter": "workspace:*",
+    "@asvs/reporter": "workspace:*"
+  },
+  "devDependencies": {
     "tsup": "^8.0.0",
     "typescript": "^5.5.0"
   }

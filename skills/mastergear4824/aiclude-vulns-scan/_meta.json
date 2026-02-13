@@ -3,9 +3,15 @@
   "slug": "aiclude-vulns-scan",
   "displayName": "AICLUDE Vulnerability Scanner",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1770968368537,
-    "commit": "https://github.com/openclaw/skills/commit/ee2f18a8d517aa332e3f9dd0809209b91a5ff8e6"
+    "version": "1.0.1",
+    "publishedAt": 1770971161828,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1770968368537,
+      "commit": "https://github.com/openclaw/skills/commit/ee2f18a8d517aa332e3f9dd0809209b91a5ff8e6"
+    }
+  ]
 }
