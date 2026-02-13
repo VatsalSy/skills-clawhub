@@ -34,7 +34,7 @@ from typing import Any, Dict, Optional, Tuple
 
 from store import (
     default_dir,
-    ensure_migrated,
+
     env as _env,
     get_auth,
     get_config,
@@ -165,7 +165,6 @@ def main() -> int:
     args = ap.parse_args()
 
     load_env_file(args.dir)
-    ensure_migrated(args.dir)
 
     cfg = get_config(args.dir)
 

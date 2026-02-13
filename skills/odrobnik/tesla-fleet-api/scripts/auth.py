@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Tesla Fleet API authentication and configuration.
 
-State layout (default dir: ~/.openclaw/tesla-fleet-api; legacy: ~/.moltbot/tesla-fleet-api):
+State layout (default dir: {workspace}/tesla-fleet-api):
   - config.json   provider creds (client_id, client_secret) + config
   - config.json   non-token configuration
   - auth.json     OAuth tokens
@@ -28,7 +28,18 @@ from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
 from store import env as _env
-from store import ensure_migrated, get_auth, get_config, load_env_file, save_auth, save_config, default_dir
+
+import os
+
+
+def _resolve_ca_cert(path: Optional[str], dir_path: str) -> Optional[str]:
+    """Resolve ca_cert: if relative, make it relative to dir_path."""
+    if not path:
+        return None
+    if not os.path.isabs(path):
+        return os.path.join(dir_path, path)
+    return path
+from store import get_auth, get_config, load_env_file, save_auth, save_config, default_dir
 
 FLEET_AUTH_TOKEN_URL = "https://fleet-auth.prd.vn.cloud.tesla.com/oauth2/v3/token"
 TESLA_AUTHORIZE_URL = "https://auth.tesla.com/oauth2/v3/authorize"
@@ -96,7 +107,6 @@ def http_json(method: str, url: str, token: str, json_body: Optional[Dict[str, A
 
 def load_runtime(dir_path: str, *, args: argparse.Namespace) -> TeslaRuntime:
     load_env_file(dir_path)
-    ensure_migrated(dir_path)
 
     cfg = get_config(dir_path)
     auth = get_auth(dir_path)
@@ -111,7 +121,7 @@ def load_runtime(dir_path: str, *, args: argparse.Namespace) -> TeslaRuntime:
         redirect_uri=redirect_uri,
         audience=audience,
         base_url=base_url,
-        ca_cert=args.ca_cert or cfg.get("ca_cert") or _env("TESLA_CA_CERT"),
+        ca_cert=_resolve_ca_cert(args.ca_cert or cfg.get("ca_cert") or _env("TESLA_CA_CERT"), dir_path),
         domain=args.domain or cfg.get("domain") or _env("TESLA_DOMAIN"),
         access_token=_env("TESLA_ACCESS_TOKEN") or auth.get("access_token"),
         refresh_token=_env("TESLA_REFRESH_TOKEN") or auth.get("refresh_token"),
@@ -270,7 +280,6 @@ def cmd_config_show(rt: TeslaRuntime, dir_path: str) -> int:
 
 def cmd_config_set(args: argparse.Namespace, dir_path: str) -> int:
     load_env_file(dir_path)
-    ensure_migrated(dir_path)
 
     cfg = get_config(dir_path)
     changed = []

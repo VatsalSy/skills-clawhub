@@ -1,19 +1,22 @@
 #!/usr/bin/env bash
 set -e
 
-# Stop tesla-http-proxy
+# Stop tesla-http-proxy.
 
-NEW_DEFAULT="$HOME/.openclaw/tesla-fleet-api/proxy"
-OLD_DEFAULT="$HOME/.moltbot/tesla-fleet-api/proxy"
-DEFAULT_PROXY_DIR="$NEW_DEFAULT"
-if [ -d "$OLD_DEFAULT" ] && [ ! -d "$NEW_DEFAULT" ]; then
-  DEFAULT_PROXY_DIR="$OLD_DEFAULT"
+# --- Resolve workspace ---
+if [ -n "$OPENCLAW_WORKSPACE" ]; then
+    WORKSPACE="$OPENCLAW_WORKSPACE"
+else
+    SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+    WORKSPACE="$(cd "$SCRIPT_DIR" && while [ "$PWD" != "/" ]; do
+        [ -d skills ] && echo "$PWD" && break; cd ..; done)"
+    [ -z "$WORKSPACE" ] && WORKSPACE="$HOME/clawd"
 fi
-PROXY_DIR="${TESLA_PROXY_DIR:-$DEFAULT_PROXY_DIR}"
-PID_FILE="${PROXY_DIR}/proxy.pid"
+
+PID_FILE="${WORKSPACE}/tesla-fleet-api/proxy/proxy.pid"
 
 if [ ! -f "${PID_FILE}" ]; then
-    echo "Proxy is not running (no PID file found)"
+    echo "Proxy is not running (no PID file)"
     exit 0
 fi
 
@@ -28,8 +31,7 @@ fi
 echo "Stopping tesla-http-proxy (PID: ${PROXY_PID})..."
 kill "${PROXY_PID}"
 
-# Wait for process to exit
-for i in {1..10}; do
+for i in $(seq 1 10); do
     if ! ps -p "${PROXY_PID}" > /dev/null 2>&1; then
         rm -f "${PID_FILE}"
         echo "✓ Proxy stopped"
@@ -38,11 +40,6 @@ for i in {1..10}; do
     sleep 0.5
 done
 
-# Force kill if still running
-if ps -p "${PROXY_PID}" > /dev/null 2>&1; then
-    echo "Force killing proxy..."
-    kill -9 "${PROXY_PID}"
-    rm -f "${PID_FILE}"
-fi
-
-echo "✓ Proxy stopped"
+kill -9 "${PROXY_PID}" 2>/dev/null
+rm -f "${PID_FILE}"
+echo "✓ Proxy stopped (forced)"

@@ -1,52 +1,82 @@
 #!/usr/bin/env bash
 set -e
 
-# Start tesla-http-proxy in background
+# Start tesla-http-proxy in background.
+# If the binary isn't installed, directs the user to SETUP.md.
 
-NEW_DEFAULT="$HOME/.openclaw/tesla-fleet-api/proxy"
-OLD_DEFAULT="$HOME/.moltbot/tesla-fleet-api/proxy"
-DEFAULT_PROXY_DIR="$NEW_DEFAULT"
-if [ -d "$OLD_DEFAULT" ] && [ ! -d "$NEW_DEFAULT" ]; then
-  DEFAULT_PROXY_DIR="$OLD_DEFAULT"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SKILL_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+# --- Resolve workspace ---
+if [ -n "$OPENCLAW_WORKSPACE" ]; then
+    WORKSPACE="$OPENCLAW_WORKSPACE"
+else
+    WORKSPACE="$(cd "$SCRIPT_DIR" && while [ "$PWD" != "/" ]; do
+        [ -d skills ] && echo "$PWD" && break; cd ..; done)"
+    [ -z "$WORKSPACE" ] && WORKSPACE="$HOME/clawd"
 fi
-PROXY_DIR="${TESLA_PROXY_DIR:-$DEFAULT_PROXY_DIR}"
-GO_BIN="${HOME}/go/bin"
+
+PROXY_DIR="${WORKSPACE}/tesla-fleet-api/proxy"
+GO_BIN="${GOPATH:-$HOME/go}/bin"
 PROXY_BIN="${GO_BIN}/tesla-http-proxy"
 PID_FILE="${PROXY_DIR}/proxy.pid"
 LOG_FILE="${PROXY_DIR}/proxy.log"
 
-if [ -z "$1" ]; then
-    echo "Usage: $0 <path-to-private-key.pem>" >&2
-    exit 1
-fi
-
-PRIVATE_KEY="$1"
-
-if [ ! -f "${PRIVATE_KEY}" ]; then
-    echo "Error: Private key not found: ${PRIVATE_KEY}" >&2
-    exit 1
-fi
-
+# --- Check binary exists ---
 if [ ! -f "${PROXY_BIN}" ]; then
-    echo "Error: tesla-http-proxy not found. Run setup_proxy.sh first." >&2
+    echo "Error: tesla-http-proxy not found at ${PROXY_BIN}" >&2
+    echo "" >&2
+    echo "Install it by following the Proxy Setup section in:" >&2
+    echo "  ${SKILL_DIR}/SETUP.md" >&2
+    echo "" >&2
+    echo "Quick version:" >&2
+    echo "  go install github.com/teslamotors/vehicle-command/cmd/tesla-http-proxy@v0.4.1" >&2
     exit 1
 fi
 
-# Check if already running
+# --- Generate TLS certs if missing ---
+mkdir -p "${PROXY_DIR}"
+if [ ! -f "${PROXY_DIR}/tls-cert.pem" ] || [ ! -f "${PROXY_DIR}/tls-key.pem" ]; then
+    echo "Generating self-signed TLS certificate for localhost..."
+    openssl req -x509 -newkey rsa:4096 \
+        -keyout "${PROXY_DIR}/tls-key.pem" \
+        -out "${PROXY_DIR}/tls-cert.pem" \
+        -days 365 -nodes -subj "/CN=localhost" > /dev/null 2>&1
+    chmod 600 "${PROXY_DIR}/tls-key.pem"
+    echo "✓ Generated TLS certificates in ${PROXY_DIR}"
+fi
+
+# --- Resolve private key ---
+if [ -n "$1" ]; then
+    PRIVATE_KEY="$1"
+elif [ -n "$TESLA_PRIVATE_KEY" ]; then
+    PRIVATE_KEY="$TESLA_PRIVATE_KEY"
+else
+    # Auto-detect *.tesla.private-key.pem in workspace
+    PRIVATE_KEY="$(find "${WORKSPACE}/tesla-fleet-api" -maxdepth 1 -name '*.tesla.private-key.pem' | head -1)"
+fi
+
+if [ -z "${PRIVATE_KEY}" ] || [ ! -f "${PRIVATE_KEY}" ]; then
+    echo "Error: Tesla private key not found." >&2
+    echo "Usage: $0 [path-to-private-key.pem]" >&2
+    echo "Or set TESLA_PRIVATE_KEY env var." >&2
+    exit 1
+fi
+
+# --- Check if already running ---
 if [ -f "${PID_FILE}" ]; then
     OLD_PID=$(cat "${PID_FILE}")
     if ps -p "${OLD_PID}" > /dev/null 2>&1; then
         echo "Proxy is already running (PID: ${OLD_PID})"
         exit 0
     else
-        echo "Removing stale PID file..."
         rm -f "${PID_FILE}"
     fi
 fi
 
+# --- Start ---
 echo "Starting tesla-http-proxy..."
 
-# Start proxy in background
 nohup "${PROXY_BIN}" \
     -key-file "${PRIVATE_KEY}" \
     -tls-key "${PROXY_DIR}/tls-key.pem" \
@@ -58,10 +88,9 @@ nohup "${PROXY_BIN}" \
 PROXY_PID=$!
 echo "${PROXY_PID}" > "${PID_FILE}"
 
-# Wait a bit and check if it's running
 sleep 2
 if ps -p "${PROXY_PID}" > /dev/null 2>&1; then
-    echo "✓ Proxy started successfully (PID: ${PROXY_PID})"
+    echo "✓ Proxy started (PID: ${PROXY_PID})"
     echo "  Listening on: https://localhost:4443"
     echo "  Logs: ${LOG_FILE}"
 else
