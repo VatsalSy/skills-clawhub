@@ -1,8 +1,9 @@
 ---
 name: clips-machine
-description: Transform long videos into viral short-form clips. Auto-detect best moments, add trendy captions, export for TikTok/Reels/Shorts.
-version: 1.0.0
-author: mayankgupta
+description: Transform long videos into viral short-form clips. Auto-detect best moments, add trendy captions, export for TikTok/Reels/Shorts. Self-contained, no external modules. 100% free tools.
+version: 1.1.0
+author: Mayank8290
+homepage: https://github.com/Mayank8290/openclaw-video-skills
 tags: video, clips, tiktok, reels, shorts, viral, captions, transcription
 metadata: { "openclaw": { "requires": { "bins": ["ffmpeg", "yt-dlp", "whisper-cpp"] } } }
 ---
@@ -12,6 +13,8 @@ metadata: { "openclaw": { "requires": { "bins": ["ffmpeg", "yt-dlp", "whisper-cp
 Transform long videos into viral short-form clips. Auto-detect the best moments, add trendy captions, export for TikTok/Reels/Shorts.
 
 **100% FREE tools** - Runs entirely on your machine.
+
+> **Love this skill?** Support the creator and help keep it free: **[Buy Me a Coffee](https://buymeacoffee.com/mayank8290)**
 
 ## What This Skill Does
 
@@ -146,4 +149,14 @@ Add meme-style captions
 
 ---
 
-Built for OpenClaw | Powered by Whisper + FFmpeg | 100% Free
+## Support This Project
+
+If this skill saved you time or made you money, consider buying me a coffee!
+
+**[Buy Me a Coffee](https://buymeacoffee.com/mayank8290)**
+
+Every coffee helps me build more free tools for the community.
+
+---
+
+Built for OpenClaw | Powered by Whisper + FFmpeg | [Support the Creator](https://buymeacoffee.com/mayank8290)
