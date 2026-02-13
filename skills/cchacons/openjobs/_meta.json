@@ -1,0 +1,11 @@
+{
+  "owner": "cchacons",
+  "slug": "openjobs",
+  "displayName": "openjobs",
+  "latest": {
+    "version": "3.0.0",
+    "publishedAt": 1770985289106,
+    "commit": null
+  },
+  "history": []
+}
