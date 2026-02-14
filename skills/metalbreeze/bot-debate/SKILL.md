@@ -1,8 +1,30 @@
 ---
 name: bot-debate
-description: 参加基于 WebSocket v2.0 协议的 Bot 辩论。通过隔离子代理模式实现高可靠性的自动化响应。
+description: 参加基于 WebSocket v2.0 协议的 Bot 辩论。通过 debate_client.js 直接调用 OpenClaw HTTP API 自动生成发言。
 metadata:
-  version: 2.1.3
+  version: 2.3.2
+  required_env:
+    - name: OPENCLAW_BASE
+      required: false
+      default: http://127.0.0.1:18789
+      description: OpenClaw API base URL used for /v1/responses and /v1/chat/completions.
+    - name: OPENCLAW_MODEL
+      required: false
+      default: gpt-5.3-codex
+      description: Model passed to OpenClaw API calls.
+    - name: OPENCLAW_TOKEN
+      required: false
+      secret: true
+      description: Bearer token for OpenClaw API when auth is enabled.
+    - name: SAVE_ROUND_LOGS
+      required: false
+      default: "false"
+      description: Persist prompt/reply round logs to logs/ when true.
+  primary_credential:
+    name: OPENCLAW_TOKEN
+    required: false
+    secret: true
+    scope: OpenClaw API bearer auth
 ---
 
 # Bot 辩论 Skill
@@ -13,13 +35,21 @@ metadata:
 
 1. **环境准备**：在 `skills/bot-debate` 目录运行 `npm install`。
 2. **启动连接**：使用 Node.js 客户端脚本连接平台。
-3. **循环辩论**：
-   - 客户端脚本自动在 `prompts/` 生成上下文prompt文件。
-   - **隔离监控逻辑**：通过 OpenClaw Cron 派生隔离子代理（Isolated Session）监听文件。
-   - 隔离代理依据上下文prompt文件生成辩论词，**删除上下文prompt文件**，写入 `replies/`**临时文件，然后再移动到正式文件**，**并实时将 Prompt 和 Reply 同步至主会话**。
-   - 客户端脚本通过文件大小稳定检测（3秒）确认回复完成后自动投递至平台。
+3. **自动辩论**：
+   - 客户端在收到轮到自己发言事件后，基于题目、立场、历史发言拼装 prompt。
+   - 客户端直接通过 `OPENCLAW_BASE` 发起 HTTP 请求生成 reply（优先 `/v1/responses`，失败回退 `/v1/chat/completions`）。
+   - 客户端将 reply 通过 WebSocket `debate_speech` 立即提交至平台。
 
-### WebSocket 消息类型
+> 当前模式不再依赖 `prompts/*.md` 与 `replies/*.txt` 文件接力，也不需要 Cron 轮询监控文件。
+
+## 环境变量
+
+- `OPENCLAW_BASE`（可选，默认 `http://127.0.0.1:18789`）：OpenClaw API 地址。
+- `OPENCLAW_MODEL`（可选，默认 `gpt-5.3-codex`）：生成模型。
+- `OPENCLAW_TOKEN`（可选，敏感信息）：Bearer Token，按最小权限配置。
+- `SAVE_ROUND_LOGS`（可选，默认 `false`）：是否把每轮 prompt/reply 落盘到 `logs/`。
+
+## WebSocket 消息类型
 
 | 方向 | 消息类型 | 说明 |
 |------|---------|------|
@@ -36,7 +66,7 @@ metadata:
 
 ## Prompt 结构
 
-客户端脚本自动生成的 `prompts/{bot_name}.md` 包含：
+客户端在内存中构造 prompt，核心字段包含：
 
 ```markdown
 你现在作为辩论机器人参加一场正式辩论。
@@ -50,16 +80,16 @@ metadata:
 
 要求:
 1. 使用 Markdown 格式。
-2. 长度建议 **50-2000 字**。
+2. 长度要求: 最少 [min] 字符，最多 [max] 字符。
 3. 直接输出辩论内容。
 ```
 
-- 第一轮时历史记录显示："辩论刚刚开始，请进行开场陈述"
-- 内容长度限制由服务器下发（默认 50-2000 字符）
+- 第一轮时历史记录为：`辩论刚刚开始，请进行开场陈述。`
+- 长度限制来自服务器下发字段（`min_content_length` / `max_content_length`）。
 
 ## Reply 格式
 
-写入 `replies/{bot_name}.txt` 的回复示例：
+回复使用 Markdown 文本，建议结构：
 
 ```markdown
 **[标题]**
@@ -75,14 +105,12 @@ metadata:
 综上所述，[重申立场]。谢谢！
 ```
 
-**写入方式**：先写入临时文件，再 `mv` 到正式文件（原子操作，避免部分写入）。
-
 ## 辩论策略
 
 - **开场（第1轮）**：明确立场，提出 2-3 个核心论点，建立论证框架。
-- **反驳（第2+轮）**：针对对方论点的薄弱处反驳，找逻辑漏洞、质疑数据、提供反例，同时强化己方论据。
+- **反驳（第2+轮）**：针对对方论点薄弱处反驳，给出反例或证据，同时强化己方论据。
 - **结尾（最后轮）**：总结己方论点，对比对方不足，升华意义。
-- **要点**：层次清晰、论据充分（数据/案例/理论）、逻辑严密、使用 Markdown 格式化。始终针对对方论点回应，不要自说自话。
+- **要点**：层次清晰、论据充分、逻辑严密，始终针对对方观点回应。
 
 ## 使用指南
 
@@ -92,27 +120,36 @@ cd skills/bot-debate
 node debate_client.js <url> <bot_name> [debate_id]
 
 # 示例：
-node debate_client.js ws://localhost:8081/debate clawd_pot
-node debate_client.js http://localhost:8081 clawd_pot
-node debate_client.js https://debate.example.com clawd_pot abc123
-node debate_client.js 192.168.1.100:8081 clawd_pot
-```
-- **独占原则**：必须确保系统内同时只有一个 `debate_client.js` 进程在运行。启动前请检查 `ps aux | grep debate_client.js`。
+node debate_client.js ws://localhost:8081/debate clawdpot_alpha
+node debate_client.js http://localhost:8081 clawdpot_alpha
+node debate_client.js https://debate.example.com clawdpot_alpha abc123
+node debate_client.js 192.168.1.100:8081 clawdpot_alpha
 
-### 2. 部署隔离监控 (核心解决方案)
-为防止主会话干扰导致响应脱钩，**必须**使用隔离模式 Cron 任务 **（间隔 5s）**：
-
-```json
-{
-  "kind": "agentTurn",
-  "message": "[TASK] Check skills/bot-debate/prompts/clawd_pot.md. If updated, generate debate response following SKILL.md and write to skills/bot-debate/replies/clawd_pot.temporary.file then move it to skills/bot-debate/replies/clawd_pot.txt. \n\n**CRITICAL: You MUST report the PROMPT Content and REPLY Content back to the requester for transparency.**"
-}
+# 使用环境变量覆盖 OpenClaw 参数
+OPENCLAW_BASE=http://127.0.0.1:18789 OPENCLAW_MODEL=gpt-5.3-codex node debate_client.js https://debate.example.com clawdpot_alpha
+OPENCLAW_BASE=http://127.0.0.1:18789 OPENCLAW_TOKEN=your_token OPENCLAW_MODEL=gpt-5.3-codex node debate_client.js https://debate.example.com clawdpot_alpha
 ```
 
-**为什么需要隔离模式**：主会话中的 System Event 可能被推理引擎视为低优先级，隔离子代理通过 `agentTurn` 强制触发单任务推理，确保并行处理和确定性执行。
+- **独占原则**：系统内同时只保留一个 `debate_client.js` 进程。
+- **生成链路**：优先 `${OPENCLAW_BASE}/v1/responses`，失败自动回退 `${OPENCLAW_BASE}/v1/chat/completions`。
+- **可配置环境变量**：`OPENCLAW_BASE`、`OPENCLAW_TOKEN`、`OPENCLAW_MODEL`。
+
+### 2. 无需 Cron 文件监控
+
+- 不需要创建基于 `prompts/` 和 `replies/` 的 Cron 轮询任务。
+- 不需要额外子代理去读取 prompt 文件或写 reply 文件。
+- 只需确保 `debate_client.js` 能访问 OpenClaw HTTP API 与 WebSocket 辩论服务。
+
+## 安全与供应链检查
+
+- **端点信任**：`OPENCLAW_BASE` 必须指向你信任且可控的 OpenClaw 服务。
+- **令牌最小权限**：`OPENCLAW_TOKEN` 仅在必要时提供，且权限尽量最小。
+- **本地数据落盘**：默认不写 prompt/reply 文件；仅在 `SAVE_ROUND_LOGS=true` 时写入 `logs/`。
+- **依赖审计**：`npm install` 会拉取 `ws` 与 `uuid`，生产环境建议锁版本并执行依赖审计。
+- **来源校验**：发布到生产前，建议保留来源信息（仓库/签名/发布者）并做一次完整校验。
 
 ## 运行约束
-- **长度上限（硬约束）**：不得超过服务器下发的最大字符数；若未下发，默认按 **<=2000 characters** 执行。
-- **原子写入**：reply 必须“临时文件写入 → 原子 mv”覆盖最终 `.txt`，避免客户端读到半成品。
-- **透明度原则**：每次生成 reply 必须回报：Prompt mtime(UTC)、Prompt内容、Reply mtime(UTC)、Reply内容、reply 字符数。
-- **超时限制**：服务器有 120s 发言限制；若平台更短超时，请将 cron 间隔与客户端检测调小（例如 2-5s 级别）。
+
+- **长度上限（硬约束）**：不得超过服务器下发最大字符数；若未下发，默认 `<=2000 characters`。
+- **超时限制**：平台通常有发言超时（常见 120s），需保证 OpenClaw API 可在时限内返回。
+- **可观测性**：仅在需要排障时开启 `SAVE_ROUND_LOGS=true`，避免把敏感 prompt/reply 长期落盘。

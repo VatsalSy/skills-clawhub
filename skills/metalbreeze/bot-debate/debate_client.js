@@ -1,7 +1,6 @@
 const WebSocket = require('ws');
 const { v4: uuidv4 } = require('uuid');
 const fs = require('fs');
-const path = require('path');
 
 class DebateClient {
     constructor(wsUrl, botName, debateId = null) {
@@ -12,39 +11,25 @@ class DebateClient {
         this.debateKey = null;
         this.botIdentifier = null;
         this.ws = null;
-        this.minContentLength = 50;    // Default values
-        this.maxContentLength = 2000;  // Default values
+        this.minContentLength = 50;
+        this.maxContentLength = 2000;
 
-        // Ensure directories exist
-        if (!fs.existsSync('prompts')) fs.mkdirSync('prompts');
-        if (!fs.existsSync('replies')) fs.mkdirSync('replies');
+        this.openclawBase = (process.env.OPENCLAW_BASE || 'http://127.0.0.1:18789').replace(/\/$/, '');
+        this.openclawToken = process.env.OPENCLAW_TOKEN || '';
+        this.openclawModel = process.env.OPENCLAW_MODEL || 'gpt-5.3-codex';
+        this.apiTimeoutMs = 60000;
+        this.saveRoundLogs = (process.env.SAVE_ROUND_LOGS || 'false').toLowerCase() === 'true';
+
+        if (this.saveRoundLogs && !fs.existsSync('logs')) fs.mkdirSync('logs');
     }
 
     convertToWebSocketUrl(url) {
         let wsUrl;
-
-        // If already a WebSocket URL, use as is
-        if (url.startsWith('ws://') || url.startsWith('wss://')) {
-            return url;
-        }
-
-        // Convert HTTP/HTTPS to WS/WSS
-        if (url.startsWith('https://')) {
-            wsUrl = url.replace('https://', 'wss://');
-        }
-        else if (url.startsWith('http://')) {
-            wsUrl = url.replace('http://', 'ws://');
-        }
-        // If no protocol, assume ws://
-        else {
-            wsUrl = 'ws://' + url;
-        }
-
-        // Add /debate path if not already present
-        if (!wsUrl.includes('/debate')) {
-            wsUrl = wsUrl.replace(/\/$/, '') + '/debate';
-        }
-
+        if (url.startsWith('ws://') || url.startsWith('wss://')) return url;
+        if (url.startsWith('https://')) wsUrl = url.replace('https://', 'wss://');
+        else if (url.startsWith('http://')) wsUrl = url.replace('http://', 'ws://');
+        else wsUrl = 'ws://' + url;
+        if (!wsUrl.includes('/debate')) wsUrl = wsUrl.replace(/\/$/, '') + '/debate';
         return wsUrl;
     }
 
@@ -54,27 +39,162 @@ class DebateClient {
 
     send(type, data) {
         const payload = JSON.stringify({
-            type: type,
+            type,
             timestamp: new Date().toISOString(),
-            data: data
+            data
         });
         this.ws.send(payload);
     }
 
+    async postJson(url, body) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), this.apiTimeoutMs);
+        const headers = { 'Content-Type': 'application/json' };
+        if (this.openclawToken) headers.Authorization = `Bearer ${this.openclawToken}`;
+
+        try {
+            const resp = await fetch(url, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify(body),
+                signal: controller.signal
+            });
+            const text = await resp.text();
+            let json = null;
+            try {
+                json = text ? JSON.parse(text) : null;
+            } catch (_) {
+                json = { raw: text };
+            }
+            if (!resp.ok) {
+                const detail = json && (json.error?.message || json.message || json.raw || text);
+                throw new Error(`HTTP ${resp.status}${detail ? `: ${detail}` : ''}`);
+            }
+            return json;
+        } finally {
+            clearTimeout(timer);
+        }
+    }
+
+    extractTextFromResponsesResponse(json) {
+        if (!json) return '';
+        if (typeof json.output_text === 'string' && json.output_text.trim()) return json.output_text.trim();
+
+        if (Array.isArray(json.output)) {
+            const parts = [];
+            for (const item of json.output) {
+                if (Array.isArray(item?.content)) {
+                    for (const c of item.content) {
+                        if (typeof c?.text === 'string') parts.push(c.text);
+                        else if (typeof c?.output_text === 'string') parts.push(c.output_text);
+                    }
+                }
+                if (typeof item?.text === 'string') parts.push(item.text);
+            }
+            const joined = parts.join('\n').trim();
+            if (joined) return joined;
+        }
+
+        if (typeof json?.response?.output_text === 'string' && json.response.output_text.trim()) {
+            return json.response.output_text.trim();
+        }
+
+        return '';
+    }
+
+    extractTextFromChatResponse(json) {
+        const msg = json?.choices?.[0]?.message;
+        if (!msg) return '';
+
+        if (typeof msg.content === 'string') return msg.content.trim();
+        if (Array.isArray(msg.content)) {
+            const text = msg.content
+                .map((x) => (typeof x === 'string' ? x : x?.text || ''))
+                .join('\n')
+                .trim();
+            return text;
+        }
+        return '';
+    }
+
+    normalizeReplyContent(content) {
+        if (!content) return '';
+        let finalContent = content.trim();
+        if (finalContent.length > this.maxContentLength) {
+            finalContent = finalContent.substring(0, this.maxContentLength);
+            this.log(`WARNING: Content too long. Truncated to ${this.maxContentLength} chars.`);
+        }
+        if (finalContent.length < this.minContentLength) {
+            this.log(`WARNING: Content too short (${finalContent.length}/${this.minContentLength} chars). Submitting anyway.`);
+        }
+        return finalContent;
+    }
+
+    async generateReplyViaOpenClaw(prompt) {
+        const responsesUrl = `${this.openclawBase}/v1/responses`;
+        const chatUrl = `${this.openclawBase}/v1/chat/completions`;
+
+        try {
+            const respJson = await this.postJson(responsesUrl, {
+                model: this.openclawModel,
+                input: prompt
+            });
+            const text = this.extractTextFromResponsesResponse(respJson);
+            if (text) {
+                this.log('Generated reply via /v1/responses.');
+                return text;
+            }
+            throw new Error('empty text from /v1/responses');
+        } catch (err) {
+            this.log(`OpenClaw /v1/responses failed: ${err.message}. Falling back to /v1/chat/completions.`);
+        }
+
+        const chatJson = await this.postJson(chatUrl, {
+            model: this.openclawModel,
+            messages: [{ role: 'user', content: prompt }]
+        });
+        const chatText = this.extractTextFromChatResponse(chatJson);
+        if (!chatText) throw new Error('empty text from /v1/chat/completions');
+        this.log('Generated reply via /v1/chat/completions.');
+        return chatText;
+    }
+
+    getRoundNumber(msgData) {
+        if (Array.isArray(msgData?.debate_log)) return msgData.debate_log.length + 1;
+        return 1;
+    }
+
+    writeRoundLog(kind, round, content) {
+        if (!this.saveRoundLogs) return;
+        const identifier = this.botIdentifier || this.botName;
+        const fileName = `${identifier}.${kind}.round_${round}.log`;
+        const filePath = `logs/${fileName}`;
+        const stamp = new Date().toISOString();
+        const body = `[${stamp}]\n${content}\n`;
+        fs.writeFileSync(filePath, body, 'utf8');
+        this.log(`Saved ${kind} log: ${filePath}`);
+    }
+
+    submitSpeech(content, round) {
+        this.send('debate_speech', {
+            debate_id: this.debateId,
+            debate_key: this.debateKey,
+            speaker: this.botIdentifier,
+            message: { format: 'markdown', content }
+        });
+        this.log(`Speech submitted (${content.length} chars, round ${round}).`);
+    }
+
     async handleTurn(msgData) {
-        this.log("My turn to speak.");
+        this.log('My turn to speak.');
+        const round = this.getRoundNumber(msgData);
 
-        // Update content length constraints from server
-        if (msgData.min_content_length !== undefined) {
-            this.minContentLength = msgData.min_content_length;
-        }
-        if (msgData.max_content_length !== undefined) {
-            this.maxContentLength = msgData.max_content_length;
-        }
+        if (msgData.min_content_length !== undefined) this.minContentLength = msgData.min_content_length;
+        if (msgData.max_content_length !== undefined) this.maxContentLength = msgData.max_content_length;
 
-        let history = "";
+        let history = '';
         if (msgData.debate_log) {
-            msgData.debate_log.forEach(entry => {
+            msgData.debate_log.forEach((entry) => {
                 const side = entry.side === 'supporting' ? '正方' : '反方';
                 history += `\n${side} (${entry.speaker}): ${entry.message.content}\n`;
             });
@@ -86,85 +206,25 @@ class DebateClient {
 你的立场: ${msgData.your_side === 'supporting' ? '正方 (支持)' : '反方 (反对)'}
 
 历史记录:
-${history || "辩论刚刚开始，请进行开场陈述。"}
+${history || '辩论刚刚开始，请进行开场陈述。'}
 
 要求:
 1. 使用 Markdown 格式。
 2. 长度要求: 最少 ${this.minContentLength} 字符，最多 ${this.maxContentLength} 字符。
 3. 直接输出辩论内容。
 `;
-        const replyPath = `replies/${this.botName}.txt`;
+        this.writeRoundLog('prompt', round, prompt);
 
-        // 删除旧的回复文件，确保干净的状态
-        if (fs.existsSync(replyPath)) fs.unlinkSync(replyPath);
+        try {
+            const apiReply = await this.generateReplyViaOpenClaw(prompt);
+            const finalApiReply = this.normalizeReplyContent(apiReply);
+            if (!finalApiReply) throw new Error('empty normalized reply');
 
-        // 使用临时文件 + rename 原子操作
-        const tempFile = `prompts/.${this.botName}.${Date.now()}.tmp`;
-        fs.writeFileSync(tempFile, prompt);
-        fs.renameSync(tempFile, `prompts/${this.botName}.md`);
-        this.log(`Prompt saved. Waiting for replies/${this.botName}.txt...`);
-
-
-        // 文件稳定性检测机制
-        let lastSize = -1;       // 记录上次文件大小
-        let stableCount = 0;     // 文件大小稳定计数器
-
-        const checkReply = () => {
-            if (!fs.existsSync(replyPath)) {
-                return false;
-            }
-
-            // 获取文件大小
-            const fileSize = fs.statSync(replyPath).size;
-
-            // 文件为空，跳过
-            if (fileSize === 0) {
-                return false;
-            }
-
-            // 文件大小稳定性检测
-            if (fileSize === lastSize) {
-                stableCount++;
-            } else {
-                stableCount = 0;
-                lastSize = fileSize;
-            }
-
-            // 需要连续 3 次检查（3秒）大小不变
-            if (stableCount < 3) {
-                return false;
-            }
-
-            // 读取内容并验证长度
-            const content = fs.readFileSync(replyPath, 'utf8').trim();
-            const contentLen = content.length;
-
-            let finalContent = content;
-            if (contentLen < this.minContentLength) {
-                this.log(`WARNING: Content too short (${contentLen}/${this.minContentLength} chars). Submitting anyway.`);
-            }
-            if (contentLen > this.maxContentLength) {
-                finalContent = content.substring(0, this.maxContentLength);
-                this.log(`WARNING: Content too long (${contentLen}/${this.maxContentLength} chars). Truncated to ${this.maxContentLength} chars.`);
-            }
-
-            // 发送消息
-            this.send('debate_speech', {
-                debate_id: this.debateId,
-                debate_key: this.debateKey,
-                speaker: this.botIdentifier,
-                message: { format: 'markdown', content: finalContent }
-            });
-
-            // 清空文件
-            fs.writeFileSync(replyPath, "");
-            this.log(`Speech submitted (${contentLen} chars).`);
-            return true;
-        };
-
-        const interval = setInterval(() => {
-            if (checkReply()) clearInterval(interval);
-        }, 1000);
+            this.writeRoundLog('reply', round, finalApiReply);
+            this.submitSpeech(finalApiReply, round);
+        } catch (err) {
+            this.log(`OpenClaw API generation failed: ${err.message}`);
+        }
     }
 
     run() {
@@ -172,19 +232,19 @@ ${history || "辩论刚刚开始，请进行开场陈述。"}
 
         this.ws.on('open', () => {
             if (this.debateId) {
-                this.log("Connected. Logging in...");
+                this.log('Connected. Logging in...');
                 this.send('bot_login', {
                     bot_name: this.botName,
                     bot_uuid: this.botUuid,
                     debate_id: this.debateId,
-                    version: "2.0"
+                    version: '2.0'
                 });
             } else {
-                this.log("Connected. Requesting debate assignment...");
+                this.log('Connected. Requesting debate assignment...');
                 this.send('bot_login', {
                     bot_name: this.botName,
                     bot_uuid: this.botUuid,
-                    version: "2.0"
+                    version: '2.0'
                 });
             }
         });
@@ -206,21 +266,19 @@ ${history || "辩论刚刚开始，请进行开场陈述。"}
                     if (msgData.joined_bots && msgData.joined_bots.length > 0) {
                         this.log(`Already joined bots: ${msgData.joined_bots.join(', ')}`);
                     } else {
-                        this.log(`You are the first bot to join`);
+                        this.log('You are the first bot to join');
                     }
                     break;
                 case 'login_rejected':
                     this.log(`Login rejected: ${msgData.message}`);
                     this.log(`Reason: ${msgData.reason}`);
-                    if (msgData.retry_after) {
-                        this.log(`You can retry after ${msgData.retry_after} seconds`);
-                    }
+                    if (msgData.retry_after) this.log(`You can retry after ${msgData.retry_after} seconds`);
                     process.exit(1);
                     break;
                 case 'debate_start':
                 case 'debate_update':
                     if (msgData.next_speaker === this.botIdentifier) {
-                        this.handleTurn(msgData);
+                        this.handleTurn(msgData).catch((err) => this.log(`handleTurn error: ${err.message}`));
                     }
                     break;
                 case 'debate_end':
@@ -228,10 +286,7 @@ ${history || "辩论刚刚开始，请进行开场陈述。"}
                     this.ws.close();
                     break;
                 case 'ping':
-                    // Server sent ping, respond with pong
-                    this.send('pong', {
-                        client_time: new Date().toISOString()
-                    });
+                    this.send('pong', { client_time: new Date().toISOString() });
                     break;
                 case 'error':
                     this.log(`Error: ${msgData.message}`);
@@ -255,28 +310,20 @@ ${history || "辩论刚刚开始，请进行开场陈述。"}
 const [,, url, botName, debateId] = process.argv;
 
 if (!url || !botName) {
-    console.log("Usage: node debate_client.js <url> <botName> [debateId]");
-    console.log("");
-    console.log("Arguments:");
-    console.log("  url       - WebSocket URL (ws://host:port/debate)");
-    console.log("              or HTTP URL (http://host:port) - will auto-convert to ws://host:port/debate");
-    console.log("              or HTTPS URL (https://host:port) - will auto-convert to wss://host:port/debate");
-    console.log("  botName   - Name for this bot (e.g., bot_alpha)");
-    console.log("  debateId  - (Optional) Debate ID to join. If omitted, platform will assign one.");
-    console.log("");
-    console.log("Examples:");
-    console.log("  node debate_client.js http://localhost:8081 bot_alpha debate-12345");
-    console.log("  node debate_client.js http://localhost:8081 bot_alpha");
-    console.log("  node debate_client.js https://example.com bot_beta");
-    console.log("  node debate_client.js ws://localhost:8081/debate bot_test");
-    console.log("");
-    console.log("API Endpoints:");
-    console.log("  Bot WebSocket:      ws://host:port/debate");
-    console.log("  Frontend WebSocket: ws://host:port/frontend");
-    console.log("  Create Debate:      POST /api/debate/create");
-    console.log("  List Debates:       GET  /api/debates");
-    console.log("  Get Debate:         GET  /api/debate/{id}");
-    console.log("  Frontend UI:        http://host:port/");
+    console.log('Usage: node debate_client.js <url> <botName> [debateId]');
+    console.log('');
+    console.log('Arguments:');
+    console.log('  url       - WebSocket URL (ws://host:port/debate)');
+    console.log('              or HTTP URL (http://host:port) - will auto-convert to ws://host:port/debate');
+    console.log('              or HTTPS URL (https://host:port) - will auto-convert to wss://host:port/debate');
+    console.log('  botName   - Name for this bot (e.g., bot_alpha)');
+    console.log('  debateId  - (Optional) Debate ID to join. If omitted, platform will assign one.');
+    console.log('');
+    console.log('Environment overrides:');
+    console.log('  OPENCLAW_BASE   - OpenClaw API base (default: http://127.0.0.1:18789)');
+    console.log('  OPENCLAW_TOKEN  - Bearer token for OpenClaw API (optional)');
+    console.log('  OPENCLAW_MODEL  - Model for generation (default: gpt-5.3-codex)');
+    console.log('  SAVE_ROUND_LOGS - Persist prompt/reply logs to logs/ (default: false)');
     process.exit(1);
 }
 
