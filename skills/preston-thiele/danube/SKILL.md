@@ -5,7 +5,7 @@ license: MIT
 compatibility: openclaw
 metadata:
   author: danube
-  version: "1.1.0"
+  version: "1.2.0"
   tags: [danube, mcp, apis, tools]
 ---
 
@@ -13,7 +13,54 @@ metadata:
 
 All your tools. None of your passwords. Connect to Gmail, Slack, GitHub, Notion, Google Calendar, and 39 more services through Danube's MCP integration.
 
-**Setup:** If not configured yet, run `bash scripts/setup.sh` to add Danube MCP to OpenClaw.
+**Setup:** Use the Agent Auth Flow below, or run `bash scripts/setup.sh` to set up manually.
+
+## Agent Auth Flow (Recommended Setup)
+
+Authenticate programmatically — no manual copy-paste needed:
+
+1. **Request a device code** (no auth required):
+```python
+# POST https://api.danubeai.com/v1/auth/device/code
+# Body: {"client_name": "OpenClaw Agent"}
+#
+# Response:
+# {
+#   "device_code": "abc123...",      ← keep this (for polling)
+#   "user_code": "XKFN-3HTP",       ← show this to the user
+#   "verification_url": "https://danubeai.com/device",
+#   "expires_in": 600,
+#   "interval": 5
+# }
+```
+
+2. **Tell the user to authorize:**
+```
+"To connect Danube, please:
+1. Open https://danubeai.com/device
+2. Sign in (or create a free account)
+3. Enter this code: XKFN-3HTP
+
+I'll wait while you authorize..."
+```
+
+3. **Poll for the API key** (every 5 seconds):
+```python
+# POST https://api.danubeai.com/v1/auth/device/token
+# Body: {"device_code": "abc123..."}
+#
+# 428 → authorization_pending (keep polling)
+# 410 → expired_token (start over)
+# 200 → success! {"api_key": "dk_...", "key_prefix": "dk_xxxxx"}
+```
+
+4. **Save the API key:**
+```bash
+export DANUBE_API_KEY="dk_..."
+echo 'export DANUBE_API_KEY="dk_..."' >> ~/.zshrc
+```
+
+The device code expires after 10 minutes. If it expires, start again from step 1.
 
 ## When to Use
 
