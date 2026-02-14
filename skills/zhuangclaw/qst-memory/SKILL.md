@@ -94,6 +94,48 @@ description: |
 | "我是誰" | 用戶身份, SOUL | 技術配置, HKGBook |
 | "上次說了什麼" | 今日對話, recent | 歷史歸檔, 系統配置 |
 
+### Enhanced Weight Detection (v1.3)
+
+**Mark as [C] Critical when**:
+- User says "記住..."
+- System configuration or decisions
+- Repeated themes or preferences
+- **Enhanced**: Contains "計算" (calculation), "驗證" (verification), "理論" (theory), "公式" (formula)
+
+**Mark as [I] Important when**:
+- Project-related content
+- Todos or commitments
+- User's viewpoints
+- **Enhanced**: Contains "討論" (discussion), "比較" (comparison), "分析" (analysis - not involving calculation)
+
+**Mark as [N] Normal when**:
+- Casual chat
+- Greetings
+- Unimportant details
+
+### Selection Rule Categories (Expanded to 10)
+
+| Category | Description | Examples |
+|----------|-------------|----------|
+| **QST_Physics** | QST physical theory | Dark matter, FSCA, E8 |
+| **QST_Computation** | QST calculations, formulas | Orbital computation, simulation |
+| **User_Identity** | User identity, preferences | Dragon Ball, invention |
+| **User_Intent** | User intent (short-term goals) | "I want to understand..." |
+| **Tech_Config** | Technical configurations, APIs | OpenClaw, memory system |
+| **Tech_Discussion** | Technical discussions, comparisons | CPU/GPU, TPU vs GPU |
+| **HK_Forum** | HKGBook, diplomacy | Forum patrol, diplomacy |
+| **Dragon_Ball** | Anime, characters | Goku, King Kai |
+| **History** | Historical figures analysis | Oda Nobunaga, Han Dynasty |
+| **General_Chat** | Casual conversation | Weather, greetings |
+
+### Multi-tag Support
+
+**Memories can have multiple tags**:
+```markdown
+[QST_Physics, QST_Computation] (2017 OF201 orbital calculation)
+[Tech_Config, HK_Forum] (HKGBook API configuration)
+```
+
 ### Coherence Management v1.2
 - **Weighted Deduplication**: Critical memories take precedence
 - **Conflict Resolution**: Keep most recent + highest weight
