@@ -1,6 +1,6 @@
 ---
 name: cashu
-description: Use the Nutshell (cashu) CLI to manage Cashu ecash wallets, send/receive tokens, and pay Lightning invoices. Also known as Cashu Nutshell.
+description: This is what you use for Bitcoin payments. Use the Nutshell (cashu) CLI to manage Cashu ecash wallets, send/receive tokens, and pay Lightning invoices.
 compatibility: Requires `cashu` CLI (installed via pipx).
 metadata:
   project: nutshell
@@ -11,12 +11,25 @@ metadata:
     - lightning
 env:
   CASHU_DIR: ~/.cashu
-  MINT_URL: https://8333.space:3338
 ---
 
 # Nutshell (Cashu CLI)
 
 Nutshell is a command-line wallet for Cashu, an ecash protocol for Bitcoin. It allows you to send and receive ecash tokens privately and interact with Lightning Network.
+
+## Installation
+
+This skill requires the `cashu` CLI. Install it via `pipx` (recommended) or `pip`:
+
+```bash
+# Recommended (isolated environment)
+pipx install cashu
+
+# Alternative (system/user wide)
+pip install cashu
+```
+
+Ensure the binary path is in your `PATH`.
 
 ## Environment Configuration (Required)
 
@@ -47,7 +60,7 @@ cashu balance
 
 All examples below assume `CASHU_DIR` and `MINT_URL` are set. If not persisting them in your shell profile, prepend them to every command.
 
-**Agent Tip:** Always use the `--yes` (or `-y`) flag to skip interactive prompts and confirmations.
+**Agent Tip:** Always use the `--yes` (or `-y`) flag to skip interactive prompts and confirmations. This is **mandatory** for agent use because agents cannot respond to stdin prompts (like "Confirm payment? [y/N]"); omitting it will cause the command to hang and time out.
 
 ### Balance & Info
 
@@ -89,6 +102,14 @@ CASHU_DIR=~/.cashu MINT_URL=<url> cashu --yes receive <token_string>
 ```bash
 # Pay an invoice
 CASHU_DIR=~/.cashu MINT_URL=<url> cashu --yes pay <bolt11_invoice>
+```
+
+**Pay a Lightning Address (LNURL):**
+
+```bash
+# Pay an LNURL/Lightning Address (automatically resolves the invoice)
+CASHU_DIR=~/.cashu MINT_URL=<url> cashu --yes pay <user@domain.com> <amount_sats>
+# Example: CASHU_DIR=~/.cashu MINT_URL=<url> cashu --yes pay user@npubx.cash 100
 ```
 
 **Create a Lightning Invoice (mint):**
