@@ -3,9 +3,15 @@
   "slug": "monet-ai",
   "displayName": "Monet AI",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1771079331994,
-    "commit": "https://github.com/openclaw/skills/commit/ca0c0a9da9bf9129084c134d3aa6912772f949f0"
+    "version": "1.0.3",
+    "publishedAt": 1771084061073,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1771079331994,
+      "commit": "https://github.com/openclaw/skills/commit/ca0c0a9da9bf9129084c134d3aa6912772f949f0"
+    }
+  ]
 }

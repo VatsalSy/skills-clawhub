@@ -6,6 +6,8 @@ description: |
 metadata:
   openclaw:
     requires:
+      env:
+        - MONET_API_KEY  # Required: API key from monet.vision
       bins: []
     install:
       - id: node

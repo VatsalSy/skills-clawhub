@@ -9,7 +9,7 @@ import type {
 interface CreateTaskOptions {
   type: TaskType;
   input: Record<string, unknown>;
-  idempotencyKey?: string;
+  idempotency_key?: string;
 }
 
 interface ListTasksOptions {
@@ -39,7 +39,7 @@ export class MonetAIClient {
       body: JSON.stringify({
         type: options.type,
         input: options.input,
-        idempotency_key: options.idempotencyKey,
+        idempotency_key: options.idempotency_key,
       }),
     });
     return response;
@@ -60,7 +60,7 @@ export class MonetAIClient {
       body: JSON.stringify({
         type: options.type,
         input: options.input,
-        idempotency_key: options.idempotencyKey,
+        idempotency_key: options.idempotency_key,
       }),
     });
 
