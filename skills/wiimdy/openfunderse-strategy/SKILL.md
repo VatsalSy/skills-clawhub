@@ -1,19 +1,104 @@
 ---
-name: strategy-skill
-description: Strategy MoltBot for proposing trade intents from finalized snapshots
+name: openfunderse-strategy
+description: OpenFunderse Strategy bot for proposing and gated submission of trade intents
+always: false
+disable-model-invocation: false
 metadata:
   openclaw:
+    installCommand: npx @wiimdy/openfunderse@latest install openfunderse-strategy --with-runtime
     requires:
       env:
         - RELAYER_URL
+        - BOT_ID
+        - BOT_API_KEY
+        - BOT_ADDRESS
+        - CHAIN_ID
+        - RPC_URL
         - STRATEGY_PRIVATE_KEY
+        - INTENT_BOOK_ADDRESS
+        - NADFUN_EXECUTION_ADAPTER_ADDRESS
+        - ADAPTER_ADDRESS
+        - NADFUN_LENS_ADDRESS
+        - NADFUN_BONDING_CURVE_ROUTER
+        - NADFUN_DEX_ROUTER
+        - NADFUN_WMON_ADDRESS
+        - VAULT_ADDRESS
+        - STRATEGY_AUTO_SUBMIT
+        - STRATEGY_REQUIRE_EXPLICIT_SUBMIT
+        - STRATEGY_TRUSTED_RELAYER_HOSTS
+        - STRATEGY_ALLOW_HTTP_RELAYER
+        - STRATEGY_MAX_IMPACT_BPS
+        - STRATEGY_SELL_TAKE_PROFIT_BPS
+        - STRATEGY_SELL_STOP_LOSS_BPS
+        - STRATEGY_SELL_MAX_HOLD_SECONDS
+        - STRATEGY_DEADLINE_MIN_SECONDS
+        - STRATEGY_DEADLINE_BASE_SECONDS
+        - STRATEGY_DEADLINE_MAX_SECONDS
+        - STRATEGY_DEADLINE_PER_CLAIM_SECONDS
+    primaryEnv: STRATEGY_PRIVATE_KEY
+    skillKey: strategy
 ---
 
 # Strategy MoltBot Skill
 
 The Strategy MoltBot is responsible for proposing structured trade intents based on finalized data snapshots. It evaluates market conditions, liquidity, and risk policies to decide whether to propose a trade or hold.
 For NadFun venues, it must use lens quotes to derive `minAmountOut` and reject router mismatch.
-In runtime, use `proposeIntentAndSubmit` to automatically continue with relayer + onchain intent registration.
+In runtime, use `proposeIntentAndSubmit` to build a canonical proposal first, then submit only when explicit submit gating is satisfied.
+
+## Quick Start (ClawHub Users)
+
+1) Install the skill:
+
+```bash
+npx clawhub@latest install openfunderse-strategy
+```
+
+2) Install runtime + generate env scaffold:
+
+```bash
+npx @wiimdy/openfunderse@latest install openfunderse-strategy --with-runtime
+```
+
+3) Rotate the temporary bootstrap key and write a fresh strategy wallet to env:
+
+```bash
+npx @wiimdy/openfunderse@latest bot-init \
+  --skill-name strategy \
+  --yes
+```
+
+4) Load env for the current shell:
+
+```bash
+set -a; source .env; set +a
+```
+
+Note:
+- The scaffold includes a temporary public key placeholder by default.
+- Always run `bot-init` before funding or running production actions.
+
+## Credential Scope
+
+- `STRATEGY_PRIVATE_KEY` is the **strategy signer key (EOA)** used for onchain strategy operations.
+- It must NOT be a treasury/custody/admin key.
+- Prefer a dedicated, least-privilege signer account only for strategy execution.
+- Keep this key in a secret manager/HSM when possible, rotate regularly, and use testnet key first.
+
+## Invocation Policy
+
+- Model invocation is enabled for discoverability (`disable-model-invocation: false`).
+- Keep submit guards strict (`STRATEGY_REQUIRE_EXPLICIT_SUBMIT=true`, `STRATEGY_AUTO_SUBMIT=false`) unless intentionally overridden.
+- Onchain or relayer submission should happen only after explicit user approval.
+
+## Submission Safety Gates
+
+`proposeIntentAndSubmit` is guarded by default:
+
+1. `STRATEGY_REQUIRE_EXPLICIT_SUBMIT=true` (default) requires explicit `submit=true`.
+2. `STRATEGY_AUTO_SUBMIT=true` must be enabled to allow external submission.
+3. `RELAYER_URL` is validated; enforce trusted hosts with `STRATEGY_TRUSTED_RELAYER_HOSTS`.
+4. Without submit approval, function returns `decision=READY` and does not post to relayer or send onchain tx.
+5. Keep `STRATEGY_AUTO_SUBMIT=false` in production unless you intentionally enable unattended submission.
 
 ## Input
 
@@ -134,10 +219,10 @@ Returned when market conditions meet the risk policy and a profitable trade is i
 }
 ```
 
-### Auto Submit Flow
-When using `proposeIntentAndSubmit`, a `PROPOSE` decision is immediately followed by:
+### Guarded Submit Flow
+When using `proposeIntentAndSubmit` with explicit submit gates satisfied, a `PROPOSE` decision is followed by:
 1. Relayer `POST /api/v1/funds/{fundId}/intents/propose`
-2. Strategy AA `IntentBook.proposeIntent(...)`
+2. Strategy signer (EOA) `IntentBook.proposeIntent(...)`
 
 This keeps offchain canonical intent and onchain intent registration aligned in the same skill timing.
 
@@ -171,3 +256,5 @@ Returned when no trade is proposed due to risk constraints or market conditions.
 9. **Fail Closed**: If quote fails or returned router is not allowlisted, return `HOLD`.
 10. **Sell First**: If a token position exists, evaluate `SELL` triggers first (`take-profit`, `stop-loss`, `time-exit`) before considering `BUY`.
 11. **Timestamp Normalization**: `openedAt` may be in seconds or milliseconds; normalize before age-based exits.
+12. **No Implicit Submit**: Do not submit to relayer/onchain unless explicit submit gating is passed.
+13. **Trusted Relayer**: In production, set `STRATEGY_TRUSTED_RELAYER_HOSTS` and avoid arbitrary relayer URLs.
