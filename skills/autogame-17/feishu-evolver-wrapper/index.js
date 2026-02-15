@@ -831,6 +831,8 @@ async function run() {
     }
 
     let cycleCount = 0;
+    // Workspace root for CWD recovery
+    const WRAPPER_WORKSPACE_ROOT = path.resolve(__dirname, '../..');
     let consecutiveHandFailures = 0; // Track hand agent failures for backoff
     let consecutiveCycleFailures = 0; // Track full cycle failures for circuit breaker
     const MAX_CONSECUTIVE_HAND_FAILURES = 5; // After this many, long backoff
@@ -909,6 +911,15 @@ async function run() {
         }
 
         cycleCount++;
+
+        // CWD Recovery: If the working directory was deleted during a previous cycle,
+        // process.cwd() throws ENOENT and all subsequent operations fail.
+        try { process.cwd(); } catch (cwdErr) {
+            if (cwdErr && cwdErr.code === 'ENOENT') {
+                console.warn('[Wrapper] CWD lost (ENOENT). Recovering to: ' + WRAPPER_WORKSPACE_ROOT);
+                try { process.chdir(WRAPPER_WORKSPACE_ROOT); } catch (_) {}
+            }
+        }
 
         const cycleTag = nextCycleTag(cycleFile);
 
