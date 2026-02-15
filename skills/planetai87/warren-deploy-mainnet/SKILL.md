@@ -165,5 +165,5 @@ https://thewarren.app/v/site={TOKEN_ID}
 
 - Mainnet content is permanent and immutable.
 - Max 500KB per deployment.
-- Default chunk size is 100KB (`CHUNK_SIZE=100000`).
+- Default chunk size is 15KB (`CHUNK_SIZE=15000`).
 - You pay gas from your own wallet.
