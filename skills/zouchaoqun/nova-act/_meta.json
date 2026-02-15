@@ -3,11 +3,16 @@
   "slug": "nova-act",
   "displayName": "Website Usability Test Nova Act",
   "latest": {
-    "version": "1.0.8",
-    "publishedAt": 1771142032538,
-    "commit": "https://github.com/openclaw/skills/commit/174574845a6d5bacf4a03ea2250bfca81e0cee51"
+    "version": "1.0.9",
+    "publishedAt": 1771142139214,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.8",
+      "publishedAt": 1771142032538,
+      "commit": "https://github.com/openclaw/skills/commit/174574845a6d5bacf4a03ea2250bfca81e0cee51"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1770613994825,

@@ -1,6 +1,6 @@
 ---
 name: nova-act
-version: 1.0.8
+version: 1.0.9
 description: AI-orchestrated usability testing using Amazon Nova Act. The agent generates personas, runs tests to collect raw data, interprets responses to determine goal achievement, and generates HTML reports. Tests real user workflows (booking, checkout, posting) with safety guardrails. Use when asked to "test website usability", "run usability test", "generate usability report", "evaluate user experience", "test checkout flow", "test booking process", or "analyze website UX".
 metadata:
   openclaw:
