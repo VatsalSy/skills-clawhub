@@ -33,6 +33,8 @@ Reference only — consult when deciding whether to propose a skill.
 
 ## Tracking Format
 
+Store in `~/skill-manager/memory.md`:
+
 **Installed:**
 ```
 github@1.2.0 — PR and issue management
@@ -51,12 +53,12 @@ jira — "don't like Jira"
 salesforce — too complex for needs
 ```
 
-## Updating This Skill
+## Updating Memory
 
 **Add to Installed:** When user agrees to install
 **Move to History:** When user removes or project ends  
 **Add to Rejected:** When user declines with reason
-**Update Preferences:** When user expresses appetite
+**Update Preferences:** When user explicitly states skill appetite
 
 ## Maintenance
 - Review installed skills periodically
