@@ -3,11 +3,16 @@
   "slug": "agent-memory-ultimate",
   "displayName": "Agent Memory Ultimate",
   "latest": {
-    "version": "2.0.5",
-    "publishedAt": 1771020560236,
-    "commit": "https://github.com/openclaw/skills/commit/8f021bb8b4dc8c58c47a8fa80552eb3d50fe098e"
+    "version": "3.0.1",
+    "publishedAt": 1771101738871,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.0.5",
+      "publishedAt": 1771020560236,
+      "commit": "https://github.com/openclaw/skills/commit/8f021bb8b4dc8c58c47a8fa80552eb3d50fe098e"
+    },
     {
       "version": "2.0.4",
       "publishedAt": 1770816026528,
