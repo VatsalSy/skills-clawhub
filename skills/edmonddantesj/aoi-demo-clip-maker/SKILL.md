@@ -41,7 +41,11 @@ aoi-clip record --out tempo_demo_raw.mp4 --duration 15 --fps 30 --screen "Captur
 
 ### 3) Crop top bar
 ```bash
+# explicit crop
 aoi-clip crop --in tempo_demo_raw.mp4 --out tempo_demo_crop.mp4 --top 150
+
+# auto-recommend top crop based on video height (still applies crop, but chooses a value)
+aoi-clip crop --in tempo_demo_raw.mp4 --out tempo_demo_crop.mp4 --top auto
 ```
 
 ### 4) Trim
@@ -59,6 +63,10 @@ This skill runs local `ffmpeg/ffprobe` only, using a **strict allowlist** of bin
 
 ## Release governance (public)
 We publish AOI skills for free and keep improving them. Every release must pass our Security Gate and include an auditable changelog. We do not ship updates that weaken security or licensing clarity. Repeated violations trigger progressive restrictions (warnings → publish pause → archive).
+
+## Support
+- Issues / bugs / requests: https://github.com/edmonddantesj/aoi-skills/issues
+- Please include the skill slug: `aoi-demo-clip-maker`
 
 ## License
 MIT

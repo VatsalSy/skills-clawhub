@@ -107,11 +107,42 @@ function record({ out, duration, fps, screen, pixel }) {
   die(`record failed for all pixel formats. Last error (pix=${lastErr?.pix}):\n${lastErr?.stderr || ''}`);
 }
 
+function getVideoWH(inFile) {
+  const res = spawnSync('ffprobe', [
+    '-v', 'error',
+    '-select_streams', 'v:0',
+    '-show_entries', 'stream=width,height',
+    '-of', 'csv=p=0',
+    inFile,
+  ], { encoding: 'utf8' });
+  if (res.status !== 0) throw new Error('ffprobe failed');
+  const [w, h] = (res.stdout || '').trim().split(',').map(Number);
+  if (!Number.isFinite(w) || !Number.isFinite(h)) throw new Error('invalid ffprobe output');
+  return { w, h };
+}
+
+function recommendTop({ w, h }) {
+  // Heuristic: macOS menu bar + title bar tends to be ~90-160px on 1080p.
+  // Scale with height.
+  const base = Math.round(h * 0.10); // 10% of height
+  const clamped = Math.max(80, Math.min(200, base));
+  return clamped;
+}
+
 function crop({ inFile, out, top }) {
   if (!inFile) die('--in required');
   if (!out) die('--out required');
-  const t = Number(top || 150);
-  if (!Number.isFinite(t) || t < 0 || t > 600) die('--top invalid (0..600)');
+
+  let t;
+  if (String(top || '') === 'auto') {
+    const { w, h } = getVideoWH(inFile);
+    t = recommendTop({ w, h });
+    console.error(`[aoi-clip] recommend cropTop=${t} (auto, from ${w}x${h})`);
+  } else {
+    t = Number(top || 150);
+  }
+
+  if (!Number.isFinite(t) || t < 0 || t > 600) die('--top invalid (0..600 or auto)');
 
   runAllowed('ffmpeg', [
     '-y',
