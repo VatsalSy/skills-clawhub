@@ -39,6 +39,38 @@ const SERVER_VERSION = (() => {
 })();
 
 // ---------------------------------------------------------------------------
+// Input sanitization — validate MCP tool inputs before passing to CLI
+// ---------------------------------------------------------------------------
+
+/**
+ * Reject null bytes and control characters in a string value.
+ * Throws on invalid input; returns the string unchanged when valid.
+ */
+function sanitizeString(value, label) {
+  if (typeof value !== 'string') {
+    throw new Error(`${label || 'Value'} must be a string.`);
+  }
+  if (value.includes('\0')) {
+    throw new Error(`${label || 'Value'} contains a null byte.`);
+  }
+  if (/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(value)) {
+    throw new Error(`${label || 'Value'} contains invalid control characters.`);
+  }
+  return value;
+}
+
+/**
+ * Validate a string is one of the allowed values (case-sensitive).
+ */
+function validateEnum(value, allowed, label) {
+  sanitizeString(value, label);
+  if (!allowed.includes(value)) {
+    throw new Error(`${label || 'Value'} must be one of: ${allowed.join(', ')}`);
+  }
+  return value;
+}
+
+// ---------------------------------------------------------------------------
 // CLI spawning helper
 // ---------------------------------------------------------------------------
 
@@ -240,12 +272,18 @@ const IMAGE_MODEL_TABLE = `Image Models:
   qwen_image_edit_2511_fp8   — Medium (~30s), image editing with context
   qwen_image_edit_2511_fp8_lightning — Fast (~8s), quick image editing`;
 
-const VIDEO_MODEL_TABLE = `Video Models (auto-selected per workflow):
+const VIDEO_MODEL_TABLE = `WAN 2.2 Video Models (auto-selected per workflow):
   wan_v2.2-14b-fp8_t2v_lightx2v             — Text-to-video (~5min)
   wan_v2.2-14b-fp8_i2v_lightx2v             — Image-to-video (~3-5min)
   wan_v2.2-14b-fp8_s2v_lightx2v             — Sound-to-video (~5min)
   wan_v2.2-14b-fp8_animate-move_lightx2v    — Animate-move (~5min)
-  wan_v2.2-14b-fp8_animate-replace_lightx2v — Animate-replace (~5min)`;
+  wan_v2.2-14b-fp8_animate-replace_lightx2v — Animate-replace (~5min)
+
+LTX-2 Video Models:
+  ltx2-19b-fp8_t2v_distilled              — Text-to-video, fast 8-step (~2-3min)
+  ltx2-19b-fp8_t2v                        — Text-to-video, quality 20-step (~5min)
+  ltx2-19b-fp8_v2v_distilled              — Video-to-video with ControlNet (~3min)
+  ltx2-19b-fp8_v2v                        — Video-to-video with ControlNet, quality (~5min)`;
 
 const TOOLS = [
   {
@@ -313,13 +351,14 @@ Workflows:
   t2v             — Text-to-video (default). Just provide a prompt.
   i2v             — Image-to-video. Provide ref (reference image). Supports looping.
   s2v             — Sound-to-video. Provide ref (face image) + ref_audio.
+  v2v             — Video-to-video (LTX-2). Provide ref_video + controlnet_name.
   animate-move    — Transfer motion from ref_video to ref image.
   animate-replace — Replace subject in ref_video with ref image.
 
 ${VIDEO_MODEL_TABLE}
 
-Video dimensions must be divisible by 16, min 480px, max 1536px. Generation takes 3-5 minutes.
-Cost: Uses Spark tokens. Claim 50 free daily Spark at https://app.sogni.ai/`,
+WAN video dimensions: divisible by 16, min 480px, max 1536px. LTX-2: divisible by 64, 768-1920px.
+Generation takes 3-5 minutes. Cost: Uses Spark tokens. Claim 50 free daily Spark at https://app.sogni.ai/`,
     inputSchema: {
       type: 'object',
       properties: {
@@ -329,7 +368,7 @@ Cost: Uses Spark tokens. Claim 50 free daily Spark at https://app.sogni.ai/`,
         },
         workflow: {
           type: 'string',
-          enum: ['t2v', 'i2v', 's2v', 'animate-move', 'animate-replace'],
+          enum: ['t2v', 'i2v', 's2v', 'v2v', 'animate-move', 'animate-replace'],
           description: 'Video workflow (default: t2v, auto-inferred from provided refs)',
         },
         model: {
@@ -370,7 +409,32 @@ Cost: Uses Spark tokens. Claim 50 free daily Spark at https://app.sogni.ai/`,
         },
         ref_video: {
           type: 'string',
-          description: 'Reference video file path (for animate workflows)',
+          description: 'Reference video file path (for animate and v2v workflows)',
+        },
+        controlnet_name: {
+          type: 'string',
+          enum: ['canny', 'pose', 'depth', 'detailer'],
+          description: 'ControlNet type for v2v workflow',
+        },
+        controlnet_strength: {
+          type: 'number',
+          description: 'ControlNet strength for v2v (0.0-1.0, default: 0.8)',
+        },
+        sam2_coordinates: {
+          type: 'string',
+          description: 'SAM2 click coordinates for animate-replace (x,y or x1,y1;x2,y2)',
+        },
+        trim_end_frame: {
+          type: 'boolean',
+          description: 'Trim last frame for seamless video stitching',
+        },
+        first_frame_strength: {
+          type: 'number',
+          description: 'Keyframe strength for start frame (0.0-1.0)',
+        },
+        last_frame_strength: {
+          type: 'number',
+          description: 'Keyframe strength for end frame (0.0-1.0)',
         },
         seed: {
           type: 'number',
@@ -523,63 +587,80 @@ The face likeness is preserved while applying the style from the prompt.`,
 // ---------------------------------------------------------------------------
 
 async function handleGenerateImage(params) {
-  const args = [params.prompt];
-  if (params.model) args.push('-m', params.model);
+  sanitizeString(params.prompt, 'prompt');
+  const args = [];
+  if (params.model) args.push('-m', sanitizeString(params.model, 'model'));
   if (params.width) args.push('-w', String(params.width));
   if (params.height) args.push('-h', String(params.height));
   if (params.count) args.push('-n', String(params.count));
   if (params.seed != null) args.push('-s', String(params.seed));
-  if (params.output) args.push('-o', params.output);
-  if (params.output_format) args.push('--output-format', params.output_format);
-  if (params.loras?.length) args.push('--loras', params.loras.join(','));
+  if (params.output) args.push('-o', sanitizeString(params.output, 'output'));
+  if (params.output_format) args.push('--output-format', validateEnum(params.output_format, ['png', 'jpg'], 'output_format'));
+  if (params.loras?.length) {
+    params.loras.forEach((l, i) => sanitizeString(l, `loras[${i}]`));
+    args.push('--loras', params.loras.join(','));
+  }
   if (params.lora_strengths?.length) args.push('--lora-strengths', params.lora_strengths.join(','));
+  args.push('--', params.prompt);
 
   return runAndFormat(args, { timeoutMs: 60_000 });
 }
 
 async function handleGenerateVideo(params) {
-  const args = ['--video', params.prompt];
-  if (params.workflow) args.push('--workflow', params.workflow);
-  if (params.model) args.push('-m', params.model);
+  sanitizeString(params.prompt, 'prompt');
+  const args = ['--video'];
+  if (params.workflow) args.push('--workflow', validateEnum(params.workflow, ['t2v', 'i2v', 's2v', 'v2v', 'animate-move', 'animate-replace'], 'workflow'));
+  if (params.model) args.push('-m', sanitizeString(params.model, 'model'));
   if (params.width) args.push('-w', String(params.width));
   if (params.height) args.push('-h', String(params.height));
   if (params.fps) args.push('--fps', String(params.fps));
   if (params.duration) args.push('--duration', String(params.duration));
   if (params.frames) args.push('--frames', String(params.frames));
-  if (params.ref) args.push('--ref', params.ref);
-  if (params.ref_end) args.push('--ref-end', params.ref_end);
-  if (params.ref_audio) args.push('--ref-audio', params.ref_audio);
-  if (params.ref_video) args.push('--ref-video', params.ref_video);
+  if (params.ref) args.push('--ref', sanitizeString(params.ref, 'ref'));
+  if (params.ref_end) args.push('--ref-end', sanitizeString(params.ref_end, 'ref_end'));
+  if (params.ref_audio) args.push('--ref-audio', sanitizeString(params.ref_audio, 'ref_audio'));
+  if (params.ref_video) args.push('--ref-video', sanitizeString(params.ref_video, 'ref_video'));
+  if (params.controlnet_name) args.push('--controlnet-name', validateEnum(params.controlnet_name, ['canny', 'pose', 'depth', 'detailer'], 'controlnet_name'));
+  if (params.controlnet_strength != null) args.push('--controlnet-strength', String(params.controlnet_strength));
+  if (params.sam2_coordinates) args.push('--sam2-coordinates', sanitizeString(params.sam2_coordinates, 'sam2_coordinates'));
+  if (params.trim_end_frame) args.push('--trim-end-frame');
+  if (params.first_frame_strength != null) args.push('--first-frame-strength', String(params.first_frame_strength));
+  if (params.last_frame_strength != null) args.push('--last-frame-strength', String(params.last_frame_strength));
   if (params.seed != null) args.push('-s', String(params.seed));
-  if (params.output) args.push('-o', params.output);
+  if (params.output) args.push('-o', sanitizeString(params.output, 'output'));
   if (params.looping) args.push('--looping');
+  args.push('--', params.prompt);
 
   return runAndFormat(args, { timeoutMs: 600_000 });
 }
 
 async function handleEditImage(params) {
+  sanitizeString(params.prompt, 'prompt');
   const args = [];
   for (const img of params.context_images) {
-    args.push('-c', img);
+    args.push('-c', sanitizeString(img, 'context_images'));
   }
-  args.push(params.prompt);
-  if (params.model) args.push('-m', params.model);
+  if (params.model) args.push('-m', sanitizeString(params.model, 'model'));
   if (params.width) args.push('-w', String(params.width));
   if (params.height) args.push('-h', String(params.height));
-  if (params.output) args.push('-o', params.output);
+  if (params.output) args.push('-o', sanitizeString(params.output, 'output'));
+  args.push('--', params.prompt);
 
   return runAndFormat(args, { timeoutMs: 60_000 });
 }
 
 async function handlePhotobooth(params) {
-  const args = ['--photobooth', '--ref', params.reference_face, params.prompt];
-  if (params.model) args.push('-m', params.model);
+  sanitizeString(params.prompt, 'prompt');
+  sanitizeString(params.reference_face, 'reference_face');
+  const args = ['--photobooth', '--ref', params.reference_face];
+  if (params.model) args.push('-m', sanitizeString(params.model, 'model'));
   if (params.cn_strength != null) args.push('--cn-strength', String(params.cn_strength));
   if (params.cn_guidance_end != null) args.push('--cn-guidance-end', String(params.cn_guidance_end));
   if (params.width) args.push('-w', String(params.width));
   if (params.height) args.push('-h', String(params.height));
   if (params.count) args.push('-n', String(params.count));
-  if (params.output) args.push('-o', params.output);
+  if (params.output) args.push('-o', sanitizeString(params.output, 'output'));
+  args.push('--', params.prompt);
 
   return runAndFormat(args, { timeoutMs: 60_000 });
 }
@@ -611,7 +692,7 @@ Defaults:
   Image generation: z_image_turbo_bf16
   Image editing:    qwen_image_edit_2511_fp8_lightning
   Photobooth:       coreml-sogniXLturbo_alpha1_ad
-  Video:            auto-selected per workflow (t2v/i2v/s2v/animate-move/animate-replace)`;
+  Video:            auto-selected per workflow (t2v/i2v/s2v/v2v/animate-move/animate-replace)`;
 
   return { content: [{ type: 'text', text }] };
 }

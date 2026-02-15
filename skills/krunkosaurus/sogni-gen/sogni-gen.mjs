@@ -13,6 +13,39 @@ import { join, dirname, basename, extname } from 'path';
 import { homedir, tmpdir } from 'os';
 import sharp from 'sharp';
 
+// ---------------------------------------------------------------------------
+// Path sanitization — defense-in-depth for any value that becomes a file path
+// or process argument.  spawnSync already uses the array form (no shell), so
+// classic shell injection is not possible.  These checks guard against:
+//   • null-byte injection (can truncate paths at the C level)
+//   • control-character injection
+//   • FFMPEG_PATH pointing to a non-ffmpeg binary
+// ---------------------------------------------------------------------------
+
+/**
+ * Reject null bytes and control characters in a path string.
+ * Returns the path unchanged when valid; throws otherwise.
+ */
+function sanitizePath(p, label) {
+  if (typeof p !== 'string') {
+    const err = new Error(`${label || 'Path'} must be a string.`);
+    err.code = 'INVALID_PATH';
+    throw err;
+  }
+  if (p.includes('\0')) {
+    const err = new Error(`${label || 'Path'} contains a null byte.`);
+    err.code = 'INVALID_PATH';
+    throw err;
+  }
+  // Reject ASCII control characters except tab (\x09), newline (\x0a), carriage return (\x0d)
+  if (/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(p)) {
+    const err = new Error(`${label || 'Path'} contains invalid control characters.`);
+    err.code = 'INVALID_PATH';
+    throw err;
+  }
+  return p;
+}
+
 const LAST_RENDER_PATH = join(homedir(), '.config', 'sogni', 'last-render.json');
 const OPENCLAW_CONFIG_PATH = process.env.OPENCLAW_CONFIG_PATH || join(homedir(), '.openclaw', 'openclaw.json');
 const IS_OPENCLAW_INVOCATION = Boolean(process.env.OPENCLAW_PLUGIN_CONFIG);
@@ -32,8 +65,12 @@ const VIDEO_WORKFLOW_DEFAULT_MODELS = {
   'i2v': 'wan_v2.2-14b-fp8_i2v_lightx2v',
   's2v': 'wan_v2.2-14b-fp8_s2v_lightx2v',
   'animate-move': 'wan_v2.2-14b-fp8_animate-move_lightx2v',
-  'animate-replace': 'wan_v2.2-14b-fp8_animate-replace_lightx2v'
+  'animate-replace': 'wan_v2.2-14b-fp8_animate-replace_lightx2v',
+  'v2v': 'ltx2-19b-fp8_v2v_distilled'
 };
+
+function isLtx2Model(modelId) { return modelId?.startsWith('ltx2-') || false; }
+function isWanModel(modelId) { return modelId?.startsWith('wan_') || false; }
 
 function buildCliErrorPayload({ message, code, details, hint, prompt }) {
   const payload = {
@@ -91,6 +128,7 @@ function normalizeVideoWorkflow(value) {
   if (normalized === 's2v' || normalized === 'sound-to-video') return 's2v';
   if (normalized === 'animate-move' || normalized === 'animate_move') return 'animate-move';
   if (normalized === 'animate-replace' || normalized === 'animate_replace') return 'animate-replace';
+  if (normalized === 'v2v' || normalized === 'video-to-video') return 'v2v';
   return null;
 }
 
@@ -99,6 +137,7 @@ function inferVideoWorkflowFromModel(modelId) {
   const id = modelId.toLowerCase();
   if (id.includes('animate-move')) return 'animate-move';
   if (id.includes('animate-replace')) return 'animate-replace';
+  if (id.includes('_v2v')) return 'v2v';
   if (id.includes('_t2v') || id.includes('-t2v')) return 't2v';
   if (id.includes('_i2v') || id.includes('-i2v')) return 'i2v';
   if (id.includes('_s2v') || id.includes('-s2v')) return 's2v';
@@ -106,6 +145,7 @@ function inferVideoWorkflowFromModel(modelId) {
 }
 
 function inferVideoWorkflowFromAssets(opts) {
+  if (opts.refVideo && opts.videoControlNetName) return 'v2v';
   if (opts.refVideo) return 'animate-move';
   if (opts.refAudio) return 's2v';
   if (opts.refImage || opts.refImageEnd) return 'i2v';
@@ -237,8 +277,9 @@ function formatTokenValue(value) {
 
 function inferDefaultVideoSteps(modelId) {
   const id = (modelId || '').toLowerCase();
-  if (id.includes('lightx2v')) return 4;
+  if (id.includes('distilled') || id.includes('lightx2v')) return 4;
   if (id.includes('lightning') || id.includes('turbo') || id.includes('lcm')) return 4;
+  if (id.startsWith('ltx2-')) return 20;
   return 20;
 }
 
@@ -649,7 +690,13 @@ const options = {
   looping: false, // Create looping video (i2v only): generate A→B then B→A and concatenate
   photobooth: false, // Photobooth mode (InstantID face transfer)
   cnStrength: null, // ControlNet strength override
-  cnGuidanceEnd: null // ControlNet guidance end override
+  cnGuidanceEnd: null, // ControlNet guidance end override
+  videoControlNetName: null, // ControlNet name for v2v: canny|pose|depth|detailer
+  videoControlNetStrength: null, // ControlNet strength for v2v (0.0-1.0)
+  sam2Coordinates: null, // SAM2 coordinates for animate-replace [{x,y}]
+  trimEndFrame: false, // Trim last frame for seamless stitching
+  firstFrameStrength: null, // Keyframe interpolation (0.0-1.0)
+  lastFrameStrength: null // Keyframe interpolation (0.0-1.0)
 };
 const cliSet = {
   output: false,
@@ -691,7 +738,13 @@ const cliSet = {
   looping: false,
   photobooth: false,
   cnStrength: false,
-  cnGuidanceEnd: false
+  cnGuidanceEnd: false,
+  videoControlNetName: false,
+  videoControlNetStrength: false,
+  sam2Coordinates: false,
+  trimEndFrame: false,
+  firstFrameStrength: false,
+  lastFrameStrength: false
 };
 
 // Parse CLI args
@@ -902,6 +955,44 @@ for (let i = 0; i < args.length; i++) {
     i++;
     options.cnGuidanceEnd = parseNumberValue(raw, arg);
     cliSet.cnGuidanceEnd = true;
+  } else if (arg === '--controlnet-name') {
+    const raw = requireFlagValue(args, i, arg);
+    i++;
+    options.videoControlNetName = raw;
+    cliSet.videoControlNetName = true;
+  } else if (arg === '--controlnet-strength') {
+    const raw = requireFlagValue(args, i, arg);
+    i++;
+    options.videoControlNetStrength = parseNumberValue(raw, arg);
+    cliSet.videoControlNetStrength = true;
+  } else if (arg === '--sam2-coordinates') {
+    const raw = requireFlagValue(args, i, arg);
+    i++;
+    // Parse "x,y" or "x1,y1;x2,y2" format
+    options.sam2Coordinates = raw.split(';').map(pair => {
+      const [x, y] = pair.split(',').map(Number);
+      if (!Number.isFinite(x) || !Number.isFinite(y)) {
+        fatalCliError(`Invalid --sam2-coordinates format "${raw}". Use x,y or x1,y1;x2,y2.`, {
+          code: 'INVALID_ARGUMENT',
+          details: { flag: '--sam2-coordinates', value: raw }
+        });
+      }
+      return { x, y };
+    });
+    cliSet.sam2Coordinates = true;
+  } else if (arg === '--trim-end-frame') {
+    options.trimEndFrame = true;
+    cliSet.trimEndFrame = true;
+  } else if (arg === '--first-frame-strength') {
+    const raw = requireFlagValue(args, i, arg);
+    i++;
+    options.firstFrameStrength = parseNumberValue(raw, arg);
+    cliSet.firstFrameStrength = true;
+  } else if (arg === '--last-frame-strength') {
+    const raw = requireFlagValue(args, i, arg);
+    i++;
+    options.lastFrameStrength = parseNumberValue(raw, arg);
+    cliSet.lastFrameStrength = true;
   } else if (arg === '--last-image') {
     // Use image from last render as reference/context
     if (existsSync(LAST_RENDER_PATH)) {
@@ -980,7 +1071,7 @@ Photobooth (Face Transfer):
 
 Video Options:
   --video, -v           Generate video instead of image
-  --workflow <type>     Video workflow: t2v|i2v|s2v|animate-move|animate-replace
+  --workflow <type>     Video workflow: t2v|i2v|s2v|v2v|animate-move|animate-replace
   --fps <num>           Frames per second (default: 16)
   --duration <sec>      Duration in seconds (default: 5)
   --frames <num>        Override total frames (optional)
@@ -990,7 +1081,13 @@ Video Options:
   --ref <path|url>      Reference image for video (start frame)
   --ref-end <path|url>  End frame for interpolation/morphing
   --ref-audio <path>    Reference audio for s2v
-  --ref-video <path>    Reference video for animate workflows
+  --ref-video <path>    Reference video for animate/v2v workflows
+  --controlnet-name <n> ControlNet type for v2v: canny|pose|depth|detailer
+  --controlnet-strength <n>  ControlNet strength for v2v (0.0-1.0, default: 0.8)
+  --sam2-coordinates <coords>  SAM2 click coords for animate-replace (x,y or x1,y1;x2,y2)
+  --trim-end-frame      Trim last frame for seamless video stitching
+  --first-frame-strength <n>  Keyframe strength for start frame (0.0-1.0)
+  --last-frame-strength <n>   Keyframe strength for end frame (0.0-1.0)
   --looping, --loop     Create seamless loop (i2v only): A→B→A
   --last-image          Use last generated image as reference
 
@@ -1013,7 +1110,7 @@ Image Models:
   qwen_image_edit_2511_fp8        Image editing with context (up to 3 images)
   qwen_image_edit_2511_fp8_lightning  Fast image editing
 
-Video Models:
+WAN 2.2 Video Models:
   wan_v2.2-14b-fp8_t2v_lightx2v   Text-to-video (fast)
   wan_v2.2-14b-fp8_i2v_lightx2v   Fast (default)
   wan_v2.2-14b-fp8_i2v            Higher quality
@@ -1021,6 +1118,12 @@ Video Models:
   wan_v2.2-14b-fp8_s2v            Sound-to-video (quality)
   wan_v2.2-14b-fp8_animate-move_lightx2v     Animate-move (fast)
   wan_v2.2-14b-fp8_animate-replace_lightx2v  Animate-replace (fast)
+
+LTX-2 Video Models:
+  ltx2-19b-fp8_t2v_distilled      Text-to-video, fast 8-step
+  ltx2-19b-fp8_t2v                Text-to-video, quality 20-step
+  ltx2-19b-fp8_v2v_distilled      Video-to-video with ControlNet (fast)
+  ltx2-19b-fp8_v2v                Video-to-video with ControlNet (quality)
 
 Examples:
   sogni-gen "a cat wearing a hat"
@@ -1275,7 +1378,7 @@ if (options.video) {
   if (options.videoWorkflow) {
     const normalized = normalizeVideoWorkflow(options.videoWorkflow);
     if (!normalized) {
-      fatalCliError(`Unknown workflow "${options.videoWorkflow}". Use t2v|i2v|s2v|animate-move|animate-replace.`, {
+      fatalCliError(`Unknown workflow "${options.videoWorkflow}". Use t2v|i2v|s2v|v2v|animate-move|animate-replace.`, {
         code: 'INVALID_ARGUMENT',
         details: { workflow: options.videoWorkflow }
       });
@@ -1380,6 +1483,16 @@ if (options.video) {
     if (options.refVideo) {
       fatalCliError('s2v does not accept reference video.', { code: 'INVALID_ARGUMENT' });
     }
+  } else if (options.videoWorkflow === 'v2v') {
+    if (!options.refVideo) {
+      fatalCliError('v2v requires --ref-video.', { code: 'INVALID_ARGUMENT' });
+    }
+    if (!options.videoControlNetName) {
+      fatalCliError('v2v requires --controlnet-name (canny|pose|depth|detailer).', { code: 'INVALID_ARGUMENT' });
+    }
+    if (options.refAudio) {
+      fatalCliError('v2v does not accept reference audio.', { code: 'INVALID_ARGUMENT' });
+    }
   } else if (options.videoWorkflow === 'animate-move' || options.videoWorkflow === 'animate-replace') {
     if (!options.refImage || !options.refVideo) {
       fatalCliError('animate workflows require both --ref and --ref-video.', { code: 'INVALID_ARGUMENT' });
@@ -1387,6 +1500,22 @@ if (options.video) {
     if (options.refAudio) {
       fatalCliError('animate workflows do not accept reference audio.', { code: 'INVALID_ARGUMENT' });
     }
+  }
+
+  // Validate controlnet-name values
+  if (options.videoControlNetName) {
+    const validControlNets = ['canny', 'pose', 'depth', 'detailer'];
+    if (!validControlNets.includes(options.videoControlNetName)) {
+      fatalCliError(`Unknown --controlnet-name "${options.videoControlNetName}". Use: ${validControlNets.join('|')}`, {
+        code: 'INVALID_ARGUMENT',
+        details: { flag: '--controlnet-name', value: options.videoControlNetName, allowed: validControlNets }
+      });
+    }
+  }
+
+  // Validate SAM2 coordinates (only for animate-replace)
+  if (options.sam2Coordinates && options.videoWorkflow !== 'animate-replace') {
+    fatalCliError('--sam2-coordinates is only supported with animate-replace workflow.', { code: 'INVALID_ARGUMENT' });
   }
 
   // Validate looping flag
@@ -1696,11 +1825,21 @@ function removeClientListener(client, event, handler) {
 
 function ensureFfmpegAvailable() {
   const ffmpegPath = process.env.FFMPEG_PATH || 'ffmpeg';
-  const result = spawnSync(ffmpegPath, ['-version'], { stdio: 'ignore' });
+  sanitizePath(ffmpegPath, 'FFMPEG_PATH');
+  const result = spawnSync(ffmpegPath, ['-version'], { stdio: 'pipe' });
   if (result.error || result.status !== 0) {
     const err = new Error('ffmpeg is required to assemble the 360 video.');
     err.code = 'MISSING_FFMPEG';
     err.hint = 'Install ffmpeg or set FFMPEG_PATH to a working ffmpeg binary.';
+    err.details = { ffmpegPath };
+    throw err;
+  }
+  // Verify the binary actually is ffmpeg (not an arbitrary executable)
+  const stdout = result.stdout?.toString() || '';
+  if (!stdout.toLowerCase().includes('ffmpeg')) {
+    const err = new Error('FFMPEG_PATH does not point to an ffmpeg binary.');
+    err.code = 'INVALID_FFMPEG';
+    err.hint = 'Ensure FFMPEG_PATH points to a real ffmpeg installation.';
     err.details = { ffmpegPath };
     throw err;
   }
@@ -1731,6 +1870,8 @@ function isNonEmptyFile(filePath) {
 }
 
 function buildAngles360Video(outputPath, frames, fps) {
+  sanitizePath(outputPath, '--angles-360-video output path');
+  frames.forEach((f, i) => sanitizePath(f, `frame[${i}]`));
   const ffmpegPath = ensureFfmpegAvailable();
   const tempListPath = outputPath.replace(/\.mp4$/i, '') + '.concat.txt';
   const frameDuration = 1 / fps;
@@ -1761,6 +1902,8 @@ function buildAngles360Video(outputPath, frames, fps) {
 }
 
 function extractLastFrameFromVideo(videoPath, outputImagePath) {
+  sanitizePath(videoPath, 'video path');
+  sanitizePath(outputImagePath, 'output image path');
   const ffmpegPath = ensureFfmpegAvailable();
 
   // Extract the last frame by reading through the video with update mode
@@ -1800,6 +1943,8 @@ function extractLastFrameFromVideo(videoPath, outputImagePath) {
 }
 
 function buildConcatVideoFromClips(outputPath, clips) {
+  sanitizePath(outputPath, '--output path');
+  clips.forEach((c, i) => sanitizePath(c, `clip[${i}]`));
   const ffmpegPath = ensureFfmpegAvailable();
   const tempListPath = outputPath.replace(/\.mp4$/i, '') + '.concat.txt';
   const lines = clips.map((clip) => `file '${clip.replace(/'/g, "'\\''")}'`);
@@ -2557,6 +2702,24 @@ async function main() {
       if (guidance !== null && guidance !== undefined) {
         projectConfig.guidance = guidance;
       }
+      if (options.videoControlNetName) {
+        projectConfig.controlNet = {
+          name: options.videoControlNetName,
+          ...(options.videoControlNetStrength != null && { strength: options.videoControlNetStrength })
+        };
+      }
+      if (options.sam2Coordinates) {
+        projectConfig.sam2Coordinates = options.sam2Coordinates;
+      }
+      if (options.trimEndFrame) {
+        projectConfig.trimEndFrame = true;
+      }
+      if (options.firstFrameStrength != null) {
+        projectConfig.firstFrameStrength = options.firstFrameStrength;
+      }
+      if (options.lastFrameStrength != null) {
+        projectConfig.lastFrameStrength = options.lastFrameStrength;
+      }
 
       const videoResult = await client.createVideoProject(projectConfig);
 
@@ -2752,6 +2915,16 @@ async function main() {
         renderInfo.refImageEnd = options.refImageEnd;
         if (options.refAudio) renderInfo.refAudio = options.refAudio;
         if (options.refVideo) renderInfo.refVideo = options.refVideo;
+        if (options.videoControlNetName) {
+          renderInfo.controlNet = {
+            name: options.videoControlNetName,
+            strength: options.videoControlNetStrength
+          };
+        }
+        if (options.sam2Coordinates) renderInfo.sam2Coordinates = options.sam2Coordinates;
+        if (options.trimEndFrame) renderInfo.trimEndFrame = true;
+        if (options.firstFrameStrength != null) renderInfo.firstFrameStrength = options.firstFrameStrength;
+        if (options.lastFrameStrength != null) renderInfo.lastFrameStrength = options.lastFrameStrength;
       }
       if (options.contextImages.length > 0) {
         renderInfo.contextImages = options.contextImages;
@@ -2932,6 +3105,16 @@ async function main() {
           if (options.refImageEnd) output.refImageEnd = options.refImageEnd;
           if (options.refAudio) output.refAudio = options.refAudio;
           if (options.refVideo) output.refVideo = options.refVideo;
+          if (options.videoControlNetName) {
+            output.controlNet = {
+              name: options.videoControlNetName,
+              strength: options.videoControlNetStrength
+            };
+          }
+          if (options.sam2Coordinates) output.sam2Coordinates = options.sam2Coordinates;
+          if (options.trimEndFrame) output.trimEndFrame = true;
+          if (options.firstFrameStrength != null) output.firstFrameStrength = options.firstFrameStrength;
+          if (options.lastFrameStrength != null) output.lastFrameStrength = options.lastFrameStrength;
           if (options._effectiveVideoDims?.width && options._effectiveVideoDims?.height) {
             output.effectiveWidth = options._effectiveVideoDims.width;
             output.effectiveHeight = options._effectiveVideoDims.height;
