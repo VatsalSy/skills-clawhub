@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 """
 Mistral OCR Tool - Convert PDF/images to Markdown/JSON/HTML
+
+Usage:
+    1. Set API key: export MISTRAL_API_KEY=your_api_key
+    2. Run: python3 mistral_ocr.py -i input.pdf -f markdown
+
+Get API key: https://console.mistral.ai/home
 """
 
 from mistralai import Mistral
@@ -11,12 +17,27 @@ import argparse
 import json
 
 
+MISTRAL_API_URL = "https://console.mistral.ai/home"
+
+
 def get_api_key():
     """Get API Key from environment variable."""
     api_key = os.environ.get("MISTRAL_API_KEY")
     if not api_key:
-        raise ValueError("MISTRAL_API_KEY environment variable is not set. "
-                        "Please export MISTRAL_API_KEY=your_api_key")
+        print("""
+[!] Error: MISTRAL_API_KEY environment variable is not set.
+
+To use this tool, you need a Mistral API key:
+
+1. Visit: https://console.mistral.ai/home
+2. Sign up/Login and create an API key
+3. Set the environment variable:
+   
+   export MISTRAL_API_KEY=your_api_key
+
+For permanent setup, add the line above to your ~/.zshrc or ~/.bashrc
+        """)
+        raise SystemExit(1)
     return api_key
 
 
