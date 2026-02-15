@@ -293,14 +293,56 @@ def process_asset_data(asset: dict, candles: list, funding: dict, oi: float,
         "btc_correlation": correlation,
         "_cache_updates": {
             cache_key: funding_rate,
-            oi_cache_key: oi
+            oi_cache_key: oi,
+            f"{symbol}_regime": regime
         }
     }
 
 
-def format_report(results: list) -> str:
+def format_report(results: list, cache: dict) -> str:
     now = datetime.now().strftime("%Y-%m-%d %H:%M PST")
     lines = [f"📊 *Crypto Regime Report*", f"_{now}_", ""]
+    
+    # Build watching section
+    watching = []
+    for r in results:
+        if "error" in r:
+            continue
+        
+        symbol = r["symbol"]
+        regime = r["regime"]
+        adx = r["adx"]
+        
+        # Check regime change
+        prev_regime = cache.get(f"{symbol}_regime")
+        if prev_regime and prev_regime != regime:
+            watching.append(f"🔄 *{symbol}*: {prev_regime} → {regime}")
+        
+        # Check ADX near threshold
+        if adx is not None:
+            if regime in ["Weak Bull", "Weak Bear"] and adx < 22:
+                watching.append(f"⚠️ *{symbol}*: ADX {adx:.1f} (near Ranging)")
+            elif regime == "Ranging" and adx > 18:
+                watching.append(f"⚠️ *{symbol}*: ADX {adx:.1f} (trending)")
+        
+        # Check funding extremes
+        if r.get("funding_rate") is not None and abs(r["funding_rate"]) > 0.01:
+            direction = "longs paying" if r["funding_rate"] > 0 else "shorts paying"
+            watching.append(f"🔥 *{symbol}*: Funding {r['funding_rate']:+.2f}% ({direction})")
+        
+        # Check volume spike
+        if r.get("vol_ratio", 0) > 2.0:
+            watching.append(f"🔊 *{symbol}*: Volume {r['vol_ratio']:.1f}x avg")
+        
+        # Check large OI change
+        if r.get("oi_change") is not None and abs(r["oi_change"]) > 10:
+            direction = "building" if r["oi_change"] > 0 else "unwinding"
+            watching.append(f"📊 *{symbol}*: OI {r['oi_change']:+.1f}% ({direction})")
+    
+    if watching:
+        lines.append("👁️ *WATCHING:*")
+        lines.extend(watching)
+        lines.append("")
     
     regime_order = {"Strong Bull": 0, "Weak Bull": 1, "Ranging": 2, "Weak Bear": 3, "Strong Bear": 4, "Unknown": 5}
     sorted_results = sorted(results, key=lambda x: regime_order.get(x.get("regime", "Unknown"), 5))
@@ -391,7 +433,7 @@ def main():
         save_cache(cache)
     
     print("\n" + "="*50 + "\n", file=sys.stderr)
-    report = format_report(results)
+    report = format_report(results, cache)
     print(report)
     return report
 
