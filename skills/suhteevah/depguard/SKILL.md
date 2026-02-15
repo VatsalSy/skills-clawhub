@@ -1,7 +1,7 @@
 ---
 name: depguard
 description: Dependency audit, vulnerability scanning, and license compliance. Free vuln check + paid continuous monitoring via git hooks.
-homepage: https://depguard.dev
+homepage: https://depguard.pages.dev
 metadata:
   {
     "openclaw": {

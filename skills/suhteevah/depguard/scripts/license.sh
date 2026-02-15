@@ -96,7 +96,7 @@ check_depguard_license() {
     echo ""
     echo -e "This feature requires a ${BOLD}${required_tier}${NC} license."
     echo ""
-    echo -e "Get your license at: ${CYAN}${BOLD}https://depguard.dev/pricing${NC}"
+    echo -e "Get your license at: ${CYAN}${BOLD}https://depguard.pages.dev/pricing${NC}"
     echo ""
     echo "Then configure it:"
     echo -e "  ${DIM}# In ~/.openclaw/openclaw.json:${NC}"
@@ -110,7 +110,7 @@ check_depguard_license() {
   local payload
   if ! payload=$(decode_jwt_payload "$key"); then
     echo -e "${RED}[DepGuard]${NC} Invalid license key."
-    echo -e "Get a valid license at: ${CYAN}https://depguard.dev/pricing${NC}"
+    echo -e "Get a valid license at: ${CYAN}https://depguard.pages.dev/pricing${NC}"
     return 1
   fi
 
@@ -121,7 +121,7 @@ check_depguard_license() {
   local actual_level="${TIER_LEVELS[$tier]:-0}"
   if [[ "$actual_level" -lt "$required_level" ]]; then
     echo -e "${RED}[DepGuard]${NC} This feature requires ${BOLD}$required_tier${NC} tier. You have: ${BOLD}$tier${NC}"
-    echo -e "Upgrade at: ${CYAN}https://depguard.dev/upgrade${NC}"
+    echo -e "Upgrade at: ${CYAN}https://depguard.pages.dev/upgrade${NC}"
     return 1
   fi
 
@@ -129,7 +129,7 @@ check_depguard_license() {
     local now
     now=$(date +%s)
     if [[ "$now" -gt "$expiry" ]]; then
-      echo -e "${RED}[DepGuard]${NC} License expired. Renew at: ${CYAN}https://depguard.dev/renew${NC}"
+      echo -e "${RED}[DepGuard]${NC} License expired. Renew at: ${CYAN}https://depguard.pages.dev/renew${NC}"
       return 1
     fi
   fi
@@ -142,7 +142,7 @@ show_depguard_status() {
   if ! key=$(get_depguard_key) || [[ -z "$key" ]]; then
     echo -e "License: ${YELLOW}Free tier${NC}"
     echo -e "  Available: scan, report"
-    echo -e "  Upgrade at: ${CYAN}https://depguard.dev/pricing${NC}"
+    echo -e "  Upgrade at: ${CYAN}https://depguard.pages.dev/pricing${NC}"
     return
   fi
 

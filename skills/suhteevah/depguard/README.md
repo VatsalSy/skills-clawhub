@@ -50,7 +50,7 @@ clawhub install depguard
 | **Team** | $39/user/mo | + Policy enforcement, SBOM generation, compliance reports |
 | **Enterprise** | $59/user/mo | + SSO, audit logs, SLA |
 
-**Get your license:** [depguard.dev/pricing](https://depguard.dev/pricing)
+**Get your license:** [depguard.pages.dev/pricing](https://depguard.pages.dev/pricing)
 
 ## Supported Package Managers
 

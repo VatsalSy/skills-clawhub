@@ -26,7 +26,7 @@ log_error()   { echo -e "${RED}[DepGuard]${NC} $*" >&2; }
 show_version() {
   echo -e "${BOLD}DepGuard${NC} v${VERSION}"
   echo "  Dependency audit & license compliance"
-  echo "  https://depguard.dev"
+  echo "  https://depguard.pages.dev"
 }
 
 show_help() {
@@ -55,7 +55,7 @@ show_help() {
   echo "  --help, -h                Show this help"
   echo "  --version, -v             Show version"
   echo ""
-  echo "Get a license at ${CYAN}https://depguard.dev${NC}"
+  echo "Get a license at ${CYAN}https://depguard.pages.dev${NC}"
 }
 
 # ─── License ────────────────────────────────────────────────────────────────

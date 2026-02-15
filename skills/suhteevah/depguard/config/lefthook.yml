@@ -1,6 +1,6 @@
 # DepGuard — lefthook configuration
 # Installed by: depguard hooks install
-# Documentation: https://depguard.dev/docs/hooks
+# Documentation: https://depguard.pages.dev/docs/hooks
 
 pre-commit:
   parallel: true
