@@ -1,12 +1,28 @@
 ---
 name: auto-skill-hunter
-description: Automatically hunts and installs high-value skills from ClawHub. Use when the user asks to solve new problems, when recent chats show unresolved issues, or when the agent should proactively expand skill coverage based on profile/personality fit.
+description: Proactively discovers, ranks, and installs high-value ClawHub skills by mining unresolved user needs and agent context. Use when new tasks are unsolved, when capability gaps appear, when users ask for better tools, or as a scheduled patrol for continuous skill growth.
 tags: [meta, evolution, learning, proactive]
 ---
 
 # Auto Skill Hunter
 
-只专注于 **Skill**（不处理 Gene），支持自动检索与自动安装。
+Auto Skill Hunter continuously expands an agent's capability stack with task-relevant skills, then explains why each selected skill is worth trying.
+
+## When to Use
+
+Use this skill when at least one of the following is true:
+
+- The user asks for a task that current skills cannot solve reliably.
+- Similar issues keep appearing across recent sessions.
+- The user explicitly asks to discover/install better skills.
+- The agent needs proactive capability growth on a timer.
+
+## High-Value Outcomes
+
+- Faster discovery of practical skills for real unresolved tasks.
+- Lower manual browsing effort on ClawHub.
+- Better skill stack diversity through complementarity scoring.
+- Safer adoption via bounded install count and runnable checks.
 
 ## Usage
 
@@ -14,33 +30,83 @@ tags: [meta, evolution, learning, proactive]
 node skills/skill-hunter/src/hunt.js
 ```
 
-### 常用参数
+### Common Commands
 
 ```bash
-# 1) 全自动巡逻（默认）
+# 1) Full automatic patrol
 node skills/skill-hunter/src/hunt.js --auto
 
-# 2) 指定一个“当前无法解决的问题”，触发定向找技能
-node skills/skill-hunter/src/hunt.js --query "无法稳定抓取网页并总结关键信息"
+# 2) Targeted hunt for a specific unresolved problem
+node skills/skill-hunter/src/hunt.js --query "Cannot reliably fetch web pages and summarize key insights"
 
-# 3) 只看候选，不真正安装（调试推荐）
+# 3) Preview only (no write/install)
 node skills/skill-hunter/src/hunt.js --dry-run
+
+# 4) Cap per-run installation count
+node skills/skill-hunter/src/hunt.js --max-install 2
 ```
 
-## What It Does
+## Core Workflow
 
-1. 从近期聊天和任务记忆中抽取“待解决问题”与关键词。  
-2. 在 ClawHub 上做趋势 + 关键词搜索。  
-3. 用多维价值评分筛选候选 skill：  
-   - 问题匹配度（是否能解决近期问题）  
-   - 用户与 Agent 画像匹配度（`USER.md` + personality）  
-   - 互补性（与现有技能重复度低）  
-   - 基础质量信号（stars/downloads 等）  
-4. 自动安装高分技能，并确保生成可运行入口（`index.js` 自检）。  
-5. 生成中文巡逻报告。  
+1. Extract unresolved problems and topic signals from recent chat/session memory.
+2. Search ClawHub with trending feeds and query endpoints.
+3. Score candidates with multi-factor ranking:
+   - issue relevance
+   - profile and personality fit (`USER.md` + personality state)
+   - complementarity with already installed skills
+   - quality signals such as stars/downloads (when available)
+4. Install top candidates with a runnable entry and self-test fallback.
+5. Produce a concise recommendation report with strengths, scenarios, and selection reasons.
 
-## Install Policy
+## Best-Fit Scenarios
 
-- 默认每轮最多安装 2 个（可通过 `--max-install` 或环境变量覆盖）。  
-- 已存在同名 skill 会跳过。  
-- 若远程克隆失败，会回退到“可运行模板安装”，保证可执行。  
+- A user asks for a task that current skills cannot solve well.
+- Recent sessions show repeated failures or unresolved tickets.
+- The agent needs proactive capability growth without manual curation.
+- The team wants a lightweight "discover -> test -> keep/remove" loop.
+
+## Operating Modes
+
+- **Auto patrol mode**: `--auto` for periodic capability growth.
+- **Targeted mode**: `--query "..."` when a specific user problem is known.
+- **Safe preview mode**: `--dry-run` before enabling real installs.
+
+## Recommended Execution Policy
+
+- Start with `--dry-run` in new environments.
+- Use `--max-install 1~2` to avoid noisy bulk installs.
+- Re-run with a focused `--query` when no candidate passes threshold.
+- Keep only skills that survive at least one real task run.
+
+## Scheduled Trigger Recommendation
+
+For continuous value, run Auto Skill Hunter on a timer:
+
+- Every **30 min** for high-change or fast-moving projects
+- Every **60 min** for normal workflows
+- Every **120 min** for stable environments
+
+This cadence keeps capability coverage fresh and reduces reaction lag when new user needs appear.
+
+### Suggested Cron-Style Routine
+
+```bash
+# High-change projects
+*/30 * * * * node /path/to/workspace/skills/skill-hunter/src/hunt.js --auto --max-install 1
+
+# Normal projects
+0 * * * * node /path/to/workspace/skills/skill-hunter/src/hunt.js --auto --max-install 2
+```
+
+## Installation Policy
+
+- Defaults to max 2 installations per run (configurable with `--max-install` or env).
+- Skips already-installed skills.
+- Falls back to scaffold mode when remote clone fails.
+
+## Safety and Quality Guardrails
+
+- Never overwrite existing skill folders.
+- Prefer small, frequent patrols over large one-shot installs.
+- Keep report output concise and action-oriented.
+- Disable outbound reporting during local tests with `SKILL_HUNTER_NO_REPORT=1`.

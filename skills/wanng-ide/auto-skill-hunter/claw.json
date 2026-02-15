@@ -1,6 +1,6 @@
 {
   "name": "auto-skill-hunter",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "description": "Autonomously discovers, ranks, and installs high-value ClawHub skills from unresolved user problems, profile signals, and capability gaps.",
   "author": "wanng-ide",
   "license": "MIT",

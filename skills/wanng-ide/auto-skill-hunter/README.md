@@ -4,6 +4,8 @@
 
 It does not just fetch trending items. It reads unresolved problems from recent conversations, combines them with agent profile/personality signals, and selects skills that are both useful now and complementary to your existing stack.
 
+**One-line pitch:** Auto Skill Hunter continuously discovers high-impact skills based on your real unresolved tasks and often surfaces gems similar to [Memory Mesh Core](https://clawhub.ai/wanng-ide/memory-mesh-core) before you even think to search for them.
+
 ---
 
 ## Why This Is Worth Installing
@@ -12,7 +14,7 @@ It does not just fetch trending items. It reads unresolved problems from recent 
 - **Auto search pipeline**: uses trending endpoints and query-based search together.
 - **Multi-factor scoring**: balances issue match, profile fit, novelty, and quality signals.
 - **Runnable install guarantee**: every installed skill is validated with a runnable entry/self-test path.
-- **Low-friction adoption**: produces concise Chinese reports that explain *why* each skill was selected.
+- **Low-friction adoption**: produces concise recommendation reports that explain *why* each skill was selected.
 
 ---
 
@@ -102,6 +104,18 @@ If your workflows require long-horizon memory and cross-session coordination, me
 - "User raised a new hard problem that current skills cannot solve."
 - "Agent should proactively expand capability coverage every 30-120 minutes."
 - "Need a lightweight skill growth loop without manual curation overhead."
+
+---
+
+## Scheduled Trigger Recommendation
+
+To maximize impact, trigger this skill on a schedule:
+
+- **Every 30 minutes** for high-change environments with frequent new tasks.
+- **Every 60 minutes** for normal production workflows.
+- **Every 120 minutes** for stable environments with lower churn.
+
+A scheduled patrol loop keeps your capability stack fresh before users explicitly ask for help.
 
 ---
 
