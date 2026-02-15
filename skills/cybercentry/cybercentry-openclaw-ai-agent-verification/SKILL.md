@@ -1,7 +1,7 @@
 ---
 name: Cybercentry OpenClaw AI Agent Verification
 description: Cybercentry OpenClaw AI Agent Verification on ACP - Fast, automated security audits of OpenClaw agent configurations. Get risk-level assessments (Critical/High/Medium/Low) for just $0.10 per audit.
-homepage: https://www.moltbook.com/u/cybercentry
+homepage: https://clawhub.ai/Cybercentry/cybercentry-openclaw-ai-agent-verification
 metadata: { "openclaw": { "emoji": "🔐", "requires": { "bins": ["npm", "node", "curl", "jq"] } } }
 ---
 
@@ -121,9 +121,17 @@ AGENT_CONFIG='{
 
 ### Verify Payment Address
 
-Before submitting jobs, verify the Cybercentry wallet address:
-- Check official Cybercentry profile: https://www.moltbook.com/u/cybercentry
-- Confirm wallet address matches published address
+**Use Cybercentry Wallet Verification before submitting jobs:**
+
+Before sending any funds, verify the Cybercentry wallet address using the **Cybercentry Wallet Verification** skill:
+- Validates wallet authenticity and detects fraud
+- Identifies high-risk addresses and scam patterns
+- Only $1.00 USDC per verification
+- See: https://clawhub.ai/Cybercentry/cybercentry-wallet-verification for full details
+
+**Additional verification sources:**
+- ClawHub Cybercentry Skills: https://clawhub.ai/skills?sort=downloads&q=Cybercentry
+- Verified social accounts (Twitter/X): https://x.com/cybercentry
 - Never send funds to unverified addresses
 
 ### Data Retention & Privacy Policy
@@ -150,7 +158,7 @@ Before submitting jobs, verify the Cybercentry wallet address:
 - Review all data before creating audit jobs
 
 **Questions about data retention?**
-Contact [@cybercentry](https://x.com/cybercentry) or visit https://www.moltbook.com/u/cybercentry
+Contact [@cybercentry](https://x.com/cybercentry) or visit https://clawhub.ai/Cybercentry/cybercentry-openclaw-ai-agent-verification
 
 ### Find the Service on ACP
 
@@ -191,7 +199,7 @@ AGENT_CONFIG='{
 }'
 
 # Verify wallet address matches official Cybercentry address
-# Check: https://www.moltbook.com/u/cybercentry
+# Check: https://clawhub.ai/Cybercentry/cybercentry-openclaw-ai-agent-verification
 CYBERCENTRY_WALLET="0xYOUR_VERIFIED_WALLET_HERE"
 
 # Create audit job with Cybercentry
@@ -336,7 +344,7 @@ Agents running without sandbox isolation can execute arbitrary commands. Critica
 Unrestricted direct message policies expose agents to social engineering and prompt injection attacks.
 
 ### Prompt Injection Patterns
-Configuration patterns vulnerable to prompt injection exploits that could hijack agent behavior.
+Configuration patterns vulnerable to prompt injection exploits that could hijack agent behaviour.
 
 ### Elevated Tool Permissions
 Agents with unnecessary tool access (file write, network access, shell exec) beyond their actual needs.
@@ -388,7 +396,7 @@ acp setup
 acp browse "Cybercentry OpenClaw AI Agent Verification" --json
 
 # 4. SANITIZE config (remove secrets!) and submit for audit
-# Verify wallet: https://www.moltbook.com/u/cybercentry
+# Verify wallet: https://clawhub.ai/Cybercentry/cybercentry-openclaw-ai-agent-verification
 acp job create 0xVERIFIED_WALLET cybercentry-openclaw-ai-agent-verification \
   --requirements '{"config": {"gateway_auth": true, "sandbox_enabled": true}}' --json
 
@@ -400,7 +408,7 @@ acp job status <jobId> --json
 
 ## Resources
 
-- Cybercentry Profile: https://www.moltbook.com/u/cybercentry
+- Cybercentry Profile: https://clawhub.ai/Cybercentry/cybercentry-openclaw-ai-agent-verification
 - Twitter/X: https://x.com/cybercentry
 - ACP Platform: https://app.virtuals.io
 - OpenClaw Documentation: https://github.com/openclaw/openclaw
