@@ -1,14 +1,22 @@
 ---
 name: tiered-memory
-description: "EvoClaw Tiered Memory Architecture v2.1.0 - LLM-powered three-tier memory system with structured metadata extraction, URL preservation, validation, and cloud-first sync. Enhanced to prevent loss of URLs and technical details during distillation."
-version: "2.1.0"
+description: "EvoClaw Tiered Memory Architecture v2.2.0 - LLM-powered three-tier memory system with automatic daily note ingestion, structured metadata extraction, URL preservation, validation, and cloud-first sync."
+version: "2.2.0"
 ---
 
-# Tiered Memory System v2.1.0
+# Tiered Memory System v2.2.0
 
 > *A mind that remembers everything is as useless as one that remembers nothing. The art is knowing what to keep.* 🧠
 
 EvoClaw-compatible three-tier memory system inspired by human cognition and PageIndex tree retrieval.
+
+## What's New in v2.2.0
+
+🔄 **Automatic Daily Note Ingestion**
+- Consolidation (`daily`/`monthly`/`full` modes) now auto-runs `ingest-daily`
+- Bridges `memory/YYYY-MM-DD.md` files → tiered memory system
+- No more manual ingestion required — facts flow automatically
+- Fixes the "two disconnected data paths" problem
 
 ## What's New in v2.1.0
 
@@ -97,9 +105,9 @@ EvoClaw-compatible three-tier memory system inspired by human cognition and Page
 ```json
 {
   "identity": {
-    "agent_name": "Alex",
-    "owner_name": "Bowen",
-    "owner_preferred_name": "Bowen",
+    "agent_name": "Agent",
+    "owner_name": "User",
+    "owner_preferred_name": "User",
     "relationship_start": "2026-01-15",
     "trust_level": 0.95
   },
@@ -266,9 +274,9 @@ Core summary (20B)
 
 ```json
 {
-  "fact": "Bowen decided to use raw JSON-RPC for BSC to avoid go-ethereum dependency",
+  "fact": "User decided to use raw JSON-RPC for BSC to avoid go-ethereum dependency",
   "emotion": "determined",
-  "people": ["Bowen"],
+  "people": ["User"],
   "topics": ["blockchain", "architecture", "dependencies"],
   "actions": ["decided to use raw JSON-RPC", "avoid go-ethereum"],
   "outcome": "positive"
@@ -298,7 +306,7 @@ distiller.py --text "..." --mode rule --core-summary
 **Example:**
 ```
 Distilled: {
-  "fact": "Bowen decided raw JSON-RPC for BSC, no go-ethereum",
+  "fact": "User decided raw JSON-RPC for BSC, no go-ethereum",
   "outcome": "positive"
 }
 

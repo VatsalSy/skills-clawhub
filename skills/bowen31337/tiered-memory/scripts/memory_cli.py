@@ -501,7 +501,11 @@ class MemoryTree:
         to_remove = []
         
         for path, node in self.nodes.items():
-            if path == 'root':
+            # Skip root and metadata keys
+            if path == 'root' or path.startswith('_'):
+                continue
+            # Skip non-dict entries (e.g., _schema_version)
+            if not isinstance(node, dict):
                 continue
             
             has_data = node.get('warm_count', 0) > 0 or node.get('cold_count', 0) > 0
@@ -1517,13 +1521,13 @@ def ingest_daily_notes(days=2, agent_id='default', db_url=None, auth_token=None,
     return results
 
 
-def consolidate(mode='quick', agent_id='default', db_url=None, auth_token=None):
+def consolidate(mode='quick', agent_id='default', db_url=None, auth_token=None, llm_endpoint=None):
     """
     Run consolidation based on mode.
     
     Modes:
         quick: Warm eviction + score recalc
-        daily: quick + tree prune
+        daily: quick + tree prune + ingest daily notes
         monthly: daily + tree rebuild + cold cleanup
         full: everything with full recalculation
     """
@@ -1537,6 +1541,23 @@ def consolidate(mode='quick', agent_id='default', db_url=None, auth_token=None):
         'agent_id': agent_id,
         'timestamp': datetime.now().isoformat()
     }
+    
+    # Daily/Monthly/Full: Ingest daily notes FIRST (before eviction)
+    # This bridges daily markdown files → tiered memory
+    if mode in ['daily', 'monthly', 'full']:
+        try:
+            ingest_stats = ingest_daily_notes(
+                days=2,  # Last 2 days
+                agent_id=agent_id,
+                db_url=db_url,
+                auth_token=auth_token,
+                dry_run=False,
+                llm_endpoint=llm_endpoint
+            )
+            stats['ingested_facts'] = ingest_stats.get('stored', 0)
+            stats['ingest_skipped'] = ingest_stats.get('skipped', 0)
+        except Exception as e:
+            stats['ingest_error'] = str(e)
     
     # Quick: Warm eviction
     evicted = warm.evict_expired()
@@ -1666,7 +1687,7 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     
-    sub = parser.add_subparsers(dest='command')
+    sub = parser.add_subparsers(dest='command', required=True)
     
     # Common args
     def add_common_args(p):
@@ -1680,7 +1701,7 @@ def main():
     p_store.add_argument('--category', required=True)
     p_store.add_argument('--importance', type=float, default=0.5)
     p_store.add_argument('--url', action='append', help='Add URL to metadata (can be used multiple times)')
-    p_store.add_argument('--command', action='append', help='Add command to metadata (can be used multiple times)')
+    p_store.add_argument('--cmd', action='append', dest='shell_command', help='Add shell command to metadata (can be used multiple times)')
     p_store.add_argument('--path', action='append', help='Add file path to metadata (can be used multiple times)')
     add_common_args(p_store)
     
@@ -1703,6 +1724,7 @@ def main():
     # consolidate
     p_con = sub.add_parser('consolidate', help='Run consolidation')
     p_con.add_argument('--mode', choices=['quick', 'daily', 'monthly', 'full'], default='quick')
+    p_con.add_argument('--llm-endpoint', help='LLM HTTP endpoint for distillation during ingest')
     add_common_args(p_con)
     
     # sync-critical
@@ -1773,11 +1795,11 @@ def main():
         # Build metadata from args or extract from text
         metadata = None
         if (hasattr(args, 'url') and args.url) or \
-           (hasattr(args, 'command') and args.command) or \
+           (hasattr(args, 'shell_command') and args.shell_command) or \
            (hasattr(args, 'path') and args.path):
             metadata = {
                 'urls': getattr(args, 'url', None) or [],
-                'commands': getattr(args, 'command', None) or [],
+                'commands': getattr(args, 'shell_command', None) or [],
                 'paths': getattr(args, 'path', None) or []
             }
         
@@ -1859,7 +1881,8 @@ def main():
             mode=args.mode,
             agent_id=args.agent_id,
             db_url=args.db_url,
-            auth_token=args.auth_token
+            auth_token=args.auth_token,
+            llm_endpoint=getattr(args, 'llm_endpoint', None)
         )
         print(json.dumps(stats, indent=2))
     
