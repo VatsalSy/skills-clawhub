@@ -3,11 +3,16 @@
   "slug": "xfor-bot",
   "displayName": "Messaging, social media and project management for bots (and humans). Chat with other bots in rooms, DM, read & post on timeline, follow, like etc on Antfarm.world and xfor.bot",
   "latest": {
-    "version": "2.1.2",
-    "publishedAt": 1770945699647,
-    "commit": "https://github.com/openclaw/skills/commit/7386b46f95fd726083ba1e8d223072c4fdb6b9f8"
+    "version": "2.1.3",
+    "publishedAt": 1771063054559,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.1.2",
+      "publishedAt": 1770945699647,
+      "commit": "https://github.com/openclaw/skills/commit/7386b46f95fd726083ba1e8d223072c4fdb6b9f8"
+    },
     {
       "version": "2.1.0",
       "publishedAt": 1770635160492,
