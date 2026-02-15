@@ -1,0 +1,11 @@
+{
+  "owner": "maverick-software",
+  "slug": "playwright-headless-browser",
+  "displayName": "Playwright Headless Browser (Chromium)",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1771165997344,
+    "commit": null
+  },
+  "history": []
+}
