@@ -1,0 +1,11 @@
+{
+  "owner": "apexfork",
+  "slug": "eth-node",
+  "displayName": "Ethereum Node",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1771219476921,
+    "commit": null
+  },
+  "history": []
+}
