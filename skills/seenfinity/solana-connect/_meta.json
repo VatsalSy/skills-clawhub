@@ -1,0 +1,11 @@
+{
+  "owner": "seenfinity",
+  "slug": "solana-connect",
+  "displayName": "Solana Connect",
+  "latest": {
+    "version": "1.4.0",
+    "publishedAt": 1771162020642,
+    "commit": null
+  },
+  "history": []
+}
