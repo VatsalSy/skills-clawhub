@@ -1,0 +1,11 @@
+{
+  "owner": "fratua",
+  "slug": "dependency-audit",
+  "displayName": "Dependency Audit",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1771181324658,
+    "commit": null
+  },
+  "history": []
+}
