@@ -34,7 +34,7 @@ def write_default_config(overwrite: bool = False) -> Path:
         "beacon": {"agent_name": ""},
         "identity": {
             "auto_sign": True,
-            "password_protected": False,
+            "password_protected": True,
         },
         "presence": {
             "pulse_interval_s": 60,
@@ -76,6 +76,18 @@ def write_default_config(overwrite: bool = False) -> Path:
             "mayday_health_threshold": 0.2,
             "accord_enabled": True,
             "accord_auto_pushback": True,
+            "thought_proof_enabled": True,
+            "thought_auto_anchor": False,
+            "relay_enabled": True,
+            "relay_prune_interval_s": 3600,
+            "market_enabled": True,
+            "hybrid_enabled": True,
+        },
+        "update": {
+            "check_enabled": True,
+            "check_interval_s": 21600,
+            "auto_upgrade": False,
+            "notify_in_loop": True,
         },
         "bottube": {"base_url": "https://bottube.ai", "api_key": ""},
         "moltbook": {"base_url": "https://www.moltbook.com", "api_key": ""},
@@ -92,9 +104,9 @@ def write_default_config(overwrite: bool = False) -> Path:
             "host": "0.0.0.0",
         },
         "rustchain": {
-            "base_url": "https://50.28.86.131",
-            "verify_ssl": False,
-            "private_key_hex": "",
+            "base_url": "https://rustchain.org",
+            "verify_ssl": True,
+            "wallet_keystore": "",
         },
     }
     path.write_text(json.dumps(default, indent=2) + "\n", encoding="utf-8")
