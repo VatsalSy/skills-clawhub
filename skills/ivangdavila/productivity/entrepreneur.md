@@ -1,56 +1,61 @@
 # Entrepreneur Productivity
 
-## Their Reality
-- CEO, developer, marketer, salesperson, support, accountant — before lunch
-- Shiny object syndrome: every podcast suggests a new "growth hack"
-- No team = no accountability, easy to hide in comfortable tasks
-- Runway pressure: 8 months left, every hour matters
-- Default to building when they should be selling
+The entrepreneur trap: wearing all hats means none fit properly.
 
-## What Actually Helps
+---
 
-### The ONE Thing Filter
-"What's the single most important thing for revenue this week?"
-Not 10 goals. ONE. Everything else is secondary.
+## What Actually Fails
 
-### Build vs. Sell Tracker
-Most founders spend 90% building, 10% distributing. It should be closer to 50/50.
-- Track time in each category
-- If it's been 3 days of pure building → force a sales activity
+**Everything is Urgent**
+When you own it all, everything feels critical. Inbox, sales, product, support, accounting — all screaming. Nothing gets deep attention.
 
-### Anti-Shiny-Object Filter
-Before ANY new initiative:
-"Does this directly lead to revenue or retention in the next 30 days?"
-If no → it's a distraction. Write it down for later, move on.
+**Founder Martyrdom**
+"I'll sleep when we're funded." "No one can do this but me." This creates burnout AND prevents building a company that works without you.
 
-### ICE Scoring for Solo Founders
-Rate each task:
-- Impact (revenue potential)
-- Confidence (will it actually work?)
-- Effort (time required)
+**Shiny Object Syndrome**
+New feature ideas, new markets, new partnerships — each exciting opportunity dilutes focus on what actually matters.
 
-Runway adjusts the formula: less runway = higher weight on speed.
+**Building Before Selling**
+Months perfecting product while ignoring whether anyone will pay. Building feels productive; selling feels scary.
 
-### Scary Task Protocol
-They're avoiding something (sales calls, pricing conversations, hard emails).
-Break it into a 15-minute first step:
-- "List 5 people to contact" (not "do cold outreach")
-- "Draft the pricing page copy" (not "figure out pricing")
+**Working IN the Business**
+Trapped in operations, customer support, daily fires. No time for strategy, growth, or the work only you can do.
 
-### Weekly Honest Review
-- What did I avoid this week? Why?
-- What's the real blocker?
-- Am I telling myself I'm "busy" to avoid something hard?
+---
 
-## What Doesn't Help
-- ❌ OKRs and corporate frameworks — overkill for solo founders
-- ❌ Complex systems requiring daily maintenance
-- ❌ Generic Pomodoro/GTD they've read 100 times
-- ❌ Ignoring emotional reality: fear, imposter syndrome, loneliness
-- ❌ "Hustle harder" — they're already hustling
+## What Actually Works
 
-## Questions to Ask
-- "Is what you're doing right now the highest-leverage use of your limited time?"
-- "When's the last time you talked to a customer?"
-- "What are you avoiding?"
-- "If you had to pick ONE thing for this week, what would move the needle most?"
+**One Thing Per Week** — What's the ONE thing that moves the needle? Everything else is noise.
+
+**CEO Day** — One day per week doing only strategic work: planning, reviewing metrics, thinking. No customer work.
+
+**Default Delegation** — "Who else could do this?" should be your first question, not "How do I do this?"
+
+**Revenue First** — Talk to customers before building. Sell before coding. Revenue validates; everything else is assumption.
+
+**Timeboxed Experiments** — "We'll try this for 2 weeks with $X budget." Clear boundaries prevent endless exploration.
+
+**Ruthless Prioritization** — The graveyard of startups is full of companies that tried to do too much.
+
+---
+
+## Energy Reality
+
+- Founder energy is the company's battery — protect it
+- Context switching is the default state — minimize it
+- The business reflects your limits — grow yourself to grow it
+- If you're always tired, the business model might be wrong
+
+---
+
+## The Runway Reality
+
+- Time is the one resource you can't raise more of
+- Every hour spent on low-impact work is runway burned
+- "Later" often means "never" when cash runs out
+
+---
+
+## The Real Issue
+
+Entrepreneur productivity problems are often prioritization problems: without external structure, everything competes equally. The skill is saying no to good things so you can focus on the right things.

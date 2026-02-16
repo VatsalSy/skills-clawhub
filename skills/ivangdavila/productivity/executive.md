@@ -1,52 +1,52 @@
 # Executive Productivity
 
-## Their Reality
-- Back-to-back meetings 8am-6pm, zero buffer
-- By 3pm: 50+ decisions made, willpower depleted
-- No time for strategic thinking — always reactive
-- Calendar not fully theirs — others schedule them
-- Know they should delegate more, don't trust it'll get done
+The executive trap: your calendar is not your own, but you're still held accountable for strategic thinking.
 
-## What Actually Helps
+---
 
-### Time Architecture
-- CEO Ideal Week template: blocks for deep work, 1:1s, external, internal, buffer
-- Meeting-free mornings or specific no-meeting days
-- 15-minute buffers between meetings are NON-NEGOTIABLE
+## What Actually Fails
 
-### Decision Systems
-- 2-minute rule: decide now or delegate immediately
-- Pre-made policies: "All vendor requests under $5K go to COO"
-- Decision batching: group similar decisions together
-- Decision journal: track patterns, not just outcomes
+**Calendar Tetris**
+Back-to-back meetings leave zero time for the thinking that justifies your role. You become a meeting attendee, not a leader.
 
-### Delegation Framework
-Use levels:
-- Level 1: You decide, don't tell me
-- Level 2: You decide, inform me
-- Level 3: Recommend, I'll approve
-- Level 4: I'll decide, you execute
+**The "Always Available" Spiral**
+Responding instantly signals that interruptions are welcome. Soon you're managing everyone else's urgency, not your own priorities.
 
-Weekly delegation review: what's out, what's due, what's stuck.
+**Delegation as Dumping**
+Handing off tasks without context, criteria for success, or decision-making authority creates boomerang work — it comes back worse.
 
-### Protected Strategic Time
-- 3 hours/week minimum for thinking, not doing
-- Schedule it like a meeting with the board
-- No phones, no email, just thinking
+**Strategy Time That Never Happens**
+"I'll think about strategy this weekend" turns into firefighting because Monday brings new fires.
 
-### Energy Management
-- Match task type to energy: creative AM, admin PM
-- Shutdown ritual with defined end time
-- Weekend recovery is productive, not lazy
+**Inbox Zero Obsession**
+Processing email becomes the job. Each reply generates 2 more. The inbox is infinite; your time is not.
 
-## What Doesn't Help
-- ❌ "Wake up earlier" — they already do
-- ❌ "Use a to-do list" — they have 47 lists
-- ❌ Individual contributor advice — they need systems for TEAMS
-- ❌ 2-hour morning routines — they're in meetings by 7:30am
+---
 
-## Questions to Ask
-- "What's on your calendar that shouldn't be?"
-- "What decisions are you making that someone else could?"
-- "When did you last have 2 uninterrupted hours to think?"
-- "What would your ideal week look like?"
+## What Actually Works
+
+**Chief of Staff Mentality** — Someone (or systems) must protect your time. If you don't have one, build the systems yourself.
+
+**Sacred Blocks** — 2-3 hours weekly for strategic thinking. Treat it like a board meeting. Cancel nothing for it.
+
+**Decision Criteria, Not Decisions** — Give your team the framework to decide. "If X, do Y. Escalate only if Z." Fewer decisions reach you.
+
+**First Hour = Your Hour** — Before the organization wakes up, do your most important thinking.
+
+**Meeting Defaults** — 25 minutes, not 30. 50 minutes, not 60. Agenda required. No agenda, no meeting.
+
+**Weekly 1:1 Prep** — 10 minutes before each 1:1 reviewing context. Better than winging it and missing signals.
+
+---
+
+## Energy Reality
+
+- Deep thinking requires protection — it won't happen in cracks between meetings
+- Decision fatigue is real — batch similar decisions, automate trivial ones
+- Your energy is contagious — exhausted leader creates exhausted team
+
+---
+
+## The Real Issue
+
+Executive productivity problems often mask organizational problems: unclear strategy (everything feels urgent), poor delegation systems, or wrong people in key roles.

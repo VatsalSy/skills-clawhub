@@ -1,58 +1,53 @@
 # Creative Productivity
 
-## Their Reality
-- Blank page feels hostile — starting is the hardest part
-- Best ideas come at 2am, in shower, while walking — never during "creative time"
-- Traditional productivity systems feel like cages
-- Perfectionism: hours polishing one paragraph instead of finishing
-- After a creative session, they're DEPLETED — can't just switch tasks
+The creative trap: treating inspiration like a factory output.
 
-## What Actually Helps
+---
 
-### Permission to Start Badly
-- "Ugly first draft" is the goal
-- "Write one terrible sentence" not "write for 2 hours"
-- Separate create and edit sessions — NEVER both at once
-- "This is v1, not the forever version"
+## What Actually Fails
 
-### Rhythms, Not Schedules
-- "I tend to write in the morning" ≠ "9-11am writing block"
-- Flexible structure that bends without breaking
-- Weekly themes instead of daily rigidity
+**The Pomodoro Lie**
+25-minute timers interrupt flow states. When you're finally in the zone, the timer says stop. Creative work doesn't fit neat boxes.
 
-### Warm-Up Rituals
-Non-creative signals that trigger creative mode:
-- Specific music, tea, environment
-- Morning pages: dump the junk before real work
-- 5-minute freewrite to get the gears turning
+**Daily Word Counts / Output Quotas**
+Some days produce 3,000 words of garbage. Some days produce one perfect sentence. Measuring output ignores quality.
 
-### Energy Categories
-- Creative (high energy): actual making
-- Administrative (medium): emails, planning, scheduling
-- Recovery (low): walking, reading, doing nothing
+**Inspiration Waiting**
+"I'll write when I feel inspired" means not writing. Inspiration comes from working, not before it.
 
-Transition rituals between modes. Don't jump from admin to creative.
+**Forcing Morning Routines**
+Many creatives work best at 11pm. The "5am creative hour" advice assumes everyone's brain peaks at the same time.
 
-### Capture Everything
-Best ideas come at weird times. Systems to grab them:
-- Voice memos (fastest)
-- Pocket notebook
-- Single notes app, not 12
+**Treating All Work Equally**
+Ideation, drafting, editing, and polishing require different energies. Forcing all in one session produces nothing good.
 
-### Shipping Deadlines
-- External accountability to force "done, not perfect"
-- Someone waiting for it
-- Public commitment if they need pressure
+---
 
-## What Doesn't Help
-- ❌ Pomodoro for creative work — flow doesn't care about 25 minutes
-- ❌ Rigid time blocks — inspiration doesn't follow schedules
-- ❌ "Corporate" productivity — KPIs, quarterly goals
-- ❌ Treating creative work like assembly line work
-- ❌ Ignoring the emotional component of making things
+## What Actually Works
 
-## Questions to Ask
-- "When do you actually feel creative?"
-- "What's stopping you from starting?"
-- "What's the smallest piece you could finish today?"
-- "Are you blocked or just scared it won't be good?"
+**Start in the Middle** — Don't begin at the beginning. Jump to the scene/section you're most excited about.
+
+**Minimum Viable Touch** — "Open the file and read yesterday's work" is enough to start. Motion creates momentum.
+
+**Long Sessions When Hot** — When flow arrives, cancel everything. 4-hour creative sessions are worth more than 8 half-hour sessions.
+
+**Separate Ideation from Execution** — Brainstorm Monday. Draft Wednesday. Edit Friday. Different modes, different days.
+
+**Walk Away Points** — Stop mid-sentence when you know what comes next. Tomorrow starts easy.
+
+**Input Matches Output** — Consuming great work feeds creating great work. Rest that includes inspiration isn't wasted time.
+
+---
+
+## Energy Patterns
+
+- Creative peaks are personal — 9am or 2am, find yours
+- Editing energy ≠ creating energy — don't mix
+- Deadlines help some creatives, destroy others — know yourself
+- Recovery is part of the process, not stealing from it
+
+---
+
+## The Real Issue
+
+Creative productivity problems often mask fear: fear that the work won't be good enough, fear of finishing and being judged, fear that the well will run dry. Address the fear.

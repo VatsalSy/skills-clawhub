@@ -1,50 +1,48 @@
 # Student Productivity
 
-## Their Reality
-- Deadlines scattered across platforms (Canvas, Moodle, email, Discord)
-- "I work better under pressure" → panic at 2am
-- Phone is the enemy — notifications destroy momentum
-- Motivation hits at 11pm when it's too late to start
-- Guilt spiral: procrastinate → feel guilty → procrastinate more
+The student trap: treating education like a marathon when it's actually sprints with deadlines.
 
-## What Actually Helps
+---
 
-### Task Breakdown
-Don't say "write essay." Break it:
-1. Open Google Doc, write ONE sentence about topic
-2. Find 3 sources (just find, don't read)
-3. Read source 1, highlight 5 quotes
-4. Write rough outline (bullet points only)
-5. ...
+## What Actually Fails
 
-First step must be stupidly small. "Open the document" counts.
+**The Semester Start Fantasy**
+Planning to "study every day this semester" never survives week 3. Students create elaborate schedules that assume perfect discipline — then one missed day creates cascade failure.
 
-### Realistic Time Estimates
-- They underestimate everything by 2-3x
-- "This will take 2 hours" → plan for 5
-- Ask: "When's it due? How many actual hours? Do you have that many hours left?"
+**Deadline-Driven Panic**
+No work happens until panic kicks in. The brain learns: "I only perform under pressure." This creates anxiety dependency and destroys any chance of steady progress.
 
-### Energy-Based Scheduling
-- Don't tell them to wake up at 6am — they won't
-- Find THEIR peak hours (probably 10am-12pm or 8pm-10pm)
-- Schedule hard tasks there, admin during low energy
+**The Library All-Day Trap**
+12-hour library sessions feel productive but yield 2-3 hours of actual work. The rest is phone breaks, chatting, fake-studying, and exhaustion-staring.
 
-### The 2-Minute Start
-"Do 2 minutes of the task. If you still want to stop after 2 minutes, stop."
-They won't stop. Getting started is the only hard part.
+**Perfectionism on Wrong Tasks**
+Spending 6 hours on citation formatting while the argument itself is weak. Optimizing notes organization instead of understanding the material.
 
-### Deadline Aggregation
-Help them see ALL deadlines in one view. The scattered platforms are killing them.
+---
 
-## What Doesn't Help
-- ❌ "Just start" — they KNOW
-- ❌ Complex productivity systems — too much overhead
-- ❌ Rigid schedules — one missed day = abandoned
-- ❌ Guilt trips — they're already drowning in guilt
-- ❌ Morning routines — their sleep is chaos
+## What Actually Works
 
-## Questions to Ask
-- "What's due first and when?"
-- "What's the smallest possible first step?"
-- "When do you actually have energy?"
-- "What's getting in the way of starting?"
+**"Just One Pomodoro"** — Start with 25 minutes, reassess after. Starting is 90% of the battle.
+
+**Work Before Class** — Use the hour before class for that subject. Material is fresher, deadline closer, fewer distractions.
+
+**Study Groups for Accountability, Not Learning** — Groups are best for showing up, not for understanding. Deep learning happens alone.
+
+**Minimum Viable Progress** — "I will read ONE page" is better than "I will study for 4 hours" that never starts.
+
+**Weekend Morning Rule** — Get 2 hours of work done Saturday/Sunday morning. Rest of weekend is guilt-free.
+
+---
+
+## Energy Patterns
+
+- Peak focus often 10am-1pm and 8pm-11pm
+- Post-lunch crash is real — schedule easy tasks
+- Cramming works short-term but destroys long-term retention
+- Sleep deprivation makes studying worthless
+
+---
+
+## The Real Issue
+
+Most student productivity problems are fear problems: fear of failure, fear of not being good enough, fear of starting and confirming you don't understand. Address the fear first.

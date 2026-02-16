@@ -1,11 +1,13 @@
 ---
 name: Productivity
+version: 1.0.1
 description: "Plan, focus, and complete work with energy management, time blocking, and practical boundaries."
+changelog: "Preferences now persist across skill updates"
 ---
 
-## Auto-Adaptive Profile
+## Adaptive Profile
 
-This skill learns how YOU work. Observe constraints, detect patterns, personalize everything.
+This skill learns how YOU work. Detect constraints, recognize patterns, personalize everything.
 
 **Core Loop:**
 1. **Detect** — Identify their situation from questions they ask
@@ -54,33 +56,35 @@ See `traps.md` — what to AVOID saying/suggesting.
 
 ## Productivity Profile
 
-*Build over time. One line per insight. Confirm before storing.*
+User preferences persist in `~/productivity/memory.md`. Create on first use:
 
-### Energy Patterns
-<!-- "Peak focus: 9-11am (confirmed)" "Crashes after lunch (observed)" -->
+```markdown
+## Energy Patterns
+<!-- When focus peaks/crashes. Format: "pattern (level)" -->
+<!-- Examples: Peak 9-11am (confirmed), Crashes after lunch (observed) -->
 
-### Constraints
-<!-- "Kids pickup at 3pm (confirmed)" "Open office, no quiet space (stated)" -->
+## Constraints
+<!-- Hard limits. Format: "constraint (level)" -->
+<!-- Examples: Kids pickup 3pm (confirmed), Open office (stated) -->
 
-### What Works
-<!-- "Pomodoro helpful (confirmed)" "Body doubling effective (pattern)" -->
+## What Works
+<!-- Effective techniques. Format: "technique (level)" -->
+<!-- Examples: Pomodoro (confirmed), Body doubling (pattern) -->
 
-### What Doesn't
-<!-- "Morning routines don't stick (confirmed)" "To-do apps abandoned (pattern)" -->
+## What Doesn't
+<!-- Failed approaches. Format: "approach (level)" -->
+<!-- Examples: Morning routines don't stick (confirmed) -->
 
-### Current Situation
-<!-- "Freelancer, 3 clients (stated)" "New parent, 4mo old (confirmed)" -->
+## Current Situation
+<!-- Context. Format: "situation (level)" -->
+<!-- Examples: Freelancer, 3 clients (stated), New parent 4mo (confirmed) -->
 
-### Goals
-<!-- "Ship side project (stated)" "Stop working weekends (exploring)" -->
+## Goals
+<!-- Objectives. Format: "goal (level)" -->
+<!-- Examples: Ship side project (stated), Stop weekend work (exploring) -->
+```
 
----
-
-## Entry Format
-
-`aspect: insight (level)`
-
-Levels: `stated` → `pattern` (2+ signals) → `confirmed` (validated)
+*Entry format: `aspect: insight (level)` — Levels: stated → pattern → confirmed*
 
 ---
 

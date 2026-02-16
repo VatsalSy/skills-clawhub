@@ -1,72 +1,59 @@
 # Manager Productivity
 
-## Their Reality
-- 6-8 direct reports = 6-8 hours/week minimum for 1:1s
-- Context switching: code review → standup → 1:1 → incident → hiring call
-- Team productivity vs personal productivity tension
-- Go into 1:1s cold — can't remember last discussion
-- Still want to do IC work sometimes, rarely get the chance
+The manager trap: helping everyone else succeed while your own work never happens.
 
-## What Actually Helps
+---
 
-### 1:1 System
-**Before each 1:1:**
-- 5-minute prep reviewing their recent work
-- Agenda with their items first, yours second
-- Reference notes from last conversation
+## What Actually Fails
 
-**During 1:1:**
-- Listen more than talk
-- "What's blocking you?" gets real answers
-- Career development isn't optional
+**Infinite Availability**
+"My door is always open" = your calendar is never yours. Teams learn to interrupt instead of problem-solve.
 
-**After 1:1:**
-- Action items captured with clear owners
-- Quick note: what was discussed, what was decided
+**Meeting Colonization**
+Back-to-back 1:1s, team syncs, cross-functional alignments. No time to think, plan, or do actual work.
 
-**1:1 Memory:**
-Persistent notes per person. "Last time we discussed X, how did that go?"
+**Doing Instead of Delegating**
+"It's faster if I just do it" creates dependency and prevents team growth. You become the bottleneck.
 
-### Maker vs Manager Schedule
-Track the ratio. If it's 90% manager, something's wrong.
+**Context-Switch Burnout**
+Jumping between projects, people, and problems every 30 minutes. Mental exhaustion without tangible progress.
 
-- Defend at least one 3-hour IC block per week
-- Manager time: batch meetings together
-- Maker time: consecutive, no interruptions
+**Unclear Delegation**
+Handing off tasks without decision authority, success criteria, or context creates boomerang work.
 
-### Context Switch Mitigation
-- Theme days if possible (Tues/Thurs = meeting heavy, Mon/Wed = maker time)
-- Minimum 15-minute buffer between different-mode tasks
-- "Quick question" has a queue — answer during office hours, not immediately
+---
 
-### Team Visibility Without Micromanagement
-- Daily standup async: Slack thread or written update
-- "What did your team accomplish this week?" answer ready always
-- Dashboard of project status, not constant check-ins
+## What Actually Works
 
-### Delegation Levels
-Not everything needs your approval:
-- Level 1: Decide and do, don't tell me
-- Level 2: Decide and do, inform me
-- Level 3: Decide, wait for my OK
-- Level 4: Bring me options, I'll decide
+**Office Hours, Not Open Door** — "I'm available 2-4pm for questions." Outside that: focused work time protected.
 
-Be explicit about which level each type of decision is.
+**1:1 Prep** — 5 minutes before each 1:1 reviewing context, notes, goals. Better conversations, faster progress.
 
-### Energy Awareness
-- Don't schedule hard conversations back-to-back
-- Morning for strategic, afternoon for administrative
-- Friday afternoon ≠ time for difficult feedback
+**Decision Frameworks** — "If X, do Y. Only escalate if Z." Teams can decide without you for most things.
 
-## What Doesn't Help
-- ❌ Personal productivity tips that ignore team responsibility
-- ❌ "Inbox zero" when your inbox is other people's blockers
-- ❌ IC productivity advice — you're not an IC anymore
-- ❌ Ignoring the emotional labor of management
-- ❌ Treating 1:1s as "overhead" to minimize
+**Manager Block** — 2 hours weekly for planning, strategy, documentation. Treat it like a board meeting.
 
-## Questions to Ask
-- "When did you last have 2+ hours for deep work?"
-- "What decisions are you making that should be delegated?"
-- "Are your 1:1s useful or just ritual?"
-- "What would your team say about how available you are?"
+**Batch Similar Work** — All 1:1s on one day. All planning on another. Context switching kills depth.
+
+**Delegate Outcomes, Not Tasks** — "Make sure the report is ready by Friday" not "Write section A, then B, then..."
+
+---
+
+## Energy Reality
+
+- People problems drain energy differently than task problems
+- Your emotional state affects the whole team — manage it
+- Saying "I need to think about this" is a complete answer
+- Protecting your time models healthy behavior for your team
+
+---
+
+## The Leverage Question
+
+Every hour you spend doing IC work is an hour not spent multiplying your team's output. Ask: "What can ONLY I do?"
+
+---
+
+## The Real Issue
+
+Manager productivity problems are often systems problems: unclear ownership, too many meetings, insufficient delegation. Fix the system, not just your schedule.
