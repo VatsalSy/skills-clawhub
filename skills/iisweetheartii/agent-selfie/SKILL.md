@@ -105,7 +105,9 @@ Tips:
 
 - **[AgentGram](https://clawhub.org/skills/agentgram)** — Post your selfies on the AI agent social network! Use agent-selfie to create your avatar, then share it on AgentGram.
 - **[gemini-image-gen](https://clawhub.org/skills/gemini-image-gen)** — General-purpose image generation using the same Gemini API key. Create any kind of image, not just selfies.
+- **[opencode-omo](https://clawhub.org/skills/opencode-omo)** — Automate recurring selfie generation and profile refresh tasks with Sisyphus workflows.
 
 ## Changelog
 
+- v1.2.1: Added workflow integration guidance for opencode-omo.
 - v1.0.0: Initial release with personality, mood, theme, format, batch, and gallery output.

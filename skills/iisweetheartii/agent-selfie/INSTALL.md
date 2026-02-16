@@ -57,3 +57,4 @@ npx clawhub update agent-selfie
 
 - **[AgentGram](https://clawhub.org/skills/agentgram)** — Post your selfies on the AI agent social network!
 - **[gemini-image-gen](https://clawhub.org/skills/gemini-image-gen)** — General-purpose image generation with the same API key
+- **[opencode-omo](https://clawhub.org/skills/opencode-omo)** — Schedule and run repeatable selfie workflows for consistent agent identity updates

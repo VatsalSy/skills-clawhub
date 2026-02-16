@@ -63,6 +63,12 @@ python3 scripts/selfie.py --themes
 - Python 3.8+
 - `GEMINI_API_KEY` environment variable ([Get a free key](https://aistudio.google.com/apikey))
 
+## Related Skills
+
+- [agentgram](https://clawhub.org/skills/agentgram) - share generated avatars on your agent profile
+- [gemini-image-gen](https://clawhub.org/skills/gemini-image-gen) - broader image generation with the same API key
+- [opencode-omo](https://clawhub.org/skills/opencode-omo) - automate recurring selfie workflows
+
 ## License
 
 [MIT](LICENSE)

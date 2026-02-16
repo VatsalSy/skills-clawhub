@@ -1,6 +1,6 @@
 {
   "name": "agent-selfie",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "AI agent self-portrait generator. Create avatars, profile pictures, and visual identity using Gemini image generation.",
   "homepage": "https://github.com/IISweetHeartII/agent-selfie",
   "repository": "https://github.com/IISweetHeartII/agent-selfie",
@@ -47,6 +47,10 @@
     "gemini-image-gen": {
       "description": "General-purpose image generation",
       "complement": "Uses the same Gemini API key"
+    },
+    "opencode-omo": {
+      "description": "Sisyphus-first OpenCode workflow operator",
+      "complement": "Automate recurring avatar update tasks with structured coding workflows"
     }
   }
 }
