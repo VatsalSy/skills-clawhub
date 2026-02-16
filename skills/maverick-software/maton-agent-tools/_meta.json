@@ -1,0 +1,11 @@
+{
+  "owner": "maverick-software",
+  "slug": "maton-agent-tools",
+  "displayName": "Maton MCP Tools",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1771184297798,
+    "commit": null
+  },
+  "history": []
+}
