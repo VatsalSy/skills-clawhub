@@ -3,11 +3,16 @@
   "slug": "cocod",
   "displayName": "Cocod",
   "latest": {
-    "version": "0.0.11",
-    "publishedAt": 1770984327246,
-    "commit": "https://github.com/openclaw/skills/commit/30691ca612cde6ae2db7cbbdf35fdf30fd0ff67c"
+    "version": "0.0.12",
+    "publishedAt": 1771181746951,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.0.11",
+      "publishedAt": 1770984327246,
+      "commit": "https://github.com/openclaw/skills/commit/30691ca612cde6ae2db7cbbdf35fdf30fd0ff67c"
+    },
     {
       "version": "0.0.9",
       "publishedAt": 1770044974188,
