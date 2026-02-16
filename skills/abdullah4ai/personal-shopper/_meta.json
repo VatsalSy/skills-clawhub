@@ -3,9 +3,15 @@
   "slug": "personal-shopper",
   "displayName": "Personal Shopper",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1770904657634,
-    "commit": "https://github.com/openclaw/skills/commit/24e0066b5fda3f3887e2eb6cc417e07a2c8fce3d"
+    "version": "2.0.1",
+    "publishedAt": 1771227035931,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1770904657634,
+      "commit": "https://github.com/openclaw/skills/commit/24e0066b5fda3f3887e2eb6cc417e07a2c8fce3d"
+    }
+  ]
 }
