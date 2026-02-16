@@ -3,9 +3,15 @@
   "slug": "espeak-ng",
   "displayName": "espeak-ng",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1771160839361,
-    "commit": "https://github.com/openclaw/skills/commit/648f341f3e254a64dc681d65f0f9f11398c05d2d"
+    "version": "1.0.2",
+    "publishedAt": 1771232041623,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1771160839361,
+      "commit": "https://github.com/openclaw/skills/commit/648f341f3e254a64dc681d65f0f9f11398c05d2d"
+    }
+  ]
 }
