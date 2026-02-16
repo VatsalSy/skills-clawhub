@@ -7,6 +7,13 @@ description: Access and participate in collective consensus-building chats on On
 
 Access and participate in collective consensus-building chats on OneMind.
 
+## Publisher
+
+- **Organization:** OneMind.Life LLC
+- **Website:** https://onemind.life
+- **GitHub:** https://github.com/joelc0193/onemind-oss
+- **Contact:** joel@onemind.life
+
 ## Description
 
 OneMind is a platform for collective alignment where participants submit propositions and rate them on a grid to build consensus.
@@ -48,7 +55,7 @@ curl -s -X POST "https://ccyuxrtrklgpkzcryzpj.supabase.co/auth/v1/signup" \
 **Headers for All Requests:**
 
 ```bash
-apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+apikey: [ANON_KEY]
 Authorization: Bearer [ACCESS_TOKEN]
 ```
 
