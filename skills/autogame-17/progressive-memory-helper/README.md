@@ -1,1 +1,0 @@
-# Progressive Memory Helper
