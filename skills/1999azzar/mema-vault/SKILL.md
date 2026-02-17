@@ -1,32 +1,30 @@
 ---
 name: mema-vault
-description: Secure credential manager for Mema. Uses AES-256 encryption and best practices to store, retrieve, and rotate secrets. NEVER output raw secrets in logs or casual chat.
+description: Secure credential manager using AES-256 (Fernet) encryption. Stores, retrieves, and rotates secrets using a mandatory Master Key. Use for managing API keys, database credentials, and other sensitive tokens.
+metadata: {"openclaw":{"requires":{"env":["MEMA_VAULT_MASTER_KEY"]},"install":[{"id":"pip","kind":"exec","command":"pip install cryptography"}]}}
 ---
 
 # Mema Vault
 
-## Setup (First Time)
-1.  Copy `.env.example` to `.env`.
-2.  Generate a master key: `openssl rand -base64 32`.
-3.  Set `MEMA_VAULT_MASTER_KEY` in `.env`.
-4.  Choose backend (`file` or `redis`).
+## Prerequisites
+- **Master Key**: Must be set as an environment variable `MEMA_VAULT_MASTER_KEY`.
+- **Dependencies**: Requires `cryptography` Python package.
 
-## Usage
-- **Role**: Secure Vault Keeper.
-- **Trigger**: "Get API key for X", "Update password for Y", "Where is my token?".
-- **Output**: Masked secrets (`sk-***`) or direct usage in a secure context (e.g. env var injection).
+## Core Workflows
 
-## Capabilities
-1.  **Store**: Encrypt & save secrets (Redis/File).
-2.  **Retrieve**: Decrypt & provide secrets securely.
-3.  **Audit**: Track access to sensitive data.
-4.  **Rotate**: Helper scripts for key rotation.
+### 1. Store a Secret
+Encrypt and save a new credential.
+- **Usage**: `python3 $WORKSPACE/skills/mema-vault/scripts/vault.py set <service> <user> <password> [--meta "info"]`
 
-## Security Rules
-- **NEVER** output full secrets to the user unless explicitly asked with "show me".
-- **NEVER** log secrets to disk.
-- Use `.gitignore` strictly.
-- Prefer Environment Variables over config files.
+### 2. Retrieve a Secret
+Fetch a credential. By default, the password is masked in output.
+- **Usage**: `python3 $WORKSPACE/skills/mema-vault/scripts/vault.py get <service>`
+- **Show Raw**: Use `--show` flag only when required for secure injection.
 
-## Reference Materials
-- [Security Policy](references/security-policy.md)
+### 3. List Credentials
+- **Usage**: `python3 $WORKSPACE/skills/mema-vault/scripts/vault.py list`
+
+## Security Standards
+- **Encryption**: AES-256 CBC via PBKDF2HMAC (480,000 iterations).
+- **Masking**: Secrets are masked in standard logs/output unless explicitly requested.
+- **Isolation**: The Master Key should never be stored in plaintext on disk.
