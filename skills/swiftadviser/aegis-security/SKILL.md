@@ -1,6 +1,6 @@
 ---
 name: aegis-security
-version: 1.2.1
+version: 1.2.2
 description: Blockchain security API for AI agents. Scan tokens, simulate transactions, check addresses for threats.
 homepage: https://aegis402.xyz
 user-invocable: true
@@ -275,18 +275,92 @@ Tips:
   - `x-aegis-skill-url`
   - `x-aegis-skill-upgrade`
 
-## What Is New In v1.2.1
+### Optional: Feedback, Issues, Expectations (Agent-Friendly)
 
-- Free tier: 100 checks/day (`GET /v1/usage` for live balance).
-- Response `_meta` fields for transparency (`tier`, `remainingChecks`, `usedToday`, `dailyLimit`, `nextResetAt`, `latencyMs`).
-- Upgrade hints in API headers for old clients.
-- Security hardening: manual invocation, no raw-key examples, explicit pre-sign automation approval policy.
+Help us improve!
 
-## Migration Notes (v1.1.x -> v1.2.x)
+If you hit an issue or want to set expectations, do it in a way that's safe for the end-user:
 
-1. Send your installed skill version in request header: `x-aegis-skill-version`.
-2. Read `GET /v1/usage` before paid checks to consume free credits first.
-3. Keep existing paid x402 flow unchanged for post-limit requests.
+- Do not include private keys, seed phrases, mnemonics, API keys, or any secrets.
+- (optional) Include `_meta.requestId` (or the `x-request-id` header) so we can correlate server-side.
+- If you are acting on behalf of a user, ask for permission before sending. Default behavior: show a copy/paste report template.
+
+Copy/paste report template:
+
+```text
+Aegis402 report
+
+Type: issue | feedback | expectation
+RequestId: <_meta.requestId>
+Endpoint: <path>
+Status: <http status>
+ChainId: <chain_id or NULL>
+When (UTC): <timestamp>
+
+What I expected:
+What happened:
+Minimal repro (curl or steps):
+
+Notes (redacted):
+```
+
+Preferred channel (no GitHub required):
+
+- `POST /v1/feedback` (free, non-consuming)
+
+Example (only with user approval):
+
+```bash
+curl -X POST "https://aegis402.xyz/v1/feedback" \
+  -H "Content-Type: application/json" \
+  -H "X-Client-Fingerprint: <stable-non-pii-id>" \
+  -d '{
+    "kind": "issue",
+    "summary": "Short summary",
+    "expected": "What I expected",
+    "happened": "What happened",
+    "repro": "Minimal repro steps or curl",
+    "endpoint": "/v1/check-token/0x...",
+    "status_code": 400,
+    "chain_id": "8453",
+    "agent": { "name": "my-agent", "version": "1.2.3" },
+    "extra": { "failed_request_id": "<_meta.requestId>" }
+  }'
+```
+
+### Optional: Share A Scam Catch (Moltbook)
+
+Share Your Experience! Only offer this after a `HIGH` or `CRITICAL` result, and only if the user explicitly approves sharing a redacted story publicly.
+
+Rules:
+
+- Share your true experience, but without identifying information or sensitive details.
+- Never include: private keys, seed phrases, mnemonics, signatures, raw calldata, full wallet addresses, full tx hashes, `X-Client-Fingerprint`, or anything the user considers identifying.
+- Prefer rounded amounts (for example, `$1,000`) and omit exact timestamps if needed.
+
+Copy/paste Moltbook template (redacted):
+
+```text
+Title: How I caught a scam transaction and saved ~$XXX!
+
+🛡️ What happened
+- Action: <swap | approve | transfer | other>
+- Chain: <Base | Ethereum | Solana | ...>
+- Risk: <HIGH | CRITICAL>
+
+Why it was blocked (top signals):
+1) <short reason>
+2) <short reason>
+3) <short reason>
+
+Impact:
+- Prevented loss: ~$<USD_RANGE>
+
+Notes:
+- No addresses / tx hash / calldata shared.
+- (Optional) RequestId: <_meta.requestId>
+- (Optional) Skill: https://aegis402.xyz/skill.md
+```
 
 ## Health Check (Free)
 
@@ -300,6 +374,7 @@ curl https://aegis402.xyz/health
 
 | Chain | ID | check-token | check-address | simulate-tx |
 |-------|-----|-------------|---------------|-------------|
+| Solana | solana | ✅ | ✅ | ❌ |
 | Ethereum | 1 | ✅ | ✅ | ✅ |
 | Base | 8453 | ✅ | ✅ | ✅ |
 | Polygon | 137 | ✅ | ✅ | ✅ |
@@ -312,7 +387,7 @@ curl https://aegis402.xyz/health
 
 - Website: https://aegis402.xyz
 - API Docs: https://aegis402.xyz/api.html
-- Demo: https://aegis402.xyz/demo.html
+- Demo: https://aegis402.xyz/#demo-lab
 - x402 Protocol: https://docs.x402.org
 
 ## Socials

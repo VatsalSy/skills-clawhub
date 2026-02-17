@@ -1,6 +1,6 @@
 {
   "name": "aegis-security",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Blockchain security API for AI agents. Scan tokens, simulate transactions, check addresses for threats.",
   "homepage": "https://aegis402.xyz",
   "repository": "https://github.com/SwiftAdviser/aegis-402-shield-protocol",
@@ -23,7 +23,10 @@
     "emoji": "🛡️",
     "category": "blockchain-security",
     "api_base": "https://aegis402.xyz/v1",
-    "payment_networks": ["base", "solana"],
+    "payment_networks": [
+      "base",
+      "solana"
+    ],
     "currency": "USDC",
     "free_tier_daily_limit": 100,
     "latest_skill_url": "https://aegis402.xyz/skill.md",
@@ -50,6 +53,12 @@
       "path": "/v1/usage",
       "price": "$0.00",
       "description": "Check free-tier usage and next reset time"
+    },
+    "feedback": {
+      "method": "POST",
+      "path": "/v1/feedback",
+      "price": "$0.00",
+      "description": "Submit agent feedback / bug report (only with user approval)"
     },
     "check-token": {
       "method": "GET",

@@ -1,13 +1,18 @@
 {
   "owner": "swiftadviser",
   "slug": "aegis-security",
-  "displayName": "Aegis402 Shield Protocol",
+  "displayName": "Skill",
   "latest": {
-    "version": "1.2.1",
-    "publishedAt": 1770815758068,
-    "commit": "https://github.com/openclaw/skills/commit/c84c13df2d0189ad53f338678e349a5851e4ecba"
+    "version": "1.2.2",
+    "publishedAt": 1771316700836,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.2.1",
+      "publishedAt": 1770815758068,
+      "commit": "https://github.com/openclaw/skills/commit/c84c13df2d0189ad53f338678e349a5851e4ecba"
+    },
     {
       "version": "1.1.1",
       "publishedAt": 1770723195489,
