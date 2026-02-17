@@ -228,9 +228,6 @@ Self-service tenant configuration (owner/admin role required for writes).
 | `allowed_numbers` | `string[]` | Phone numbers allowed for outbound messaging |
 | `require_approval` | `bool` | Whether outbound messages require admin approval |
 | `ai_consent_enabled` | `bool` | Whether AI features (auto-reply, style matching) are enabled |
-| `chat_history_access_enabled` | `bool` | Whether conversation context access is enabled (default: `false`) |
-
-> **[PRIVACY GATE] Conversation Context**: `chat_history_access_enabled` controls whether API keys with `messages:read` scope can access conversation context. **Default is `false`** — the API returns HTTP 403 until explicitly enabled at **Settings > Account > Data Access**. Sending messages is NOT affected. Context-dependent features (BizDev agent phases 3A/3C, style matching, AI context) will gracefully skip when disabled.
 
 #### Get Tenant Settings
 
@@ -245,8 +242,7 @@ curl https://apiv2.waiflow.app/tenant/settings \
 {
   "allowed_numbers": ["+5511999999999"],
   "require_approval": false,
-  "ai_consent_enabled": true,
-  "chat_history_access_enabled": false
+  "ai_consent_enabled": true
 }
 ```
 
@@ -256,7 +252,7 @@ curl https://apiv2.waiflow.app/tenant/settings \
 curl -X PATCH https://apiv2.waiflow.app/tenant/settings \
   -H "X-API-Key: $MOLTFLOW_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"chat_history_access_enabled": true}'
+  -d '{"ai_consent_enabled": true}'
 ```
 
 ### Update Settings — Request Body
@@ -267,14 +263,12 @@ All fields are optional. Only provided fields are updated.
 {
   "allowed_numbers": ["+5511999999999", "+5511888888888"],
   "require_approval": true,
-  "ai_consent_enabled": true,
-  "chat_history_access_enabled": true
+  "ai_consent_enabled": true
 }
 ```
 
 **Notes:**
 - `ai_consent_enabled` records a GDPR consent entry (consent type `ai_processing`, version `1.0`) with the user's IP and user-agent.
-- `chat_history_access_enabled` defaults to `false`. Enabling it allows API keys with `messages:read` scope to access conversation context.
 - Any authenticated user can read settings; only `owner` or `admin` roles can update.
 
 ---

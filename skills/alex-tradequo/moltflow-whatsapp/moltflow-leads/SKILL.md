@@ -59,9 +59,9 @@ X-API-Key: <your_api_key>
 
 ## How Lead Detection Works
 
-1. You monitor WhatsApp groups via the Groups API (see `moltflow` skill)
+1. You configure group monitoring via the Groups API (see `moltflow` skill)
 2. Set `monitor_mode: "keywords"` with keywords like `"looking for"`, `"price"`, `"interested"`
-3. When a group member sends a message matching your keywords, MoltFlow auto-creates a lead
+3. When a keyword match is detected, MoltFlow auto-creates a lead
 4. Leads appear in the Leads API with status `new` and the triggering keyword highlighted
 5. You track them through the pipeline: `new` -> `contacted` -> `qualified` -> `converted`
 

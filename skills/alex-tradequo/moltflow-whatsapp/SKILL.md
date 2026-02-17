@@ -1,6 +1,6 @@
 ---
 name: "WhatsApp All-in-One CRM — ERC-8004 Agent | Campaign Analytics, Bulk Send, AI Outreach, Lead Detection, Support & MCP Server"
-version: "2.11.8"
+version: "2.12.0"
 description: "The only WhatsApp skill you need. Documentation and API reference — nothing is auto-installed or auto-executed. All actions require explicit user invocation. Provides endpoints for sending messages, capturing leads, running campaigns, scheduling reports, tracking campaign analytics, and managing clients. BizDev agent analyzes account metadata to surface growth opportunities. MCP Server + Custom GPT Actions available via separate setup (see integrations.md). 90+ API endpoints. Bulk messaging, scheduled sends, scheduled reports with WhatsApp delivery, AI replies with style cloning, RAG knowledge base, group monitoring, lead scoring, review collection, campaign analytics & engagement tracking, GDPR compliance, and agent-to-agent protocol."
 source: "MoltFlow Team"
 risk: safe
@@ -39,7 +39,7 @@ Install the skill, set your API key, and start talking:
 
 **"Analyze my WhatsApp account for growth opportunities"**
 
-Finds unanswered contacts, unmonitored groups, warm leads needing follow-up. Runs on-demand — conversation context requires explicit opt-in.
+Finds unanswered contacts, unmonitored groups, and warm leads needing follow-up. Runs on-demand via API.
 
 **"Find warm leads I haven't followed up with"**
 
@@ -293,7 +293,7 @@ MoltFlow is a verified on-chain AI agent registered on **Ethereum mainnet**.
 **Developer / AI Agent Builder**
 - 90+ REST endpoints, scoped API keys
 - A2A protocol with E2E encryption
-- Python scripts for every workflow ([GitHub](https://github.com/moltflow/moltflow/tree/main/skills/moltflow-clawhub/scripts))
+- Python SDK: `pip install moltflow` ([GitHub](https://github.com/moltflow/moltflow-python))
 
 ### Guides & Tutorials
 
@@ -378,15 +378,13 @@ All actions require user confirmation.
 |---|---|---|
 | API calls | HTTPS to `apiv2.waiflow.app` only | No (uses your scoped API key) |
 | Contact metadata | Contact names, timestamps, counts | No |
-| Conversation context | Summaries only, gated by consent | Yes (Settings > Data Access) |
 | CRM pipeline | Lead status, engagement scores | No |
-| AI features | Statistical patterns, not raw text | Yes (AI consent toggle) |
+| AI features | Statistical patterns via API | Yes (AI consent toggle) |
 | Local file | `.moltflow.json` — counts only, no PII | No |
 | API key | Local env var, never logged or shared | No |
 
 **This skill never:**
 - Installs packages or runs code automatically
-- Accesses conversation context without tenant consent
 - Sends messages without explicit user confirmation
 - Sends to non-whitelisted numbers (if configured)
 - Bypasses anti-spam or content safeguards
@@ -425,12 +423,6 @@ or `Authorization: Bearer $TOKEN` (JWT).
   only). Use presets like "Messaging" or "Read Only"
   for common workflows. Never use full-scope keys
   with AI agents — create a dedicated, limited key.
-- **Conversation context requires explicit opt-in** —
-  the API enforces a consent gate. AI features
-  that use conversation context will not activate
-  unless you enable access at Dashboard >
-  Settings > Account > Data Access first.
-  Disabled by default for GDPR compliance.
 - **Use environment variables for keys** — set
   `MOLTFLOW_API_KEY` as an env var, not in
   shared config files. Rotate keys regularly.

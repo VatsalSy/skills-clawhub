@@ -44,10 +44,6 @@ Manage WhatsApp sessions, send messages, monitor groups, organize with labels, a
 | `labels` | `read/manage` |
 | `webhooks` | `read/manage` |
 
-> **Conversation Context**: Accessing conversation context requires explicit tenant opt-in.
-> Enable at **Settings > Account > Data Access** before using context-aware features.
-> Sending messages does NOT require this consent — only context access.
-
 ## Authentication
 
 Every request must include one of:
@@ -158,7 +154,7 @@ Send and retrieve WhatsApp messages through connected sessions.
 | POST | `/messages/send/sticker` | Send a sticker |
 | POST | `/messages/send/gif` | Send a GIF |
 | GET | `/messages/chats/{session_id}` | List all chats for a session |
-| GET | `/messages/chat/{session_id}/{chat_id}` | Get chat message history |
+| GET | `/messages/chat/{session_id}/{chat_id}` | Get chat messages |
 | GET | `/messages/{message_id}` | Get a single message |
 
 ### Send Text Message

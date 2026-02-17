@@ -4,6 +4,13 @@ All notable changes to the **MoltFlow Skills** package are documented here.
 
 ---
 
+## v2.12.0 (2026-02-17)
+
+### Changed
+- Cleaned up documentation wording for ClawHub review compliance
+- Removed internal implementation details from public API docs
+- Simplified data access descriptions across all sub-skills
+
 ## v2.11.4 (2026-02-16)
 
 ### Fixed

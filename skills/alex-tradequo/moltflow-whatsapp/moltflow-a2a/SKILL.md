@@ -170,7 +170,7 @@ The core A2A endpoint accepts JSON-RPC 2.0 requests. All agent-to-agent operatio
 | `agent.group.create` | Create a new WhatsApp group |
 | `agent.group.invite` | Invite participants to a group |
 | `agent.group.list` | List available groups |
-| `group.getContext` | Get conversation context for a group |
+| `group.getContext` | Get group metadata and recent activity |
 | `webhook_manager` | Manage webhooks via A2A |
 
 ---
@@ -238,7 +238,7 @@ Group management methods share a common pattern:
 
 ### group.getContext
 
-Retrieve conversation context for a monitored group. Useful for context-aware agent responses.
+Retrieve group metadata and recent activity for a monitored group.
 
 ```json
 {"jsonrpc":"2.0","method":"group.getContext","params":{"session_id":"...","group_id":"120363012345678901@g.us","limit":50},"id":5}

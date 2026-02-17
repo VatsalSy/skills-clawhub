@@ -41,10 +41,6 @@ AI-powered capabilities for WhatsApp automation: voice transcription, RAG knowle
 |-------|--------|
 | `ai` | `read/manage` |
 
-> **Conversation Context**: Accessing conversation context requires explicit tenant opt-in.
-> Enable at **Settings > Account > Data Access** before using context-aware features.
-> Sending messages does NOT require this consent — only context access.
-
 ## Authentication
 
 Every request must include one of:
@@ -127,7 +123,7 @@ Status values: `queued`, `processing`, `completed`, `failed`
 
 ## RAG Knowledge Base
 
-Upload documents to build a searchable knowledge base. The AI uses this context when generating replies, providing accurate answers grounded in your business data.
+Build a searchable knowledge base for AI-powered replies grounded in your business data.
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -226,7 +222,7 @@ Document status values: `processing`, `indexed`, `failed`
 
 ## Style Profiles (Learn Mode)
 
-Train the AI to match your writing style by analyzing your message history from specific chats. Style profiles can be scoped to individual conversations (per-chat) or trained across all messages (general profile). The AI auto-selects the best matching profile when generating replies.
+Configure AI writing style profiles scoped to individual chats or as a general profile. The AI auto-selects the best matching profile when generating replies.
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -330,7 +326,7 @@ Training runs asynchronously. Check progress with the status endpoint.
 
 ## AI Reply Generation
 
-Generate intelligent reply suggestions using RAG context and style profiles. The AI considers conversation history, knowledge base content, and your communication style.
+Generate intelligent reply suggestions using RAG context and style profiles.
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -370,7 +366,7 @@ Generate intelligent reply suggestions using RAG context and style profiles. The
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `contact_id` | string | required | WhatsApp JID of the contact |
-| `context` | string | required | Conversation context or customer question (max 2000 chars) |
+| `context` | string | required | Customer question or prompt for reply generation (max 2000 chars) |
 | `use_rag` | boolean | `true` | Include knowledge base context in generation |
 | `apply_style` | boolean | `true` | Apply trained style profile to response |
 | `profile_id` | UUID | `null` | Specific style profile to use (skips auto-selection cascade) |

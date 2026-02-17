@@ -64,9 +64,8 @@ and paste your scoped MoltFlow API key.
   required scopes at Dashboard > Settings > API Keys.
 - **Environment variables** — store your API key as an
   env var, not in shared config files. Rotate regularly.
-- **Conversation context gate** — context-aware endpoints
-  require explicit tenant opt-in at Settings > Account >
-  Data Access. Disabled by default for GDPR compliance.
+- **GDPR compliance** — all data processing follows
+  GDPR guidelines with appropriate consent gates.
 
 ---
 
