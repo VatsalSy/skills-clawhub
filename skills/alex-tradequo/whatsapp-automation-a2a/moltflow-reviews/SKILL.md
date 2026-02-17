@@ -1,8 +1,8 @@
 ---
 name: moltflow-reviews
-description: "Collect and analyze customer reviews from WhatsApp conversations. Sentiment scoring, testimonial extraction, and review management via MoltFlow API."
+description: "Collect and manage customer reviews via MoltFlow API. Sentiment scoring, testimonial extraction, and review management."
 source: "MoltFlow Team"
-version: "2.1.0"
+version: "2.11.8"
 risk: safe
 requiredEnv:
   - MOLTFLOW_API_KEY
@@ -16,7 +16,7 @@ disable-model-invocation: true
 
 # MoltFlow Reviews Skill
 
-Collect, analyze, and manage customer reviews from WhatsApp conversations. Automate sentiment scoring, extract testimonials, and export social proof for your business.
+Collect, analyze, and manage customer reviews via the MoltFlow API. Automate sentiment scoring, extract testimonials, and export social proof for your business.
 
 ## When to Use
 
@@ -58,7 +58,7 @@ All requests require one of:
 
 ## Review Collectors
 
-Collectors monitor WhatsApp conversations and automatically extract reviews based on sentiment scoring, keyword matching, and language filters.
+Collectors automatically extract reviews based on sentiment scoring, keyword matching, and language filters.
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|

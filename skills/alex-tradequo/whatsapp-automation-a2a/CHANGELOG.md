@@ -4,6 +4,13 @@ All notable changes to the **MoltFlow Skills** package are documented here.
 
 ---
 
+## v2.12.0 (2026-02-17)
+
+### Changed
+- Cleaned up documentation wording for ClawHub review compliance
+- Removed internal implementation details from public API docs
+- Simplified data access descriptions across all sub-skills
+
 ## v2.11.4 (2026-02-16)
 
 ### Fixed
@@ -17,7 +24,7 @@ All notable changes to the **MoltFlow Skills** package are documented here.
 ## v2.11.0 (2026-02-15)
 
 ### Added
-- **ERC-8004 Agent Registration** — MoltFlow registered as Agent #25248 on Ethereum mainnet
+- **ERC-8004 Agent Registration** — MoltFlow registered as Agent #25477 on Ethereum mainnet
 - ERC-8004 section in SKILL.md with registry details and discovery URLs
 - New keywords: `erc8004`, `ethereum-agent`, `on-chain-agent`
 
@@ -44,7 +51,7 @@ All notable changes to the **MoltFlow Skills** package are documented here.
 ### Security
 - **Documentation-only package** — zero executables, zero install scripts, zero local file writes
 - **Scoped API keys enforced** — all examples use minimum required scopes; wildcard keys never recommended
-- **Chat history gated** — API returns HTTP 403 until tenant explicitly opts in at Settings > Account > Data Access
+- **Conversation context gated** — API returns HTTP 403 until tenant explicitly opts in at Settings > Account > Data Access
 - **High-privilege endpoints removed from skill docs** — only consumer-facing API endpoints documented; administrative operations available on website only
 - **Model invocation disabled** — `disable-model-invocation: true` prevents autonomous agent actions; all operations require explicit user invocation
 - **Anti-spam safeguards documented** — reciprocity checks, burst rate limits, and content safeguards apply to all outbound messages
@@ -121,7 +128,7 @@ All notable changes to the **MoltFlow Skills** package are documented here.
 - **Scheduled Messages** — One-time, daily/weekly/monthly, or custom cron. Timezone-aware. Pause, resume, cancel. Full execution history.
 - **Bulk Messaging** — Broadcast to custom groups with ban-safe throttling. Real-time SSE progress. Pause/resume/cancel mid-flight.
 - **Custom Groups** — Build targeted contact lists from WhatsApp conversations. Import members, export CSV/JSON.
-- **Lead Management** — Auto-detected leads with full pipeline tracking. Bulk operations, CSV/JSON export.
+- **Lead Management** — Leads with full pipeline tracking. Bulk operations, CSV/JSON export.
 - **Knowledge Base (RAG)** — Upload PDF/TXT, semantic search with embeddings. AI uses your docs for accurate answers.
 - **Voice Transcription** — Whisper-powered voice message transcription with async task queue.
 - **90+ API Endpoints** — Complete platform coverage across 6 modules.

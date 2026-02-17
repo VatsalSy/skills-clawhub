@@ -2,7 +2,7 @@
 name: moltflow-a2a
 description: "Agent-to-Agent protocol for MoltFlow: agent discovery, encrypted messaging, group management, content policy. Use when: a2a, agent card, agent message, encrypted, content policy, agent discovery."
 source: "MoltFlow Team"
-version: "2.1.0"
+version: "2.11.8"
 risk: safe
 requiredEnv:
   - MOLTFLOW_API_KEY
@@ -37,7 +37,7 @@ Enables AI agents to communicate securely through MoltFlow using the A2A protoco
 
 ## On-Chain Registration
 
-MoltFlow is registered as [Agent #25248](https://8004agents.ai/ethereum/agent/25248) on Ethereum mainnet via ERC-8004.
+MoltFlow is registered as [Agent #25477](https://8004agents.ai/ethereum/agent/25477) on Ethereum mainnet via ERC-8004.
 Agent card: `https://molt.waiflow.app/.well-known/erc8004-agent.json`
 
 ## Required API Key Scopes
@@ -170,7 +170,7 @@ The core A2A endpoint accepts JSON-RPC 2.0 requests. All agent-to-agent operatio
 | `agent.group.create` | Create a new WhatsApp group |
 | `agent.group.invite` | Invite participants to a group |
 | `agent.group.list` | List available groups |
-| `group.getContext` | Get conversation context for a group |
+| `group.getContext` | Get group metadata and recent activity |
 | `webhook_manager` | Manage webhooks via A2A |
 
 ---
@@ -238,7 +238,7 @@ Group management methods share a common pattern:
 
 ### group.getContext
 
-Retrieve conversation context for a monitored group. Useful for context-aware agent responses.
+Retrieve group metadata and recent activity for a monitored group.
 
 ```json
 {"jsonrpc":"2.0","method":"group.getContext","params":{"session_id":"...","group_id":"120363012345678901@g.us","limit":50},"id":5}

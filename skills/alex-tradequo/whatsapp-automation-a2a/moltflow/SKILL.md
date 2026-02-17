@@ -2,7 +2,7 @@
 name: moltflow
 description: "WhatsApp Business automation API for sessions, messaging, groups, labels, and webhooks. Use when: whatsapp, send message, create session, qr code, monitor group, label contacts, webhook."
 source: "MoltFlow Team"
-version: "2.1.0"
+version: "2.11.8"
 risk: safe
 requiredEnv:
   - MOLTFLOW_API_KEY
@@ -26,7 +26,7 @@ Manage WhatsApp sessions, send messages, monitor groups, organize with labels, a
 - "Label contacts" or "sync labels from WhatsApp"
 - "Set up a webhook" or "listen for WhatsApp events"
 - "Get QR code" or "start session"
-- "List chats" or "get chat history"
+- "List chats" or "get conversations"
 
 ## Prerequisites
 
@@ -43,10 +43,6 @@ Manage WhatsApp sessions, send messages, monitor groups, organize with labels, a
 | `groups` | `read/manage` |
 | `labels` | `read/manage` |
 | `webhooks` | `read/manage` |
-
-> **Chat History Access**: Reading chat history requires explicit tenant opt-in.
-> Enable at **Settings > Account > Data Access** before using chat-related features.
-> Sending messages does NOT require this consent — only reading history.
 
 ## Authentication
 
@@ -158,7 +154,7 @@ Send and retrieve WhatsApp messages through connected sessions.
 | POST | `/messages/send/sticker` | Send a sticker |
 | POST | `/messages/send/gif` | Send a GIF |
 | GET | `/messages/chats/{session_id}` | List all chats for a session |
-| GET | `/messages/chat/{session_id}/{chat_id}` | Get chat message history |
+| GET | `/messages/chat/{session_id}/{chat_id}` | Get chat messages |
 | GET | `/messages/{message_id}` | Get a single message |
 
 ### Send Text Message

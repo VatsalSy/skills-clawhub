@@ -1,6 +1,6 @@
 ---
-name: "WhatsApp All-in-One CRM — ERC-8004 Agent | Campaign Analytics, Bulk Send, AI Outreach, Lead Mining, Support & MCP Server"
-version: "2.11.4"
+name: "WhatsApp All-in-One CRM — ERC-8004 Agent | Campaign Analytics, Bulk Send, AI Outreach, Lead Detection, Support & MCP Server"
+version: "2.12.0"
 description: "The only WhatsApp skill you need. Documentation and API reference — nothing is auto-installed or auto-executed. All actions require explicit user invocation. Provides endpoints for sending messages, capturing leads, running campaigns, scheduling reports, tracking campaign analytics, and managing clients. BizDev agent analyzes account metadata to surface growth opportunities. MCP Server + Custom GPT Actions available via separate setup (see integrations.md). 90+ API endpoints. Bulk messaging, scheduled sends, scheduled reports with WhatsApp delivery, AI replies with style cloning, RAG knowledge base, group monitoring, lead scoring, review collection, campaign analytics & engagement tracking, GDPR compliance, and agent-to-agent protocol."
 source: "MoltFlow Team"
 risk: safe
@@ -12,7 +12,7 @@ disable-model-invocation: true
 metadata: {"openclaw":{"emoji":"📱","homepage":"https://molt.waiflow.app","requires":{"env":["MOLTFLOW_API_KEY"]},"primaryEnv":"MOLTFLOW_API_KEY"}}
 ---
 
-# WhatsApp Automation — Mine Groups for Leads
+# WhatsApp Automation — Analyze Groups for Buying Signals
 
 **Thousands of hidden leads are sitting in your WhatsApp groups right now.** Every group participant who isn't in your contacts is a potential client. MoltFlow analyzes your groups on demand, surfaces untapped contacts, and lets Claude run AI-powered outreach campaigns on your behalf.
 
@@ -39,15 +39,15 @@ Install the skill, set your API key, and start talking:
 
 **"Analyze my WhatsApp account for growth opportunities"**
 
-Finds unanswered contacts, unmonitored groups, cold leads. Runs on-demand — chat history analysis requires explicit opt-in.
+Finds unanswered contacts, unmonitored groups, and warm leads needing follow-up. Runs on-demand via API.
 
-**"Find cold leads I haven't followed up with"**
+**"Find warm leads I haven't followed up with"**
 
 Contacts with no reply in 7+ days, plus re-engagement tips.
 
 **"Set up keyword monitoring for my real estate groups"**
 
-Adds keyword triggers, auto-detects leads into your pipeline.
+Adds keyword triggers, surfaces buying signals into your pipeline.
 
 **"Collect customer feedback from my support chats"**
 
@@ -59,7 +59,7 @@ Timezone-aware cron, ban-safe throttling, delivery tracking.
 
 **"Reply to my WhatsApp messages while I'm in meetings"**
 
-Style-matched AI replies from your message history.
+AI replies matched to your writing style.
 
 ---
 
@@ -259,7 +259,7 @@ MoltFlow is a verified on-chain AI agent registered on **Ethereum mainnet**.
 
 | Field | Value |
 |-------|-------|
-| Agent ID | [#25248](https://8004agents.ai/ethereum/agent/25248) |
+| Agent ID | [#25477](https://8004agents.ai/ethereum/agent/25477) |
 | Chain | Ethereum mainnet (eip155:1) |
 | Registry | `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` |
 | Trust Model | Reputation-based |
@@ -293,7 +293,7 @@ MoltFlow is a verified on-chain AI agent registered on **Ethereum mainnet**.
 **Developer / AI Agent Builder**
 - 90+ REST endpoints, scoped API keys
 - A2A protocol with E2E encryption
-- Python scripts for every workflow ([GitHub](https://github.com/moltflow/moltflow/tree/main/skills/moltflow-clawhub/scripts))
+- Python SDK: `pip install moltflow` ([GitHub](https://github.com/moltflow/moltflow-python))
 
 ### Guides & Tutorials
 
@@ -314,7 +314,7 @@ MoltFlow is a verified on-chain AI agent registered on **Ethereum mainnet**.
 - [Group Lead Generation](https://molt.waiflow.app/blog/whatsapp-group-lead-generation-guide)
 - [Customer Support](https://molt.waiflow.app/blog/openclaw-whatsapp-customer-support)
 - [RAG Knowledge Base](https://molt.waiflow.app/blog/rag-knowledge-base-deep-dive)
-- [Style Training](https://molt.waiflow.app/blog/learn-mode-style-training-whatsapp)
+- [Style Matching](https://molt.waiflow.app/blog/learn-mode-style-training-whatsapp)
 - [Lead Scoring](https://molt.waiflow.app/blog/whatsapp-lead-scoring-automation)
 - [Feedback Collection](https://molt.waiflow.app/blog/whatsapp-customer-feedback-collection)
 - [A2A Protocol](https://molt.waiflow.app/blog/a2a-protocol-agent-communication)
@@ -334,11 +334,11 @@ MoltFlow is a verified on-chain AI agent registered on **Ethereum mainnet**.
 | Reports | 10 templates, cron, WhatsApp delivery |
 | Analytics | Campaign funnel, contact scores, send time optimization |
 | Groups | Custom lists, CSV export |
-| Leads/CRM | Auto-detect, pipeline |
+| Leads/CRM | Detect signals, pipeline |
 | Monitoring | 50+ groups, keywords |
 | Labels | Sync to WA Business |
 | AI Replies | GPT-4/Claude, RAG |
-| Style Clone | Train from your msgs |
+| Style Clone | Matches your writing tone |
 | RAG | PDF/TXT, semantic search |
 | Voice | Whisper transcription |
 | Reviews | Sentiment, auto-approve |
@@ -376,17 +376,15 @@ All actions require user confirmation.
 
 | Category | What happens | Requires opt-in? |
 |---|---|---|
-| API calls | HTTPS to `apiv2.waiflow.app` only | No (uses your API key) |
-| Chat metadata | Contact names, timestamps, counts | No |
-| Message content | 500-char previews only | Yes (chat history gate) |
-| BizDev analysis | Aggregate counts, no PII | No |
-| Style profiles | Statistical patterns, not raw text | Yes (AI consent) |
+| API calls | HTTPS to `apiv2.waiflow.app` only | No (uses your scoped API key) |
+| Contact metadata | Contact names, timestamps, counts | No |
+| CRM pipeline | Lead status, engagement scores | No |
+| AI features | Statistical patterns via API | Yes (AI consent toggle) |
 | Local file | `.moltflow.json` — counts only, no PII | No |
 | API key | Local env var, never logged or shared | No |
 
 **This skill never:**
 - Installs packages or runs code automatically
-- Reads full message content without tenant opt-in
 - Sends messages without explicit user confirmation
 - Sends to non-whitelisted numbers (if configured)
 - Bypasses anti-spam or content safeguards
@@ -401,8 +399,11 @@ All actions require user confirmation.
 > 50 messages/month, no credit card required.
 
 **Env vars:**
-- `MOLTFLOW_API_KEY` (required) — from
-  [your dashboard](https://molt.waiflow.app)
+- `MOLTFLOW_API_KEY` (required) — create a
+  minimum-scoped key from
+  [your dashboard](https://molt.waiflow.app).
+  Use the narrowest scope preset that covers
+  your workflow. Rotate keys regularly.
 - `MOLTFLOW_API_URL` (optional) — defaults
   to `https://apiv2.waiflow.app`
 
@@ -416,17 +417,12 @@ or `Authorization: Bearer $TOKEN` (JWT).
 
 ## Security
 
-- **Scoped API keys enforced** — `scopes` is a
-  required field when creating keys. Select only
-  the permissions you need (e.g., `messages:send`,
-  `leads:read`). Use presets like "Messaging" or
-  "Outreach" for common workflows.
-- **Chat history requires explicit opt-in** — the
-  API enforces a consent gate. Features like
-  "scan my chats" or style training will fail
-  unless you enable access at Dashboard >
-  Settings > Account > Data Access first.
-  Disabled by default for GDPR compliance.
+- **Minimum-scoped API keys enforced** — `scopes` is
+  a required field when creating keys. Always create
+  the narrowest key possible (e.g., `messages:send`
+  only). Use presets like "Messaging" or "Read Only"
+  for common workflows. Never use full-scope keys
+  with AI agents — create a dedicated, limited key.
 - **Use environment variables for keys** — set
   `MOLTFLOW_API_KEY` as an env var, not in
   shared config files. Rotate keys regularly.

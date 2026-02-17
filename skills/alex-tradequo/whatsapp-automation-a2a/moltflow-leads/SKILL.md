@@ -1,8 +1,8 @@
 ---
 name: moltflow-leads
-description: "WhatsApp lead detection and CRM pipeline. Auto-detect purchase intent in groups, track lead status, bulk operations, CSV/JSON export. Use when: leads, lead detection, pipeline, qualify, convert, bulk status, export leads."
+description: "WhatsApp lead detection and CRM pipeline. Detect purchase-intent signals in groups, track lead status, bulk operations, CSV/JSON export. Use when: leads, lead detection, pipeline, qualify, convert, bulk status, export leads."
 source: "MoltFlow Team"
-version: "2.1.0"
+version: "2.11.8"
 risk: safe
 requiredEnv:
   - MOLTFLOW_API_KEY
@@ -16,7 +16,7 @@ disable-model-invocation: true
 
 # MoltFlow Leads -- Detection & CRM Pipeline
 
-Auto-detect purchase-intent leads from monitored WhatsApp groups, track them through a sales pipeline, perform bulk operations, and export for your CRM.
+Detect purchase-intent signals from monitored WhatsApp groups, track leads through a sales pipeline, perform bulk operations, and export for your CRM.
 
 ## When to Use
 
@@ -59,9 +59,9 @@ X-API-Key: <your_api_key>
 
 ## How Lead Detection Works
 
-1. You monitor WhatsApp groups via the Groups API (see `moltflow` skill)
+1. You configure group monitoring via the Groups API (see `moltflow` skill)
 2. Set `monitor_mode: "keywords"` with keywords like `"looking for"`, `"price"`, `"interested"`
-3. When a group member sends a message matching your keywords, MoltFlow auto-creates a lead
+3. When a keyword match is detected, MoltFlow auto-creates a lead
 4. Leads appear in the Leads API with status `new` and the triggering keyword highlighted
 5. You track them through the pipeline: `new` -> `contacted` -> `qualified` -> `converted`
 
