@@ -29,14 +29,31 @@ def _hash_file(path):
     return h.hexdigest()
 
 
+def _validate_skill_path(skill_path):
+    """Validate and resolve skill path — prevent path traversal."""
+    skill_path = Path(os.path.realpath(str(skill_path)))
+    # Must be under ~/.openclaw/skills/ or a reasonable location
+    if not skill_path.is_dir():
+        print(f"Error: {skill_path} is not a directory", file=sys.stderr)
+        sys.exit(1)
+    return skill_path
+
+
 def _hash_directory(skill_path):
     """Compute hashes for all files in a skill directory."""
+    skill_path = Path(os.path.realpath(str(skill_path)))
     hashes = {}
-    for root, dirs, files in os.walk(skill_path):
+    for root, dirs, files in os.walk(skill_path, followlinks=False):
         # Skip __pycache__ and .git
         dirs[:] = [d for d in dirs if d not in ('__pycache__', '.git', 'node_modules')]
         for f in sorted(files):
             fpath = Path(root) / f
+            # Skip symlinks — prevent reading files outside skill directory
+            if fpath.is_symlink():
+                continue
+            real = os.path.realpath(str(fpath))
+            if not real.startswith(os.path.realpath(str(skill_path))):
+                continue
             rel = str(fpath.relative_to(skill_path))
             hashes[rel] = _hash_file(str(fpath))
     return hashes
@@ -44,7 +61,7 @@ def _hash_directory(skill_path):
 
 def assess(skill_path):
     """Assess trust signals for a skill."""
-    skill_path = Path(skill_path)
+    skill_path = _validate_skill_path(skill_path)
     signals = []
     score = 0
 
@@ -89,11 +106,15 @@ def assess(skill_path):
     ]
 
     code_clean = True
-    for root, dirs, files in os.walk(skill_path):
+    for root, dirs, files in os.walk(skill_path, followlinks=False):
         dirs[:] = [d for d in dirs if d not in ('__pycache__', '.git', 'node_modules')]
         for f in files:
             if f.endswith(('.py', '.js', '.ts', '.sh')):
                 fpath = Path(root) / f
+                if fpath.is_symlink():
+                    signals.append({"signal": "no_symlinks", "passed": False, "detail": f"Symlink: {f}"})
+                    score -= 15
+                    continue
                 try:
                     with open(fpath) as fh:
                         code = fh.read()
@@ -166,8 +187,14 @@ def assess(skill_path):
 
 
 def generate_attestation(skill_path, output_path=None):
-    """Generate a trust attestation for a skill (signed hash manifest)."""
-    skill_path = Path(skill_path)
+    """Generate a trust attestation for a skill (hash manifest).
+
+    NOTE: These attestations use SHA-256 hashes but are NOT cryptographically signed.
+    They detect accidental modifications but cannot prevent deliberate tampering by
+    an attacker with file write access. For tamper-proof attestations, use HMAC or
+    digital signatures with a key stored outside the skill filesystem.
+    """
+    skill_path = _validate_skill_path(skill_path)
     file_hashes = _hash_directory(skill_path)
 
     # Compute overall hash
