@@ -1,0 +1,11 @@
+{
+  "owner": "eddygk",
+  "slug": "idrac",
+  "displayName": "iDRAC",
+  "latest": {
+    "version": "1.1.0",
+    "publishedAt": 1771223594401,
+    "commit": null
+  },
+  "history": []
+}
