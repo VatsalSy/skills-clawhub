@@ -1,13 +1,18 @@
 {
   "owner": "zoan37",
   "slug": "hyperclaw",
-  "displayName": "Hyperclaw",
+  "displayName": "HyperClaw",
   "latest": {
-    "version": "0.1.12",
-    "publishedAt": 1771183965340,
-    "commit": "https://github.com/openclaw/skills/commit/5f4dd838e8beadbbe1982e7e5591a79ca13627d3"
+    "version": "0.1.13",
+    "publishedAt": 1771303848289,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.1.12",
+      "publishedAt": 1771183965340,
+      "commit": "https://github.com/openclaw/skills/commit/5f4dd838e8beadbbe1982e7e5591a79ca13627d3"
+    },
     {
       "version": "0.1.8",
       "publishedAt": 1771102466392,
