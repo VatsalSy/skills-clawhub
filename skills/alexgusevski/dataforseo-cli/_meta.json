@@ -3,9 +3,15 @@
   "slug": "dataforseo-cli",
   "displayName": "dataforseo-cli",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1771079540146,
-    "commit": "https://github.com/openclaw/skills/commit/e8c1995d6c0c7b7669a0285b10575f6411d630b6"
+    "version": "1.0.6",
+    "publishedAt": 1771241472627,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1771079540146,
+      "commit": "https://github.com/openclaw/skills/commit/e8c1995d6c0c7b7669a0285b10575f6411d630b6"
+    }
+  ]
 }

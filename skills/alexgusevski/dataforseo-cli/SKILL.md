@@ -4,12 +4,15 @@ description: LLM-friendly keyword research CLI for AI agents. Check search volum
 license: MIT
 metadata:
   author: alexgusevski
-  version: "1.0.0"
+  version: "1.0.6"
 ---
 
 # Keyword Research with dataforseo-cli
 
 LLM-friendly keyword research CLI. Wraps the DataForSEO API and outputs TSV by default — compact, structured, and optimized for agent context windows.
+
+**npm:** https://www.npmjs.com/package/dataforseo-cli
+**GitHub:** https://github.com/alexgusevski/dataforseo-cli
 
 ## Setup
 
@@ -19,9 +22,13 @@ LLM-friendly keyword research CLI. Wraps the DataForSEO API and outputs TSV by d
 npm install -g dataforseo-cli
 ```
 
-### 2. Authenticate
+### 2. Check credentials
 
-Before running any data commands, configure your DataForSEO API credentials:
+```bash
+dataforseo-cli status
+```
+
+If credentials are already configured, you're good to go. If not, authenticate:
 
 ```bash
 # With login + password
@@ -31,16 +38,19 @@ dataforseo-cli --set-credentials login=YOUR_LOGIN password=YOUR_PASSWORD
 dataforseo-cli --set-credentials base64=YOUR_BASE64_TOKEN
 ```
 
-Credentials are stored in `~/.config/dataforseo-cli/config.json`.
-
-To verify credentials are set, check that the config file exists:
-```bash
-cat ~/.config/dataforseo-cli/config.json
-```
-
-If credentials are missing or invalid, API commands (`volume`, `related`, `competitor`) will fail. The `locations` and `languages` commands work without credentials (local data).
+Credentials are stored in `~/.config/dataforseo-cli/config.json`. The `locations` and `languages` commands work without credentials (local data).
 
 ## Commands
+
+### `status` — Check credentials
+
+Check if API credentials are configured without making any API calls.
+
+```bash
+dataforseo-cli status
+```
+
+Exits 0 if configured, exits 1 if not. Shows login username (not password).
 
 ### `volume` — Keyword metrics
 
