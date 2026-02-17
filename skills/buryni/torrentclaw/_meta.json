@@ -1,13 +1,18 @@
 {
   "owner": "buryni",
   "slug": "torrentclaw",
-  "displayName": "Torrentclaw Skill",
+  "displayName": "TorrentClaw",
   "latest": {
-    "version": "0.1.16",
-    "publishedAt": 1771150322610,
-    "commit": "https://github.com/openclaw/skills/commit/3516785d49f8c7ae44e1456a69680c2c71af7b7a"
+    "version": "0.1.17",
+    "publishedAt": 1771239437288,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.1.16",
+      "publishedAt": 1771150322610,
+      "commit": "https://github.com/openclaw/skills/commit/3516785d49f8c7ae44e1456a69680c2c71af7b7a"
+    },
     {
       "version": "0.1.14",
       "publishedAt": 1771011692751,
