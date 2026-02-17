@@ -1,0 +1,11 @@
+{
+  "owner": "marposins",
+  "slug": "pcap-analyzer",
+  "displayName": "PCAP Analyzer",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1771278588698,
+    "commit": null
+  },
+  "history": []
+}
