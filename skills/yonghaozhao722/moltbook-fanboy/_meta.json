@@ -3,9 +3,15 @@
   "slug": "moltbook-fanboy",
   "displayName": "Moltbook Daily",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1771242809089,
-    "commit": "https://github.com/openclaw/skills/commit/b14aab43e54de31d95db5584f9b2b206233b1753"
+    "version": "1.0.3",
+    "publishedAt": 1771242880241,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1771242809089,
+      "commit": "https://github.com/openclaw/skills/commit/b14aab43e54de31d95db5584f9b2b206233b1753"
+    }
+  ]
 }

@@ -152,7 +152,7 @@ def generate_summary(posts, actions):
 def save_to_obsidian(report):
     """保存报告到 Obsidian vault"""
     today_str = datetime.now().strftime("%Y-%m-%d")
-    output_path = os.path.join(OBSIDIAN_DIR, f"daily_summary_{today_str}.md")
+    output_path = os.path.join(OBSIDIAN_DIR, f"{today_str}.md")
     
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(report)

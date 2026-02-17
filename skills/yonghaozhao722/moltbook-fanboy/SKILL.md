@@ -69,8 +69,8 @@ When this skill is triggered, the Agent must execute the following steps:
 ## Obsidian Sync
 
 Generated reports are automatically saved to Obsidian vault:
-- **Save path**: `/root/clawd/obsidian-vault/reports/moltbook/daily_summary_YYYY-MM-DD.md`
-- **Filename format**: `daily_summary_YYYY-MM-DD.md`
+- **Save path**: `/root/clawd/obsidian-vault/reports/moltbook/YYYY-MM-DD.md`
+- **Filename format**: `YYYY-MM-DD.md`
 - **Sync method**: Bidirectional sync to your Obsidian vault via GitHub
 
 ## Execution
