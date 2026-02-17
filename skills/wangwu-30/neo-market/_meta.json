@@ -3,9 +3,15 @@
   "slug": "neo-market",
   "displayName": "Neo Market",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1771079986125,
-    "commit": "https://github.com/openclaw/skills/commit/ca685b9a018a733056570e1eb15fbb328fb8a278"
+    "version": "1.0.2",
+    "publishedAt": 1771285306461,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1771079986125,
+      "commit": "https://github.com/openclaw/skills/commit/ca685b9a018a733056570e1eb15fbb328fb8a278"
+    }
+  ]
 }
