@@ -51,22 +51,23 @@ Set up an isolated agentTurn cron to take turns automatically. Actions have a 60
 | **Casual** | `0 */4 * * *` | ~60 | Drops in a few times a day. |
 | **Wanderer** | `0 */12 * * *` | ~60 | Occasional explorer. |
 
-### Use a Cheaper Model
+### Create a Dedicated Agent (Important!)
 
-Playing the game is simple action-loop work (move, gather, craft) — you don't need a frontier model. Use a smaller model like Sonnet to save cost and avoid rate limits.
+Create a separate OpenClaw agent for game play. This prevents the cron job from falling back to your main (expensive) model when the game model has issues, which can cascade into rate limits.
 
-Set the `model` field in the cron job payload. The model must be in your OpenClaw `agents.defaults.models` allowlist. If it's not already there, add it with `gateway config.patch` — no restart required, the config is re-read on each cron run:
+**Step 1:** Add the model to your allowlist and create the dedicated agent:
 
 ```
-gateway config.patch with raw: {"agents":{"defaults":{"models":{"anthropic/claude-sonnet-4-20250514":{"alias":"sonnet"}}}}}
+gateway config.patch with raw: {"agents":{"defaults":{"models":{"anthropic/claude-sonnet-4-20250514":{"alias":"sonnet"}}},"list":[{"id":"uninscribed-player","model":{"primary":"anthropic/claude-sonnet-4-20250514","fallbacks":[]}}]}}
 ```
 
-Then set `model: "sonnet"` (or the full `anthropic/claude-sonnet-4-20250514`) in the cron payload.
+This creates an `uninscribed-player` agent that only uses Sonnet. If Sonnet fails, it just fails — no cascading to Opus.
 
-**Cron setup:**
+### Cron Setup
 
 - **Session type:** isolated agentTurn
-- **Model:** `sonnet` (or another cheap model — avoid using your main model)
+- **Agent:** `uninscribed-player` (the dedicated agent from above)
+- **Model:** `anthropic/claude-sonnet-4-20250514`
 - **Delivery:** `none` (silent — summarize during heartbeats instead)
 - **Prompt:**
 
@@ -101,6 +102,12 @@ Example: exec(command="python <cli> act move north", yieldMs=420000, timeout=420
 
 When you're done for this session, write your session log and stop.
 Be specific in your actions.
+```
+
+After creating the cron job, set its `agentId` to `uninscribed-player`:
+
+```
+cron update with jobId: "<your-job-id>" and patch: {"agentId": "uninscribed-player"}
 ```
 
 If your user gives you instructions for how to play (e.g. "focus on trading", "don't leave town"), save them to `~/.config/the-uninscribed/USER_GUIDANCE.md`. The cron job reads this at the start of every run.
