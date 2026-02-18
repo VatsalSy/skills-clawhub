@@ -1,0 +1,11 @@
+{
+  "owner": "mupengi-bot",
+  "slug": "appointment-scheduler",
+  "displayName": "appointment-scheduler",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1771390900646,
+    "commit": null
+  },
+  "history": []
+}
