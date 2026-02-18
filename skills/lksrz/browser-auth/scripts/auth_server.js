@@ -6,6 +6,9 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 
+/**
+ * Start a secure remote browser tunnel for manual user authentication.
+ */
 async function startServer({ 
     port = 19191, 
     host = '127.0.0.1',
@@ -18,18 +21,29 @@ async function startServer({
     const server = http.createServer(app);
     const io = new Server(server);
 
-    const ASSET_PATH = path.join(__dirname, '..', 'assets', 'index.html');
+    const ASSET_PATH = path.resolve(__dirname, '..', 'assets', 'index.html');
+
+    // Security Headers
+    app.use((req, res, next) => {
+        res.setHeader('Referrer-Policy', 'no-referrer');
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader('X-Frame-Options', 'DENY');
+        next();
+    });
 
     app.get('/', (req, res) => {
         if (req.query.token !== token) {
+            console.warn(`[AUTH] Unauthorized access attempt from ${req.ip}`);
             return res.status(403).send('Forbidden: Invalid or missing token');
         }
         
-        if (!fs.existsSync(ASSET_PATH)) {
-            return res.status(500).send(`Critical Error: Frontend assets missing`);
+        try {
+            const html = fs.readFileSync(ASSET_PATH, 'utf8');
+            res.send(html);
+        } catch (e) {
+            console.error(`[ERROR] Failed to read asset: ${e.message}`);
+            res.status(500).send(`Critical Error: Could not load frontend assets`);
         }
-        
-        res.sendFile(ASSET_PATH);
     });
 
     io.use((socket, next) => {
@@ -41,19 +55,13 @@ async function startServer({
     });
 
     io.on('connection', async (socket) => {
-        console.log('User authenticated and connected via Socket.io');
+        console.log(`[OK] User connected via tunnel`);
         
         const launchArgs = [
             '--disable-dev-shm-usage',
             '--no-first-run',
             '--no-zygote'
         ];
-
-        if (process.env.BROWSER_NO_SANDBOX === 'true') {
-            console.warn('WARNING: Running browser without sandbox (RCE risk)');
-            launchArgs.push('--no-sandbox');
-            launchArgs.push('--disable-setuid-sandbox');
-        }
 
         const browser = await chromium.launch({
             executablePath: chromiumPath,
@@ -94,12 +102,8 @@ async function startServer({
 
         socket.on('goto', async ({ url }) => {
             try {
-                // Basic validation: must be http/https
                 const target = url.startsWith('http') ? url : `https://${url}`;
-                if (!target.startsWith('http')) {
-                   console.error('Invalid URL attempt:', url);
-                   return;
-                }
+                if (!target.startsWith('http')) return;
                 await page.goto(target);
                 await sendScreenshot();
             } catch (e) { console.error('Goto error:', e.message); }
@@ -116,14 +120,12 @@ async function startServer({
         socket.on('disconnect', async () => {
             clearInterval(interval);
             await browser.close();
-            console.log('User disconnected, browser session closed.');
         });
     });
 
     server.listen(port, host, () => {
         console.log(`\n🚀 BROWSER AUTH SERVER READY`);
-        console.log(`URL: http://${host}:${port}/?token=${token}`);
-        console.log(`Note: If host is 0.0.0.0, use your machine IP to access.`);
+        console.log(`Access Link: http://${host === '0.0.0.0' ? 'YOUR_IP' : host}:${port}/?token=${token}`);
     });
 
     return server;

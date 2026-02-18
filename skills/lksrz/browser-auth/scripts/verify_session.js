@@ -7,17 +7,16 @@ async function verify(sessionFile, url, searchString) {
         return false;
     }
 
-    const launchArgs = [];
-    if (process.env.BROWSER_NO_SANDBOX === 'true') {
-        launchArgs.push('--no-sandbox');
-        launchArgs.push('--disable-setuid-sandbox');
-    }
-
     const sessionData = JSON.parse(fs.readFileSync(sessionFile, 'utf8'));
+    
+    // Sandbox is ALWAYS enabled for security.
     const browser = await chromium.launch({
         executablePath: '/usr/bin/chromium-browser',
         headless: true,
-        args: launchArgs
+        args: [
+            '--no-first-run',
+            '--no-zygote'
+        ]
     });
     
     const context = await browser.newContext();

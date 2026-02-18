@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>AIC Commander - Zaloguj mnie</title>
+    <title>AIC Commander - Browser Auth</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer">
     <style>
         body { font-family: sans-serif; background: #1a1a1a; color: white; margin: 0; display: flex; flex-direction: column; align-items: center; }
         #header { width: 100%; padding: 10px; background: #333; text-align: center; border-bottom: 2px solid #D4FF00; }
@@ -18,15 +19,15 @@
 </head>
 <body>
     <div id="header">
-        <h2 style="margin:5px 0; font-size: 1.2rem;">AIC Commander - Autoryzacja</h2>
+        <h2 style="margin:5px 0; font-size: 1.2rem;">AIC Commander - Session Auth</h2>
     </div>
 
     <div id="controls">
-        <input type="text" id="urlInput" placeholder="URL (np. medium.com)">
+        <input type="text" id="urlInput" placeholder="URL (e.g. medium.com)">
         <button onclick="goto()">GO</button>
         <button class="secondary" onclick="sendKey('Enter')">ENTER</button>
         <button class="secondary" onclick="doPaste()">PASTE</button>
-        <input type="text" id="mobileInput" placeholder="Pisz tutaj..." style="width: 120px;">
+        <input type="text" id="mobileInput" placeholder="Type here..." style="width: 120px;">
         <button style="background: #ff4444; color: white;" onclick="done()">DONE</button>
     </div>
 
@@ -34,11 +35,10 @@
         <img id="screen" src="" onclick="handleClick(event)">
     </div>
 
-    <div id="status">Czekam na obraz...</div>
+    <div id="status">Waiting for stream...</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        // Extract token from URL
         const urlParams = new URLSearchParams(window.location.search);
         const token = urlParams.get('token');
 
@@ -46,6 +46,9 @@
             alert('Missing authentication token!');
             throw new Error('No token');
         }
+
+        // Remove token from URL for basic referrer/leakage protection
+        window.history.replaceState({}, document.title, window.location.pathname);
 
         const socket = io({
             query: { token: token }
@@ -57,15 +60,15 @@
 
         socket.on('screenshot', (base64) => {
             screen.src = 'data:image/jpeg;base64,' + base64;
-            status.innerText = 'Obraz: ' + new Date().toLocaleTimeString();
+            status.innerText = 'Stream: ' + new Date().toLocaleTimeString();
         });
 
         socket.on('captured', (data) => {
-            alert('SESJA PRZECHWYCONA! Możesz zamknąć to okno.');
+            alert('SESSION CAPTURED! You can now close this window.');
         });
 
         socket.on('connect_error', (err) => {
-            status.innerText = 'Błąd połączenia: ' + err.message;
+            status.innerText = 'Connection error: ' + err.message;
             status.style.color = '#ff4444';
         });
 
@@ -102,14 +105,14 @@
         }
 
         async function doPaste() {
-            const text = prompt("Wklej tekst tutaj:");
+            const text = prompt("Paste text here:");
             if (text) {
                 socket.emit('type', { text });
             }
         }
 
         function done() {
-            if (confirm('Przekazać sesję?')) {
+            if (confirm('Complete session transfer?')) {
                 socket.emit('done');
             }
         }

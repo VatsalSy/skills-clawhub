@@ -1,51 +1,78 @@
 ---
 name: browser-auth
-description: Start a secure remote browser tunnel for manual user authentication (solving Captchas, 2FA, logins) and capture session data. Use when an agent needs to access a website that requires manual login or has bot protection.
+description: Start a secure remote browser tunnel for manual user authentication (solving Captchas, 2FA, logins) and capture session data. Built for AI Commander.
+metadata: {
+  "author": "Skippy & Lucas (AI Commander)",
+  "homepage": "https://aicommander.dev",
+  "env": {
+    "AUTH_HOST": { "description": "IP to bind the server to (default: 127.0.0.1). Use 0.0.0.0 only with a secure tunnel.", "default": "127.0.0.1" },
+    "AUTH_TOKEN": { "description": "Secret token for accessing the tunnel (default: random hex string)." },
+    "BROWSER_PROXY": { "description": "SOCKS5/HTTP proxy for the browser (e.g. socks5://127.0.0.1:40000)." }
+  },
+  "openclaw": {
+    "requires": { "bins": ["node", "chromium-browser"] },
+    "install": [
+      {
+        "id": "npm-deps",
+        "kind": "exec",
+        "command": "npm install express socket.io playwright-core",
+        "label": "Install Node.js dependencies"
+      }
+    ]
+  }
+}
 ---
 
 # Browser Auth
 
-This skill allows the agent to request the user to perform a manual login on a website and then capture the session cookies for further automated work.
+This skill allows the agent to request the user to perform a manual login on a website and then capture the session cookies/localStorage for further automated work.
 
-## 🚨 Security Warning: RCE Risk
+## 🚨 Security & Risk Mitigation
 
-Running a remote browser session carries a risk of **Remote Code Execution (RCE)** if the browser navigates to a malicious website. To mitigate this:
-1.  **Sandbox Enabled**: This skill runs Chromium with the sandbox **ENABLED** by default. 
-2.  **Avoid Unsafe Sites**: Do not use this tunnel to visit untrusted or unknown URLs.
-3.  **Local Bind**: Defaults to `127.0.0.1`. Do not expose to the public internet without a secure tunnel (VPN, SSH, Cloudflare Tunnel).
-4.  **Sensitive Data**: The output `session.json` contains plain-text session cookies. Handle it as a secret. Delete it once the task is finished.
+We take security seriously. Below is how we address common concerns related to remote browser control:
 
-## Environment Variables
+### 1. Remote Code Execution (RCE) Protection
+*   **Always Sandboxed**: Chromium runs with the system sandbox **ENABLED**. There is no option to disable it in the code. This prevents a malicious website from escaping the browser and executing code on your host.
+*   **Isolation Recommendation**: We recommend running this skill within an isolated container (Docker) or a dedicated VM for an extra layer of protection.
 
-- `AUTH_HOST`: IP to bind the server to (default: `127.0.0.1`).
-- `AUTH_TOKEN`: Secret token for accessing the tunnel (default: random hex).
-- `BROWSER_NO_SANDBOX`: Set to `true` to disable Chromium sandbox (not recommended).
-- `BROWSER_PROXY`: SOCKS5/HTTP proxy for the browser (e.g. `socks5://127.0.0.1:40000`).
+### 2. Token Leakage (Referrer Protection)
+*   **Referrer Policy**: The server enforces `Referrer-Policy: no-referrer`. This ensures that even if you navigate to an untrusted site, your secret `AUTH_TOKEN` is NEVER sent in the HTTP Referer header.
+*   **URL Cleansing**: The interface automatically clears the `token` parameter from your browser's address bar immediately after the page loads.
+
+### 3. Data Sensitivity
+*   **Session Artifacts**: The `session.json` file contains active login cookies. Treat it with the same level of security as a password.
+*   **Mandatory Cleanup**: Always delete the session file immediately after the agent finishes its task.
+*   **No Persistence**: This skill does not store credentials long-term or exfiltrate them to external servers.
+
+### 4. Network Exposure
+*   **Default Local Bind**: By default, the server binds to `127.0.0.1`. 
+*   **Secure Access**: If you need remote access, do not bind to `0.0.0.0` directly. Instead, use a secure tunnel like **Tailscale**, **Cloudflare Tunnel (cloudflared)**, or an **SSH tunnel**.
+
+## When to Use
+
+- When a website requires manual interaction to solve Captcha or 2FA.
+- When bot detection prevents automated login.
+- When you want to authorize an agent without sharing your password.
 
 ## Workflow
 
-1.  **Request Auth**: Use `scripts/auth_server.js` to start a tunnel. It will print a unique Access URL.
-2.  **Provide Link**: Give the user the link with the token.
-3.  **Wait for Session**: Wait for the user to complete the login and click "DONE".
-4.  **Verify**: Use `scripts/verify_session.js` to ensure the session is valid.
-5.  **Use Cookies**: Use the captured `session.json` in other browser tools.
-6.  **Cleanup**: Delete `session.json` after the task is complete.
+1.  **Request Auth**: Start the tunnel using `scripts/auth_server.js`.
+2.  **Provide Link**: Share the link (including token) with the intended user over a secure channel.
+3.  **Wait for Session**: The user logs in and clicks **DONE** in the web UI.
+4.  **Verify**: Use `scripts/verify_session.js` to confirm the session is valid.
+5.  **Cleanup**: Delete the session file once the task is complete.
 
 ## Tools
 
 ### Start Auth Server
-Starts the secure interactive browser tunnel.
 ```bash
-AUTH_HOST=127.0.0.1 AUTH_TOKEN=secret123 node scripts/auth_server.js <port> <output_session_file>
+AUTH_HOST=127.0.0.1 AUTH_TOKEN=mysecret node scripts/auth_server.js <port> <session_file>
 ```
-Default port: `19191`. Default host: `127.0.0.1`.
 
 ### Verify Session
-Checks if the captured cookies actually log you in.
 ```bash
-node scripts/verify_session.js <session_file> <target_url> <expected_string_in_page>
+node scripts/verify_session.js <session_file> <target_url> <expected_text>
 ```
 
 ## Runtime Requirements
-
-Requires the following Node.js packages: `express`, `socket.io`, `playwright-core`.
+Requires: `express`, `socket.io`, `playwright-core`, and a system `chromium-browser`.
