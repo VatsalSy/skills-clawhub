@@ -6,7 +6,7 @@ metadata: {"clawdbot":{"emoji":"🎯","requires":{"env":["SIMMER_API_KEY"],"pip"
 authors:
   - Simmer (@simmer_markets)
 attribution: "Strategy inspired by @mert — https://x.com/mert/status/2020216613279060433"
-version: "1.0.4"
+version: "1.0.6"
 published: true
 ---
 
@@ -35,13 +35,18 @@ Use this skill when the user wants to:
    - Get it from simmer.markets/dashboard -> SDK tab
    - Store in environment as `SIMMER_API_KEY`
 
-2. **Ask about settings** (or confirm defaults)
+2. **Ask for wallet private key** (required for live trading)
+   - This is the private key for their Polymarket wallet (the wallet that holds USDC)
+   - Store in environment as `WALLET_PRIVATE_KEY`
+   - The SDK uses this to sign orders client-side automatically — no manual signing needed
+
+3. **Ask about settings** (or confirm defaults)
    - Market filter: Which markets to scan (default: all)
    - Max bet: Maximum per trade (default $10)
    - Expiry window: How close to resolution (default 2 minutes)
    - Min split: Minimum odds skew (default 60/40)
 
-3. **Save settings to config.json or environment variables**
+4. **Save settings to config.json or environment variables**
 
 ## Configuration
 
@@ -164,6 +169,17 @@ Each cycle the script:
 - Polymarket's `endDate` is the event-level end-of-day, not the individual market close time
 - For 15-min crypto markets (e.g. "BTC Up or Down - Feb 8, 11PM ET"), the actual close time is in the question text but not in the API
 - This is a Polymarket data limitation — widen the expiry window (`--expiry 1080`) as a workaround, or use the split filter to find conviction opportunities regardless of timing
+
+**"External wallet requires a pre-signed order"**
+- `WALLET_PRIVATE_KEY` is not set in the environment
+- The SDK signs orders automatically when this env var is present — no manual signing code needed
+- Fix: `export WALLET_PRIVATE_KEY=0x<your-polymarket-wallet-private-key>`
+- Do NOT attempt to sign orders manually or modify the skill code — the SDK handles it
+
+**"Balance shows $0 but I have USDC on Polygon"**
+- Polymarket uses **USDC.e** (bridged USDC, contract `0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174`) — not native USDC
+- If you bridged USDC to Polygon recently, you likely received native USDC
+- Swap native USDC to USDC.e, then retry
 
 **"API key invalid"**
 - Get new key from simmer.markets/dashboard -> SDK tab
