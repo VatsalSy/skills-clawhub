@@ -1,13 +1,18 @@
 {
   "owner": "zijunl",
   "slug": "alpaca-py-cli",
-  "displayName": "Alpaca Trading (Python CLI)",
+  "displayName": "Alpaca Py Cli",
   "latest": {
-    "version": "1.7.0",
-    "publishedAt": 1771398961747,
-    "commit": "https://github.com/openclaw/skills/commit/a339d733c967cfe8624ed9995755f5ca5440a24a"
+    "version": "1.0.1",
+    "publishedAt": 1771450403353,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.7.0",
+      "publishedAt": 1771398961747,
+      "commit": "https://github.com/openclaw/skills/commit/a339d733c967cfe8624ed9995755f5ca5440a24a"
+    },
     {
       "version": "1.3.0",
       "publishedAt": 1771397544495,
