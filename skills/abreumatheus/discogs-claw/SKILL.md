@@ -37,20 +37,24 @@ echo '{"query": "Daft Punk - Random Access Memories"}' | ./scripts/discogs.sh
 ```
 
 ## Example Output
+This is an example json output after running the script:
 
 ```json
 {
-  "release_id": 4570366,
   "title": "Daft Punk - Random Access Memories",
-  "year": "2013",
   "prices": {
-    "low": 25.00,
-    "median": 35.00,
-    "high": 60.00,
-    "currency": "USD"
+    "low": "25.00 USD",
+    "median": "35.00 USD",
+    "high": "60.00 USD"
+  },
+  "marketplace": {
+    "num_for_sale": 150,
+    "lowest_price": "22.50 USD"
   }
 }
 ```
+
+With this data the agent should output a very objective response containing only the data abvoe and ignoring further historical details about the record. Just the title with artist and pricing information. It should ever use emojis.
 
 ## Requirements
 

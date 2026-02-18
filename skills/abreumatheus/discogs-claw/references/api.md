@@ -84,6 +84,34 @@ curl "https://api.discogs.com/marketplace/price_suggestions/4570366" \
 }
 ```
 
+### 3. Release Statistics
+
+Retrieve marketplace statistics for a release.
+
+- **URL**: `https://api.discogs.com/releases/{release_id}/stats`
+- **Method**: `GET`
+
+#### Example Request
+
+```bash
+curl "https://api.discogs.com/releases/4570366/stats" \
+  -H "User-Agent: OpenclawSkill/1.0" \
+  -H "Authorization: Discogs token=YOUR_TOKEN"
+```
+
+#### Example Response
+
+```json
+{
+  "num_for_sale": 15,
+  "lowest_price": {
+    "value": 22.50,
+    "currency": "USD"
+  },
+  "blocked_from_sale": false
+}
+```
+
 ## Rate Limiting
 
 The Discogs API limits requests to **60 per minute** per IP address. The skill should respect this limit to avoid `429 Too Many Requests` errors.
