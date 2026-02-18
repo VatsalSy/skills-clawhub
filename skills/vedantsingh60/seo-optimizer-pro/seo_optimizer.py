@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 SEO Optimizer Pro - AI-Powered SEO Content Optimization
-Version: 1.0.4
+Version: 1.0.6
 Copyright © 2026 UnisAI. All Rights Reserved.
 
 Multi-provider SEO analysis using Claude, GPT, Gemini, Llama, or Mistral.
@@ -20,7 +20,7 @@ PRIVACY NOTICE: This skill sends your content to third-party AI providers.
 Review the provider's privacy policy before sending sensitive content.
 """
 
-__version__ = "1.0.4"
+__version__ = "1.0.6"
 
 import os
 import json

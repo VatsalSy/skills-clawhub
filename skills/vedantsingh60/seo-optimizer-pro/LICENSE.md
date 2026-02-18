@@ -1,6 +1,6 @@
 # SEO Optimizer Pro - License Agreement
 
-**Version:** 1.0.4
+**Version:** 1.0.6
 **Copyright © 2026 UnisAI. All Rights Reserved.**
 
 ## License Type
@@ -168,13 +168,13 @@ This agreement is governed by the laws of California, USA, without regard to con
 For questions about this license:
 - Email: support@unisai.vercel.app
 - Website: https://unisai.vercel.app
-- GitHub: https://github.com/unisai-dev/seo-optimizer-pro
+- GitHub: https://github.com/vedantsingh60/seo-optimizer-pro
 
 ---
 
 **Last Updated**: February 14, 2026
-**License Version**: 1.0.4
-**Skill Version**: 1.0.4
+**License Version**: 1.0.6
+**Skill Version**: 1.0.6
 **Status**: Active
 
 © 2026 UnisAI. All rights reserved.

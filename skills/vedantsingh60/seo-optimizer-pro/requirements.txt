@@ -1,4 +1,4 @@
-# SEO Optimizer Pro v1.0.4 - Dependencies
+# SEO Optimizer Pro v1.0.6 - Dependencies
 #
 # ⚠️ RECOMMENDED: Install ONLY the SDK for the provider you plan to use
 # Installing all packages unnecessarily increases dependencies and attack surface.

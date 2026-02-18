@@ -462,7 +462,7 @@ This skill is **free and open to all users** on ClawhHub.
 
 ## 📝 Changelog
 
-### [1.0.4] - 2026-02-14
+### [1.0.6] - 2026-02-14
 
 #### 🔒 Security & Transparency Improvements
 - **Source Code Included** - Fixed license contradiction; source code IS included for transparency and security audits
@@ -475,7 +475,7 @@ This skill is **free and open to all users** on ClawhHub.
 - Added GitHub repository and verifiable support contacts
 - Clarified which API key is required for which model
 - Added provider privacy policy links for informed consent
-- Updated all version references to 1.0.4
+- Updated all version references to 1.0.6
 
 ### [1.0.2] - 2026-02-14
 
@@ -518,7 +518,7 @@ This skill is **free and open to all users** on ClawhHub.
 ---
 
 **Last Updated**: February 14, 2026
-**Current Version**: 1.0.4
+**Current Version**: 1.0.6
 **Status**: Active & Maintained
 
 © 2026 UnisAI. All rights reserved.
