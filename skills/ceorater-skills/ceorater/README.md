@@ -51,12 +51,13 @@ Subscribe at https://www.ceorater.com/api-docs.html
 | RevenueCAGRScore | Tenure-adjusted revenue growth (0-100) |
 | CompScore | Compensation efficiency grade (A-F) |
 
-Plus TSR metrics, compensation data, tenure info, and more for 516+ companies.
+Plus TSR metrics, compensation data, tenure info, and more for 500+ CEOs.
+For the live total and latest refresh timestamp, call `GET /v1/meta`.
 
 ## Example Usage
 
 Ask your OpenClaw agent:
-- "What's the CEORaterScore for Apple?"
+- "What's the CEORaterScore for Tim Cook?"
 - "Compare Microsoft and Google CEOs"
 - "Show me the top-rated technology sector CEOs"
 - "Which CEOs have an A CompScore?"

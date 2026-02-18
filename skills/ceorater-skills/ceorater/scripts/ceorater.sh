@@ -3,18 +3,18 @@
 # Usage: ceorater.sh <command> [args]
 #
 # Commands:
-#   get <ticker>       Get CEO data for a single company
-#   search <query>     Search companies by name, CEO, sector, or industry
-#   list [limit]       List companies (default limit: 20)
+#   get <ticker>       Get CEO data by ticker
+#   search <query>     Search by CEO name, company, ticker, sector, or industry
+#   list [limit]       List CEOs (default limit: 20)
 #
 # Requires: CEORATER_API_KEY environment variable
 # Get your key at: https://www.ceorater.com/api-docs.html
 
-set -e
+set -euo pipefail
 
 BASE_URL="https://api.ceorater.com"
 
-# Check for API key (except for status command)
+# Check for API key
 check_auth() {
     if [ -z "$CEORATER_API_KEY" ]; then
         echo "Error: CEORATER_API_KEY environment variable not set"
@@ -41,7 +41,7 @@ urlencode() {
 
 # GET request with auth
 api_get() {
-    curl -s -H "Authorization: Bearer $CEORATER_API_KEY" \
+    curl -sS --fail-with-body -H "Authorization: Bearer $CEORATER_API_KEY" \
          -H "Content-Type: application/json" \
          "$1"
 }
@@ -61,7 +61,7 @@ case "${1:-help}" in
             exit 1
         fi
         TICKER=$(printf '%s' "$TICKER" | tr '[:lower:]' '[:upper:]')
-        api_get "$BASE_URL/v1/company/$TICKER?format=raw"
+        api_get "$BASE_URL/v1/ceo/$TICKER?format=raw"
         ;;
 
     search)
@@ -80,12 +80,16 @@ case "${1:-help}" in
     list)
         check_auth
         LIMIT="${2:-20}"
-        # Validate: limit must be a positive integer
+        # Validate: limit must be a positive integer <= 2000
         if ! printf '%s' "$LIMIT" | grep -qE '^[0-9]+$'; then
             echo "Error: Limit must be a positive integer."
             exit 1
         fi
-        api_get "$BASE_URL/v1/companies?limit=$LIMIT&format=raw"
+        if [ "$LIMIT" -lt 1 ] || [ "$LIMIT" -gt 2000 ]; then
+            echo "Error: Limit must be between 1 and 2000."
+            exit 1
+        fi
+        api_get "$BASE_URL/v1/ceos?limit=$LIMIT&format=raw"
         ;;
 
     help|--help|-h|*)
@@ -94,9 +98,9 @@ case "${1:-help}" in
         echo "Usage: ceorater.sh <command> [args]"
         echo ""
         echo "Commands:"
-        echo "  get <ticker>     Get CEO data for a company (e.g., get AAPL)"
-        echo "  search <query>   Search by name, CEO, sector, industry"
-        echo "  list [limit]     List companies (default: 20)"
+        echo "  get <ticker>     Get CEO data by ticker (e.g., get AAPL)"
+        echo "  search <query>   Search by CEO name, company, ticker, sector, or industry"
+        echo "  list [limit]     List CEOs (default: 20)"
         echo ""
         echo "Environment:"
         echo "  CEORATER_API_KEY  Your API key (required for get/search/list)"
