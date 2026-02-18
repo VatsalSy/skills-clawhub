@@ -48,6 +48,8 @@ function parseArgs(args) {
       case '--rtl': opts.rtl = true; break;
       case '--no-wrap': opts.wrap = false; break;
       case '--max-lines': opts.maxLines = parseInt(next); i++; break;
+      case '--subtitle': opts.subtitle = next; i++; break;
+      case '-o': opts.output = next; i++; break;
       case '--help':
         console.log(`
 table.mjs - Generate table images from JSON data
@@ -352,7 +354,7 @@ async function generateTableSvg(data, opts) {
   });
   
   // Calculate dimensions
-  const titleHeight = opts.title ? fontSize * 2 : 0;
+  const titleHeight = opts.title ? fontSize * 2 + (opts.subtitle ? fontSize * 1.3 : 0) : 0;
   const headerHeight = rowHeight;
   const bodyHeight = wrappedData.reduce((sum, r) => sum + r.height, 0);
   const totalHeight = titleHeight + headerHeight + bodyHeight;
@@ -369,10 +371,14 @@ async function generateTableSvg(data, opts) {
   
   let y = 0;
   
-  // Title
+  // Title & subtitle
   if (opts.title) {
     svg += `
   <text x="${totalWidth / 2}" y="${fontSize * 1.3}" text-anchor="middle" class="title cell">${escapeXml(opts.title)}</text>`;
+    if (opts.subtitle) {
+      svg += `
+  <text x="${totalWidth / 2}" y="${fontSize * 2.5}" text-anchor="middle" class="cell" style="font-size:${fontSize * 0.85}px;opacity:0.65">${escapeXml(opts.subtitle)}</text>`;
+    }
     y = titleHeight;
   }
   
