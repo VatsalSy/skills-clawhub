@@ -101,6 +101,7 @@ GET https://windsensei.com/api/v1/wind-report?when={when}
     {
       "locationId": "abc123",
       "name": "Cherry Beach",
+      "timezone": "America/Toronto",
       "blocks": [
         {
           "date": "2026-02-21",
@@ -184,7 +185,7 @@ GET https://windsensei.com/api/v1/dashboard
 **Key fields:**
 - `current`: Forecast-based current conditions
 - `observed`: Real weather station data (if available for the spot) — more accurate than forecast
-- `nextGoodWindow`: Next rideable time window based on the user's activity preferences
+- `nextGoodWindow`: Next rideable time window based on the user's activity preferences. Times are in the spot's local timezone.
 - `modelConsensus`: Whether forecast models agree on conditions
 - Spots are sorted by quality (best first), then by wind speed
 
@@ -470,6 +471,7 @@ Duplicate requests are handled automatically — just returns success.
 
 ## Interpreting the Data
 
+- **timezone**: Each location includes a `timezone` field (e.g., `"America/Toronto"`). **All times in `start`, `end`, and `date` fields are in this timezone** — not UTC, not the user's local time. When presenting times to the user, always clarify the timezone if it differs from the user's location (e.g., "2-6pm EST").
 - **quality**: "excellent" > "good" > "medium". Only these appear — bad hours are excluded.
 - **windQuality**: How good the wind direction is for that spot ("good", "medium", "bad").
 - **blocks**: Each block is a continuous window of rideable conditions. Multiple blocks per location/day are possible.
