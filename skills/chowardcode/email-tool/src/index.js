@@ -1,15 +1,48 @@
 const nodemailer = require('nodemailer');
 const imaps = require('imap-simple');
+const fs = require('fs');
+const path = require('path');
 
-const CONFIG = {
-    user: 'info@pestward.com',
-    pass: 'sgSPL50i5mke', // Provided by user
-    hostImap: 'imap.zoho.com',
-    portImap: 993,
-    hostSmtp: 'smtp.zoho.com',
-    portSmtp: 465, // SSL
-    secureSmtp: true
-};
+const CONFIG = (() => {
+    // Load once at startup.
+    // If you rotate credentials, restart the skill runner / OpenClaw gateway to reload.
+    return loadConfig();
+})();
+
+function loadConfig() {
+    // Prefer an external secrets file so skills can be shared safely.
+    // Path: %OPENCLAW_SECRETS_DIR%/email-tool.json or ~/.openclaw/secrets/email-tool.json
+    const secretsDir = process.env.OPENCLAW_SECRETS_DIR
+        ? process.env.OPENCLAW_SECRETS_DIR
+        : path.join(process.env.USERPROFILE || process.env.HOME || '.', '.openclaw', 'secrets');
+
+    const secretsPath = path.join(secretsDir, 'email-tool.json');
+
+    let fileCfg = {};
+    if (fs.existsSync(secretsPath)) {
+        try {
+            fileCfg = JSON.parse(fs.readFileSync(secretsPath, 'utf8'));
+        } catch (e) {
+            throw new Error(`Failed to parse secrets file at ${secretsPath}: ${e.message}`);
+        }
+    }
+
+    const cfg = {
+        user: fileCfg.EMAIL_USER || process.env.EMAIL_USER,
+        pass: fileCfg.EMAIL_PASS || process.env.EMAIL_PASS,
+        hostImap: fileCfg.HOST_IMAP || process.env.HOST_IMAP || 'imap.zoho.com',
+        portImap: Number(fileCfg.PORT_IMAP || process.env.PORT_IMAP || 993),
+        hostSmtp: fileCfg.HOST_SMTP || process.env.HOST_SMTP || 'smtp.zoho.com',
+        portSmtp: Number(fileCfg.PORT_SMTP || process.env.PORT_SMTP || 465),
+        secureSmtp: String(fileCfg.SECURE_SMTP ?? process.env.SECURE_SMTP ?? 'true').toLowerCase() === 'true'
+    };
+
+    if (!cfg.user || !cfg.pass) {
+        throw new Error('Missing EMAIL_USER/EMAIL_PASS. Set env vars or create secrets file email-tool.json.');
+    }
+
+    return cfg;
+}
 
 async function sendEmail(args) {
     const { to, subject, body, cc, bcc } = args;

@@ -3,9 +3,15 @@
   "slug": "email-tool",
   "displayName": "Email Tool",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1771075691101,
-    "commit": "https://github.com/openclaw/skills/commit/4907a79165a895054348ed13365fc34fa07f037f"
+    "version": "1.0.2",
+    "publishedAt": 1771249881690,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1771075691101,
+      "commit": "https://github.com/openclaw/skills/commit/4907a79165a895054348ed13365fc34fa07f037f"
+    }
+  ]
 }
