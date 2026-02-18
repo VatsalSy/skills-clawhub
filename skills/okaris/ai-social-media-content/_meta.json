@@ -3,9 +3,15 @@
   "slug": "ai-social-media-content",
   "displayName": "Ai Social Media Content",
   "latest": {
-    "version": "0.1.0",
-    "publishedAt": 1770363117508,
-    "commit": "https://github.com/openclaw/skills/commit/f5419b98f627b6972a554f527a9c6d8197e4e810"
+    "version": "0.1.5",
+    "publishedAt": 1771403045684,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.1.0",
+      "publishedAt": 1770363117508,
+      "commit": "https://github.com/openclaw/skills/commit/f5419b98f627b6972a554f527a9c6d8197e4e810"
+    }
+  ]
 }

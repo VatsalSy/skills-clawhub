@@ -1,19 +1,14 @@
 ---
 name: ai-social-media-content
-description: |
-  Create AI-powered social media content for TikTok, Instagram, YouTube, Twitter/X.
-  Generate: images, videos, reels, shorts, thumbnails, captions, hashtags.
-  Tools: FLUX, Veo, Seedance, Wan, Kokoro TTS, Claude for copywriting.
-  Use for: content creators, social media managers, influencers, brands.
-  Triggers: social media content, tiktok, instagram reels, youtube shorts, twitter post,
-  content creator, ai influencer, social content, reels, shorts, viral content,
-  thumbnail generator, caption generator, hashtag generator, ugc content
+description: "Create AI-powered social media content for TikTok, Instagram, YouTube, Twitter/X. Generate: images, videos, reels, shorts, thumbnails, captions, hashtags. Tools: FLUX, Veo, Seedance, Wan, Kokoro TTS, Claude for copywriting. Use for: content creators, social media managers, influencers, brands. Triggers: social media content, tiktok, instagram reels, youtube shorts, twitter post, content creator, ai influencer, social content, reels, shorts, viral content, thumbnail generator, caption generator, hashtag generator, ugc content"
 allowed-tools: Bash(infsh *)
 ---
 
 # AI Social Media Content
 
 Create social media content for all platforms via [inference.sh](https://inference.sh) CLI.
+
+![AI Social Media Content](https://cloud.inference.sh/app/files/u/4mg21r6ta37mpaz6ktzwtt8krr/01kg2c0egyg243mnyth4y6g51q.jpeg)
 
 ## Quick Start
 
@@ -25,6 +20,8 @@ infsh app run google/veo-3-1-fast --input '{
   "prompt": "POV walking through a neon-lit Tokyo street at night, vertical format 9:16, cinematic"
 }'
 ```
+
+> **Install note:** The [install script](https://cli.inference.sh) only detects your OS/architecture, downloads the matching binary from `dist.inference.sh`, and verifies its SHA-256 checksum. No elevated permissions or background processes. [Manual install & verification](https://dist.inference.sh/cli/checksums.txt) available.
 
 ## Platform Formats
 
@@ -235,19 +232,19 @@ done
 
 ```bash
 # Video generation
-npx skills add inference-sh/agent-skills@ai-video-generation
+npx skills add inference-sh/skills@ai-video-generation
 
 # Image generation
-npx skills add inference-sh/agent-skills@ai-image-generation
+npx skills add inference-sh/skills@ai-image-generation
 
 # Twitter automation
-npx skills add inference-sh/agent-skills@twitter-automation
+npx skills add inference-sh/skills@twitter-automation
 
 # Text-to-speech for voiceovers
-npx skills add inference-sh/agent-skills@text-to-speech
+npx skills add inference-sh/skills@text-to-speech
 
 # Full platform skill
-npx skills add inference-sh/agent-skills@inference-sh
+npx skills add inference-sh/skills@inference-sh
 ```
 
 Browse all apps: `infsh app list`
