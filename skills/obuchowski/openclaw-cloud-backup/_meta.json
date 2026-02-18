@@ -1,0 +1,11 @@
+{
+  "owner": "obuchowski",
+  "slug": "openclaw-cloud-backup",
+  "displayName": "Cloud Backup [S3 R2 B2 ..]",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1771340362743,
+    "commit": null
+  },
+  "history": []
+}
