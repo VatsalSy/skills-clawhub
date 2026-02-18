@@ -8,22 +8,19 @@ description: >-
   AI service, generate images/video, scrape websites, or run hosted models
   without managing API keys.
 license: MIT
+homepage: https://github.com/kimbo128/DRAIN
 compatibility: Requires Node.js >= 18 and internet access
-credentials:
-  - name: DRAIN_PRIVATE_KEY
-    description: >-
-      Polygon/Ethereum wallet private key (64 hex chars with 0x prefix).
-      Controls the wallet holding USDC for payments. Use a dedicated ephemeral
-      wallet with minimal funds — never reuse your main wallet.
-    required: true
-    sensitive: true
 metadata:
   author: Handshake58
-  version: "1.1"
+  version: "1.3"
   website: https://handshake58.com
   npm: drain-mcp
   source: https://github.com/kimbo128/DRAIN
   repository: https://github.com/kimbo128/DRAIN
+  clawdbot:
+    requires:
+      env: ["DRAIN_PRIVATE_KEY"]
+    primaryEnv: "DRAIN_PRIVATE_KEY"
 ---
 
 # Handshake58 — Protocol Documentation
@@ -65,10 +62,7 @@ kind of key any Ethereum wallet uses. It controls a wallet that holds USDC on Po
 Create a fresh wallet with minimal funds ($1–5 USDC + $0.10 POL for gas).
 If the key is compromised, only the small balance is at risk.
 
-You can create one yourself:
-```bash
-node -e "const w=require('ethers').Wallet.createRandom();console.log('Address:',w.address,'Key:',w.privateKey)"
-```
+Create a fresh wallet using MetaMask, Rabby, or any EVM wallet tool.
 Then fund it with USDC (even $1 works) + ~$0.10 POL for gas on Polygon.
 
 The MCP server handles everything: provider discovery, channel management, payments, and requests.
@@ -96,9 +90,9 @@ You need a Polygon wallet with USDC:
 
 ### Create a Wallet
 
-```bash
-node -e "const {ethers}=require('ethers');const w=ethers.Wallet.createRandom();console.log('Address:',w.address);console.log('Private Key:',w.privateKey);"
-```
+Use MetaMask, Rabby, or any EVM-compatible wallet to create a new account.
+Export the private key from that wallet's settings. Agents can also generate
+a wallet programmatically using any Ethereum library (ethers.js, viem, web3.py).
 
 ### Fund Your Wallet
 
@@ -177,6 +171,45 @@ if (ch.status === 'expired_unclosed') {
 
 **Best practice:** Store your channelId persistently. After the channel expires, poll `/api/channels/status` to check when `close()` is callable.
 
+## External Endpoints
+
+Every network request the MCP server makes is listed here. The private key **never** leaves your machine.
+
+| Endpoint | Method | Data Sent | Private Key Transmitted? |
+|---|---|---|---|
+| `handshake58.com/api/mcp/providers` | GET | Nothing (public catalog) | No |
+| `handshake58.com/api/directory/config` | GET | Nothing (reads fee wallet) | No |
+| `handshake58.com/api/channels/status` | GET | channelId (public on-chain) | No |
+| Provider `apiUrl` `/v1/chat/completions` | POST | Chat messages + signed voucher | No — only the EIP-712 **signature** is sent |
+| Polygon RPC (on-chain tx) | POST | Signed transactions (approve, open, close, transfer) | No — key signs locally, only the signature is broadcast |
+
+No endpoint ever receives the raw private key. The key is used exclusively inside the local MCP process for cryptographic signing.
+
+## Security & Privacy
+
+**Private key handling:** `DRAIN_PRIVATE_KEY` is loaded into memory by the local MCP server process. It is used exclusively for:
+1. **EIP-712 voucher signing** — generates a cryptographic signature (off-chain, no network call)
+2. **On-chain transaction signing** — signs approve/open/close/transfer transactions locally before broadcasting to Polygon RPC
+
+The private key is **never transmitted** to Handshake58 servers, AI providers, or any third party. Only the resulting signatures are sent. Providers verify signatures against the on-chain channel state — they never need or receive the key itself.
+
+**What leaves your machine:**
+- Public API queries to `handshake58.com` (provider list, fee wallet, channel status)
+- Chat messages to AI providers (sent to the provider's `apiUrl`, not to Handshake58)
+- Signed payment vouchers (contain a signature, not the key)
+- Signed on-chain transactions (broadcast to Polygon)
+
+**What stays local:**
+- Your private key (never transmitted)
+- Your wallet address derivation
+- All cryptographic signing operations
+
+**Recommended safeguards:**
+- Use a **dedicated ephemeral wallet** with $1–5 USDC. Never reuse your main wallet.
+- **Audit the source code** before installing: [github.com/kimbo128/DRAIN](https://github.com/kimbo128/DRAIN)
+- Run in an **isolated environment** if handling sensitive data
+- Monitor outbound network traffic to confirm key isolation
+
 ## Contract Addresses
 
 - **Handshake58 Channel**: `0x1C1918C99b6DcE977392E4131C91654d8aB71e64`
@@ -193,6 +226,10 @@ GET https://handshake58.com/api/mcp/providers
 - Session fee: $0.01 USDC per channel
 - Protocol fee: 0%
 - Gas: ~$0.02 per channel open
+
+## Trust Statement
+
+By using this skill, chat messages are sent to third-party AI providers via the Handshake58 marketplace. The private key is used locally for signing only and is never transmitted to any server. Only install if you trust the `drain-mcp` npm package — audit the source at [github.com/kimbo128/DRAIN](https://github.com/kimbo128/DRAIN) before use.
 
 ## Links
 
