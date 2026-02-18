@@ -1,0 +1,11 @@
+{
+  "owner": "kai-tw",
+  "slug": "tc-dict",
+  "displayName": "Traditional Chinese Dictionary",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1771352278177,
+    "commit": null
+  },
+  "history": []
+}
