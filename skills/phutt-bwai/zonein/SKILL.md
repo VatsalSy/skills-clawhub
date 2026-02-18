@@ -67,6 +67,8 @@ export ZONEIN_API_KEY="zn_your_key_here"
 | "Open a BTC long for $100" | `agent-open <id> --coin BTC --direction LONG --size 100` |
 | "Close my ETH position" | `agent-close <id> --coin ETH` |
 | "Withdraw my funds" | `agent-disable <id>` then `agent-withdraw <id> --to 0x...` |
+| "Backtest my agent on BTC" | `agent-backtest <id> --symbol BTC --days 30` |
+| "Show past backtests" | `agent-backtests <id>` |
 
 ## Commands
 
@@ -75,10 +77,10 @@ export ZONEIN_API_KEY="zn_your_key_here"
 - If the user asks to see raw JSON or the actual command, you may show it.
 
 **Read-only commands (safe to run without asking):**
-`signals`, `leaderboard`, `consensus`, `trader`, `perp-signals`, `perp-traders`, `perp-top`, `perp-categories`, `perp-coins`, `perp-trader`, `agents`, `agent-get`, `agent-stats`, `agent-trades`, `agent-vault`, `agent-templates`, `agent-assets`, `agent-categories`, `agent-balance`, `agent-positions`, `agent-deposit`, `agent-orders`, `status`
+`signals`, `leaderboard`, `consensus`, `trader`, `perp-signals`, `perp-traders`, `perp-top`, `perp-categories`, `perp-coins`, `perp-trader`, `agents`, `agent-get`, `agent-stats`, `agent-trades`, `agent-vault`, `agent-templates`, `agent-assets`, `agent-categories`, `agent-balance`, `agent-positions`, `agent-deposit`, `agent-orders`, `agent-backtests`, `status`
 
 **Financial commands (require `--confirm` flag — script refuses without it):**
-`agent-fund`, `agent-open`, `agent-close`, `agent-withdraw`, `agent-enable`, `agent-deploy`
+`agent-fund`, `agent-open`, `agent-close`, `agent-withdraw`, `agent-enable`, `agent-deploy`, `agent-backtest`
 
 You MUST ask the user for approval first. Only add `--confirm` after the user explicitly says yes.
 
@@ -200,6 +202,8 @@ No parameters.
 | `--methodology` | str | Trading methodology text |
 | `--entry-strategy` | str | Entry strategy text |
 | `--exit-framework` | str | Exit framework text |
+| `--strength-thresholds` | json | Entry/exit thresholds per asset (see Strength Thresholds Guide) |
+| `--timeframe-weights` | json | Timeframe weight distribution |
 
 ### `agent-deploy` — Validate config and enable trading
 
@@ -304,6 +308,39 @@ Returns `tx_hash` and `amount` bridged.
 | `--to` | str | yes | Destination 0x... wallet address on Arbitrum |
 
 Agent must be **disabled** before withdrawing. Flow: Hyperliquid → Arbitrum → your wallet.
+
+### `agent-backtest` — Run backtest simulation
+
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `agent_id` | str | required | Agent ID |
+| `--symbol` | str | BTC | Coin to backtest: BTC, ETH, SOL, HYPE |
+| `--days` | int | 30 | Backtest period (7–90 days) |
+| `--initial-balance` | float | 10000 | Starting balance in USD |
+
+Runs a historical backtest using the agent's config (thresholds, leverage, risk profile) against cached smart money signals and real OHLC prices. Returns performance summary + a **dashboard link** with interactive charts (equity curve, candlestick with trade markers, daily PnL, trade table).
+
+**Requires `--confirm`** (this is a compute-intensive action).
+
+Example output:
+```json
+{
+  "backtest_id": "bt_agent123_BTC_20260218_...",
+  "dashboard": "https://mcp.zonein.xyz/api/v1/backtest/bt_.../dashboard",
+  "pnl": 523.40,
+  "total_trades": 12,
+  "stats": {"win_rate": 66.67, "sharpe_ratio": 1.42, "max_drawdown": 3.2}
+}
+```
+
+### `agent-backtests` — List past backtests
+
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `agent_id` | str | required | Agent ID |
+| `--limit` | int | 10 | Max results |
+
+Returns list of previous backtests with summary metrics and dashboard links.
 
 ### `agent-templates` — Agent types & default config
 
@@ -433,6 +470,63 @@ When user asks about market conditions, run these in sequence:
 1. `trader <wallet>` — Polymarket profile
 2. `perp-trader <address>` — HyperLiquid profile
 3. Present: performance, open positions, win rate
+
+## Strength Thresholds Guide
+
+`strength_thresholds` and `timeframe_weights` are **auto-generated** from `agent_type` when creating an agent. Override with `agent-update` if user wants custom values.
+
+### What they control
+
+- **min_strength_buy**: How strong smart money signal must be to OPEN a position (higher = pickier, fewer trades)
+- **min_strength_sell**: How strong opposite-direction signal must be to CLOSE a position (lower = exit fast, higher = ride trends)
+
+### Auto-generated defaults by agent type
+
+| Agent Type | Style | BTC buy/sell | ETH buy/sell | SOL buy/sell | OTHERS buy/sell | Timeframes 24h/4h/1h |
+|------------|-------|-------------|-------------|-------------|----------------|---------------------|
+| scalping_pro, momentum_hunter | Scalp | 65/65 | 70/65 | 78/65 | 78/65 | 0.2/0.4/0.4 |
+| All others (swing_trader, stable_grower, composite, etc.) | Swing | 75/70 | 78/70 | 82/70 | 82/70 | 0.5/0.35/0.15 |
+
+### How to customize based on user preferences
+
+Adjust +/-5 from defaults:
+
+| User says | What to adjust | Example |
+|-----------|---------------|---------|
+| "I want more trades" / aggressive | Lower min_strength_buy (-5 to -10) | BTC buy: 78 -> 70 |
+| "Only high-quality setups" / conservative | Raise min_strength_buy (+5) | BTC buy: 78 -> 83 |
+| "Cut losses quickly" / protect capital | Lower min_strength_sell (-5) | sell: 72 -> 65 |
+| "Let winners ride" / trend following | Raise min_strength_sell (+5) | sell: 72 -> 77 |
+
+### Validation rules
+
+1. All values **>= 55** (hard minimum)
+2. **OTHERS >= max(BTC, ETH, SOL)**  altcoins are more volatile, need stronger signals
+3. Typical ordering: BTC <= ETH <= SOL <= OTHERS for buy thresholds
+4. Set `OTHERS = max(BTC, ETH, SOL) + 0-5 buffer`
+
+**Correct example:**
+- BTC buy 70, ETH buy 75, SOL buy 78, OTHERS buy 78 (>= max)
+
+**Wrong example:**
+- BTC buy 70, OTHERS buy 68  INVALID! OTHERS lower than BTC!
+
+### Timeframe weights
+
+Must sum to **1.0**. Three timeframes: 24h, 4h, 1h.
+
+| User preference | 24h | 4h | 1h | Why |
+|----------------|-----|----|----|-----|
+| Quick trades / scalping | 0.2 | 0.4 | 0.4 | Focus on short-term signals |
+| Swing / multi-day | 0.5 | 0.35 | 0.15 | Focus on long-term trend |
+| Trend following | 0.4 | 0.4 | 0.2 | Balance trend + momentum |
+| "I follow the daily trend" | 0.6 | 0.3 | 0.1 | Heavy 24h weight |
+
+### Override command
+
+```bash
+python scripts/zonein/scripts/zonein.py agent-update <agent_id> --strength-thresholds '{"BTC": {"min_strength_buy": 70, "min_strength_sell": 65}, "ETH": {"min_strength_buy": 75, "min_strength_sell": 65}, "SOL": {"min_strength_buy": 80, "min_strength_sell": 65}, "OTHERS": {"min_strength_buy": 80, "min_strength_sell": 65}}' --timeframe-weights '{"24h": 0.5, "4h": 0.35, "1h": 0.15}'
+```
 
 ## Output Fields
 

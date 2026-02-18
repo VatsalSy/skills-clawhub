@@ -41,6 +41,8 @@ Commands:
   agent-close <id> — Close a position
   agent-orders <id>— Manual order history
   agent-withdraw <id>— Withdraw funds to your wallet
+  agent-backtest <id>— Run backtest on agent (streaming)
+  agent-backtests <id>— List past backtests for agent
   agent-templates  — Available agent types & config templates
   agent-assets     — Available trading assets
   agent-categories — Smart money categories with stats
@@ -267,6 +269,10 @@ def cmd_agent_create(args):
         body.setdefault("trading_preferences", {})["min_confidence_threshold"] = args.min_confidence
     if args.min_consensus:
         body.setdefault("trading_preferences", {})["min_smart_money_consensus"] = args.min_consensus
+    if args.strength_thresholds:
+        body["strength_thresholds"] = json.loads(args.strength_thresholds)
+    if args.timeframe_weights:
+        body["timeframe_weights"] = json.loads(args.timeframe_weights)
     data = api_post("/agents/", body)
     print(json.dumps(data, indent=2))
 
@@ -290,6 +296,10 @@ def cmd_agent_update(args):
         body.setdefault("prompt_config", {})["entry_strategy"] = args.entry_strategy
     if args.exit_framework:
         body.setdefault("prompt_config", {})["exit_framework"] = args.exit_framework
+    if args.strength_thresholds:
+        body["strength_thresholds"] = json.loads(args.strength_thresholds)
+    if args.timeframe_weights:
+        body["timeframe_weights"] = json.loads(args.timeframe_weights)
     if not body:
         print(json.dumps({"error": "No updates provided"}))
         sys.exit(1)
@@ -433,6 +443,88 @@ def cmd_agent_withdraw(args):
     print(json.dumps(data, indent=2))
 
 
+
+def cmd_agent_backtest(args):
+    """Run a backtest on an agent. Streams NDJSON progress, prints dashboard link."""
+    _require_confirm(args, f"Run backtest on {args.agent_id} ({args.symbol}, {args.days}d)")
+    key = get_api_key()
+    url = f"{API_BASE}/backtest/run"
+    body = json.dumps({
+        "agent_id": args.agent_id,
+        "symbol": args.symbol.upper(),
+        "days": args.days,
+        "initial_balance": args.initial_balance,
+    }).encode("utf-8")
+    headers = {
+        "X-API-Key": key,
+        "Content-Type": "application/json",
+        "Accept": "application/x-ndjson",
+    }
+    req = urllib.request.Request(url, data=body, headers=headers, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=300) as resp:
+            backtest_id = resp.headers.get("X-Backtest-Id", "")
+            dashboard_url = resp.headers.get("X-Dashboard-Url", "")
+            last_report = None
+            for raw_line in resp:
+                line = raw_line.decode("utf-8").strip()
+                if not line:
+                    continue
+                msg = json.loads(line)
+                t = msg.get("type")
+                if t == "status":
+                    sys.stderr.write(f"  {msg.get('message')}\n")
+                elif t == "init":
+                    sys.stderr.write(f"  Backtest {msg.get('backtest_id')}: {msg.get('total_steps')} steps\n")
+                elif t == "trade":
+                    tr = msg["trade"]
+                    pnl_s = f" pnl=${tr['pnl']:.2f}" if tr.get("pnl") is not None else ""
+                    sys.stderr.write(f"  [trade] {tr['action']} @ ${tr['price']:.2f}{pnl_s}\n")
+                elif t == "complete":
+                    last_report = msg["report"]
+                elif t == "error":
+                    print(json.dumps({"error": msg.get("message")}))
+                    sys.exit(1)
+            result = {
+                "backtest_id": backtest_id,
+                "dashboard_url": f"https://mcp.zonein.xyz{dashboard_url}" if dashboard_url else None,
+            }
+            if last_report:
+                s = last_report.get("stats", {})
+                result.update({
+                    "symbol": last_report.get("symbol"),
+                    "days": last_report.get("days"),
+                    "initial_balance": last_report.get("initial_balance"),
+                    "final_balance": last_report.get("final_balance"),
+                    "pnl": last_report.get("pnl"),
+                    "total_trades": last_report.get("total_trades"),
+                    "win_rate": s.get("win_rate"),
+                    "profit_factor": s.get("profit_factor"),
+                    "sharpe_ratio": s.get("sharpe_ratio"),
+                    "max_drawdown": last_report.get("max_drawdown"),
+                    "max_consecutive_wins": s.get("max_consecutive_wins"),
+                    "max_consecutive_losses": s.get("max_consecutive_losses"),
+                })
+            print(json.dumps(result, indent=2))
+    except urllib.error.HTTPError as e:
+        raw = e.read().decode("utf-8", errors="replace")
+        try:
+            err = json.loads(raw)
+        except Exception:
+            err = {"detail": raw}
+        print(json.dumps({"error": f"HTTP {e.code}", "detail": err.get("detail", raw)}))
+        sys.exit(1)
+    except urllib.error.URLError as e:
+        print(json.dumps({"error": f"Connection failed: {e.reason}"}))
+        sys.exit(1)
+
+
+def cmd_agent_backtests(args):
+    """List past backtests for an agent."""
+    data = api_request(f"/backtest/list/{args.agent_id}", {"limit": args.limit})
+    print(json.dumps(data, indent=2))
+
+
 def cmd_status(args):
     """Check API key status."""
     data = api_request("/auth/api-key/status")
@@ -527,6 +619,8 @@ def main():
     p.add_argument("--max-trades-per-day", type=int, default=None)
     p.add_argument("--min-confidence", type=float, default=None, help="Min confidence 0-1")
     p.add_argument("--min-consensus", type=float, default=None, help="Min SM consensus 0-1")
+    p.add_argument("--strength-thresholds", type=str, default=None, help="JSON: {\"BTC\": {\"min_strength_buy\": 70, \"min_strength_sell\": 65}, ...}")
+    p.add_argument("--timeframe-weights", type=str, default=None, help="JSON: {\"24h\": 0.5, \"4h\": 0.35, \"1h\": 0.15}")
     p.set_defaults(func=cmd_agent_create)
 
     # --- Agent Update ---
@@ -540,6 +634,8 @@ def main():
     p.add_argument("--methodology", type=str, default=None, help="Trading methodology text")
     p.add_argument("--entry-strategy", type=str, default=None, help="Entry strategy text")
     p.add_argument("--exit-framework", type=str, default=None, help="Exit framework text")
+    p.add_argument("--strength-thresholds", type=str, default=None, help="JSON: {\"BTC\": {\"min_strength_buy\": 70, \"min_strength_sell\": 65}, ...}")
+    p.add_argument("--timeframe-weights", type=str, default=None, help="JSON: {\"24h\": 0.5, \"4h\": 0.35, \"1h\": 0.15}")
     p.set_defaults(func=cmd_agent_update)
 
     # --- Agent Deploy ---
@@ -647,6 +743,22 @@ def main():
     p.add_argument("--to", type=str, required=True, help="Destination 0x... wallet address")
     p.add_argument("--confirm", action="store_true", help="Required: confirms user approved this financial action")
     p.set_defaults(func=cmd_agent_withdraw)
+
+
+    # --- Agent Backtest ---
+    p = sub.add_parser("agent-backtest", help="Run backtest on agent (streaming)")
+    p.add_argument("agent_id", type=str)
+    p.add_argument("--symbol", type=str, default="BTC", help="Coin: BTC, ETH, SOL, HYPE")
+    p.add_argument("--days", type=int, default=30, help="Period in days (7-90)")
+    p.add_argument("--initial-balance", type=float, default=10000, help="Starting balance USD")
+    p.add_argument("--confirm", action="store_true", help="Required: confirms user approved this action")
+    p.set_defaults(func=cmd_agent_backtest)
+
+    # --- Agent Backtests (list) ---
+    p = sub.add_parser("agent-backtests", help="List past backtests for agent")
+    p.add_argument("agent_id", type=str)
+    p.add_argument("--limit", type=int, default=10)
+    p.set_defaults(func=cmd_agent_backtests)
 
     # --- Status ---
     p = sub.add_parser("status", help="Check API key status")

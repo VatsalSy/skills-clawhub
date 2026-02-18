@@ -196,6 +196,17 @@
     "provider": "openai",
     "model": "gpt-4-turbo",
     "temperature": 0.3
+  },
+  "strength_thresholds": {
+    "BTC": {"min_strength_buy": 70, "min_strength_sell": 65},
+    "ETH": {"min_strength_buy": 75, "min_strength_sell": 65},
+    "SOL": {"min_strength_buy": 80, "min_strength_sell": 65},
+    "OTHERS": {"min_strength_buy": 80, "min_strength_sell": 65}
+  },
+  "timeframe_weights": {
+    "24h": 0.5,
+    "4h": 0.35,
+    "1h": 0.15
   }
 }
 ```
