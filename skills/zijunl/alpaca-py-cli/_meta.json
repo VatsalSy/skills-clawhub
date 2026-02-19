@@ -3,11 +3,16 @@
   "slug": "alpaca-py-cli",
   "displayName": "Alpaca Py Cli",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1771450403353,
-    "commit": "https://github.com/openclaw/skills/commit/96da0df7e78ead614d9ecb0473564619805c4a57"
+    "version": "2.0.0",
+    "publishedAt": 1771481739743,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1771450403353,
+      "commit": "https://github.com/openclaw/skills/commit/96da0df7e78ead614d9ecb0473564619805c4a57"
+    },
     {
       "version": "1.7.0",
       "publishedAt": 1771398961747,
