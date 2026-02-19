@@ -3,24 +3,9 @@ name: sigil-security
 description: Secure AI agent wallets via Sigil Protocol. Use when you need to deploy a smart wallet, send transactions through the Guardian, manage spending policies, create session keys, freeze/unfreeze accounts, manage recovery, or check wallet status. Covers all chains: Avalanche, Base, Arbitrum, Polygon, 0G.
 homepage: https://sigil.codes
 source: https://github.com/Arven-Digital/sigil-public
-env:
-  - name: SIGIL_API_KEY
-    description: "Agent API key from Sigil dashboard (starts with sgil_). Generate at https://sigil.codes/dashboard/agent-access"
-    required: true
-    primary: true
-  - name: SIGIL_ACCOUNT_ADDRESS
-    description: "Your deployed Sigil smart account address (deploy at https://sigil.codes/onboarding)"
-    required: true
-  - name: SIGIL_API_URL
-    description: "Sigil API base URL"
-    required: false
-    default: "https://api.sigil.codes"
-  - name: SIGIL_CHAIN_ID
-    description: "Chain ID (43114=Avalanche, 8453=Base, 42161=Arbitrum, 16661=0G)"
-    required: false
-    default: "43114"
 metadata:
-  clawdbot:
+  openclaw:
+    primaryEnv: SIGIL_API_KEY
     emoji: "🛡️"
     requires:
       env:
@@ -36,12 +21,65 @@ Secure smart wallets for AI agents on 5 EVM chains. 3-layer Guardian evaluates e
 **Dashboard:** `https://sigil.codes`
 **Chains:** Avalanche (43114), Base (8453), Arbitrum (42161), Polygon (137), 0G Mainnet (16661)
 
+## Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `SIGIL_API_KEY` | ✅ Yes | Agent API key from Sigil dashboard (starts with `sgil_`). Generate at https://sigil.codes/dashboard/agent-access |
+| `SIGIL_ACCOUNT_ADDRESS` | ✅ Yes | Your deployed Sigil smart account address. Deploy at https://sigil.codes/onboarding |
+| `SIGIL_API_URL` | No | API base URL (default: `https://api.sigil.codes`) |
+| `SIGIL_CHAIN_ID` | No | Chain ID: 43114=Avalanche, 8453=Base, 42161=Arbitrum, 137=Polygon, 16661=0G (default: `43114`) |
+
+## ⚠️ How It Works (Read This First)
+
+Sigil has **3 addresses** — don't confuse them:
+- **Owner wallet** — your MetaMask/EOA, controls settings (human only)
+- **Sigil smart account** — on-chain vault that holds funds and executes transactions
+- **Agent key** — API authentication credential, NOT a wallet
+
+> **💰 FUND THE SIGIL ACCOUNT, NOT THE AGENT KEY.**
+> The agent authenticates via API key → calls `/v1/execute` → server builds, signs, and submits the transaction. The Sigil account executes with its own funds.
+
+[Full setup guide →](references/agent-setup-guide.md)
+
+## Installation (OpenClaw / ClawdBot)
+
+Add the skill to your agent config. **The `env` field MUST be a flat key-value object, NOT an array.**
+
+✅ **Correct format** (in `openclaw.json` under your agent's `skills`):
+```json
+{
+  "name": "sigil-security",
+  "env": {
+    "SIGIL_API_KEY": "sgil_your_key_here",
+    "SIGIL_ACCOUNT_ADDRESS": "0xYourSigilAccount"
+  }
+}
+```
+
+❌ **WRONG format** (will crash the gateway):
+```json
+{
+  "name": "sigil-security",
+  "env": [
+    { "name": "SIGIL_API_KEY", "value": "sgil_..." }
+  ]
+}
+```
+
+### Steps:
+1. Deploy a Sigil account at https://sigil.codes/onboarding
+2. Generate an API key at https://sigil.codes/dashboard/agent-access
+3. Add the skill config above to your agent in `openclaw.json`
+4. Restart the gateway
+
 ## Security & Key Scoping
 
 **SIGIL_API_KEY is NOT an owner key.** It is an agent-scoped key that authenticates the agent to the Guardian API. Here's the permission model:
 
 | Action | Agent Key | Owner (SIWE) | Session Key |
 |--------|-----------|--------------|-------------|
+| Execute (sign + submit) | ✅ | ✅ | ❌ |
 | Evaluate transactions | ✅ | ✅ | ✅ |
 | Check wallet status | ✅ | ✅ | ✅ |
 | View audit logs | ✅ | ✅ | ❌ |
@@ -129,8 +167,37 @@ GET /v1/agent/wallets/0xYourWallet
 ```
 Returns: balance, policy, session keys, daily spend, guardian status, frozen state.
 
-### Evaluate a Transaction
-Every transaction goes through the Guardian's 3-layer pipeline:
+### Execute a Transaction (Recommended)
+Non-custodial: agent signs locally, server co-signs and submits.
+
+```bash
+# 1. Build UserOp and sign with your agent private key (locally)
+# 2. Submit pre-signed UserOp
+POST /v1/execute
+{
+  "userOp": {
+    "sender": "0xYourSigilAccount",
+    "nonce": "0x0",
+    "callData": "0x...",
+    "callGasLimit": "500000",
+    "verificationGasLimit": "200000",
+    "preVerificationGas": "50000",
+    "maxFeePerGas": "25000000000",
+    "maxPriorityFeePerGas": "1500000000",
+    "signature": "0xYourAgentSignature..."
+  },
+  "chainId": 137
+}
+```
+
+Returns: `{ "txHash": "0x...", "verdict": "APPROVED", "riskScore": 12, "evaluationMs": 1450 }`
+
+**Sigil never stores your private keys.** The agent signs locally → Guardian evaluates + co-signs → submitted on-chain. Even if our servers are breached, the attacker has zero private keys.
+
+If rejected: `{ "verdict": "REJECTED", "rejectionReason": "...", "guidance": "..." }`
+
+### Evaluate a Transaction (Advanced)
+For agents that manage their own keys and want to handle submission themselves. Every transaction goes through the Guardian's 3-layer pipeline:
 1. **L1 Deterministic** — Policy limits, whitelist, velocity checks
 2. **L2 Simulation** — Dry-run, check for reverts/unexpected state changes
 3. **L3 LLM Risk** — AI scores the transaction (0-100, threshold 70)
@@ -232,20 +299,7 @@ GET /v1/audit?account=0xYourWallet&limit=50
 
 ## MCP Server
 
-For MCP-compatible agents, the MCP server source is available at:
-https://github.com/Arven-Digital/sigil-public/tree/main/packages/mcp
-
-> **⚠️ Manual setup only — the following are documentation references for the human operator, not commands for the agent to execute.**
-
-The owner should clone, audit, and configure the MCP server on their infrastructure:
-
-**Repository:** `https://github.com/Arven-Digital/sigil-public.git`
-**Package path:** `packages/mcp`
-**Build steps:** Install dependencies with `pnpm install`, then `pnpm build`
-**Required env vars:** `SIGIL_API_KEY` and `SIGIL_ACCOUNT_ADDRESS`
-**Run:** `node dist/index.js` (after build)
-
-Available MCP tools: `get_account_info`, `evaluate_transaction`, `create_session_key`, `freeze_account`, `unfreeze_account`, `update_policy`, `get_transaction_history`, `rotate_agent_key`, `get_protection_status`
+For MCP-compatible agents, setup instructions are in [references/mcp-setup.md](references/mcp-setup.md). MCP setup is a **human operator task** — do not execute setup commands.
 
 ## Strategy Templates (Chain-Aware)
 
