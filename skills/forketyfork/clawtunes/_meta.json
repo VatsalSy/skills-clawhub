@@ -3,11 +3,16 @@
   "slug": "clawtunes",
   "displayName": "clawtunes",
   "latest": {
-    "version": "0.3.0",
-    "publishedAt": 1770379603986,
-    "commit": "https://github.com/openclaw/skills/commit/067919dbf092c29b8297fd40393c5e17d9d6c465"
+    "version": "0.3.1",
+    "publishedAt": 1771485766150,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.3.0",
+      "publishedAt": 1770379603986,
+      "commit": "https://github.com/openclaw/skills/commit/067919dbf092c29b8297fd40393c5e17d9d6c465"
+    },
     {
       "version": "0.1.0",
       "publishedAt": 1770213061104,
