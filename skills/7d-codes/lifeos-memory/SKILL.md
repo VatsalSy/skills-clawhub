@@ -162,55 +162,28 @@ March 1, 2026
 
 ## Creating a Task (with Prompt Engineering)
 
-### Step 1: Start with Simple Prompt
+### Step 1: Capture User's Simple Request
 
 User says: *"Create a task to build a login page"*
 
-### Step 2: Expand to Detailed Agent Prompt
+### Step 2: Expand Using Prompt Engineering System
 
-**BEFORE giving to agent, expand:**
-
-```markdown
-## Original Request
-"Build a login page"
-
-## Expanded Prompt for Agent
-
-**Role:** Act as a senior full-stack developer specializing in authentication systems.
-
-**Context:** 
-- Project: LifeOS Core dashboard
-- Stack: Next.js 15, TypeScript, Tailwind CSS
-- Existing auth: Clerk integration already set up
-- Current state: No login page exists yet
-
-**Task:** 
-Create a complete login page with email/password authentication.
-
-**Output Format:**
-- Single file: `app/login/page.tsx`
-- Include form validation
-- Include error handling
-- Match existing design system (mono aesthetic, sharp corners)
-
-**Examples:**
-See `app/dashboard/page.tsx` for styling patterns.
-
-**Constraints:**
-- Use shadcn/ui components where possible
-- Maximum 200 lines
-- Must handle loading states
-- Must redirect to /dashboard on success
-```
+Follow the expansion process above. Create detailed instructions with:
+- Specific role (Senior full-stack developer, not just "developer")
+- Full context (stack, current state, existing code)
+- Clear task scope
+- Output format (exact files, structure)
+- Examples (reference existing code)
+- Constraints (measurable limits)
 
 ### Step 3: Create Task JSON
 
 ```json
 {
-  "id": "lifeos-core-login-1",
+  "id": "lifeos-core-auth-1",
   "title": "Create login page with email/password auth",
   "simplePrompt": "Build a login page",
-  "expandedPrompt": "Act as a senior full-stack developer... [full text]",
+  "expandedPrompt": "Act as a senior full-stack developer specializing in authentication systems.\n\n**Context:**\n- Project: LifeOS Core dashboard\n- Stack: Next.js 15, TypeScript, Tailwind CSS\n- Auth: Clerk already configured\n- Current state: No login page exists\n\n**Task:**\nCreate complete login page at `/login` with email/password form, validation, error handling, loading states, and redirect on success.\n\n**Output Format:**\n- File: `app/login/page.tsx`\n- Use existing Button, Input, Card components\n- Export default page component\n\n**Examples:**\nSee `app/dashboard/page.tsx` for styling patterns (mono aesthetic, sharp corners).\n\n**Constraints:**\n- Max 150 lines\n- Use shadcn/ui components\n- Handle all Clerk error codes\n- Match existing mono aesthetic",
   "status": "todo",
   "priority": "high",
   "projectRef": "projects/lifeos-core",
@@ -225,71 +198,216 @@ See `app/dashboard/page.tsx` for styling patterns.
 }
 ```
 
-### Step 4: Assign to Agent
+### Step 4: Spawn Agent with Expanded Prompt
 
-Give the **expanded prompt** to the agent, not the simple one.
-
----
-
-## Prompt Engineering Template
-
-When creating ANY task, expand simple prompts using this structure:
-
-```markdown
-## Original Request
-"{user's simple prompt}"
-
-## Expanded Prompt
-
-**Role:** {specific persona}
-
-**Context:**
-- Project: {project name}
-- {relevant background}
-- {current state}
-- {constraints or requirements}
-
-**Task:**
-{clear, specific action}
-
-**Output Format:**
-- {file paths}
-- {structure}
-- {specific requirements}
-
-**Examples:**
-{show what good looks like}
-
-**Constraints:**
-- {limit 1}
-- {limit 2}
-- {avoid X}
+```
+Spawn agent with:
+- Task: expandedPrompt (full detailed instructions)
+- Target files: specified in Output Format
+- Expected deliverable: working code matching constraints
 ```
 
-**Prompt Engineering Rules:**
-1. **Role is specific** — "Senior React developer" not "Developer"
-2. **Context includes current state** — what's already done
-3. **Output format is explicit** — file paths, structure
-4. **Examples show style** — reference existing code
-5. **Constraints are measurable** — line counts, must/avoid
+---
+
+## Prompt Engineering System
+
+Every task gets expanded from simple user request to detailed agent instructions.
+
+### The Expansion Process
+
+**Step 1: Capture Simple Prompt**
+```json
+{
+  "simplePrompt": "Build a login page",
+  "title": "Create login page with email/password auth"
+}
+```
+
+**Step 2: Expand to Full Instructions**
+
+Analyze the simple prompt and build:
+
+| Component | What to Include | Example |
+|-----------|-----------------|---------|
+| **Role** | Specific persona with expertise | "Act as a senior full-stack developer specializing in authentication systems" |
+| **Context** | Project background, current state, stack, what's already done | "Project: LifeOS Core dashboard. Stack: Next.js 15, TypeScript, Tailwind. Clerk auth already set up." |
+| **Task** | Clear, specific action with scope | "Create a complete login page with email/password form, validation, error handling, and redirect on success" |
+| **Output Format** | Exact file paths, structure, format | "File: `app/login/page.tsx`. Include: form component, validation logic, loading states, error UI" |
+| **Examples** | Reference existing code or show style | "See `app/dashboard/page.tsx` for styling patterns. Use same mono aesthetic." |
+| **Constraints** | Hard limits, must/avoid, success criteria | "Max 150 lines. Use shadcn/ui components. Handle all error states." |
+
+**Step 3: Store Both Versions**
+
+```json
+{
+  "id": "lifeos-core-auth-1",
+  "title": "Create login page with email/password auth",
+  "simplePrompt": "Build a login page",
+  "expandedPrompt": "Act as a senior full-stack developer...\n\n**Context:**\nProject: LifeOS Core...\n\n**Task:**\nCreate...\n\n**Output Format:**\n- File: app/login/page.tsx\n...\n\n**Constraints:**\n- Max 150 lines\n...",
+  "status": "todo",
+  "priority": "high",
+  "assignedTo": "uiux-craftsman"
+}
+```
+
+**Step 4: Give Expanded Prompt to Agent**
+
+Spawn agent with `expandedPrompt` as their task description.
+
+### Expansion Examples
+
+**Example 1: Simple → Detailed**
+
+*Simple:* "Build a login page"
+
+*Expanded:*
+```markdown
+**Role:** Senior full-stack developer specializing in Next.js authentication
+
+**Context:**
+- Project: LifeOS Core dashboard
+- Stack: Next.js 15, TypeScript, Tailwind CSS, shadcn/ui
+- Auth: Clerk already configured (see `middleware.ts`)
+- Design: Mono aesthetic, sharp corners, black/white
+- Current state: No login page exists, users hit 404 at /login
+
+**Task:**
+Create a production-ready login page at `/login` with:
+- Email/password form with validation
+- Error handling (invalid credentials, network errors)
+- Loading states during submission
+- Redirect to /dashboard on successful login
+- Link to sign-up page
+
+**Output Format:**
+- Single file: `app/login/page.tsx`
+- Use existing Button, Input, Card components from `@/components/ui`
+- Export default page component
+- Use Clerk's `useSignIn` hook
+
+**Examples:**
+See `app/dashboard/page.tsx` for styling patterns:
+- Use `className="min-h-screen bg-background"` for layout
+- Use `Card`, `CardHeader`, `CardContent` for form container
+- Error styling: `text-destructive` class
+
+**Constraints:**
+- Maximum 150 lines (concise > verbose)
+- Must handle all Clerk error codes
+- Must show loading spinner during submit
+- Must redirect, not just navigate
+- Match existing mono aesthetic exactly
+```
+
+**Example 2: Research Task**
+
+*Simple:* "Research SAT test dates"
+
+*Expanded:*
+```markdown
+**Role:** Research assistant specializing in educational testing and admissions
+
+**Context:**
+- User applying to Stanford (requires SAT)
+- Located in Saudi Arabia (testing centers: Khobar, Riyadh, Jeddah)
+- Current date: February 19, 2026
+- Registration deadlines critical
+
+**Task:**
+Find all SAT test dates for 2026 with:
+- Test dates (May 2, June 6, etc.)
+- Registration deadlines for each
+- Late registration dates and fees
+- Available testing centers in Saudi Arabia
+- Score release dates
+
+**Output Format:**
+Markdown table with columns: Test Date, Registration Deadline, Late Registration, Score Release, Notes
+
+**Constraints:**
+- Use official College Board data only
+- Highlight recommended date (earliest viable)
+- Include Saudi Arabia-specific information
+- Note any ID requirements for international students
+```
+
+**Example 3: Design Task**
+
+*Simple:* "Design a settings page"
+
+*Expanded:*
+```markdown
+**Role:** Senior UX/UI designer with expertise in dashboard interfaces
+
+**Context:**
+- Project: LifeOS Core settings
+- Existing design system: Mono aesthetic, sharp corners, minimal
+- Current pages: Dashboard (grid layout), Login (centered card)
+- Settings needed: Profile, Notifications, API Keys, Danger Zone
+
+**Task:**
+Design a settings page with:
+- Sidebar navigation for settings sections
+- Clean form layouts for each section
+- Visual hierarchy for danger zone
+- Consistent with existing mono aesthetic
+
+**Output Format:**
+- Wireframe descriptions (no actual images needed)
+- Component breakdown
+- Key interactions described
+
+**Examples:**
+Reference existing pages:
+- Dashboard uses grid with `gap-6`
+- Cards use `border` and `rounded-none`
+- Typography: `text-2xl font-bold` for headers
+
+**Constraints:**
+- Mobile-responsive layout
+- Maximum 3 clicks to any setting
+- Clear visual separation between sections
+- Use existing shadcn/ui patterns
+```
+
+### Prompt Engineering Checklist
+
+Before spawning agent, verify:
+- [ ] Role is specific (not generic "developer")
+- [ ] Context includes stack and current state
+- [ ] Task is scoped (not "build everything")
+- [ ] Output format specifies files/structure
+- [ ] Examples reference existing code when possible
+- [ ] Constraints are measurable (line counts, specific requirements)
+- [ ] Success criteria is clear (how will we know it's done?)
 
 ---
 
-## Agent-First Rule
+## Agent-First Rule (Natural Spawning)
 
-**ALL tasks go to agents. Main claw only does:**
-- Quick decisions (< 5 minutes)
-- Summarizing
-- Routing
-- Small edits
+**Default: Spawn an agent for any substantive task.**
 
-**When to spawn an agent:**
-- Writing code (> 10 lines)
-- Research tasks
-- Design work
-- Multi-step processes
+Main claw handles only:
+- Quick answers (< 2 minutes)
+- Routing decisions
+- Reading/summarizing a single file
+- Simple edits (one-line fixes)
 
-**Benefit:** Main claw context stays clean and fast.
+**Spawn an agent when:**
+- Creating new files or components
+- Research or data gathering
+- Multi-step implementation
+- Design or architectural decisions
+- Anything requiring specialized expertise
+
+**Don't overthink it.** If the task feels like "real work" — spawn. Agents are cheap, context is expensive.
+
+**Assignment Logic:**
+- `uiux-craftsman` — UI components, CSS, React, visual work
+- `system-designer` — Architecture, APIs, data models, review
+- `business-strategist` — Pricing, marketing copy, research
+- `integrator` — Wiring components together, bug fixes
+- New agents — Create in `subagents/` for specialized needs
 
 ---
 
