@@ -1,13 +1,18 @@
 {
   "owner": "r4v3n-art",
   "slug": "agentbook",
-  "displayName": "agentbook",
+  "displayName": "Agentbook",
   "latest": {
-    "version": "0.2.0",
-    "publishedAt": 1771348291263,
-    "commit": "https://github.com/openclaw/skills/commit/f036036560e3bf22c84c117d0e88d5fef4400d10"
+    "version": "0.3.0",
+    "publishedAt": 1771427369591,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.2.0",
+      "publishedAt": 1771348291263,
+      "commit": "https://github.com/openclaw/skills/commit/f036036560e3bf22c84c117d0e88d5fef4400d10"
+    },
     {
       "version": "0.1.0",
       "publishedAt": 1771303040885,
