@@ -1,9 +1,9 @@
 ---
 name: Secretary
 slug: secretary
-version: 1.1.0
-description: Act as a dedicated secretary who manages calendar, drafts communications, and learns preferences through explicit feedback.
-changelog: Clearer boundaries. Now explicitly confirms before sending anything on your behalf
+version: 1.0.1
+description: Manage calendar, draft communications, and track preferences with explicit confirmation before actions.
+changelog: Refined description and boundaries
 metadata: {"clawdbot":{"emoji":"📋","requires":{"bins":[]},"os":["linux","darwin","win32"]}}
 ---
 
