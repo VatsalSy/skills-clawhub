@@ -3,14 +3,14 @@ name: anima
 description: "Turns ideas into live, full-stack web applications with editable code, built-in database, user authentication, and hosting. Anima is the design agent in the AI swarm, giving agents design awareness and brand consistency when building interfaces. Three input paths: describe what you want (prompt to code), clone any website (link to code), or implement a Figma design (Figma to code). Also generates design-aware code from Figma directly into existing codebases. Triggers when the user provides Figma URLs, website URLs, Anima Playground URLs, asks to design, create, build, or prototype something, or wants to publish or deploy."
 compatibility: "Requires Anima MCP server connection (HTTP transport). For headless environments, requires an ANIMA_API_TOKEN."
 homepage: "https://github.com/AnimaApp/mcp-server-guide"
-metadata: {"clawdbot":{"emoji":"🎨","requires":{"env":["ANIMA_API_TOKEN"]},"primaryEnv":"ANIMA_API_TOKEN"},"author":"animaapp","version":"1.0.2"}
+metadata: {"clawdbot":{"emoji":"🎨","requires":{"env":["ANIMA_API_TOKEN"]},"primaryEnv":"ANIMA_API_TOKEN"},"author":"animaapp","version":"1.0.5"}
 ---
 
 # Design and Build with Anima
 
 ## Overview
 
-Anima is the design agent in your AI coding swarm. This skill gives agents design awareness, brand consistency, and the ability to turn visual ideas into production-ready code.
+Anima is the design agent in your AI coding swarm. This skill gives agents design awareness and the ability to turn visual ideas into production-ready code.
 
 There are **two distinct paths** depending on what you're trying to do:
 
@@ -297,7 +297,7 @@ playground-publish(
 
 ### Explore Mode: Parallel Variants
 
-This is Path A's secret weapon. When a user says "build me X" or "prototype X", generate multiple interpretations in parallel, publish all of them, and return screenshots for comparison.
+This is Path A's secret weapon. When a user says "build me X" or "prototype X", generate multiple interpretations in parallel, publish all of them, and return live URLs for comparison.
 
 **Workflow:**
 
@@ -310,16 +310,7 @@ This is Path A's secret weapon. When a user says "build me X" or "prototype X", 
 
 3. **As each one completes**, immediately call `playground-publish` (mode webapp)
 
-4. **Take a full-page screenshot** of each published live URL if you have any web screenshot capability. Options include:
-   - **Browser automation** (Puppeteer, Playwright, browser MCP tools) — navigate to the URL and capture
-   - **Screenshot APIs** (ScreenshotOne, Screenshotly, urlbox, etc.) — HTTP call to capture the page
-   - **Any other screenshot tool** available in your environment
-
-   Tips for good captures: wait 5-10 seconds for React/JS to render before capture; use full-page mode; viewport width 1280px works well. Animated sites with scroll animations are harder to capture as static images.
-
-   If no screenshot tool is available, skip this step — just return the live URLs. The user can view them directly.
-
-5. **Return all 3 live URLs** (and screenshots if captured) so the user can pick a favorite or ask for refinements.
+4. **Return all 3 live URLs** so the user can pick a favorite or ask for refinements. Optionally, if you have a screenshot tool available, capture each page to show in the chat.
 
 **Timing:** All 3 variants generate in parallel, so total wall time is roughly the same as one (~5-7 minutes creation + 1-3 minutes publishing). Expect results within ~10 minutes.
 
@@ -386,7 +377,7 @@ codegen-figma_to_code(
 | `files` | Generated code files as `{path: {content, isBinary}}` |
 | `assets` | Array of `{name, url}` for images and assets to download |
 | `snapshotsUrls` | Screenshot URLs for visual reference `{nodeId: url}` |
-| `guidelines` | Implementation instructions (IMPORTANT: follow these) |
+| `guidelines` | Design context: spacing, layout, and typography notes |
 | `tokenUsage` | Approximate token count |
 
 **After calling `codegen-figma_to_code`, follow these steps:**
@@ -395,7 +386,7 @@ codegen-figma_to_code(
 2. View and analyze snapshots to understand the exact visual appearance
 3. Parse `data-variant` attributes from generated components and map them to your component props
 4. Extract CSS variables from generated styles and use the exact colors
-5. Read and follow the detailed `guidelines` provided in the response
+5. Use the `guidelines` field as design context (spacing, layout, typography notes)
 6. Download all assets from returned URLs and place them at the `assetsBaseUrl` path
 7. Compare your final implementation against the snapshot for visual accuracy
 

@@ -3,11 +3,16 @@
   "slug": "anima-design-agent",
   "displayName": "Anima",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1771493471269,
-    "commit": "https://github.com/openclaw/skills/commit/b32b488809a29a7cb3fe2870cdf831105c7e35c1"
+    "version": "1.0.5",
+    "publishedAt": 1771509161966,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1771493471269,
+      "commit": "https://github.com/openclaw/skills/commit/b32b488809a29a7cb3fe2870cdf831105c7e35c1"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1771364029530,
