@@ -3,11 +3,16 @@
   "slug": "zyfai-sdk",
   "displayName": "Zyfai Yield Automation",
   "latest": {
-    "version": "1.0.7",
-    "publishedAt": 1771435176597,
-    "commit": "https://github.com/openclaw/skills/commit/951fe399a0b44808137c902f2b4ccdfb3c093b90"
+    "version": "1.0.8",
+    "publishedAt": 1771522595942,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.7",
+      "publishedAt": 1771435176597,
+      "commit": "https://github.com/openclaw/skills/commit/951fe399a0b44808137c902f2b4ccdfb3c093b90"
+    },
     {
       "version": "1.0.6",
       "publishedAt": 1770886675778,
