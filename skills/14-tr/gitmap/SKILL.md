@@ -259,4 +259,3 @@ The skill uses the `gitmap_core` Python package directly for API access.
 ## Related
 
 - GitMap Project: https://github.com/14-TR/gitmap
-- Discord: #gitmap
