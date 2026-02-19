@@ -10,8 +10,9 @@ import sys
 from telethon import TelegramClient
 from telethon.tl.types import Message
 
-SESSION_PATH = os.path.expanduser("~/.openclaw/workspace/skills/telegram-history/session/user")
-API_ID_PATH = os.path.expanduser("~/.openclaw/workspace/skills/telegram-history/api_credentials.json")
+SKILL_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SESSION_PATH = os.path.join(SKILL_DIR, "session", "user")
+API_ID_PATH = os.path.join(SKILL_DIR, "api_credentials.json")
 
 
 def load_credentials():

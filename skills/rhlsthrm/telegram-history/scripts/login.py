@@ -7,8 +7,9 @@ import sys
 
 from telethon import TelegramClient
 
-SESSION_PATH = os.path.expanduser("~/.openclaw/workspace/skills/telegram-history/session/user")
-CREDS_PATH = os.path.expanduser("~/.openclaw/workspace/skills/telegram-history/api_credentials.json")
+SKILL_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SESSION_PATH = os.path.join(SKILL_DIR, "session", "user")
+CREDS_PATH = os.path.join(SKILL_DIR, "api_credentials.json")
 
 async def main():
     with open(CREDS_PATH) as f:
@@ -17,38 +18,41 @@ async def main():
     os.makedirs(os.path.dirname(SESSION_PATH), exist_ok=True)
     client = TelegramClient(SESSION_PATH, int(creds["api_id"]), creds["api_hash"])
     
-    if len(sys.argv) == 2 and sys.argv[1] == "check":
+    if len(sys.argv) >= 3 and sys.argv[1] == "check":
+        phone = sys.argv[2]
         await client.connect()
         if await client.is_user_authorized():
             me = await client.get_me()
             print(f"Already logged in as {me.first_name} ({me.phone})")
         else:
             print("Not logged in. Sending code...")
-            await client.send_code_request("+16508238624")
-            print("Code sent! Run: python3 login.py verify <code> <phone_code_hash>")
+            await client.send_code_request(phone)
+            print("Code sent! Run: python3 login.py verify <phone> <code> <phone_code_hash>")
         await client.disconnect()
         return
     
-    if len(sys.argv) == 2 and sys.argv[1] == "send":
+    if len(sys.argv) >= 3 and sys.argv[1] == "send":
+        phone = sys.argv[2]
         await client.connect()
-        result = await client.send_code_request("+16508238624")
+        result = await client.send_code_request(phone)
         print(f"Code sent! phone_code_hash: {result.phone_code_hash}")
-        print(f"Run: python3 login.py verify <code> {result.phone_code_hash}")
+        print(f"Run: python3 login.py verify {phone} <code> {result.phone_code_hash}")
         await client.disconnect()
         return
     
-    if len(sys.argv) >= 4 and sys.argv[1] == "verify":
-        code = sys.argv[2]
-        phone_code_hash = sys.argv[3]
-        password = sys.argv[4] if len(sys.argv) > 4 else None
+    if len(sys.argv) >= 5 and sys.argv[1] == "verify":
+        phone = sys.argv[2]
+        code = sys.argv[3]
+        phone_code_hash = sys.argv[4]
+        password = sys.argv[5] if len(sys.argv) > 5 else None
         await client.connect()
         try:
-            await client.sign_in("+16508238624", code, phone_code_hash=phone_code_hash)
+            await client.sign_in(phone, code, phone_code_hash=phone_code_hash)
         except Exception as e:
             if "Two-steps" in str(e) and password:
                 await client.sign_in(password=password)
             elif "Two-steps" in str(e):
-                print("2FA required. Run: python3 login.py verify <code> <hash> <2fa_password>")
+                print("2FA required. Run: python3 login.py verify <phone> <code> <hash> <2fa_password>")
                 await client.disconnect()
                 return
             else:
@@ -61,8 +65,8 @@ async def main():
         return
     
     print("Usage:")
-    print("  python3 login.py check   - Check if logged in")
-    print("  python3 login.py send    - Send verification code")
-    print("  python3 login.py verify <code> <hash>  - Complete login")
+    print("  python3 login.py send <phone>              - Send verification code")
+    print("  python3 login.py check <phone>             - Check if logged in")
+    print("  python3 login.py verify <phone> <code> <hash> [2fa_password]  - Complete login")
 
 asyncio.run(main())
