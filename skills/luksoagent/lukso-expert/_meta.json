@@ -1,0 +1,11 @@
+{
+  "owner": "luksoagent",
+  "slug": "lukso-expert",
+  "displayName": "Lukso Expert",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1771514073546,
+    "commit": null
+  },
+  "history": []
+}
