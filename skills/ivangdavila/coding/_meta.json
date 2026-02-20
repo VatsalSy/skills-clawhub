@@ -3,11 +3,16 @@
   "slug": "coding",
   "displayName": "Coding",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1771178763598,
-    "commit": "https://github.com/openclaw/skills/commit/c3233992e3fb5800449dfa63ac792bce134092db"
+    "version": "1.0.3",
+    "publishedAt": 1771496638145,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1771178763598,
+      "commit": "https://github.com/openclaw/skills/commit/c3233992e3fb5800449dfa63ac792bce134092db"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1771149671362,

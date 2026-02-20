@@ -9,10 +9,10 @@ Reference only — consult when deciding whether to update SKILL.md.
 - User corrects your choice → add their preference
 - User rejects a suggestion → add to Never
 
-**After pattern (2+ occurrences):**
-- You made same tech choice twice and user accepted
-- User's existing projects use consistent patterns
-- User didn't object to your approach multiple times
+**After repeated explicit feedback (2+ times):**
+- User explicitly accepted your choice twice
+- User stated same preference in multiple conversations
+- User explicitly approved your approach multiple times
 
 ## When NOT to Add
 - Project-specific requirement (not a general preference)
