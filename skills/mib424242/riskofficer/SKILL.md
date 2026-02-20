@@ -1,12 +1,16 @@
 ---
 name: riskofficer
-description: Risk management and portfolio analytics — VaR, Monte Carlo, stress tests, Risk Parity and Calmar optimization. Assess risk, run scenarios, and optimize allocations on virtual portfolios (no real orders).
+description: Risk management and portfolio analytics: VaR, Monte Carlo, stress tests, Risk Parity and Calmar optimization. Run risk assessments, scenarios, and allocation optimization on virtual portfolios; no real broker orders.
 metadata: {"openclaw":{"requires":{"env":["RISK_OFFICER_TOKEN"]},"primaryEnv":"RISK_OFFICER_TOKEN","emoji":"📊","homepage":"https://riskofficer.tech"}}
 ---
 
 ## RiskOfficer Portfolio Management
 
 Connects to the RiskOfficer API to manage investment portfolios and calculate financial risk metrics.
+
+**Required:** One environment variable — `RISK_OFFICER_TOKEN` (create in RiskOfficer app → Settings → API Keys). No other env vars or binaries are required.
+
+**Source:** Official skill repository: [github.com/mib424242/riskofficer-openclaw-skill](https://github.com/mib424242/riskofficer-openclaw-skill). Product: [riskofficer.tech](https://riskofficer.tech). The token is issued only by the RiskOfficer app; this skill does not collect or store credentials.
 
 ### Scope: analysis and research only (virtual portfolios)
 
