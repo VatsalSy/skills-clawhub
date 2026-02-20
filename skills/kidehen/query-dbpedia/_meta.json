@@ -1,0 +1,11 @@
+{
+  "owner": "kidehen",
+  "slug": "query-dbpedia",
+  "displayName": "Query DBpedia using Natural Language",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1771427898949,
+    "commit": null
+  },
+  "history": []
+}
