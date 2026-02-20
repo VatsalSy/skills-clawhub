@@ -7,6 +7,15 @@
  *   session-state set <key> <value> - Set a field
  *   session-state refresh    - Rediscover state from sessions
  *   session-state clear      - Reset to empty
+ *
+ * SECURITY MANIFEST:
+ *   Environment variables accessed: OPENCLAW_WORKSPACE (optional)
+ *   External endpoints called: none
+ *   Local files read: SESSION_STATE.md
+ *   Local files written: SESSION_STATE.md
+ *
+ * Note: 'refresh' requires the memory_search tool, which is available when
+ * running under OpenClaw exec or when the memory_search environment is set up.
  */
 
 const { readState, writeState, discoverFromSessions } = require('./state');

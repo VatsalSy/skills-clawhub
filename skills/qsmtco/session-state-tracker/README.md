@@ -1,57 +1,102 @@
 # Session State Tracker
 
-A system for persistent session state in OpenClaw. Survive compaction and restarts.
+Robust state persistence for OpenClaw using lifecycle hooks. Survive compaction and restarts automatically.
 
-## Quick Start
+## Features
 
-1. **Install the skill:**
-   ```bash
-   clawhub install qsmtco/session-state-tracker
-   ```
-   Or copy `skills/session-state-tracker/` into your workspace.
+- **Automatic**: Hooks handle state saving and re-anchoring without agent intervention.
+- **Schema-validated**: YAML frontmatter with strict types and atomic writes.
+- **Local-only**: No external network calls.
+- **CLI + Tools**: `session-state` command and `session_state_*` tools for manual control.
+- **Zero config** beyond enabling the skill (optional: session indexing for discovery).
 
-2. **Create initial state** (if none exists):
-   ```bash
-   session-state set project "my-project"
-   session-state set task "Describe current task"
-   session-state set status "active"
-   session-state set next_steps '["Step 1","Step 2"]'
-   ```
+---
 
-3. **Optional: Enable session transcript indexing** for automatic state refresh and discovery.
-   - See "Optional Configuration" below. **Privacy note:** this indexes past conversations into the memory vector store.
-
-4. **Optional: Customize pre-compaction flush** to automatically verify state before compaction.
-   - See "Optional Configuration" below.
-
-5. **Add maintenance rules** to your `AGENTS.md` (see full rules in SKILL.md).
-
-## CLI Commands
+## Installation
 
 ```bash
-session-state show              # Display current state (including Context)
-session-state set <key> <value> # Update a field (e.g., "set task 'New task'")
-session-state refresh           # Rediscover state from session transcripts (requires indexing)
-session-state clear             # Reset to empty state
+clawhub install qsmtco/session-state-tracker
 ```
+
+Or copy the skill to `skills/session-state-tracker/` and enable in `openclaw.json`:
+
+```json
+"skills": { "entries": { "session-state-tracker": { "enabled": true } } }
+```
+
+Then restart the gateway.
+
+---
 
 ## How It Works
 
-The skill provides three tools (`session_state_read`, `session_state_write`, `session_state_discover`) and a CLI. You control when to call them via `AGENTS.md` instructions or manual intervention.
+1. **Session start** → `session-start` hook injects fresh state summary (<24h old) into context.
+2. **During work** → You may manually call `session_state_write` to update state.
+3. **Near compaction** → `pre-compaction` hook automatically saves current state (via quick discovery if needed).
+4. **After compaction** → `post-compaction` hook injects `[State Anchor]` reminder.
+5. **Restart** → Cycle repeats; state persists.
 
-For full automation (state refresh before compaction, re-anchor after), you should:
-- Enable session transcript indexing (optional but recommended)
-- Optionally customize the memory flush prompt
-- Add the "Session State Maintenance" rules to `AGENTS.md`
+No custom `memoryFlush.prompt` or AGENTS.md rules are needed; hooks are fully automatic.
 
-See [SKILL.md](SKILL.md) for complete documentation, including security considerations and troubleshooting.
+---
 
-## Files
+## Tools
 
-- `SESSION_STATE.md` – persistent state file (workspace root)
-- `AGENTS.md` – agent behavior rules (you add the maintenance section)
-- `memory/YYYY-MM-DD.md` – daily notes (complements state)
+- `session_state_read` – read current state
+- `session_state_write` – update fields (auto-timestamps, validates)
+- `session_state_discover` – rebuild state from session transcripts (requires indexing)
 
-## Support
+---
 
-Issues: https://github.com/qsmtco/qrusher/issues
+## CLI
+
+```bash
+session-state show              # Display state
+session-state set <key> <value> # Update a field
+session-state refresh           # Rediscover from sessions
+session-state clear             # Reset
+```
+
+---
+
+## File Format
+
+`SESSION_STATE.md` (workspace root):
+
+```markdown
+---
+project: "my-project"
+task: "Current task"
+status: "active"          # active | blocked | done | in-progress
+last_action: "Latest update"
+next_steps:
+  - "Step 1"
+  - "Step 2"
+updated: "2026-02-14T23:20:00.000Z"
+---
+
+## Context
+Optional freeform notes.
+```
+
+---
+
+## Requirements
+
+- OpenClaw >= 2026.2.0 (for plugin hooks)
+- Node.js 18+
+- Optional: session transcript indexing (`memorySearch.experimental.sessionMemory = true`) for discovery
+
+Runtime dependency: `js-yaml` (installed automatically by clawhub).
+
+---
+
+## Troubleshooting
+
+- Hooks not firing? Verify skill is enabled and `openclaw.plugin.json` is present. Restart gateway.
+- Discovery returns empty? Enable session indexing in config and ensure recent conversation exists.
+- Write failures? Check workspace permissions; writes are atomic with `.tmp` cleanup.
+
+---
+
+**Set it, forget it, focus on the work.**
