@@ -3,7 +3,7 @@
 ## Description
 AI motion graphics video generation service. Send a prompt + URL, receive a branded explainer video.
 
-**Pricing:** $5 per 15 seconds (15s, 30s, 60s, 90s)
+**Pricing:** $5–$20 with volume discounts (15s, 30s, 60s, 90s)
 
 **This is a SERVICE skill** — it calls an external API. No code execution, no local files modified.
 
@@ -128,8 +128,8 @@ GET /v1/jobs/{jobId}
 |----------|-------|
 | 15s | $5 |
 | 30s | $10 |
-| 60s | $20 |
-| 90s | $30 |
+| 60s | $15 |
+| 90s | $20 |
 
 ---
 

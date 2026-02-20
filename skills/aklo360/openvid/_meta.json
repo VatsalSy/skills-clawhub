@@ -3,11 +3,16 @@
   "slug": "openvid",
   "displayName": "OpenVid",
   "latest": {
-    "version": "1.0.6",
-    "publishedAt": 1771534773123,
-    "commit": "https://github.com/openclaw/skills/commit/e56db7155174c822c448243770ba2025c84711be"
+    "version": "1.0.7",
+    "publishedAt": 1771535030896,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.6",
+      "publishedAt": 1771534773123,
+      "commit": "https://github.com/openclaw/skills/commit/e56db7155174c822c448243770ba2025c84711be"
+    },
     {
       "version": "1.0.4",
       "publishedAt": 1771272141169,
