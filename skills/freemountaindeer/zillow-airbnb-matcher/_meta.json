@@ -1,13 +1,18 @@
 {
   "owner": "freemountaindeer",
   "slug": "zillow-airbnb-matcher",
-  "displayName": "Zillow Airbnb Skill",
+  "displayName": "Zillow × Airbnb Matcher",
   "latest": {
-    "version": "1.3.0",
-    "publishedAt": 1771506070669,
-    "commit": "https://github.com/openclaw/skills/commit/ee2c7f39b4c7dc2ea90d15c27c808c2cbd0a716e"
+    "version": "3.1.0",
+    "publishedAt": 1771508002463,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.3.0",
+      "publishedAt": 1771506070669,
+      "commit": "https://github.com/openclaw/skills/commit/ee2c7f39b4c7dc2ea90d15c27c808c2cbd0a716e"
+    },
     {
       "version": "2.0.1",
       "publishedAt": 1771502182360,

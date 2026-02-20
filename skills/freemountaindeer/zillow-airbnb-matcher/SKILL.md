@@ -1,8 +1,21 @@
 ---
 name: zillow-airbnb-matcher
-version: 2.0.0
+version: 3.1.0
 description: Find properties for sale that are already generating Airbnb income. Cross-references Zillow listings with active Airbnb rentals using geo-matching and calculates investment metrics.
 author: em8.io
+metadata:
+  openclaw:
+    requires:
+      bins: [node]
+    install:
+      - id: deps
+        kind: shell
+        command: bash scripts/install.sh
+        label: Install dependencies and configure RapidAPI key
+    env:
+      - name: RAPIDAPI_KEY
+        required: true
+        description: Free RapidAPI key (rapidapi.com — subscribe to airbnb13 + us-property-market1)
 requires:
   - RAPIDAPI_KEY (get free at rapidapi.com — 100+ free requests/month)
 commands:
@@ -29,7 +42,7 @@ This skill finds for-sale properties that **already have an active Airbnb listin
 
 ## How to Use (Chat Commands)
 
-Send your agent any of these messages:
+Send any of these messages:
 
 | Message | What Happens |
 |---------|-------------|
@@ -66,7 +79,7 @@ Send your agent any of these messages:
 4. Test: `airbnb demo` (no API needed)
 5. Live test: `search airbnb 78704`
 
-See GUIDE-FOR-MATTHEW.md for step-by-step setup with screenshots.
+See GUIDE.md for step-by-step setup instructions.
 
 ## Investment Metrics
 

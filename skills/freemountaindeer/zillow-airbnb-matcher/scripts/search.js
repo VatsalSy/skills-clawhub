@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Zillow × Airbnb Matcher — Chat Output Script
- * Designed for OpenClaw agents → Telegram/chat output
+ * Designed for Alfred (OpenClaw) → Telegram/chat output
  *
  * Usage:
  *   node scripts/search.js --demo
@@ -13,19 +13,20 @@
  * OUTPUT: Plain text, emoji-friendly, NO box-drawing chars, safe for Telegram
  */
 
-// Load .env from skill directory or parent directories
+// Load dependencies (run 'npm install' or 'bash scripts/install.sh' first)
 const path = require('path');
 const fs = require('fs');
+const skillDir = path.join(__dirname, '..');
 
-// Load .env from skill directory only
-const envPaths = [
-  path.join(__dirname, '../.env'),
-];
-for (const envPath of envPaths) {
-  if (fs.existsSync(envPath)) {
-    require('dotenv').config({ path: envPath });
-    break;
-  }
+if (!fs.existsSync(path.join(skillDir, 'node_modules', 'dotenv'))) {
+  console.error('❌ Dependencies not installed. Run: bash scripts/install.sh');
+  process.exit(1);
+}
+
+// Load .env ONLY from skill directory
+const envPath = path.join(__dirname, '../.env');
+if (fs.existsSync(envPath)) {
+  require('dotenv').config({ path: envPath });
 }
 
 const yargs = require('yargs/yargs');
@@ -52,10 +53,20 @@ async function main() {
   const isDemo = argv.demo;
   const location = argv.zip || argv.city;
 
-  // No args — print help
+  // No args — check if setup is needed, then show help
   if (!isDemo && !location) {
+    if (!process.env.RAPIDAPI_KEY) {
+      printSetupGuide();
+      process.exit(0);
+    }
     printHelp();
     process.exit(0);
+  }
+
+  // Live search without API key — show setup guide
+  if (!isDemo && !process.env.RAPIDAPI_KEY) {
+    printSetupGuide();
+    process.exit(1);
   }
 
   let zillowListings, airbnbListings;
@@ -299,10 +310,33 @@ function printCommercialReport() {
   console.log('   Multi-family (5+ units): Check unit-level Airbnb activity');
   console.log('   Mixed-use: Great for STR arbitrage (rent unit, sublet as Airbnb)');
   console.log('   Best data source: AirDNA market reports for your target city');
-  console.log('   Commercial property support coming soon');
+  console.log('   Commercial data: CoStar, Crexi, LoopNet for commercial property intel');
 }
 
 // ─── Help --------------------------------------------------───────────────────
+
+function printSetupGuide() {
+  console.log('🏠 Zillow × Airbnb Matcher — Setup Required');
+  console.log('');
+  console.log('You need a free RapidAPI key to search live data.');
+  console.log('Takes 2 minutes, no credit card needed:');
+  console.log('');
+  console.log('1️⃣ Go to https://rapidapi.com and sign up (free)');
+  console.log('2️⃣ Subscribe to these 2 free APIs:');
+  console.log('   • Airbnb: https://rapidapi.com/3b-data-3b-data-default/api/airbnb13');
+  console.log('   • Zillow: https://rapidapi.com/apimaker/api/zillow-com1');
+  console.log('3️⃣ Copy your API key (find it on any API page, top right)');
+  console.log('4️⃣ Add it to your .env file:');
+  console.log(`   echo "RAPIDAPI_KEY=your_key_here" >> ${path.join(__dirname, '../.env')}`);
+  console.log('');
+  console.log('💡 While you set that up, try the demo:');
+  console.log('   "airbnb demo"');
+  console.log('');
+  console.log('💰 Pricing:');
+  console.log('   FREE: 100 Airbnb + 600 Zillow searches/month (~3 searches/day)');
+  console.log('   Basic ($10/mo each): 1,000 Airbnb + 5,000 Zillow searches');
+  console.log('   Each search uses 1 Airbnb + 1 Zillow request = 2 total');
+}
 
 function printHelp() {
   console.log('🏠 Zillow x Airbnb Property Matcher');
