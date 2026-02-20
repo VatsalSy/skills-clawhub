@@ -1,0 +1,102 @@
+{
+  "name": "tixflow",
+  "version": "0.1.0",
+  "description": "AI-powered event assistant for discovering, booking, and coordinating event tickets",
+  "author": "TixFlow Team",
+  "homepage": "https://github.com/seenfinity/tixflow",
+  "platforms": ["telegram", "discord", "whatsapp"],
+  "skills": {
+    "triggers": [
+      "find event",
+      "search concert",
+      "buy ticket",
+      "purchase ticket",
+      "sync calendar",
+      "event notification",
+      "waitlist"
+    ],
+    "commands": [
+      {
+        "name": "findEvents",
+        "description": "Search events based on criteria",
+        "usage": "find events [type] in [location] on [date]"
+      },
+      {
+        "name": "getEventDetails",
+        "description": "Get detailed information about a specific event",
+        "usage": "event details [event_id]"
+      },
+      {
+        "name": "purchaseTicket",
+        "description": "Purchase tickets for an event",
+        "usage": "buy ticket for [event]"
+      },
+      {
+        "name": "syncToCalendar",
+        "description": "Sync event to Google Calendar",
+        "usage": "sync to calendar [event]"
+      },
+      {
+        "name": "addToWaitlist",
+        "description": "Add user to event waitlist",
+        "usage": "add to waitlist for [event]"
+      },
+      {
+        "name": "checkPrices",
+        "description": "Check current prices for an event across platforms",
+        "usage": "check prices for [event]"
+      }
+    ],
+    "tools": [
+      {
+        "name": "google_calendar",
+        "description": "Sync events to Google Calendar",
+        "required_env": ["GOOGLE_CALENDAR_API_KEY"]
+      },
+      {
+        "name": "kyd_protocol",
+        "description": "Interact with KYD Labs ticketing protocol",
+        "required_env": ["KYD_API_KEY"]
+      },
+      {
+        "name": "event_scraper",
+        "description": "Scrape event data from various sources",
+        "required_env": []
+      }
+    ]
+  },
+  "installation": {
+    "instructions": "Run /skills install tixflow to add this skill to your agent",
+    "requirements": [
+      "OpenClaw agent",
+      "Google Calendar API key (for calendar sync)",
+      "KYD Labs API key (optional, for real ticketing)"
+    ]
+  },
+  "configuration": {
+    "default_location": "London",
+    "default_event_types": ["concerts", "theater", "sports"],
+    "notification_preferences": {
+      "price_drops": true,
+      "event_changes": true,
+      "waitlist_updates": true
+    }
+  },
+  "capabilities": {
+    "event_discovery": true,
+    "price_monitoring": true,
+    "calendar_integration": true,
+    "waitlist_management": true,
+    "nft_minting": true
+  },
+  "keywords": [
+    "tixflow",
+    "events",
+    "tickets",
+    "ticketing",
+    "concerts",
+    "calendar",
+    "kyd",
+    "solana"
+  ]
+}
