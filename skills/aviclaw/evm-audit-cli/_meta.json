@@ -1,0 +1,11 @@
+{
+  "owner": "aviclaw",
+  "slug": "evm-audit-cli",
+  "displayName": "Evm Audit Cli",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1771565858785,
+    "commit": null
+  },
+  "history": []
+}
