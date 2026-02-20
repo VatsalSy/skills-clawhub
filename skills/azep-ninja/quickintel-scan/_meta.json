@@ -3,11 +3,16 @@
   "slug": "quickintel-scan",
   "displayName": "Quick Intel Token Security Scanner",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1771340629510,
-    "commit": "https://github.com/openclaw/skills/commit/ae86803b5337f9b754c3d4f3f3d559470c3e507f"
+    "version": "1.0.5",
+    "publishedAt": 1771535796561,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1771340629510,
+      "commit": "https://github.com/openclaw/skills/commit/ae86803b5337f9b754c3d4f3f3d559470c3e507f"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1771281690943,
