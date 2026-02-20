@@ -5,7 +5,10 @@ metadata:
   {
     "openclaw": {
       "emoji": "📄",
-      "requires": { "bins": ["python3"], "pip": ["python-docx", "openpyxl", "python-pptx"] }
+      "requires": { 
+        "bins": ["python3"], 
+        "pip": ["python-docx", "openpyxl", "python-pptx"] 
+      }
     }
   }
 ---
