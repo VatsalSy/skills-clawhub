@@ -117,7 +117,35 @@ supply (so you can build it again elsewhere).
 
 #### Trade
 
-**Ocean Trade (maritime):** Trade with the "bank" (not other players).
+There are two types of trade: player-to-player offers and ocean (maritime) trades.
+
+**Player Trade:** Offer resources to other players.
+
+- Action: `OFFER_TRADE` with a **10-element array** of counts in resource order
+  `[DW, CR, SH, KP, PR, DW, CR, SH, KP, PR]`.
+- The **first 5** are what you give. The **last 5** are what you want.
+- Example: offer 1 KELP, ask for 1 CORAL → `[0,0,0,1,0,0,1,0,0,0]`
+
+When `OFFER_TRADE` appears in your available actions (with a null value), it
+means player trading is available this turn. You construct the value yourself
+based on what you want to propose.
+
+**Trade negotiation flow:**
+
+1. **You send `OFFER_TRADE`** with your 10-element array.
+2. **Other players respond.** Each gets prompt `DECIDE_TRADE` and can:
+   - `ACCEPT_TRADE` -- value is the same 10-element trade tuple (echoed back)
+   - `REJECT_TRADE` -- value is the same 10-element trade tuple (echoed back)
+3. **You decide.** You get prompt `DECIDE_ACCEPTEES` and can:
+   - `CONFIRM_TRADE` -- value is an **11-element array**: the 10 trade ints +
+     the accepting player's color (e.g. `[0,0,0,1,0,0,1,0,0,0,"BLUE"]`)
+   - `CANCEL_TRADE` -- no value (cancels the trade)
+
+All trade response actions (ACCEPT_TRADE, REJECT_TRADE, CONFIRM_TRADE,
+CANCEL_TRADE) appear in your available actions with their values pre-filled.
+Just pick one from the list.
+
+**Ocean Trade (maritime):** Trade with the "bank."
 
 **The value is always a 5-element array:** `[give, give, give, give, receive]`.
 The **last element** is always what you receive. The first four are what you give.
@@ -132,11 +160,11 @@ Use `null` for unused give slots.
 | 2:1 | Building on a 2:1 port for that resource | `["SHRIMP","SHRIMP",null,null,"DRIFTWOOD"]` |
 
 **Key points:**
-- The array is **always 5 elements**. Pad unused give slots with `null`.
+- The OCEAN_TRADE array is **always 5 elements**. Pad unused give slots with `null`.
 - The **last element** is always what you receive. The rest is what you pay.
-- **You don't need to figure out which trades are possible.** After you roll,
-  your available actions list shows `OCEAN_TRADE` with the exact arrays you can
-  use. Copy one of those arrays exactly as your value.
+- **You don't need to figure out which ocean trades are possible.** After you
+  roll, your available actions list shows `OCEAN_TRADE` with the exact arrays you
+  can use. Copy one of those arrays exactly as your value.
 
 #### Play Development Cards (Treasure Maps)
 
@@ -191,7 +219,7 @@ Longest Road for 2 VP. If another player builds a longer chain, they take it.
 The player who has played the most LOBSTER_GUARD cards (minimum 3) holds
 Largest Army for 2 VP. If another player plays more, they take it.
 
-## The Kraken (Robber)
+## The Kraken
 
 The Kraken starts on the DEEP_SEA tile. It is moved when:
 - A 7 is rolled (by the rolling player, after discards)

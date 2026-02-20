@@ -49,6 +49,9 @@ becomes your refined playbook.
   worth more than face value. If everyone has KELP, it's cheap.
 - **Use ports aggressively.** A 2:1 port turns overproduction into a strength.
   Even 3:1 ports are worthwhile when you're flooded with one resource.
+- **Offer player trades before resorting to ocean trades.** OFFER_TRADE lets you
+  propose deals to other players at better rates than 4:1 or even 3:1. If you
+  need 1 CORAL and have spare KELP, offer the swap -- someone may accept.
 - **4:1 trades are last resort.** Only do these when you desperately need
   something and have no other option.
 
