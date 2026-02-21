@@ -151,7 +151,7 @@ Traditional Cloning:
 
 **design_primers** - Design PCR primers
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=design_primers" \
   -F 'params={
@@ -165,7 +165,7 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
 
 **evaluate_primers** - Check primer quality
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=evaluate_primers" \
   -F 'params={
@@ -181,7 +181,7 @@ Returns: Tm, GC%, hairpin ΔG, dimer ΔG, product size.
 
 **run_pcr** - Simulate PCR
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=run_pcr" \
   -F 'params={
@@ -195,7 +195,7 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
 
 **restriction_find_sites** - Find cut sites
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=restriction_find_sites" \
   -F 'params={
@@ -206,7 +206,7 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
 
 **restriction_digest** - Simulate digest
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=restriction_digest" \
   -F 'params={
@@ -218,7 +218,7 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
 
 **restriction_suggest_cutters** - Find unique cutters
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=restriction_suggest_cutters" \
   -F 'params={
@@ -231,7 +231,7 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
 
 **assemble_gibson** - Gibson assembly
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=assemble_gibson" \
   -F 'params={
@@ -242,7 +242,7 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
 
 **assemble_golden_gate** - Golden Gate assembly
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=assemble_golden_gate" \
   -F 'params={
@@ -258,7 +258,7 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
 
 **simulate_gel** - Predict gel pattern
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=simulate_gel" \
   -F 'params={
@@ -344,6 +344,14 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
 | Multiple bands | Non-specific amplification | Increase annealing temp |
 | Gibson fails | Overlaps too short | Use 25+ bp overlaps |
 | Golden Gate low yield | Internal enzyme sites | Remove BsaI sites from parts |
+
+## Related: Plasmid Tools
+
+For editing plasmid files directly (insert/delete/replace sequence, manage annotations, update metadata), see [rules/plasmid.md](plasmid.md). Common combined workflows:
+
+- **Insert gene into vector**: `restriction_find_sites` → `edit_plasmid` (insert_sequence + create_annotation)
+- **Verify construct**: `restriction_digest` + `simulate_gel` using sequence from `parse_plasmid_file`
+- **Design primers for plasmid insert**: `parse_plasmid_file` → `design_primers` with target region
 
 ---
 

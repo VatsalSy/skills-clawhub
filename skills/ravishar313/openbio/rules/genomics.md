@@ -30,9 +30,9 @@ What genomics data do you need?
 │   └─ vep_predict (Variant Effect Predictor)
 │
 ├─ Disease associations?
-│   ├─ GWAS hits for disease → search_gwas_associations_by_trait
-│   ├─ Variants near gene → search_gwas_variants_by_gene
-│   └─ Specific variant → search_gwas_associations_by_variant
+│   ├─ GWAS hits for disease → gwas_search_associations_by_trait
+│   ├─ Variants near gene → gwas_search_variants_by_gene
+│   └─ Specific variant → gwas_search_associations_by_variant
 │
 └─ Expression data?
     └─ search_geo_datasets → fetch_geo_summary → download_geo_series
@@ -140,7 +140,7 @@ NC_000017.11:g.7673803C>G  # Genomic
 
 **lookup_gene** - Find gene by symbol or ID (Ensembl)
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=lookup_gene" \
   -F 'params={"id": "BRCA1", "species": "human"}'
@@ -148,7 +148,7 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
 
 **search_gene** - Search NCBI Gene
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=search_gene" \
   -F 'params={"query": "BRCA1 human", "max_results": 5}'
@@ -156,7 +156,7 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
 
 **batch_gene_lookup** - Multiple genes at once
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=batch_gene_lookup" \
   -F 'params={"gene_ids": ["672", "675", "7157"]}'
@@ -167,13 +167,13 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
 **get_sequence** - Get DNA or protein sequence
 ```bash
 # Genomic DNA
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=get_sequence" \
   -F 'params={"id": "ENSG00000139618", "type": "genomic"}'
 
 # Protein sequence
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=get_sequence" \
   -F 'params={"id": "ENSP00000418960", "type": "protein"}'
@@ -183,7 +183,7 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
 
 **vep_predict** - Variant Effect Predictor
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=vep_predict" \
   -F 'params={"variants": ["13:32936732:C:T", "17:43044295:G:A"], "species": "human"}'
@@ -193,19 +193,19 @@ Returns: gene impact, protein change, consequences, SIFT/PolyPhen scores.
 
 ### GWAS Catalog
 
-**search_gwas_associations_by_trait** - Find variants for disease
+**gwas_search_associations_by_trait** - Find variants for disease
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
-  -F "tool_name=search_gwas_associations_by_trait" \
+  -F "tool_name=gwas_search_associations_by_trait" \
   -F 'params={"trait": "EFO_0000384"}'
 ```
 
-**search_gwas_variants_by_gene** - Variants near a gene
+**gwas_search_variants_by_gene** - Variants near a gene
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
-  -F "tool_name=search_gwas_variants_by_gene" \
+  -F "tool_name=gwas_search_variants_by_gene" \
   -F 'params={"gene": "APOE"}'
 ```
 
@@ -213,7 +213,7 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
 
 **search_geo_datasets** - Find expression datasets
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=search_geo_datasets" \
   -F 'params={"query": "breast cancer RNA-seq human", "max_results": 10}'
@@ -221,7 +221,7 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
 
 **download_geo_series** - Get expression matrix
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=download_geo_series" \
   -F 'params={"accession": "GSE12345"}'
@@ -239,7 +239,7 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
    → get_cross_references for UniProt, RefSeq links
    
 3. Find GWAS associations
-   → search_gwas_variants_by_gene
+   → gwas_search_variants_by_gene
    → Note disease associations
    
 4. Check expression patterns
@@ -261,7 +261,7 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
    → Check SIFT/PolyPhen for missense
    
 4. Cross-reference with GWAS
-   → search_gwas_associations_by_variant
+   → gwas_search_associations_by_variant
    → Any known associations?
 ```
 
@@ -269,7 +269,7 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
 
 ```
 1. Get GWAS hits for disease
-   → search_gwas_associations_by_trait with EFO ID
+   → gwas_search_associations_by_trait with EFO ID
    
 2. Map variants to genes
    → Note reported genes

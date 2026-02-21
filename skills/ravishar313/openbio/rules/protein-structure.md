@@ -101,7 +101,7 @@ Need protein structure?
 
 **fetch_pdb_metadata** - Get structure metadata
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=fetch_pdb_metadata" \
   -F 'params={"pdb_ids": ["1MBO", "3HTB"]}'
@@ -109,7 +109,7 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
 
 **get_best_structures_for_uniprot_id** - Find best PDB for a protein
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=get_best_structures_for_uniprot_id" \
   -F 'params={"uniprot_accession": "P00533"}'
@@ -119,7 +119,7 @@ Returns structures ranked by: resolution, coverage, and ligand presence.
 
 **get_alphafold_prediction** - Get predicted structure
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=get_alphafold_prediction" \
   -F 'params={"uniprot_accession": "P00533"}'
@@ -130,7 +130,7 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
 **run_text_query** - Search by keywords
 ```bash
 # Find kinase structures from human
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=run_text_query" \
   -F 'params={"query": "kinase Homo sapiens", "return_type": "entry", "max_results": 20}'
@@ -138,7 +138,7 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
 
 **run_seq_similarity_query** - Find similar structures by sequence
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=run_seq_similarity_query" \
   -F 'params={"sequence": "MVLSPADKTNVKAAWGKVGAHAGEYGAEALERMFL...", "identity_cutoff": 0.7}'
@@ -150,7 +150,7 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
 
 **get_binding_site_residues** - Get residues in binding site
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=get_binding_site_residues" \
   -F 'params={"pdb_id": "3HTB"}'
@@ -158,7 +158,7 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
 
 **get_interactions** - Get protein-ligand interactions
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=get_interactions" \
   -F 'params={"pdb_id": "3HTB"}'

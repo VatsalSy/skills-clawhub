@@ -130,7 +130,7 @@ What do you need?
 
 **calculate_molecular_properties** - Get drug-like properties
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=calculate_molecular_properties" \
   -F 'params={"smiles": "CC(=O)Oc1ccccc1C(=O)O"}'
@@ -140,7 +140,7 @@ Returns: MW, LogP, TPSA, HBD, HBA, rotatable bonds, etc.
 
 **calculate_sa_score** - Synthetic accessibility
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=calculate_sa_score" \
   -F 'params={"smiles": "CC(=O)Oc1ccccc1C(=O)O"}'
@@ -150,7 +150,7 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
 
 **get_structural_alerts_from_smiles** - Check for PAINS/alerts
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=get_structural_alerts_from_smiles" \
   -F 'params={"smiles": "CC(=O)Oc1ccccc1C(=O)O"}'
@@ -158,7 +158,7 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
 
 **validate_and_canonicalize_smiles** - Validate and standardize
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=validate_and_canonicalize_smiles" \
   -F 'params={"smiles": "c1ccccc1"}'
@@ -168,7 +168,7 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
 
 **search_pubchem** - Search by name
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=search_pubchem" \
   -F 'params={"query": "aspirin"}'
@@ -176,7 +176,7 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
 
 **chembl_similarity_search_by_smiles** - Find similar compounds
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=chembl_similarity_search_by_smiles" \
   -F 'params={"smiles": "CC(=O)Oc1ccccc1C(=O)O", "similarity": 70}'
@@ -188,7 +188,7 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
 
 **calculate_fingerprint_similarity** - Compare two molecules
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=calculate_fingerprint_similarity" \
   -F 'params={"smiles1": "CC(=O)Oc1ccccc1C(=O)O", "smiles2": "CC(=O)Nc1ccc(O)cc1"}'

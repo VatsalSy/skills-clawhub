@@ -1,6 +1,6 @@
 # Pathway Analysis Tools
 
-Analyze biological pathways and protein interactions via KEGG, Reactome, and STRING.
+Analyze biological pathways and protein interactions via KEGG, Reactome, STRING, and g:Profiler.
 
 ## When to Use
 
@@ -10,6 +10,7 @@ Use pathway analysis tools when:
 3. Finding protein-protein interactions
 4. Mapping genes to pathways
 5. Visualizing biological networks
+6. Converting gene IDs between namespaces
 
 ## Decision Tree
 
@@ -22,8 +23,13 @@ What analysis do you need?
 │   └─ Genes in pathway → kegg_link_entries or get_pathway_entities
 │
 ├─ Enrichment analysis (have gene list)?
-│   ├─ GO/KEGG terms → analyze_string_enrichment
+│   ├─ GO terms (BP/MF/CC) → go_enrichment (g:Profiler, recommended)
+│   ├─ GO + KEGG + Reactome + more → go_enrichment with sources param
+│   ├─ GO/KEGG via STRING → analyze_string_enrichment
 │   └─ Reactome pathways → analyze_gene_list
+│
+├─ Gene ID conversion?
+│   └─ Map between Ensembl/HGNC/Entrez/UniProt → convert_gene_ids
 │
 ├─ Protein interactions?
 │   ├─ Get network → get_string_network
@@ -96,7 +102,7 @@ What analysis do you need?
 
 **kegg_search** - Find pathways
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=kegg_search" \
   -F 'params={"database": "pathway", "query": "apoptosis"}'
@@ -104,7 +110,7 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
 
 **kegg_get_entry** - Get pathway details
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=kegg_get_entry" \
   -F 'params={"entry_id": "hsa04210"}'
@@ -112,7 +118,7 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
 
 **kegg_link_entries** - Find genes in pathway
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=kegg_link_entries" \
   -F 'params={"source": "pathway", "target": "hsa", "entry_ids": ["hsa04210"]}'
@@ -122,7 +128,7 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
 
 **analyze_gene_list** - Pathway enrichment
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=analyze_gene_list" \
   -F 'params={
@@ -133,7 +139,7 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
 
 **search_reactome_pathways** - Find pathways
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=search_reactome_pathways" \
   -F 'params={"query": "DNA repair", "species": "Homo sapiens"}'
@@ -143,7 +149,7 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
 
 **get_string_network** - Get interaction network
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=get_string_network" \
   -F 'params={
@@ -155,7 +161,7 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
 
 **analyze_string_enrichment** - GO/KEGG enrichment
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=analyze_string_enrichment" \
   -F 'params={
@@ -166,7 +172,7 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
 
 **get_interaction_partners** - Find interactors
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=get_interaction_partners" \
   -F 'params={
@@ -178,12 +184,50 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
 
 **get_string_network_image** - Visualize network
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=get_string_network_image" \
   -F 'params={
     "identifiers": ["TP53", "BRCA1", "MDM2"],
     "species": 9606
+  }'
+```
+
+### g:Profiler (GO Enrichment & Gene ID Conversion)
+
+**go_enrichment** - GO/pathway enrichment analysis (recommended for GO enrichment)
+```bash
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
+  -H "X-API-Key: $OPENBIO_API_KEY" \
+  -F "tool_name=go_enrichment" \
+  -F 'params={
+    "genes": ["TP53", "BRCA1", "BRCA2", "ATM", "CHEK2", "MDM2", "CDK2", "RB1"],
+    "organism": "hsapiens",
+    "sources": ["GO:BP"]
+  }'
+```
+
+**go_enrichment** - Multi-source enrichment (GO + KEGG + Reactome)
+```bash
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
+  -H "X-API-Key: $OPENBIO_API_KEY" \
+  -F "tool_name=go_enrichment" \
+  -F 'params={
+    "genes": ["TP53", "BRCA1", "BRCA2", "ATM", "CHEK2"],
+    "organism": "hsapiens",
+    "sources": ["GO:BP", "GO:MF", "GO:CC", "KEGG", "REAC"]
+  }'
+```
+
+**convert_gene_ids** - Convert gene IDs between namespaces
+```bash
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
+  -H "X-API-Key: $OPENBIO_API_KEY" \
+  -F "tool_name=convert_gene_ids" \
+  -F 'params={
+    "genes": ["TP53", "BRCA1", "EGFR"],
+    "organism": "hsapiens",
+    "target_namespace": "ENSG"
   }'
 ```
 
@@ -194,17 +238,18 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
 ```
 1. Prepare gene list
    → Use significant DEGs (FDR < 0.05)
-   → Convert to gene symbols
-   
+   → Convert to gene symbols (convert_gene_ids if needed)
+
 2. Run enrichment analysis
-   → analyze_gene_list (Reactome)
-   → analyze_string_enrichment (GO/KEGG)
-   
+   → go_enrichment (GO terms — recommended first step)
+   → analyze_gene_list (Reactome pathways)
+   → analyze_string_enrichment (GO/KEGG via STRING)
+
 3. Interpret results
    → Sort by FDR
    → Group related terms
    → Focus on specific pathways over generic
-   
+
 4. Visualize key pathway
    → get_string_network_image for genes in top pathway
 ```
@@ -252,6 +297,20 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
 | dme | Drosophila melanogaster |
 | sce | Saccharomyces cerevisiae |
 | eco | Escherichia coli |
+
+## g:Profiler Organism Codes
+
+| Code | Organism |
+|------|----------|
+| hsapiens | Human |
+| mmusculus | Mouse |
+| rnorvegicus | Rat |
+| dmelanogaster | Fruit fly |
+| celegans | C. elegans |
+| scerevisiae | Yeast |
+| drerio | Zebrafish |
+
+641 organisms supported — see https://biit.cs.ut.ee/gprofiler/page/organism-list
 
 ## STRING Species Taxonomy IDs
 

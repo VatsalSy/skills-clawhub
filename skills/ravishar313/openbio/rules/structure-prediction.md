@@ -1,278 +1,270 @@
-# Structure Prediction Tools
+# Structure Prediction & Protein Design Tools
 
-Run ML-based structure prediction and protein design via OpenBio API.
+This is a guide for choosing between OpenBio's ML-based prediction and design tools. See individual tool files for detailed documentation.
 
-## When to Use
+## Quick Reference
 
-Use structure prediction tools when:
-1. Validating designed protein sequences (does it fold?)
-2. Predicting protein-protein complex structures
-3. Predicting protein-ligand binding poses
-4. Designing new sequences for a backbone (inverse folding)
-5. Optimizing protein stability
+| Tool | Input | Output | Best For |
+|------|-------|--------|----------|
+| [Boltz](boltz.md) | Sequences/YAML | Structure + affinity | General prediction, binding affinity |
+| [Chai](chai.md) | FASTA w/ entity types | Structure | Multi-modal (protein+ligand+RNA+glycan) |
+| [SimpleFold](simplefold.md) | Sequence | Structure | Quick single-protein prediction |
+| [ProteinMPNN](proteinmpnn.md) | Backbone PDB | Sequences | Fixed-backbone design |
+| [LigandMPNN](ligandmpnn.md) | Complex PDB | Sequences | Ligand-aware design |
+| [ThermoMPNN](thermompnn.md) | Structure PDB | ΔΔG values | Stability prediction |
+| [GeoDock](geodock.md) | Two PDBs | Docked complex | Protein-protein docking |
+| [Pinal](pinal.md) | Text description | Sequences | De novo from language |
+| [BoltzGen](boltzgen.md) | YAML spec | Full pipeline | Comprehensive binder design |
 
-## Decision Tree
+## Master Decision Tree
 
 ```
 What do you need?
 │
-├─ Predict structure from sequence?
-│   ├─ Single protein → submit_boltz_prediction or submit_chai_prediction
-│   ├─ Protein complex → submit_boltz_prediction (multi-chain FASTA)
-│   └─ Protein + ligand → submit_chai_prediction (supports SMILES)
+├─ PREDICT STRUCTURE FROM SEQUENCE?
+│   │
+│   ├─ Single protein only?
+│   │   ├─ Need speed → SimpleFold
+│   │   └─ Need best quality → Boltz
+│   │
+│   ├─ Protein complex (multi-chain)?
+│   │   └─ Boltz or Chai
+│   │
+│   ├─ Protein + small molecule?
+│   │   ├─ Need binding affinity → Boltz-2 (YAML format)
+│   │   └─ Just structure → Chai or Boltz
+│   │
+│   ├─ Protein + RNA/DNA/glycan?
+│   │   └─ Chai (best multi-modal)
+│   │
+│   └─ Protein-protein docking?
+│       ├─ Quick result → GeoDock
+│       └─ Better accuracy → Boltz with multi-chain
 │
-├─ Design sequence for backbone?
-│   ├─ No ligand in binding site → submit_proteinmpnn_prediction
-│   ├─ Ligand present → submit_ligandmpnn_prediction
-│   └─ Need thermostability → submit_thermompnn_prediction
+├─ DESIGN SEQUENCES FOR BACKBONE?
+│   │
+│   ├─ No ligand present?
+│   │   └─ ProteinMPNN
+│   │
+│   ├─ Ligand/cofactor in binding site?
+│   │   └─ LigandMPNN
+│   │
+│   └─ Need thermostability focus?
+│       └─ ThermoMPNN (for analysis) + ProteinMPNN (for design)
 │
-├─ Dock ligand to protein?
-│   └─ submit_geodock_prediction
+├─ PREDICT MUTATION EFFECTS?
+│   └─ ThermoMPNN
 │
-└─ De novo protein design?
-    └─ submit_pinal_text_design or submit_pinal_structure_design
+├─ DE NOVO PROTEIN DESIGN?
+│   │
+│   ├─ From text description?
+│   │   └─ Pinal
+│   │
+│   └─ Need full design pipeline with filtering?
+│       └─ BoltzGen
+│
+└─ DESIGN PROTEIN BINDERS?
+    │
+    ├─ Protein binder to protein target?
+    │   └─ BoltzGen (protein-anything protocol)
+    │
+    ├─ Peptide binder (including cyclic)?
+    │   └─ BoltzGen (peptide-anything protocol)
+    │
+    ├─ Nanobody design?
+    │   └─ BoltzGen (nanobody-anything protocol)
+    │
+    └─ Protein binding small molecule?
+        └─ BoltzGen (protein-small_molecule protocol)
 ```
 
-## Quality Thresholds
-
-### Structure Prediction (Boltz/Chai)
-
-| Metric | Excellent | Good | Poor |
-|--------|-----------|------|------|
-| pTM | > 0.8 | 0.6-0.8 | < 0.6 |
-| ipTM (interface) | > 0.7 | 0.5-0.7 | < 0.5 |
-| pLDDT (per-residue) | > 85 | 70-85 | < 70 |
-
-**Interpretation**:
-- **pTM > 0.8**: High confidence in overall fold
-- **ipTM > 0.7**: Confident protein-protein interface
-- **pLDDT > 85**: Confident local structure
-
-**Rule**: Don't trust predictions with pTM < 0.5. Redesign or get experimental data.
-
-### Sequence Design (ProteinMPNN/LigandMPNN)
-
-| Metric | Good | Acceptable | Investigate |
-|--------|------|------------|-------------|
-| Score (negative log-likelihood) | < 1.5 | 1.5-2.5 | > 2.5 |
-| Sequence recovery | 0.3-0.5 (de novo) | 0.5-0.7 | > 0.8 (too conservative) |
-
-**Rule**: Low diversity (all sequences identical) = temperature too low. Increase to 0.2-0.3.
-
-## Common Mistakes
-
-### Wrong: Not checking prediction confidence
-```
-❌ Using predicted structure without checking pTM/pLDDT
-```
-
-```
-✅ Always check confidence in job results:
-   - pTM < 0.5 → prediction unreliable
-   - pLDDT < 50 in a region → likely disordered
-```
-
-### Wrong: Using ProteinMPNN when ligand is present
-```
-❌ Designing binding site with ProteinMPNN when ligand matters
-```
-**Why wrong**: ProteinMPNN doesn't see the ligand, may design residues that clash.
-
-```
-✅ Use LigandMPNN for ligand-aware design:
-   submit_ligandmpnn_prediction with ligand_chain specified
-```
-
-### Wrong: Temperature too low for exploration
-```
-❌ Using temperature 0.01 for initial design exploration
-```
-**Why wrong**: Generates nearly identical sequences, misses diversity.
-
-```
-✅ Temperature guide:
-   - 0.1: Production (low diversity, high quality)
-   - 0.2: Default (balanced)
-   - 0.3: Exploration (higher diversity)
-```
-
-### Wrong: Not fixing important residues
-```
-❌ Redesigning entire protein including catalytic residues
-```
-
-```
-✅ Use fixed_positions to preserve:
-   - Catalytic residues
-   - Disulfide cysteines
-   - Known functional residues
-   
-   params: {"fixed_positions": "A:1-10,A:50-55"}
-```
-
-## Tools Reference
+## Comparison Tables
 
 ### Structure Prediction
 
-**submit_boltz_prediction** - Predict structure with Boltz
-```bash
-# Get tool info first (always do this!)
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
-  -H "X-API-Key: $OPENBIO_API_KEY" \
-  -F "tool_name=get_boltz_tool_info" \
-  -F 'params={}'
-
-# Submit prediction
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
-  -H "X-API-Key: $OPENBIO_API_KEY" \
-  -F "tool_name=submit_boltz_prediction" \
-  -F 'params={
-    "sequences": [
-      {"type": "protein", "sequence": "MVLSPADKTNVK..."}
-    ],
-    "recycling_steps": 3,
-    "sampling_steps": 200
-  }'
-```
-
-**submit_chai_prediction** - Predict with Chai (supports ligands)
-```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
-  -H "X-API-Key: $OPENBIO_API_KEY" \
-  -F "tool_name=submit_chai_prediction" \
-  -F 'params={
-    "fasta_string": ">protein\nMVLSPADKTNVK...",
-    "ligand_smiles": "CC(=O)Oc1ccccc1C(=O)O"
-  }'
-```
+| Feature | Boltz-2 | Chai-1 | SimpleFold |
+|---------|---------|--------|------------|
+| Single protein | ✓ | ✓ | ✓ |
+| Multi-chain complex | ✓ | ✓ | ✗ |
+| Small molecules | ✓ | ✓ | ✗ |
+| RNA/DNA | ✓ | ✓ | ✗ |
+| Glycans | Limited | ✓ | ✗ |
+| Binding affinity | ✓ | ✗ | ✗ |
+| MSA-free option | ✓ | ✗ | ✓ |
+| Speed | Moderate | Moderate | Fast |
 
 ### Sequence Design
 
-**submit_proteinmpnn_prediction** - Design sequences for backbone
-```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
-  -H "X-API-Key: $OPENBIO_API_KEY" \
-  -F "tool_name=submit_proteinmpnn_prediction" \
-  -F 'params={
-    "pdb_path": "path/to/backbone.pdb",
-    "num_sequences": 8,
-    "temperature": 0.1,
-    "fixed_positions": "A:1-10"
-  }'
-```
+| Feature | ProteinMPNN | LigandMPNN | ThermoMPNN |
+|---------|-------------|------------|------------|
+| Fixed backbone | ✓ | ✓ | ✗ (analysis) |
+| Ligand awareness | ✗ | ✓ | ✗ |
+| Side chain packing | ✗ | ✓ | ✗ |
+| Scoring mode | ✗ | ✓ | ✗ |
+| Stability prediction | ✗ | ✗ | ✓ |
+| Soluble model | ✓ | ✗ | ✗ |
 
-**submit_ligandmpnn_prediction** - Ligand-aware design
-```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
-  -H "X-API-Key: $OPENBIO_API_KEY" \
-  -F "tool_name=submit_ligandmpnn_prediction" \
-  -F 'params={
-    "pdb_path": "path/to/complex.pdb",
-    "num_sequences": 8,
-    "temperature": 0.1,
-    "design_chains": ["A"],
-    "ligand_chain": "X"
-  }'
-```
+### De Novo Design
 
-### Job Management
-
-All prediction tools return a `job_id`. Poll for completion:
-
-```bash
-# Check status
-curl -X GET "https://openbio-api.fly.dev/api/v1/jobs/{job_id}/status" \
-  -H "X-API-Key: $OPENBIO_API_KEY"
-
-# Get results with download URLs
-curl -X GET "https://openbio-api.fly.dev/api/v1/jobs/{job_id}" \
-  -H "X-API-Key: $OPENBIO_API_KEY"
-```
-
-Download files using `output_files_signed_urls` (valid 1 hour).
+| Feature | Pinal | BoltzGen |
+|---------|-------|----------|
+| Text input | ✓ | ✗ |
+| Backbone design | ✗ | ✓ |
+| Inverse folding | ✗ | ✓ |
+| Structure validation | ✗ | ✓ |
+| Filtering/ranking | ✗ | ✓ |
+| Complexity | Low | High |
 
 ## Common Workflows
 
-### Workflow 1: Validate designed binder
+### Workflow 1: Validate Designed Binder
 
 ```
-1. Design binder sequences
-   → submit_proteinmpnn_prediction (8-16 sequences)
-   
-2. Predict complex structure for each
+1. Design with BoltzGen
+   → Get sequences from final_designs/
+
+2. Predict complex structure
    → submit_boltz_prediction with binder + target
-   
-3. Filter by confidence
-   → Keep predictions with ipTM > 0.6
-   
-4. Analyze interfaces
-   → Check pLDDT at interface residues
-   → Discard if interface pLDDT < 70
+
+3. Check confidence
+   → Keep ipTM > 0.6, pLDDT > 0.7
+
+4. Analyze interface
+   → Use structure tools for contacts
 ```
 
-### Workflow 2: Design enzyme with bound substrate
+### Workflow 2: Engineer Enzyme
 
 ```
-1. Start with enzyme-substrate complex PDB
-   
+1. Analyze stability
+   → submit_thermompnn_prediction
+   → Identify stabilizing mutations
+
 2. Design with ligand awareness
    → submit_ligandmpnn_prediction
-   → Set design_chains to enzyme, ligand_chain to substrate
-   
-3. Validate designs
-   → submit_chai_prediction for each designed sequence
-   → Include substrate SMILES
-   
-4. Rank by:
-   → ipTM (binding confidence)
-   → pLDDT at active site
+   → Fix catalytic residues
+   → Keep substrate in context
+
+3. Validate design
+   → submit_boltz_prediction
+   → Check fold maintained (pTM > 0.8)
 ```
 
-### Workflow 3: Improve thermostability
+### Workflow 3: Quick Screening
 
 ```
-1. Get starting structure
-   
-2. Design thermostable variants
-   → submit_thermompnn_prediction
-   → Set target_temperature higher than current Tm
-   
-3. Validate fold is maintained
-   → submit_boltz_prediction for each variant
-   → Confirm pTM > 0.8
+1. Predict structures rapidly
+   → submit_simplefold_prediction for each sequence
+
+2. Filter by confidence
+   → Keep pLDDT > 0.7
+
+3. Detailed analysis for top candidates
+   → submit_boltz_prediction for best ones
 ```
 
-## Tool Comparison
+## Quality Thresholds Summary
 
-| Tool | Input | Output | Best For |
-|------|-------|--------|----------|
-| Boltz | Sequences | Structure | General prediction, complexes |
-| Chai | Sequences + ligand SMILES | Structure | Protein-ligand complexes |
-| GeoDock | Structure + ligand | Docked poses | Binding pose prediction |
-| ProteinMPNN | Backbone PDB | Sequences | Fixed-backbone design |
-| LigandMPNN | Complex PDB | Sequences | Ligand-aware design |
-| ThermoMPNN | Structure | Sequences | Thermostability optimization |
-| Pinal | Text or structure | Sequences + structures | De novo design from description |
+### Structure Prediction
 
-## Troubleshooting
+| Metric | Excellent | Good | Poor |
+|--------|-----------|------|------|
+| pLDDT | > 90 | 70-90 | < 70 |
+| pTM | > 0.8 | 0.5-0.8 | < 0.5 |
+| ipTM (interface) | > 0.7 | 0.5-0.7 | < 0.5 |
 
-| Issue | Cause | Fix |
-|-------|-------|-----|
-| pTM < 0.5 | Unreliable prediction | Sequence may not fold well, redesign |
-| ipTM < 0.4 | Interface not confident | Complex may not form, check sequences |
-| All sequences identical | Temperature too low | Increase to 0.2-0.3 |
-| Job stuck "running" | Large complex | Wait longer, or simplify input |
-| OOM error | Sequence too long | Split into domains |
+### Sequence Design
 
-## Typical Performance
+| Metric | Good | Investigate |
+|--------|------|-------------|
+| Score (ProteinMPNN) | < 1.5 | > 2.5 |
+| Temperature | 0.1-0.2 (conservative) | > 0.3 (diverse) |
 
-| Job Type | Time | Notes |
-|----------|------|-------|
-| Boltz (single chain) | 1-3 min | ~300 residues |
-| Boltz (complex) | 3-10 min | Depends on size |
-| ProteinMPNN (8 seqs) | 30-60 sec | Fast |
-| LigandMPNN (8 seqs) | 1-2 min | Slightly slower |
+### Stability
+
+| ΔΔG | Effect |
+|-----|--------|
+| < -1.0 | Stabilizing |
+| -1.0 to +1.0 | Neutral |
+| > +1.0 | Destabilizing |
+
+## Quality Control Guidelines
+
+### Critical Limitation
+
+**Individual metrics have weak predictive power for binding**. Research shows:
+- Individual metric ROC AUC: 0.64-0.66 (slightly better than random)
+- Metrics are **pre-screening filters**, not affinity predictors
+- **Composite scoring is essential** for meaningful ranking
+
+### Sequential Filtering Pipeline
+
+```python
+# Stage 1: Structural confidence
+designs = designs[designs['pLDDT'] > 0.85]
+
+# Stage 2: Self-consistency (scRMSD)
+designs = designs[designs['scRMSD'] < 2.0]
+
+# Stage 3: Binding quality
+designs = designs[(designs['ipTM'] > 0.5) & (designs['PAE_interaction'] < 10)]
+
+# Stage 4: Expression checks
+designs = designs[designs['cysteine_count'] % 2 == 0]  # Even cysteines
+```
+
+### Campaign Health Assessment
+
+| Pass Rate | Status | Action |
+|-----------|--------|--------|
+| > 15% | Excellent | Proceed to experimental testing |
+| 10-15% | Good | Normal, proceed |
+| 5-10% | Marginal | Review parameters, increase designs |
+| < 5% | Poor | Diagnose issues before scaling |
+
+### Failure Recovery Trees
+
+**Low pLDDT across predictions?**
+```
+├── Check scRMSD distribution
+│   ├── High scRMSD (>2.5Å) → Backbone issue, regenerate
+│   └── Low scRMSD but low pLDDT → Disordered regions
+├── Increase sequence diversity
+│   └── num_seq_per_target: 16-32, temp: 0.2
+└── Try different design approach
+    └── Use SolubleMPNN or different tool
+```
+
+**Low ipTM (interface quality)?**
+```
+├── Review hotspot selection
+│   └── Are hotspots surface-exposed?
+├── Increase binder length
+│   └── More contact area helps
+└── Check interface geometry
+    └── Flat vs concave targets need different approaches
+```
+
+## Rate Limits (All Tools)
+
+- **Per minute**: 2 jobs
+- **Per day**: 10 jobs
+- **Timeout**: 30 min (most), 4 hours (BoltzGen)
+
+## Job Management
+
+All prediction tools return `job_id`. Poll and download:
+
+```bash
+# Check status
+curl -X GET "https://api.openbio.tech/api/v1/jobs/{job_id}/status" \
+  -H "X-API-Key: $OPENBIO_API_KEY"
+
+# Get results with download URLs
+curl -X GET "https://api.openbio.tech/api/v1/jobs/{job_id}" \
+  -H "X-API-Key: $OPENBIO_API_KEY"
+```
 
 ---
 
-**Important**: Always use the `get_*_tool_info` tool first to understand parameters and limits for each prediction tool.
+**See individual tool files for detailed parameters, examples, and troubleshooting.**

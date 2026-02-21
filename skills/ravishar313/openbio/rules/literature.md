@@ -134,7 +134,7 @@ review[pt]                # Publication type
 
 **search_pubmed** - Search with query
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=search_pubmed" \
   -F 'params={"query": "CRISPR gene editing 2024", "max_results": 10}'
@@ -142,7 +142,7 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
 
 **fetch_abstract** - Get specific paper
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=fetch_abstract" \
   -F 'params={"pubmed_id": "36812345"}'
@@ -150,7 +150,7 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
 
 **fetch_full_text** - Get full text (if available via PMC)
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=fetch_full_text" \
   -F 'params={"pubmed_id": "36812345"}'
@@ -160,7 +160,7 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
 
 **biorxiv_search_keywords** - Search bioRxiv
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=biorxiv_search_keywords" \
   -F 'params={"keywords": "protein folding deep learning", "max_results": 10}'
@@ -168,7 +168,7 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
 
 **biorxiv_recent_papers** - Get recent preprints
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=biorxiv_recent_papers" \
   -F 'params={"server": "biorxiv", "days": 7}'
@@ -176,7 +176,7 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
 
 **arxiv_search** - Search arXiv
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=arxiv_search" \
   -F 'params={"query": "machine learning protein structure", "max_results": 10}'
@@ -186,7 +186,7 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
 
 **search_literature** - Search 240M+ works
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=search_literature" \
   -F 'params={"query": "deep learning drug discovery", "per_page": 25}'
@@ -194,7 +194,7 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
 
 **get_paper** - Get paper by DOI
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=get_paper" \
   -F 'params={"identifier": "10.1038/s41586-021-03819-2"}'
@@ -202,7 +202,7 @@ curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
 
 **search_authors** - Find researchers
 ```bash
-curl -X POST "https://openbio-api.fly.dev/api/v1/tools" \
+curl -X POST "https://api.openbio.tech/api/v1/tools" \
   -H "X-API-Key: $OPENBIO_API_KEY" \
   -F "tool_name=search_authors" \
   -F 'params={"query": "Jennifer Doudna"}'
