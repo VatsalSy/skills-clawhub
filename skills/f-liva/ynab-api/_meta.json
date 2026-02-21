@@ -1,0 +1,11 @@
+{
+  "owner": "f-liva",
+  "slug": "ynab-api",
+  "displayName": "Ynab",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1771671608298,
+    "commit": null
+  },
+  "history": []
+}
