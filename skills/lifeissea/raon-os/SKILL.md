@@ -1,5 +1,5 @@
 ---
-name: Raon OS
+name: raon-os
 version: 0.7.10
 description: "AI-powered startup companion for Korean founders. Evaluate business plans, match government funding programs (TIPS/DeepTech/Global TIPS), connect with 3,972+ TIPS-selected startups, get investor recommendations, and integrate with Kakao i OpenBuilder. Features Agentic RAG (HyDE, Multi-Query, CRAG), structured extraction, and Track B financial matching."
 metadata:
@@ -59,7 +59,7 @@ npm install -g openclaw
 openclaw skill install @yeomyeonggeori/raon-os
 
 # 3. API 키 설정 (권장: OpenRouter)
-echo "OPENROUTER_API_KEY=sk-or-..." >> ~/.openclaw/.env
+echo "OPENROUTER_API_KEY=your-openrouter-key" >> ~/.openclaw/.env
 chmod 600 ~/.openclaw/.env  # 보안: 소유자만 읽기/쓰기
 
 # 4. 모델 override (선택) — 기본은 프로바이더별 최적 모델 자동 선택
@@ -75,10 +75,10 @@ python3 scripts/raon_llm.py --detect
 
 ```bash
 # ~/.openclaw/.env 예시
-OPENROUTER_API_KEY=sk-or-v1-xxxx   # 1순위 (추천)
-GEMINI_API_KEY=AIzaSy-xxxx          # 2순위 + 임베딩
-ANTHROPIC_API_KEY=sk-ant-xxxx       # 3순위
-OPENAI_API_KEY=sk-xxxx              # 4순위 + 임베딩
+OPENROUTER_API_KEY=<your-key>   # 1순위 (추천)
+GEMINI_API_KEY=<your-key>          # 2순위 + 임베딩
+ANTHROPIC_API_KEY=<your-key>       # 3순위
+OPENAI_API_KEY=<your-key>              # 4순위 + 임베딩
 RAON_MODEL=google/gemini-2.5-flash  # 모델 강제 지정 (선택)
 RAON_LLM_PROVIDER=openrouter       # 프로바이더 강제 지정 (선택)
 ```
@@ -243,3 +243,23 @@ API가 설정되지 않으면 로컬 LLM + RAG 파이프라인으로 폴백한�
 정부 지원사업별 심사 기준은 references/ 디렉토리 참조:
 - `references/tips-criteria.md` — TIPS 심사 기준
 - `references/gov-programs.md` — 주요 정부 지원사업 목록 및 자격 요건
+
+---
+
+## ⚠️ Security & Data Flow
+
+### Credential Protection
+- 모든 API 키는 `~/.openclaw/.env`에 저장 (`chmod 600` 권장)
+- 패키지에 실제 키값은 **절대 포함되지 않음**
+
+### Data Transmission
+- **기본 모드 (로컬)**: 모든 데이터가 로컬에서 처리됨 (Ollama LLM + 로컬 RAG)
+- **SaaS 모드** (`RAON_API_URL` 설정 시): 평가 요청/PDF 텍스트가 해당 서버로 전송됨
+  - ⚠️ 신뢰할 수 있는 엔드포인트만 설정하세요
+- **Supabase** (`SUPABASE_URL` 설정 시): 피드백/사용량 데이터가 저장됨
+  - `SUPABASE_SERVICE_KEY`는 고권한 키이므로 신중히 설정
+
+### Server Security
+- `/api/keys/*` 엔드포인트는 **localhost 전용** (관리자 API)
+- 외부 노출 시 반드시 nginx 리버스 프록시 + 접근 제어 사용
+- 카카오 웹훅: HTTP 200 반환은 카카오 플랫폼 요구사항 (재시도 방지)
