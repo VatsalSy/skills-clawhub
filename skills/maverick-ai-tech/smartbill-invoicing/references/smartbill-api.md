@@ -25,7 +25,7 @@
 
 - `POST /invoice` - create invoice
 - `GET /series?cif=<CIF>&type=<type>` - list document series
-- `GET /invoice/pdf?cif=<CIF>&seriesName=<series>&number=<number>` - download invoice PDF
+- `GET /invoice/pdf?cif=<CIF>&seriesname=<series>&number=<number>` - download invoice PDF (note: `seriesname` is lowercase — case-sensitive)
 
 ## Payload Shape for `POST /invoice`
 
@@ -92,11 +92,13 @@
 {
   "errorText": "",
   "message": "Factura a fost emisa.",
-  "number": "1234",
+  "number": "0123",
   "series": "SMBT",
   "url": ""
 }
 ```
+
+> **CRITICAL — Invoice number format:** The `number` field returned by SmartBill is a **zero-padded string** (e.g. `"0123"`, not `"123"`). You **must** use the exact string value verbatim in all subsequent API calls (PDF download, etc.). Never strip leading zeros or convert to an integer — doing so will cause the API to return an error or retrieve the wrong document.
 
 **Error (4xx):**
 ```json
@@ -108,6 +110,6 @@
 ## Operational Rules
 
 - Set `client.saveToDb: false` and `products[].saveToDb: false` to avoid side effects.
-- Persist the returned `series` and `number` from the SmartBill response for PDF retrieval.
+- Persist the returned `series` and `number` from the SmartBill response for PDF retrieval. Store `number` as the exact string returned (zero-padded, e.g. `"0123"`); never coerce it to an integer.
 - Log request intent and final SmartBill response for auditability.
 - Respect rate limits: max 30 calls per 10 seconds.

@@ -242,8 +242,8 @@ class SmartBillClient:
         data, headers = self._request(
             method="GET",
             path="/invoice/pdf",
-            query={"cif": cif, "seriesName": series_name, "number": number},
-            accept="application/octet-stream",
+            query={"cif": cif, "seriesname": series_name, "number": number},
+            accept="application/json, application/octet-stream",
             expect_binary=True,
         )
         return data, headers
@@ -425,6 +425,42 @@ def run_get_series(args: argparse.Namespace) -> int:
     return 0
 
 
+def _safe_output_path(output: Path) -> Path:
+    """Resolve and validate the PDF output path.
+
+    Two controls are applied in combination:
+
+    1. Must have a .pdf suffix — prevents overwriting files that can never
+       legitimately be PDFs (/etc/passwd, ~/.ssh/authorized_keys, …).
+    2. Must resolve within the current working directory — prevents a
+       prompt-injected agent from being instructed to write to arbitrary
+       locations such as ~/.ssh/authorized_keys.pdf or /tmp/evil.pdf even
+       when the extension check alone would pass.
+
+    Callers that need a specific output directory should chdir there first,
+    or provide a path relative to their working directory.
+
+    Raises CliError for any path that violates either constraint.
+    """
+    cwd = Path.cwd().resolve()
+    resolved = (cwd / output).resolve()
+
+    try:
+        resolved.relative_to(cwd)
+    except ValueError:
+        raise CliError(
+            f"Output path '{output}' resolves outside the current working "
+            "directory. Provide a relative path beneath the current directory."
+        )
+
+    if resolved.suffix.lower() != ".pdf":
+        raise CliError(
+            f"Output path '{output}' must have a .pdf extension."
+        )
+
+    return resolved
+
+
 def run_download_invoice_pdf(args: argparse.Namespace) -> int:
     config = ClientConfig.from_args(args)
     client = SmartBillClient(config)
@@ -435,15 +471,16 @@ def run_download_invoice_pdf(args: argparse.Namespace) -> int:
         number=args.number,
     )
 
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_bytes(pdf_data)
+    safe_output = _safe_output_path(args.output)
+    safe_output.parent.mkdir(parents=True, exist_ok=True)
+    safe_output.write_bytes(pdf_data)
     print_json(
         {
             "ok": True,
             "cif": cif,
             "seriesName": args.series_name,
             "number": args.number,
-            "outputPath": str(args.output),
+            "outputPath": str(safe_output),
             "sizeBytes": len(pdf_data),
             "rateLimits": extract_rate_limits(headers),
         }

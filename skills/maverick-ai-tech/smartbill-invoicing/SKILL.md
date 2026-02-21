@@ -28,6 +28,8 @@ Use `scripts/smartbill_cli.py` for deterministic SmartBill API calls instead of 
    - `python scripts/smartbill_cli.py create-invoice --input <invoice.json> --allow-final`
 5. Retrieve PDF once series and number are known:
    - `python scripts/smartbill_cli.py download-invoice-pdf --series-name <SERIES> --number <NO> --output <file.pdf>`
+   - **Use the exact `number` string returned by SmartBill (zero-padded, e.g. `"0123"`). Do not strip leading zeros or convert to an integer.**
+   - **`--output` must be a relative path beneath the current working directory and must end in `.pdf` (e.g. `invoices/TST-0123.pdf`). Absolute paths and `../` traversals are rejected.**
 
 ## Required Environment
 
@@ -58,6 +60,7 @@ Optional overrides:
   - Query available SmartBill series via `GET /series`.
 - `download-invoice-pdf`
   - Fetch PDF via `GET /invoice/pdf` using CIF + series + number.
+  - `--output` must be a relative `.pdf` path beneath the current working directory (e.g. `invoices/TST-0123.pdf`). Absolute paths and `../` traversals are rejected. The calling agent should `cd` to the desired output directory first if needed.
 
 ## Payload Format
 
@@ -74,7 +77,7 @@ The CLI unwraps automatically and sends the invoice object directly to the API.
 - Always use `--dry-run` first to confirm the normalized payload before hitting the API.
 - Treat final invoice issuance (`isDraft: false`) as a high-impact action requiring explicit user confirmation.
 - Set `client.saveToDb: false` and `products[].saveToDb: false` to avoid persisting test data.
-- Preserve SmartBill response data (series, number, message) in run logs.
+- Preserve SmartBill response data (series, number, message) in run logs. Store `number` verbatim as returned — it is zero-padded (e.g. `"0123"`) and must never be stripped of leading zeros or cast to an integer.
 - Respect SmartBill rate limits: max 30 calls per 10 seconds.
 
 ## References
