@@ -3,9 +3,15 @@
   "slug": "shopify-bulk-upload",
   "displayName": "Shopify Bulk Upload",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1771663415669,
-    "commit": "https://github.com/openclaw/skills/commit/58e1479e3b48b2211f476db1dd3012f57eba8e47"
+    "version": "1.0.3",
+    "publishedAt": 1771680736451,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1771663415669,
+      "commit": "https://github.com/openclaw/skills/commit/58e1479e3b48b2211f476db1dd3012f57eba8e47"
+    }
+  ]
 }

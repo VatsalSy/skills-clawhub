@@ -1,19 +1,22 @@
 ---
 name: shopify-bulk-upload
-description: Bulk upload products to Shopify stores. Read product data from Excel/CSV, automatically create products, images, variants, prices and inventory. Use cases: (1) Batch list new products (2) Migrate products from other platforms to Shopify (3) Batch update existing product information. REQUIRES PAYMENT: $20 USD to use. Payment via [link to be added] or contact developer.
+description: Bulk upload products to Shopify stores. Read product data from Excel/CSV, automatically create products, images, variants, prices and inventory. Use cases: (1) Batch list new products (2) Migrate products from other platforms to Shopify (3) Batch update existing product information.
 ---
 
 # Shopify Bulk Upload Tool
 
-## ⚠️ PAYMENT REQUIRED - $20 USD
+A powerful tool to bulk upload products to your Shopify store from Excel/CSV files.
 
-**This skill requires payment before use.**
+## Features
 
-- **Price**: $20 USD (one-time payment)
-- **How to pay**: Contact the developer for payment details
-- **After payment**: You will receive the full working script with configuration instructions
-
----
+- ✅ Read Excel/CSV product data
+- ✅ Create products with multiple images
+- ✅ Support product variants (color, size, etc.)
+- ✅ Auto image upload processing
+- ✅ Inventory management
+- ✅ Error logging and retry
+- ✅ Incremental update by SKU
+- ✅ Upload progress display
 
 ## Quick Start
 
@@ -59,23 +62,18 @@ To get Access Token:
 4. Check `write_products`, `write_inventory` permissions
 5. Install app → Get Access Token
 
-### 3. Run Upload Script
+### 3. Install Dependencies
 
 ```bash
 cd scripts
-python shopify_bulk_upload.py
+pip install -r requirements.txt
 ```
 
-## Script Features
+### 4. Run Upload Script
 
-- ✅ Read Excel/CSV product data
-- ✅ Create products (support multiple images, variants)
-- ✅ Auto process image uploads
-- ✅ Variant management (color, size, etc.)
-- ✅ Inventory management
-- ✅ Error logging
-- ✅ Incremental update (by SKU)
-- ✅ Upload progress display
+```bash
+python shopify_bulk_upload.py
+```
 
 ## Output Results
 
@@ -91,33 +89,23 @@ Edit `scripts/config.py` to customize:
 
 ```python
 CONFIG = {
-    "batch_size": 10,        # Products per batch
-    "retry_count": 3,        # Retry attempts on failure
-    "retry_delay": 2,        # Retry interval (seconds)
-    "image_timeout": 30,     # Image upload timeout
-    "default_status": "active",  # Default status
+    "batch_size": 10,           # Products per batch
+    "retry_count": 3,           # Retry attempts on failure
+    "retry_delay": 2,           # Retry interval (seconds)
+    "image_timeout": 30,       # Image upload timeout (seconds)
+    "default_status": "active" # Default product status
 }
 ```
 
----
+## Documentation
 
-## 📝 Payment Information
+- Shopify Admin API: See [references/shopify-api.md](references/shopify-api.md)
+- Template example: See [assets/products-template.csv](assets/products-template.csv)
 
-**Price**: $20 USD (one-time payment)
+## Requirements
 
-**Payment Methods**:
-- PayPal: [Your PayPal Email]
-- Crypto: [Wallet Address]
-- Alipay/WeChat: [QR Code]
-
-**After payment, contact the developer to receive:**
-- Full working Python script
-- Configuration guide
-- Support for setup issues
-
----
-
-## More Details
-
-- Shopify API docs: See [references/shopify-api.md](references/shopify-api.md)
-- Template example: See [assets/products-template.xlsx](assets/products-template.xlsx)
+- Python 3.8+
+- pandas
+- requests
+- python-dotenv
+- openpyxl
