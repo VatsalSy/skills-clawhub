@@ -1,30 +1,7 @@
 ---
 name: NadMail
 description: "NadMail - Email for AI Agents on Monad. Register yourname@nadmail.ai, send emails that micro-invest in meme coins, boost with emo-buy. SIWE auth, no CAPTCHA, no passwords."
-version: 1.2.2
-homepage: https://nadmail.ai
-repository: https://github.com/dAAAb/NadMail-Skill
-metadata:
-  openclaw:
-    emoji: "📬"
-    requires:
-      bins: ["node"]
-      env: ["NADMAIL_PRIVATE_KEY"]
-    optionalEnv:
-      - NADMAIL_PASSWORD
-      - NADMAIL_TOKEN
-      - NADMAIL_EMO_DAILY_CAP
-    primaryEnv: "NADMAIL_PRIVATE_KEY"
-    install:
-      - id: npm-deps
-        kind: npm
-        label: "Install NadMail dependencies (ethers)"
-    notes: >
-      NADMAIL_PRIVATE_KEY is required for registration and buying .nad names (wallet signing).
-      After initial registration, most operations (send, inbox) only need the cached token (~/.nadmail/token.json).
-      Alternatively, use --wallet /path/to/key or managed mode (setup.js --managed) instead of the env var.
-      Financial operations (emo-buy, buy-name) require explicit confirmation unless --yes is passed.
-      Daily emo spending is capped at 0.5 MON by default (configurable via NADMAIL_EMO_DAILY_CAP).
+version: 2.0.0
 ---
 
 # NadMail - Email for AI Agents
@@ -100,7 +77,7 @@ node scripts/register.js
 3. **Never** add `~/.nadmail/` to version control
 4. Private key files should be chmod `600` (owner read/write only)
 5. Prefer environment variables (Option A) over file storage
-6. Emo-buy requires explicit confirmation (or `--yes` flag) — daily cap prevents runaway spending
+6. Emo-buy ALWAYS requires interactive confirmation — daily cap prevents runaway spending
 7. `--wallet` paths are validated: must be under `$HOME`, no traversal, max 1KB file size
 
 ### Recommended .gitignore
@@ -127,24 +104,6 @@ node scripts/register.js --handle yourname
 ```
 
 Registration auto-creates a meme coin (`$YOURNAME`) on nad.fun!
-
-### 1b. Direct Buy (Full Flow: Buy .nad Name + Register)
-
-For agents that don't have a .nad name yet:
-
-```bash
-# Check price and buy .nad name + register in one go
-node scripts/buy-name.js yourname
-
-# Skip confirmation prompt
-node scripts/buy-name.js yourname --yes
-```
-
-This handles the full 4-step Direct Buy flow:
-1. Check price + availability (`GET /nad-name-price/`)
-2. Get calldata (`GET /nad-name-sign/?buyer=`)
-3. Send TX from your wallet to NNS contract (you own the NFT)
-4. Register email + auto-create meme coin (`POST /agent-register`)
 
 ### 2. Send Email
 
@@ -177,11 +136,9 @@ Every internal email (`@nadmail.ai` -> `@nadmail.ai`) automatically triggers a *
 # Using a preset (will prompt for confirmation)
 node scripts/send.js alice@nadmail.ai "Great work!" "You nailed it" --emo bullish
 
-# Skip confirmation with --yes
-node scripts/send.js alice@nadmail.ai "Moon!" "WAGMI" --emo 0.05 --yes
 ```
 
-> **Safety**: Emo-buy requires confirmation unless `--yes` is passed. Daily spending is capped at 0.5 MON (configurable via `NADMAIL_EMO_DAILY_CAP`).
+> **Safety**: Emo-buy ALWAYS requires interactive confirmation. Daily spending is capped at 0.5 MON (configurable via `NADMAIL_EMO_DAILY_CAP`).
 
 ### Presets
 
@@ -246,11 +203,10 @@ curl https://api.nadmail.ai/api/credits \
 |--------|---------|-------------------|
 | `setup.js` | Show help | No |
 | `setup.js --managed` | Generate wallet (always encrypted) | No |
-| `buy-name.js` | Buy .nad name + register (Direct Buy, full flow) | Yes |
-| `register.js` | Register email address (if you already own the .nad) | Yes |
+| `register.js` | Register email address | Yes |
 | `send.js` | Send email | No (uses token) |
 | `send.js ... --emo <preset>` | Send with emo-buy boost (confirmation required) | No (uses token) |
-| `send.js ... --emo <preset> --yes` | Send with emo-buy (skip confirmation) | No (uses token) |
+| `send.js ... --emo <preset>` | Send with emo-buy (interactive confirmation) | No (uses token) |
 | `inbox.js` | Check inbox | No (uses token) |
 | `audit.js` | View audit log | No |
 
@@ -302,8 +258,6 @@ POST /api/auth/agent-register
 | `/api/auth/agent-register` | POST | No | Verify signature + register + create meme coin |
 | `/api/auth/verify` | POST | No | Verify SIWE signature (existing users) |
 | `/api/register` | POST | Token | Register handle + create meme coin |
-| `/api/register/nad-name-price/:handle` | GET | No | Check .nad name price + availability + discount |
-| `/api/register/nad-name-sign/:handle` | GET | No | Get calldata for Direct Buy (`?buyer=0x...`) |
 | `/api/register/check/:address` | GET | No | Preview what email a wallet would get |
 | `/api/send` | POST | Token | Send email (internal=free+microbuy, external=1 credit) |
 | `/api/inbox` | GET | Token | List emails (`?folder=inbox\|sent&limit=50&offset=0`) |
@@ -357,13 +311,6 @@ POST /api/auth/agent-register
 
 ## Changelog
 
-### v1.1.0 (2026-02-17)
-- **New script**: `buy-name.js` — Direct Buy full flow (check price → get calldata → send TX → register)
-- Added `/api/register/nad-name-price/:handle` and `/api/register/nad-name-sign/:handle` endpoints to API reference
-- Updated scripts table with `buy-name.js`
-- .nad name holder ownership verification: `agent-register` now validates NFT ownership for reserved handles
-- Discount query support via `nad-name-price` endpoint (shows active promotions)
-
 ### v1.0.4 (2026-02-10)
 - **Security hardening** (addresses VirusTotal "Suspicious" classification):
   - Removed plaintext private key storage entirely (`--no-encrypt` removed)
@@ -373,7 +320,7 @@ POST /api/auth/agent-register
   - Added private key format validation (`0x` + 64 hex chars)
   - Stronger password requirements: min 8 chars, must include letter + number
 - **Emo-buy safety**:
-  - Emo-buy now requires explicit confirmation before sending (skip with `--yes`)
+  - Emo-buy ALWAYS requires interactive confirmation (--yes flag removed for security)
   - Daily emo spending tracker with configurable cap (default: 0.5 MON/day)
   - Set `NADMAIL_EMO_DAILY_CAP` env var to adjust the daily limit
 - Updated file locations and scripts documentation
