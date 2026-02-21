@@ -1,11 +1,17 @@
 {
   "owner": "f-liva",
   "slug": "fatsecret",
-  "displayName": "FatSecret Nutrition API",
+  "displayName": "Fatsecret",
   "latest": {
-    "version": "1.0.5",
-    "publishedAt": 1771496711059,
-    "commit": "https://github.com/openclaw/skills/commit/f2d5fb18b11c970b3f68818f290f8c22052a0e34"
+    "version": "1.1.0",
+    "publishedAt": 1771603004728,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.5",
+      "publishedAt": 1771496711059,
+      "commit": "https://github.com/openclaw/skills/commit/f2d5fb18b11c970b3f68818f290f8c22052a0e34"
+    }
+  ]
 }

@@ -5,6 +5,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VENV_PATH="$SCRIPT_DIR/../venv"
 PYTHON_PATH="$VENV_PATH/bin/python3"
 
+# Use persistent config directory (for containers/Docker)
+export FATSECRET_CONFIG_DIR="${FATSECRET_CONFIG_DIR:-/home/node/clawd/config/fatsecret}"
+
 # Activate virtual environment
 source "$VENV_PATH/bin/activate"
 

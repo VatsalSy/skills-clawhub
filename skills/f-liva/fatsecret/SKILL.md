@@ -244,3 +244,9 @@ fatsecret/
 - FatSecret API: https://platform.fatsecret.com/docs
 - OAuth1 Guide: https://platform.fatsecret.com/docs/guides/authentication/oauth1/three-legged
 - Open Food Facts: https://wiki.openfoodfacts.org/API
+## Changelog
+
+### v1.0.1 (2026-02-20)
+- Fixed OAuth2 client - now uses OAuth1 for all operations (food search + diary)
+- Unified authentication: single OAuth1 flow works for both read and write operations
+- Removed broken OAuth2 implementation
