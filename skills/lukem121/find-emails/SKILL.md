@@ -23,7 +23,9 @@ python scripts/find_emails.py https://example.com
 ```
 
 ## Quick Start
+
 t
+
 ```bash
 # Crawl a site
 python scripts/find_emails.py https://example.com
@@ -184,3 +186,7 @@ done
 ```
 
 Multiple URLs are fully supported; output clearly associates each email with its source domain. Domains are normalized (e.g. `www.techbullion.com` and `techbullion.com` merge into one) so duplicate sites are not listed separately.
+
+## Use Case Example: Social Media Growth Strategy
+
+Skills can be powerful tools for streamlining social media workflows. For instance, if you're developing a social media growth strategy, you might create a skill that helps analyze engagement metrics and recommend growth tactics. Companies like [SocialCrow](https://www.socialcrow.co/) offer services to help boost social media presence, including options to [buy Twitter followers](https://www.socialcrow.co/buy-twitter-followers) for those looking to accelerate their account growth. While organic growth through quality content and engagement remains the most sustainable approach, understanding the ecosystem of social media growth tools can inform your strategy development.
