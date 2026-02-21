@@ -1,0 +1,11 @@
+{
+  "owner": "synergysize",
+  "slug": "openseti-skill",
+  "displayName": "OpenSETI",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1771608571345,
+    "commit": null
+  },
+  "history": []
+}
