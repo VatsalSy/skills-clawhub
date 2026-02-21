@@ -1,4 +1,4 @@
-openapi: 3.1.0
+openAPI: 3.1.0
 info:
   title: Humanod API
   description: API for AI agents to hire humans for physical tasks.
@@ -10,6 +10,14 @@ paths:
     post:
       operationId: createTask
       summary: Create a new task (Rent a human)
+      security:
+        - BearerAuth: []
+      parameters:
+      - name: api_key
+        in: query
+        required: false
+        schema:
+            type: string
       requestBody:
         required: true
         content:
@@ -23,9 +31,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TaskResponse'
+  /api/developer/my-tasks:
     get:
       operationId: listTasks
       summary: List my tasks
+      security:
+        - BearerAuth: []
+      parameters:
+      - name: api_key
+        in: query
+        required: false
+        schema:
+            type: string
       responses:
         "200":
           description: List of tasks
@@ -34,18 +51,25 @@ paths:
               schema:
                 type: object
                 properties:
-                    tasks:
-                        type: array
-                        items:
-                            $ref: '#/components/schemas/TaskResponse'
+                  tasks:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TaskResponse'
   /api/tasks/{id}:
     get:
       operationId: getTaskStatus
       summary: Get the status of a specific task
+      security:
+        - BearerAuth: []
       parameters:
       - name: id
         in: path
         required: true
+        schema:
+            type: string
+      - name: api_key
+        in: query
+        required: false
         schema:
             type: string
       responses:
@@ -58,10 +82,17 @@ paths:
     patch:
       operationId: updateTask
       summary: Update a task
+      security:
+        - BearerAuth: []
       parameters:
       - name: id
         in: path
         required: true
+        schema:
+            type: string
+      - name: api_key
+        in: query
+        required: false
         schema:
             type: string
       requestBody:
@@ -86,10 +117,17 @@ paths:
     get:
       operationId: getTaskApplications
       summary: Get candidates for a task
+      security:
+        - BearerAuth: []
       parameters:
       - name: id
         in: path
         required: true
+        schema:
+            type: string
+      - name: api_key
+        in: query
+        required: false
         schema:
             type: string
       responses:
@@ -98,15 +136,24 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApplicationListResponse'
-  /api/applications/{id}/hire:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ApplicationResponse'
+  /api/applications/{id}/accept:
     post:
-      operationId: hireApplicant
-      summary: Hire a candidate
+      operationId: acceptApplication
+      summary: Accept a candidate
+      security:
+        - BearerAuth: []
       parameters:
       - name: id
         in: path
         required: true
+        schema:
+            type: string
+      - name: api_key
+        in: query
+        required: false
         schema:
             type: string
       responses:
@@ -121,31 +168,22 @@ paths:
                         type: string
                     application_id:
                         type: string
-  /api/tasks/{id}/submissions:
-    get:
-      operationId: getTaskSubmissions
-      summary: Get submissions for a task
+
+  /api/applications/{id}/validate:
+    post:
+      operationId: validateSubmission
+      summary: Validate (approve/reject) a submission
+      security:
+        - BearerAuth: []
       parameters:
       - name: id
         in: path
         required: true
         schema:
             type: string
-      responses:
-        "200":
-          description: List of submissions
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SubmissionListResponse'
-  /api/submissions/{id}/validate:
-    post:
-      operationId: validateSubmission
-      summary: Validate (approve/reject) a submission
-      parameters:
-      - name: id
-        in: path
-        required: true
+      - name: api_key
+        in: query
+        required: false
         schema:
             type: string
       requestBody:
@@ -170,10 +208,17 @@ paths:
     post:
       operationId: cancelTask
       summary: Cancel a task and refund budget
+      security:
+        - BearerAuth: []
       parameters:
       - name: id
         in: path
         required: true
+        schema:
+            type: string
+      - name: api_key
+        in: query
+        required: false
         schema:
             type: string
       responses:
@@ -192,6 +237,14 @@ paths:
     get:
       operationId: getWalletBalance
       summary: Check wallet balance
+      security:
+        - BearerAuth: []
+      parameters:
+      - name: api_key
+        in: query
+        required: false
+        schema:
+            type: string
       responses:
         "200":
           description: Current balance
@@ -226,6 +279,11 @@ components:
         validation_criteria:
             type: string
             description: How the work will be verified (e.g. "Must be clear and focus on the tower")
+        skills_required:
+            type: array
+            items:
+                type: string
+            description: List of required skills (e.g. ["photography", "french"])
     TaskResponse:
       type: object
       properties:
@@ -245,32 +303,20 @@ components:
             type: string
         spots_filled:
             type: integer
-    SubmissionListResponse:
-      type: object
-      properties:
-        submissions:
-          type: array
-          items:
-            type: object
-            properties:
-                id: 
-                    type: string
-                worker_id:
-                    type: string
-                status:
-                    type: string
-                proof_data:
-                    type: object
-                    description: JSON containing proof (image url, gps, etc)
+
     ValidationRequest:
       type: object
-      required: [status]
+      required: [approved]
       properties:
-        status:
-            type: string
-            enum: [approved, rejected]
+        approved:
+            type: boolean
+            description: Set to true to approve and release funds. Set to false to reject/request revision.
         feedback:
             type: string
+            description: Required if approved is false. Feedback for the worker.
+        reject_permanently:
+            type: boolean
+            description: If approved is false, set this to true to permanently reject the application. Defaults to false (request revision).
     WalletBalanceResponse:
       type: object
       properties:
@@ -289,25 +335,34 @@ components:
             description: New description
         title:
             type: string
-    ApplicationListResponse:
+    ApplicationResponse:
       type: object
       properties:
-        applications:
-          type: array
-          items:
+        id: 
+            type: string
+        worker_id:
+            type: string
+        cover_letter:
+            type: string
+        status:
+            type: string
+        worker:
             type: object
-            properties:
-                id: 
-                    type: string
-                worker_id:
-                    type: string
-                cover_letter:
-                    type: string
-                status:
-                    type: string
-                worker:
-                    type: object
-                    description: Worker profile details
+            description: Worker profile details
+        proof_data:
+            type: object
+            description: JSON containing proof
+        proof_documents:
+            type: array
+            items:
+                type: object
+                properties:
+                    file_url:
+                        type: string
+                    file_name:
+                        type: string
+                    file_type:
+                        type: string
   securitySchemes:
     BearerAuth:
       type: http

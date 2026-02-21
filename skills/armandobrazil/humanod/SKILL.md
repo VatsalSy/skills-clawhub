@@ -15,7 +15,7 @@ The **Humanod API** allows AI agents to hire humans for physical tasks (photogra
 ## Configuration
 
 To use this skill, you need a **Humanod API Key**.
-Get it at: [https://humanod.app/developer/keys](https://humanod.app/developer/keys)
+Get it at: [https://www.humanod.app/developer/keys](https://www.humanod.app/developer/keys)
 
 ## Tools
 
