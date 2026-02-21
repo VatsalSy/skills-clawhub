@@ -30,6 +30,8 @@ steps:
       Reply with:
       STATUS: done
     expects: "STATUS: done"      # string the output must contain
+    on_reject:                   # for self (checkpoint) steps
+      reset_to: plan             # reset pipeline to this step on reject
     on_fail:                     # optional failure handling
       retry_step: step-name      # which step to retry
       max_retries: 3
@@ -57,6 +59,7 @@ Steps can use `{{variable}}` placeholders. Built-in variables:
 | `{{build_cmd}}` | From `--var build_cmd=…` |
 | `{{test_cmd}}` | From `--var test_cmd=…` |
 | `{{run_id}}` | The unique run ID |
+| `{{rejection_feedback}}` | Feedback from a rejected checkpoint (when looping back via `on_reject`) |
 
 Custom variables are passed via `--var key=value` flags.
 
@@ -86,7 +89,7 @@ For iterating over a list (e.g., implementing multiple stories):
 The built-in `feature-dev` workflow implements a full development pipeline:
 
 1. **plan** (claude-code) — decompose task into ordered user stories
-2. **review-plan** (self) — human reviews the plan before execution
+2. **review-plan** (self) — human reviews the plan; reject loops back to re-plan with feedback
 3. **implement** (claude-code, loop) — implement each story, verified individually
 4. **verify** (claude-code) — verify each story's acceptance criteria
 5. **test** (claude-code) — run integration/E2E tests
