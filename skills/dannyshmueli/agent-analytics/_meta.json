@@ -1,13 +1,18 @@
 {
   "owner": "dannyshmueli",
   "slug": "agent-analytics",
-  "displayName": "Agent Analytics",
+  "displayName": "Skill",
   "latest": {
-    "version": "2.5.1",
-    "publishedAt": 1771485614822,
-    "commit": "https://github.com/openclaw/skills/commit/6c5a05e06e6bb2cac263dfd3d71443eb3fca17a3"
+    "version": "2.6.0",
+    "publishedAt": 1771599680906,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.5.1",
+      "publishedAt": 1771485614822,
+      "commit": "https://github.com/openclaw/skills/commit/6c5a05e06e6bb2cac263dfd3d71443eb3fca17a3"
+    },
     {
       "version": "2.4.0",
       "publishedAt": 1771452977950,
