@@ -1,0 +1,11 @@
+{
+  "owner": "felipeoff",
+  "slug": "stripe-cli-skill",
+  "displayName": "Stripe Cli",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1771666660650,
+    "commit": null
+  },
+  "history": []
+}
