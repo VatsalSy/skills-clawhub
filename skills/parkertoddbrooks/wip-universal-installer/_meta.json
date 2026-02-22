@@ -3,9 +3,15 @@
   "slug": "wip-universal-installer",
   "displayName": "Wip Universal Installer",
   "latest": {
-    "version": "2.1.1",
-    "publishedAt": 1771698245387,
-    "commit": "https://github.com/openclaw/skills/commit/7b3439f348ddfcd2214d9065913f2534f0c46a1d"
+    "version": "2.1.5",
+    "publishedAt": 1771699091505,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "2.1.1",
+      "publishedAt": 1771698245387,
+      "commit": "https://github.com/openclaw/skills/commit/7b3439f348ddfcd2214d9065913f2534f0c46a1d"
+    }
+  ]
 }

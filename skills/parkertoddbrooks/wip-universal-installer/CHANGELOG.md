@@ -2,6 +2,26 @@
 
 
 
+
+
+
+
+## 2.1.5 (2026-02-21)
+
+Update description to reflect Universal Interface spec purpose
+
+## 2.1.4 (2026-02-21)
+
+Add one-liner to README: what it does and teaches your AI too
+
+## 2.1.3 (2026-02-21)
+
+Fix npm bin entry: rename install.mjs to install.js so npx wip-install works globally
+
+## 2.1.2 (2026-02-21)
+
+Move detailed content to REFERENCE.md. README keeps Problem, Karpathy, Install prompt.
+
 ## 2.1.1 (2026-02-21)
 
 Add Universal Interface badges, agent-driven install prompt, fix description
