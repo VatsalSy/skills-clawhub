@@ -80,4 +80,3 @@ Common arXiv categories:
 - arXiv is free and open
 - Papers are preprints - may not be peer-reviewed
 - Great for staying current with research
-- Perfect for Protocol SIM-PI-01 investigation

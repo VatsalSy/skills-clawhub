@@ -6,6 +6,7 @@ Search and retrieve papers from arXiv.org for research purposes.
 
 import sys
 import os
+import re
 
 # Try to import arxiv
 try:
@@ -15,6 +16,23 @@ except ImportError as e:
     print(f"Error: arxiv module not installed or import failed: {e}")
     print("Run: pip install arxiv")
     sys.exit(1)
+
+
+# Valid arXiv ID pattern (e.g., 2310.12345, hep-th/9901001)
+ARXIV_ID_PATTERN = re.compile(r'^[a-z\-]+/\d{7}$|^\d{4}\.\d{4,5}(v\d+)?$')
+
+
+def is_valid_arxiv_id(arxiv_id):
+    """Validate arXiv ID to prevent path traversal and injection attacks"""
+    # Check for path traversal attempts
+    if ".." in arxiv_id or "/" in arxiv_id and not "/" in arxiv_id.replace("hep-th/", "").replace("math-", ""):
+        return False
+    
+    # Validate format
+    if not ARXIV_ID_PATTERN.match(arxiv_id):
+        return False
+    
+    return True
 
 
 def search_papers(query, max_results=5, categories=None):
@@ -51,16 +69,18 @@ def search_papers(query, max_results=5, categories=None):
 def download_paper(arxiv_id, download_dir=None):
     """Download a paper by arXiv ID"""
     if download_dir is None:
-        download_dir = os.path.expanduser("~/Downloads")
+        download_dir = os.path.join(os.path.expanduser("~"), "Downloads", "arxiv")
+    
+    os.makedirs(download_dir, exist_ok=True)
     
     client = Client()
     search_obj = Search(id_list=[arxiv_id])
     
     paper = next(client.results(search_obj))
     
-    # Download to specified directory
-    downloaded = paper.download(dirpath=download_dir)
-    return str(downloaded)
+    # Download PDF to specified directory
+    path = paper.download_pdf(dirpath=download_dir, filename=f"{arxiv_id}.pdf")
+    return str(path)
 
 
 def main():
@@ -107,6 +127,13 @@ def main():
             sys.exit(1)
         
         arxiv_id = sys.argv[2]
+        
+        # Validate arXiv ID for security
+        if not is_valid_arxiv_id(arxiv_id):
+            print(f"Error: Invalid arXiv ID format: {arxiv_id}", file=sys.stderr)
+            print("Expected format: YYYY.NNNNN or CATEGORY/NNNNNNN", file=sys.stderr)
+            sys.exit(1)
+        
         path = download_paper(arxiv_id)
         print(f"Downloaded to: {path}")
     
