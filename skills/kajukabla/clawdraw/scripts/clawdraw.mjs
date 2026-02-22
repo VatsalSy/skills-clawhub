@@ -3,6 +3,7 @@
  * ClawDraw CLI — OpenClaw skill entry point.
  *
  * Usage:
+ *   clawdraw setup [name]               Create agent + save API key (first-time setup)
  *   clawdraw create <name>              Create agent, get API key
  *   clawdraw auth                       Exchange API key for JWT (cached)
  *   clawdraw status                     Show connection info + INQ balance
@@ -15,6 +16,7 @@
  *   clawdraw list                       List all primitives
  *   clawdraw info <name>                Show primitive parameters
  *   clawdraw scan [--cx N] [--cy N]     Scan nearby canvas for existing strokes
+ *   clawdraw look [--cx N] [--cy N] [--radius N]  Capture canvas screenshot as PNG
  *   clawdraw find-space [--mode empty|adjacent]  Find a spot on the canvas to draw
  *   clawdraw nearby [--x N] [--y N] [--radius N]  Analyze strokes near a point
  *   clawdraw link                       Generate a link code to connect web account
@@ -36,19 +38,27 @@
  *   clawdraw <behavior> [--args]         Run a collaborator behavior (extend, branch, contour, etc.)
  */
 
+// @security-manifest
+// env: CLAWDRAW_API_KEY
+// endpoints: api.clawdraw.ai (HTTPS), relay.clawdraw.ai (WSS)
+// files: ~/.clawdraw/token.json, ~/.clawdraw/state.json, ~/.clawdraw/apikey.json
+// exec: none
+
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { getToken, createAgent, getAgentInfo } from './auth.mjs';
+import { getToken, createAgent, getAgentInfo, writeApiKey, readApiKey } from './auth.mjs';
 import { connect, drawAndTrack, addWaypoint, getWaypointUrl, deleteStroke, deleteWaypoint, disconnect } from './connection.mjs';
 import { parseSymmetryMode, applySymmetry } from './symmetry.mjs';
 import { getPrimitive, listPrimitives, getPrimitiveInfo, executePrimitive } from '../primitives/index.mjs';
 import { setNearbyCache } from '../primitives/collaborator.mjs';
 import { makeStroke } from '../primitives/helpers.mjs';
 import { parseSvgPath, parseSvgPathMulti } from '../lib/svg-parse.mjs';
-import { traceImage } from '../lib/image-trace.mjs';
+import { traceImage, analyzeRegions } from '../lib/image-trace.mjs';
+import { getTilesForBounds, fetchTiles, compositeAndCrop } from './snapshot.mjs';
 import { lookup } from 'node:dns/promises';
 import sharp from 'sharp';
+import { cmdRoam } from './roam.mjs';
 
 const RELAY_HTTP_URL = 'https://relay.clawdraw.ai';
 const LOGIC_HTTP_URL = 'https://api.clawdraw.ai';
@@ -188,6 +198,76 @@ async function cmdCreate(name) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Setup — first-time onboarding for npm users
+// ---------------------------------------------------------------------------
+
+const SETUP_ADJECTIVES = [
+  'bold', 'swift', 'quiet', 'wild', 'deep', 'warm', 'cool', 'bright',
+  'soft', 'sharp', 'calm', 'keen', 'pale', 'dark', 'pure', 'raw',
+];
+const SETUP_NOUNS = [
+  'bloom', 'wave', 'spark', 'drift', 'glow', 'flow', 'pulse', 'ripple',
+  'frost', 'ember', 'breeze', 'shade', 'stone', 'root', 'mist', 'tide',
+];
+
+async function cmdSetup(providedName) {
+  // Check if already set up via env var
+  const existingKey = process.env.CLAWDRAW_API_KEY;
+  if (existingKey) {
+    console.log('CLAWDRAW_API_KEY is already set in your environment.');
+    console.log('Run `clawdraw status` to check your agent info.');
+    process.exit(0);
+  }
+
+  // Check for existing saved key file
+  if (readApiKey()) {
+    console.log('Already set up! API key found in ~/.clawdraw/');
+    console.log('Run `clawdraw status` to check your agent info.');
+    process.exit(0);
+  }
+
+  // Generate or validate name
+  let name = providedName;
+  if (!name) {
+    const adj = SETUP_ADJECTIVES[Math.floor(Math.random() * SETUP_ADJECTIVES.length)];
+    const noun = SETUP_NOUNS[Math.floor(Math.random() * SETUP_NOUNS.length)];
+    name = `${adj}_${noun}`;
+  }
+
+  // Validate name format (server requires 1-32 alphanumeric/underscore)
+  if (!/^[a-zA-Z0-9_]{1,32}$/.test(name)) {
+    console.error('Error: Name must be 1-32 characters, alphanumeric and underscores only.');
+    console.error(`  Got: "${name}"`);
+    console.error('  Examples: my_artist, claude_bot, agent_42');
+    process.exit(1);
+  }
+
+  console.log(`Creating agent "${name}"...`);
+
+  try {
+    const result = await createAgent(name);
+    // Save API key to file
+    writeApiKey(result.apiKey, result.agentId, result.name);
+    console.log('');
+    console.log('Agent created and configured!');
+    console.log('');
+    console.log(`  Name:     ${result.name}`);
+    console.log(`  Agent ID: ${result.agentId}`);
+    console.log(`  API Key:  saved to ~/.clawdraw/apikey.json`);
+
+    // Auto-authenticate
+    const token = await getToken(result.apiKey);
+    const info = await getAgentInfo(token);
+    console.log(`  INQ:      ${info.inqBalance !== undefined ? info.inqBalance : 'unknown'}`);
+    console.log('');
+    console.log('Ready to draw! Try: clawdraw find-space --mode empty');
+  } catch (err) {
+    console.error('Error:', err.message);
+    process.exit(1);
+  }
+}
+
 async function cmdAuth() {
   try {
     const token = await getToken(CLAWDRAW_API_KEY);
@@ -290,7 +370,8 @@ async function cmdStroke(args) {
   try {
     const token = await getToken(CLAWDRAW_API_KEY);
     const ws = await connect(token);
-    const result = await drawAndTrack(ws, strokes, { name: 'Custom strokes' });
+    const zoom = args.zoom !== undefined ? Number(args.zoom) : undefined;
+    const result = await drawAndTrack(ws, strokes, { zoom, name: 'Custom strokes', skipWaypoint: !!args['no-waypoint'] });
     markCustomAlgorithmUsed();
     console.log(`Sent ${result.strokesAcked}/${result.strokesSent} stroke(s) accepted.`);
     if (result.rejected > 0) {
@@ -326,6 +407,8 @@ async function cmdDraw(primitiveName, args) {
     process.exit(1);
   }
 
+  const token = await getToken(CLAWDRAW_API_KEY);
+
   let strokes;
   try {
     strokes = executePrimitive(primitiveName, args);
@@ -340,11 +423,11 @@ async function cmdDraw(primitiveName, args) {
   }
 
   try {
-    const token = await getToken(CLAWDRAW_API_KEY);
     const ws = await connect(token);
     const cx = args.cx !== undefined ? Number(args.cx) : undefined;
     const cy = args.cy !== undefined ? Number(args.cy) : undefined;
-    const result = await drawAndTrack(ws, strokes, { cx, cy, name: primitiveName });
+    const zoom = args.zoom !== undefined ? Number(args.zoom) : undefined;
+    const result = await drawAndTrack(ws, strokes, { cx, cy, zoom, name: primitiveName, skipWaypoint: !!args['no-waypoint'] });
     console.log(`Drew ${primitiveName}: ${result.strokesAcked}/${result.strokesSent} stroke(s) accepted.`);
     if (result.rejected > 0) {
       console.log(`  ${result.rejected} batch(es) rejected: ${result.errors.join(', ')}`);
@@ -400,6 +483,47 @@ async function cmdCompose(args) {
       } catch (err) {
         console.error(`Error generating ${prim.name}:`, err.message);
       }
+    } else if (prim.type === 'template') {
+      // Lazy-load shapes.json on first template encountered
+      if (!cmdCompose._shapesCache) {
+        const shapesPath = new URL('../templates/shapes.json', import.meta.url).pathname;
+        try {
+          cmdCompose._shapesCache = JSON.parse(fs.readFileSync(shapesPath, 'utf8'));
+        } catch (err) {
+          console.error('Failed to load template library:', err.message);
+          continue;
+        }
+      }
+      const t = cmdCompose._shapesCache.templates[prim.name];
+      if (!t) {
+        console.error(`Template "${prim.name}" not found.`);
+        continue;
+      }
+      const tArgs = prim.args || {};
+      const scale = tArgs.scale ?? 0.5;
+      const color = tArgs.color || '#000000';
+      const size = tArgs.size ?? 10;
+      const rotation = tArgs.rotation ?? 0;
+      const opacity = tArgs.opacity ?? 1;
+
+      for (const pathD of t.paths) {
+        const subpaths = parseSvgPathMulti(pathD, { scale, translate: { x: 0, y: 0 } });
+        for (const points of subpaths) {
+          if (points.length < 2) continue;
+          if (rotation !== 0) {
+            const rad = rotation * Math.PI / 180;
+            const cos = Math.cos(rad);
+            const sin = Math.sin(rad);
+            for (const p of points) {
+              const dx = p.x;
+              const dy = p.y;
+              p.x = dx * cos - dy * sin;
+              p.y = dx * sin + dy * cos;
+            }
+          }
+          allStrokes.push(makeStroke(points, color, size, opacity, 'flat'));
+        }
+      }
     }
   }
 
@@ -426,7 +550,8 @@ async function cmdCompose(args) {
     const ws = await connect(token);
     const cx = origin.x !== 0 ? origin.x : undefined;
     const cy = origin.y !== 0 ? origin.y : undefined;
-    const result = await drawAndTrack(ws, allStrokes, { cx, cy, name: 'Composition' });
+    const zoom = args.zoom !== undefined ? Number(args.zoom) : undefined;
+    const result = await drawAndTrack(ws, allStrokes, { cx, cy, zoom, name: 'Composition', skipWaypoint: !!args['no-waypoint'] });
 
     // Mark custom if any custom primitives were used
     if (primitives.some(p => p.type === 'custom')) {
@@ -721,6 +846,11 @@ async function cmdLink(code) {
       const err = await res.json().catch(() => ({}));
       if (res.status === 404) {
         throw new Error('Invalid or expired link code. Get a new code at https://clawdraw.ai/?openclaw');
+      }
+      if (res.status === 409) {
+        throw new Error(err.message === 'This agent is already linked to a Google account'
+          ? 'This agent is already linked to a Google account. Each agent can only link once.'
+          : 'This Google account is already linked to another agent. Each Google account can only link to one agent.');
       }
       throw new Error(err.message || `HTTP ${res.status}`);
     }
@@ -1162,9 +1292,16 @@ async function cmdTemplate(args) {
     process.exit(1);
   }
 
+  // atX/atY for stroke generation (default 0); cx/cy for drawAndTrack (undefined = auto-place)
+  let atX = 0, atY = 0;
+  let cx, cy;
+  if (args.at) {
+    [atX, atY] = args.at.split(',').map(Number);
+    cx = atX;
+    cy = atY;
+  }
+
   // Parse options
-  const atStr = args.at || '0,0';
-  const [atX, atY] = atStr.split(',').map(Number);
   const scale = args.scale ?? 0.5;
   const color = args.color || '#000000';
   const size = args.size ?? 10;
@@ -1207,7 +1344,8 @@ async function cmdTemplate(args) {
   try {
     const token = await getToken(CLAWDRAW_API_KEY);
     const ws = await connect(token);
-    const result = await drawAndTrack(ws, strokes, { cx: atX, cy: atY, name: name });
+    const zoom = args.zoom !== undefined ? Number(args.zoom) : undefined;
+    const result = await drawAndTrack(ws, strokes, { cx, cy, zoom, name: name, skipWaypoint: !!args['no-waypoint'] });
     console.log(`Drew template "${name}": ${result.strokesAcked}/${result.strokesSent} stroke(s) accepted.`);
     if (result.rejected > 0) {
       console.log(`  ${result.rejected} batch(es) rejected: ${result.errors.join(', ')}`);
@@ -1285,7 +1423,8 @@ async function cmdCollaborate(behaviorName, args) {
   // Send via WebSocket
   try {
     const ws = await connect(token);
-    const result = await drawAndTrack(ws, strokes, { cx: x, cy: y, name: behaviorName });
+    const zoom = args.zoom !== undefined ? Number(args.zoom) : undefined;
+    const result = await drawAndTrack(ws, strokes, { cx: x, cy: y, zoom, name: behaviorName, skipWaypoint: !!args['no-waypoint'] });
     console.log(`  ${behaviorName}: ${result.strokesAcked}/${result.strokesSent} stroke(s) accepted.`);
     if (result.rejected > 0) {
       console.log(`  ${result.rejected} batch(es) rejected: ${result.errors.join(', ')}`);
@@ -1300,6 +1439,239 @@ async function cmdCollaborate(behaviorName, args) {
     console.error('Error:', err.message);
     process.exit(1);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Look — canvas screenshot without drawing
+// ---------------------------------------------------------------------------
+
+const TILE_CDN_URL = 'https://relay.clawdraw.ai/tiles';
+
+async function cmdLook(args) {
+  const cx = Number(args.cx) || 0;
+  const cy = Number(args.cy) || 0;
+  const radius = Math.max(100, Math.min(3000, Number(args.radius) || 500));
+
+  // Build bounding box from center + radius
+  const bbox = {
+    minX: cx - radius,
+    minY: cy - radius,
+    maxX: cx + radius,
+    maxY: cy + radius,
+  };
+
+  // Map to tile coordinates and fetch from CDN (no auth needed)
+  const grid = getTilesForBounds(bbox);
+  console.log(`Fetching ${grid.tiles.length} tile(s) at (${cx}, ${cy}) radius=${radius}...`);
+  const tileBuffers = await fetchTiles(TILE_CDN_URL, grid.tiles);
+
+  // Composite and crop to PNG
+  const pngBuf = compositeAndCrop(tileBuffers, grid, bbox);
+
+  // Save to temp file
+  const imagePath = path.join(os.tmpdir(), `clawdraw-look-${Date.now()}.png`);
+  fs.writeFileSync(imagePath, pngBuf);
+
+  // Compute pixel dimensions for reporting
+  const UNITS_PER_PX = 4; // 1024 canvas units / 256 tile pixels
+  const pxW = Math.ceil((bbox.maxX - bbox.minX) / UNITS_PER_PX);
+  const pxH = Math.ceil((bbox.maxY - bbox.minY) / UNITS_PER_PX);
+
+  console.log(`Canvas snapshot saved: ${imagePath}`);
+  console.log(`  Area: (${cx - radius}, ${cy - radius}) to (${cx + radius}, ${cy + radius})`);
+  console.log(`  Image: ${pxW}x${pxH} pixels`);
+  console.log('');
+  console.log('Read this file to visually inspect the canvas at this location.');
+}
+
+// ---------------------------------------------------------------------------
+// Freestyle paint mode — mixed-media mosaic using primitives
+// ---------------------------------------------------------------------------
+
+/**
+ * Classify a region into a visual group based on edge density, brightness,
+ * and color variance.
+ */
+function classifyRegion(region) {
+  const { edgeDensity, brightness, colorVariance } = region;
+
+  // highVariance overrides everything
+  if (colorVariance > 0.35) return 'highVariance';
+
+  // textured — moderate edges with color variation
+  if (edgeDensity > 0.15 && edgeDensity <= 0.45 && colorVariance > 0.15) return 'textured';
+
+  // edge-heavy
+  if (edgeDensity > 0.3) {
+    return brightness > 0.5 ? 'focalBright' : 'edgeDark';
+  }
+
+  // smooth
+  return brightness > 0.45 ? 'smoothBright' : 'smoothDark';
+}
+
+/** Candidate primitives for each visual group. */
+const PRIMITIVE_GROUPS = {
+  focalBright:  ['mandala', 'spirograph', 'starburst', 'sacredGeometry', 'star', 'phyllotaxisSpiral'],
+  edgeDark:     ['crossHatch', 'hatchFill', 'flowField'],
+  smoothBright: ['flower', 'phyllotaxisSpiral', 'spiral', 'colorWash'],
+  smoothDark:   ['stipple', 'solidFill', 'hatchFill'],
+  textured:     ['flowField', 'voronoiNoise', 'domainWarping', 'hexGrid'],
+  highVariance: ['voronoiNoise', 'lichenGrowth'],
+};
+
+/** Primitives that use a `radius` parameter. */
+const RADIUS_PRIMS = new Set(['mandala', 'sacredGeometry', 'phyllotaxisSpiral']);
+/** Primitives that use `outerR` / `innerR`. */
+const OUTER_R_PRIMS = new Set(['spirograph', 'star']);
+/** Primitives that use `outerRadius` / `innerRadius`. */
+const OUTER_RADIUS_PRIMS = new Set(['starburst']);
+/** Primitives that use `petalLength` / `petalWidth`. */
+const PETAL_PRIMS = new Set(['flower']);
+/** Primitives that use `endRadius`. */
+const END_RADIUS_PRIMS = new Set(['spiral']);
+/** Primitives that use `size` (hexGrid). */
+const SIZE_PRIMS = new Set(['hexGrid']);
+
+/**
+ * Build primitive-specific arguments for a region cell.
+ */
+function buildPrimitiveArgs(region, primName) {
+  const { cx, cy, cellWidth, cellHeight, color } = region;
+  const fitRadius = Math.min(cellWidth, cellHeight) / 2 * 0.85;
+
+  const args = { cx, cy, color, brushSize: 3 };
+
+  if (RADIUS_PRIMS.has(primName)) {
+    args.radius = fitRadius;
+  } else if (OUTER_R_PRIMS.has(primName)) {
+    args.outerR = fitRadius;
+    args.innerR = fitRadius * 0.4;
+  } else if (OUTER_RADIUS_PRIMS.has(primName)) {
+    args.outerRadius = fitRadius;
+    args.innerRadius = fitRadius * 0.15;
+  } else if (PETAL_PRIMS.has(primName)) {
+    args.petalLength = fitRadius * 0.7;
+    args.petalWidth = fitRadius * 0.3;
+  } else if (END_RADIUS_PRIMS.has(primName)) {
+    args.endRadius = fitRadius;
+  } else if (SIZE_PRIMS.has(primName)) {
+    args.size = fitRadius * 2;
+    args.hexSize = fitRadius * 0.3;
+  } else {
+    // Width/height primitives (fills, flowField, voronoi, etc.)
+    args.width = cellWidth * 0.85;
+    args.height = cellHeight * 0.85;
+  }
+
+  // Cost-control overrides
+  if (primName === 'phyllotaxisSpiral') args.numPoints = 50;
+  if (primName === 'voronoiNoise') args.numCells = 8;
+  if (primName === 'flowField') { args.density = 0.3; args.traceLength = 20; }
+  if (primName === 'lichenGrowth') args.iterations = 3;
+
+  return args;
+}
+
+/**
+ * Generate subtle connector strokes between adjacent cells.
+ */
+function generateConnectors(regions) {
+  const lookup = new Map();
+  for (const r of regions) {
+    lookup.set(`${r.row},${r.col}`, r);
+  }
+
+  const connectors = [];
+  for (const r of regions) {
+    // 30% chance to connect to right neighbor
+    const right = lookup.get(`${r.row},${r.col + 1}`);
+    if (right && Math.random() < 0.3) {
+      const midX = (r.cx + right.cx) / 2;
+      const midY = (r.cy + right.cy) / 2 + (Math.random() - 0.5) * r.cellHeight * 0.3;
+      // Use the darker of the two colors
+      const darkerColor = r.brightness <= right.brightness ? r.color : right.color;
+      connectors.push(makeStroke(
+        [{ x: r.cx, y: r.cy }, { x: midX, y: midY }, { x: right.cx, y: right.cy }],
+        darkerColor,
+        3,
+        0.4,
+        'taper',
+      ));
+    }
+
+    // 30% chance to connect to bottom neighbor
+    const bottom = lookup.get(`${r.row + 1},${r.col}`);
+    if (bottom && Math.random() < 0.3) {
+      const midX = (r.cx + bottom.cx) / 2 + (Math.random() - 0.5) * r.cellWidth * 0.3;
+      const midY = (r.cy + bottom.cy) / 2;
+      const darkerColor = r.brightness <= bottom.brightness ? r.color : bottom.color;
+      connectors.push(makeStroke(
+        [{ x: r.cx, y: r.cy }, { x: midX, y: midY }, { x: bottom.cx, y: bottom.cy }],
+        darkerColor,
+        3,
+        0.4,
+        'taper',
+      ));
+    }
+  }
+
+  return connectors;
+}
+
+/**
+ * Render a freestyle mixed-media mosaic from analyzed regions.
+ * Each region is rendered with a different primitive chosen by its visual
+ * characteristics, with diversity bias to maximize variety.
+ */
+function renderFreestyle(regions, options = {}) {
+  // Sort by brightness ascending (dark background first, bright foreground last)
+  const sorted = [...regions].sort((a, b) => a.brightness - b.brightness);
+
+  const usageCount = new Map();
+  const allStrokes = [];
+
+  for (const region of sorted) {
+    if (region.transparent) continue;
+
+    const group = classifyRegion(region);
+    const candidates = PRIMITIVE_GROUPS[group] || PRIMITIVE_GROUPS.smoothBright;
+
+    // Diversity bias: sort candidates by usage count ascending + random jitter
+    const ranked = candidates
+      .map(name => ({ name, score: (usageCount.get(name) || 0) + Math.random() * 0.5 }))
+      .sort((a, b) => a.score - b.score);
+
+    let primName = ranked[0].name;
+    let args = buildPrimitiveArgs(region, primName);
+    let strokes;
+
+    try {
+      strokes = executePrimitive(primName, args);
+    } catch {
+      // Fallback to colorWash on error
+      try {
+        primName = 'colorWash';
+        args = buildPrimitiveArgs(region, 'colorWash');
+        strokes = executePrimitive('colorWash', args);
+      } catch {
+        continue;
+      }
+    }
+
+    if (strokes && strokes.length > 0) {
+      allStrokes.push(...strokes);
+      usageCount.set(primName, (usageCount.get(primName) || 0) + 1);
+    }
+  }
+
+  // Add connector strokes if total points < 80K
+  const totalPoints = allStrokes.reduce((sum, s) => sum + s.points.length, 0);
+  if (totalPoints < 80000) {
+    allStrokes.push(...generateConnectors(sorted));
+  }
+
+  return allStrokes;
 }
 
 // ---------------------------------------------------------------------------
@@ -1344,7 +1716,7 @@ const MAX_IMAGE_BYTES = 50 * 1024 * 1024; // 50 MB
 
 async function cmdPaint(url, args) {
   if (!url || url.startsWith('--')) {
-    console.error('Usage: clawdraw paint <url> [--mode pointillist|sketch|vangogh|slimemold] [--width N] [--detail N] [--density N] [--cx N] [--cy N] [--dry-run]');
+    console.error('Usage: clawdraw paint <url> [--mode pointillist|sketch|vangogh|slimemold|freestyle] [--width N] [--detail N] [--density N] [--cx N] [--cy N] [--dry-run]');
     process.exit(1);
   }
 
@@ -1370,8 +1742,8 @@ async function cmdPaint(url, args) {
   }
 
   const mode = args.mode || 'vangogh';
-  if (!['pointillist', 'sketch', 'vangogh', 'slimemold'].includes(mode)) {
-    console.error('Error: --mode must be pointillist, sketch, vangogh, or slimemold.');
+  if (!['pointillist', 'sketch', 'vangogh', 'slimemold', 'freestyle'].includes(mode)) {
+    console.error('Error: --mode must be pointillist, sketch, vangogh, slimemold, or freestyle.');
     process.exit(1);
   }
 
@@ -1466,22 +1838,9 @@ async function cmdPaint(url, args) {
   // Authenticate (needed for find-space and drawing)
   const token = await getToken(CLAWDRAW_API_KEY);
 
-  // Auto-position if not specified
-  if (cx === null || cy === null) {
-    try {
-      const spaceRes = await fetch(`${RELAY_HTTP_URL}/api/find-space?mode=empty`, {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
-      if (spaceRes.ok) {
-        const space = await spaceRes.json();
-        cx = space.canvasX;
-        cy = space.canvasY;
-        console.log(`Auto-placed at (${cx}, ${cy})`);
-      }
-    } catch { /* fall through */ }
-    if (cx === null) cx = 0;
-    if (cy === null) cy = 0;
-  }
+  // Convert null → undefined so drawAndTrack handles auto-placement
+  if (cx === null) cx = undefined;
+  if (cy === null) cy = undefined;
 
   // Build pixel data and render strokes
   const pixelData = {
@@ -1496,7 +1855,13 @@ async function cmdPaint(url, args) {
   };
 
   console.log(`Rendering ${mode}...`);
-  const strokes = traceImage(pixelData, { mode, density });
+  let strokes;
+  if (mode === 'freestyle') {
+    const regions = analyzeRegions(pixelData, { density });
+    strokes = renderFreestyle(regions, { density });
+  } else {
+    strokes = traceImage(pixelData, { mode, density });
+  }
 
   // Estimate INQ cost
   const totalPoints = strokes.reduce((sum, s) => sum + s.points.length, 0);
@@ -1515,11 +1880,13 @@ async function cmdPaint(url, args) {
 
   // Connect and draw
   try {
-    const ws = await connect(token, { center: { x: cx, y: cy }, zoom: 0.3 });
+    const zoom = args.zoom !== undefined ? Number(args.zoom) : undefined;
+    const ws = await connect(token, { center: { x: cx, y: cy }, zoom: zoom || 0.3 });
     const result = await drawAndTrack(ws, strokes, {
-      cx, cy, zoom: 0.3,
+      cx, cy, zoom,
       name: `Paint: ${mode}`,
       description: `${mode} rendering — ${strokes.length} strokes`,
+      skipWaypoint: !!args['no-waypoint'],
     });
     console.log(`Painted ${mode}: ${result.strokesAcked}/${result.strokesSent} stroke(s) accepted.`);
     if (result.rejected > 0) {
@@ -1583,6 +1950,10 @@ switch (command) {
     cmdScan(parseArgs(rest));
     break;
 
+  case 'look':
+    cmdLook(parseArgs(rest));
+    break;
+
   case 'find-space':
     cmdFindSpace(parseArgs(rest));
     break;
@@ -1640,6 +2011,14 @@ switch (command) {
     break;
   }
 
+  case 'roam':
+    cmdRoam(parseArgs(rest));
+    break;
+
+  case 'setup':
+    cmdSetup(rest[0]);
+    break;
+
   default:
     // Check if command is a collaborator behavior name
     if (command && COLLABORATOR_NAMES.has(command)) {
@@ -1650,6 +2029,7 @@ switch (command) {
     console.log('ClawDraw — Algorithmic art on an infinite canvas');
     console.log('');
     console.log('Commands:');
+    console.log('  setup [name]                   Create agent + save API key (first-time setup)');
     console.log('  create <name>                  Create agent, get API key');
     console.log('  auth                           Authenticate (exchange API key for JWT)');
     console.log('  status                         Show agent info + INQ balance');
@@ -1659,6 +2039,7 @@ switch (command) {
     console.log('  list                           List available primitives');
     console.log('  info <name>                    Show primitive parameters');
     console.log('  scan [--cx N] [--cy N]         Scan nearby canvas strokes');
+    console.log('  look [--cx N] [--cy N] [--radius N]   Capture a canvas screenshot as PNG');
     console.log('  find-space [--mode empty|adjacent]  Find a spot on the canvas to draw');
     console.log('  nearby [--x N] [--y N] [--radius N]  Analyze strokes near a point');
     console.log('  link                           Generate link code for web account');
@@ -1667,11 +2048,13 @@ switch (command) {
     console.log('  chat --message "..."                       Send a chat message');
     console.log('  erase --ids <id1,id2,...>                   Erase strokes by ID (own strokes only)');
     console.log('  waypoint-delete --id <id>                  Delete a waypoint (own waypoints only)');
-    console.log('  paint <url> [--mode M] [--width N]         Paint an image onto the canvas');
+    console.log('  paint <url> [--mode M] [--width N]         Paint an image onto the canvas (modes: vangogh, pointillist, sketch, slimemold, freestyle)');
     console.log('  template <name> --at X,Y [--scale N]       Draw an SVG template shape');
     console.log('  template --list [--category <cat>]          List available templates');
     console.log('  marker drop --x N --y N --type TYPE        Drop a stigmergic marker');
     console.log('  marker scan --x N --y N --radius N         Scan for nearby markers');
+    console.log('  roam [--blend 0.5] [--speed normal] [--budget 0] [--name "..."]');
+    console.log('                                             Autonomous free-roam mode');
     console.log('');
     console.log('Collaborator behaviors (auto-fetch nearby, transform existing strokes):');
     console.log('  extend, branch, connect, coil, morph, hatchGradient, stitch, bloom,');

@@ -13,12 +13,28 @@
  *   disconnect(ws);
  */
 
+// @security-manifest
+// env: none (receives token from auth.mjs)
+// endpoints: relay.clawdraw.ai (WSS, HTTPS)
+// files: none
+// exec: none
+
 import WebSocket from 'ws';
+import open from 'open';
 import { computeBoundingBox, captureSnapshot } from './snapshot.mjs';
 
 const WS_URL = 'wss://relay.clawdraw.ai/ws';
+const RELAY_HTTP_URL = 'https://relay.clawdraw.ai';
 
-const TILE_CDN_URL = 'https://tiles.clawdraw.ai/tiles';
+/**
+ * Open a URL in the user's default browser. Fire-and-forget.
+ * @param {string} url
+ */
+function openInBrowser(url) {
+  open(url).catch(() => {});  // silently fail in restricted environments
+}
+
+const TILE_CDN_URL = 'https://relay.clawdraw.ai/tiles';
 
 // ---------------------------------------------------------------------------
 // tile.updated listener registry (used by snapshot.mjs)
@@ -92,7 +108,7 @@ export function connect(token, opts = {}) {
 
     ws.on('open', () => {
       // Send initial viewport so the relay knows where we are
-      const viewportMsg = {
+      ws._currentViewport = {
         type: 'viewport.update',
         viewport: {
           center,
@@ -102,12 +118,14 @@ export function connect(token, opts = {}) {
         cursor: center,
         username,
       };
-      ws.send(JSON.stringify(viewportMsg));
+      ws.send(JSON.stringify(ws._currentViewport));
+      ws._clawdrawUsername = username;
+      ws._authToken = token;
 
       // Re-send presence every 30s to prevent 60s eviction timeout
       ws._presenceHeartbeat = setInterval(() => {
         if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify(viewportMsg));
+          ws.send(JSON.stringify(ws._currentViewport));
         }
       }, 30000);
 
@@ -163,8 +181,16 @@ export function connect(token, opts = {}) {
   });
 }
 
-/** Maximum strokes per batch message. */
+/** Default strokes per batch message (used when no adaptive pacing). */
 export const BATCH_SIZE = 100;
+
+/** Ideal batch size for smooth cursor animation on the viewer side. */
+const ANIM_BATCH_SIZE = 2;
+/** Ideal inter-batch delay (ms) for smooth animation. */
+const ANIM_DELAY_MS = 100;
+/** Maximum wall-clock seconds for the entire send. Large stroke counts
+ *  auto-scale batch size upward to stay within this cap. */
+const MAX_DRAW_SECONDS = 20;
 
 /** Max retries per batch on RATE_LIMITED. */
 const BATCH_MAX_RETRIES = 5;
@@ -229,11 +255,16 @@ function waitForBatchResponse(ws) {
  * Always waits for ack/error per batch. On RATE_LIMITED, retries with
  * exponential backoff. On INSUFFICIENT_INQ, stops immediately.
  *
+ * By default, strokes are paced for animated viewing (small batches with
+ * inter-batch delay so the web client's cursor-tracing animation can play).
+ * Large stroke counts auto-scale batch size upward to keep total draw time
+ * within MAX_DRAW_SECONDS (20s).
+ *
  * @param {WebSocket} ws - Connected WebSocket
  * @param {Array} strokes - Array of stroke objects (from helpers.mjs makeStroke)
  * @param {object|number} [optsOrDelay={}] - Options object or legacy delayMs number
- * @param {number} [optsOrDelay.delayMs=50] - Milliseconds between successful batch sends
- * @param {number} [optsOrDelay.batchSize=100] - Max strokes per batch
+ * @param {number} [optsOrDelay.delayMs] - Milliseconds between successful batch sends (auto-computed if omitted)
+ * @param {number} [optsOrDelay.batchSize] - Max strokes per batch (auto-computed if omitted)
  * @param {boolean} [optsOrDelay.legacy=false] - Use single stroke.add per stroke
  * @returns {Promise<SendResult>}
  */
@@ -243,13 +274,39 @@ export async function sendStrokes(ws, strokes, optsOrDelay = {}) {
     ? { delayMs: optsOrDelay }
     : optsOrDelay;
 
-  const delayMs = opts.delayMs ?? 50;
-  const batchSize = opts.batchSize ?? BATCH_SIZE;
   const legacy = opts.legacy ?? false;
+
+  // Auto-compute pacing for animated drawing when not explicitly set.
+  // Ideal: batchSize=2, delay=100ms for smooth cursor animation.
+  // If that would exceed MAX_DRAW_SECONDS, scale batch size up to fit.
+  let batchSize, delayMs;
+  if (opts.batchSize !== undefined || opts.delayMs !== undefined) {
+    // Explicit values — use as-is
+    batchSize = opts.batchSize ?? BATCH_SIZE;
+    delayMs = opts.delayMs ?? 50;
+  } else {
+    // Auto-compute: start with ideal animation pacing
+    const idealBatches = Math.ceil(strokes.length / ANIM_BATCH_SIZE);
+    const idealTimeMs = idealBatches * ANIM_DELAY_MS;
+    const capMs = MAX_DRAW_SECONDS * 1000;
+
+    if (idealTimeMs <= capMs) {
+      // Fits within cap — use ideal pacing
+      batchSize = ANIM_BATCH_SIZE;
+      delayMs = ANIM_DELAY_MS;
+    } else {
+      // Too many strokes — scale up batch size, keep delay constant
+      const maxBatches = Math.floor(capMs / ANIM_DELAY_MS);
+      batchSize = Math.ceil(strokes.length / maxBatches);
+      delayMs = ANIM_DELAY_MS;
+    }
+  }
 
   const result = { sent: 0, acked: 0, rejected: 0, errors: [], strokesSent: 0, strokesAcked: 0 };
 
   if (strokes.length === 0) return result;
+
+  let lastPresenceMs = Date.now();
 
   // Build batches
   const batches = [];
@@ -320,6 +377,14 @@ export async function sendStrokes(ws, strokes, optsOrDelay = {}) {
         console.warn(`[connection] Batch ${bi + 1} timed out (no ack/error in ${BATCH_ACK_TIMEOUT_MS}ms)`);
         accepted = true; // move on
       }
+    }
+
+    // Resend presence every ~10s to keep cursor visible for viewers
+    if (accepted && ws._currentViewport && Date.now() - lastPresenceMs > 10_000) {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(ws._currentViewport));
+      }
+      lastPresenceMs = Date.now();
     }
 
     // Inter-batch pacing (only between successful batches, not after the last)
@@ -457,62 +522,158 @@ export function deleteWaypoint(ws, waypointId) {
  * @returns {string} Shareable URL
  */
 export function getWaypointUrl(waypoint) {
-  return `https://clawdraw.ai/?wp=${waypoint.id}`;
+  return `https://clawdraw.ai/?wp=${waypoint.id}&nomodal=1`;
 }
 
 /**
- * Send strokes with follow link before and waypoint + snapshot after.
+ * Send a chat message over the WebSocket. Fire-and-forget.
+ * @param {WebSocket} ws
+ * @param {string} content
+ */
+function sendChatMessage(ws, content) {
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'chat.send', chatMessage: { content } }));
+  }
+}
+
+/**
+ * Auto-find an empty canvas spot via the relay API.
+ * Returns { x, y } or null on failure.
+ */
+async function autoFindSpace(token) {
+  try {
+    const res = await fetch(`${RELAY_HTTP_URL}/api/find-space?mode=empty`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    if (res.ok) {
+      const space = await res.json();
+      return { x: space.canvasX, y: space.canvasY };
+    }
+  } catch { /* fall through */ }
+  return null;
+}
+
+/**
+ * Create a waypoint, announce in chat, open browser, send strokes, then snapshot.
  *
- * Wraps sendStrokes() so every drawing command gets:
- *   1. A "Follow along" link printed BEFORE strokes are sent
- *   2. A persistent waypoint dropped AFTER strokes succeed
- *   3. A snapshot captured for visual confirmation
+ * Flow:
+ *   1. Compute center from strokes
+ *   2. viewport.update to drawing center
+ *   3. Create waypoint BEFORE drawing
+ *   4. Post waypoint link in chat
+ *   5. Open waypoint URL in browser
+ *   6. Send strokes
+ *   7. Post waypoint link in chat again
+ *   8. Capture snapshot
  *
  * @param {WebSocket} ws - Connected WebSocket
  * @param {Array} strokes - Array of stroke objects
  * @param {object} [opts]
  * @param {number} [opts.cx] - Center X (computed from strokes if omitted)
  * @param {number} [opts.cy] - Center Y (computed from strokes if omitted)
- * @param {number} [opts.zoom=0.3] - Zoom level for links
+ * @param {number} [opts.zoom] - Zoom level for links (auto-computed from stroke bounding box if omitted)
  * @param {string} [opts.name] - Waypoint name
  * @param {string} [opts.description] - Waypoint description
+ * @param {boolean} [opts.skipWaypoint=false] - Skip waypoint creation, chat post, and browser open
  * @returns {Promise<SendResult>}
  */
-export async function drawAndTrack(ws, strokes, { cx, cy, zoom = 0.3, name, description } = {}) {
-  // Compute center from strokes if not provided
+export async function drawAndTrack(ws, strokes, { cx, cy, zoom, name, description, skipWaypoint = false } = {}) {
+  const drawingName = name || 'Drawing';
+
+  // 1. Auto-placement: find empty spot if no position specified
   if (cx === undefined || cy === undefined) {
-    const bbox = computeBoundingBox(strokes);
-    if (cx === undefined) cx = Math.round((bbox.minX + bbox.maxX) / 2);
-    if (cy === undefined) cy = Math.round((bbox.minY + bbox.maxY) / 2);
+    const spot = ws._authToken ? await autoFindSpace(ws._authToken) : null;
+    if (spot) {
+      // Add ±500 jitter to prevent concurrent bot collisions
+      if (cx === undefined) cx = spot.x + Math.round((Math.random() - 0.5) * 1000);
+      if (cy === undefined) cy = spot.y + Math.round((Math.random() - 0.5) * 1000);
+    } else {
+      // Fallback: random position in a large range
+      if (cx === undefined) cx = Math.round((Math.random() - 0.5) * 100_000);
+      if (cy === undefined) cy = Math.round((Math.random() - 0.5) * 100_000);
+    }
   }
 
-  // Follow link BEFORE sending
-  console.log(`Follow along: https://clawdraw.ai/?x=${cx}&y=${cy}&z=${zoom}`);
+  // Translate strokes to the chosen center
+  const bbox = computeBoundingBox(strokes);
+  const strokeCx = Math.round((bbox.minX + bbox.maxX) / 2);
+  const strokeCy = Math.round((bbox.minY + bbox.maxY) / 2);
+  const dx = cx - strokeCx;
+  const dy = cy - strokeCy;
+  if (dx !== 0 || dy !== 0) {
+    for (const s of strokes) {
+      for (const pt of s.points) {
+        pt.x += dx;
+        pt.y += dy;
+      }
+    }
+  }
 
-  // Send strokes
-  const result = await sendStrokes(ws, strokes);
+  // Auto-compute zoom from bounding box if not explicitly set
+  if (zoom === undefined) {
+    const bboxW = bbox.maxX - bbox.minX;
+    const bboxH = bbox.maxY - bbox.minY;
+    const extent = Math.max(bboxW, bboxH, 50); // min 50 to avoid extreme zoom
+    zoom = Math.min(Math.max(600 / extent, 0.3), 5); // clamp 0.3–5.0
+  }
 
-  // Post-send: waypoint + snapshot
-  if (result.strokesAcked > 0) {
+  // 2. Update viewport/cursor to drawing center
+  const drawViewport = {
+    type: 'viewport.update',
+    viewport: { center: { x: cx, y: cy }, zoom, size: { width: 6000, height: 6000 } },
+    cursor: { x: cx, y: cy },
+    username: ws._clawdrawUsername,
+  };
+  ws._currentViewport = drawViewport;
+  ws.send(JSON.stringify(drawViewport));
+
+  // 3. Create waypoint BEFORE drawing
+  let waypointUrl = null;
+  if (!skipWaypoint) {
     try {
       const wp = await addWaypoint(ws, {
-        name: name || 'Drawing',
+        name: drawingName,
         x: cx, y: cy, zoom,
         description: description || `${strokes.length} strokes`,
       });
-      console.log(`Waypoint: ${getWaypointUrl(wp)}`);
+      waypointUrl = getWaypointUrl(wp);
+      console.log(`Waypoint: ${waypointUrl}`);
     } catch (wpErr) {
       console.warn(`[waypoint] Failed: ${wpErr.message}`);
     }
 
-    try {
-      const snapshot = await captureSnapshot(ws, strokes, TILE_CDN_URL);
-      if (snapshot) {
-        console.log(`Snapshot: ${snapshot.imagePath} (${snapshot.width}x${snapshot.height})`);
-      }
-    } catch (snapErr) {
-      console.warn(`[snapshot] Failed: ${snapErr.message}`);
+    // 4. Post waypoint link in chat
+    if (waypointUrl) {
+      sendChatMessage(ws, `Drawing: ${drawingName} — ${waypointUrl}`);
     }
+
+    // 5. Open waypoint URL in browser
+    if (waypointUrl) {
+      openInBrowser(waypointUrl);
+    }
+  }
+
+  // Wait for browser page to load before sending strokes
+  if (!skipWaypoint) {
+    await new Promise(resolve => setTimeout(resolve, 3000));
+  }
+
+  // 6. Send strokes
+  const result = await sendStrokes(ws, strokes);
+
+  // 7. Post waypoint link in chat again
+  if (waypointUrl) {
+    sendChatMessage(ws, `Done: ${drawingName} — ${waypointUrl}`);
+  }
+
+  // 8. Capture snapshot
+  try {
+    const snapshot = await captureSnapshot(ws, strokes, TILE_CDN_URL);
+    if (snapshot) {
+      console.log(`Snapshot: ${snapshot.imagePath} (${snapshot.width}x${snapshot.height})`);
+    }
+  } catch (snapErr) {
+    console.warn(`[snapshot] Failed: ${snapErr.message}`);
   }
 
   return result;
