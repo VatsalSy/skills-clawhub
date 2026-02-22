@@ -1,9 +1,10 @@
 ---
 name: skill-shield
-description: "Security audit tool for ClawHub skills. Scans a skill directory with 65 detection patterns, anti-obfuscation analysis, and dual rating system (Security + Compliance). v0.3.0 separates code safety from documentation compliance, reduces false positives (JS template literals, variable names, shell variables), and marks documentation-only skills. Use when: installing a new skill, reviewing skill safety, or auditing permissions."
+version: 0.3.1
+description: "Security audit tool for ClawHub skills. Scans a skill directory with 65 detection patterns, anti-obfuscation analysis, and dual rating system (Security + Compliance). v0.3.1 fixes SKILL.md markdown false positives (table cells, YAML values, inline code paths). Use when: installing a new skill, reviewing skill safety, or auditing permissions."
 ---
 
-# Skill Shield v0.3.0 — Security Auditor
+# Skill Shield v0.3.1 — Security Auditor
 
 Scan any skill directory for permissions and dangerous patterns. Get a safety rating before you install.
 

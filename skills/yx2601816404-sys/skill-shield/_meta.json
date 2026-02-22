@@ -1,11 +1,17 @@
 {
   "owner": "yx2601816404-sys",
   "slug": "skill-shield",
-  "displayName": "Skill Shield",
+  "displayName": "Skill",
   "latest": {
-    "version": "0.3.0",
-    "publishedAt": 1771677371840,
-    "commit": "https://github.com/openclaw/skills/commit/a83afd40341e32510c94f29ffca8a15eb5b09b98"
+    "version": "0.3.1",
+    "publishedAt": 1771785551397,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.3.0",
+      "publishedAt": 1771677371840,
+      "commit": "https://github.com/openclaw/skills/commit/a83afd40341e32510c94f29ffca8a15eb5b09b98"
+    }
+  ]
 }

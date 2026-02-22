@@ -223,6 +223,22 @@ def _context_severity_adjust(severity, line, file_ext, lines, line_idx,
     if is_skill_md and _is_documentation_line(line):
         return 0
 
+    # --- v0.3.1 FIX: SKILL.md markdown table cells (|Bash, |Read etc.) are NOT pipe to shell ---
+    if pat_id == "pipe_sh" and is_skill_md:
+        stripped = line.strip()
+        # Table rows, YAML values with pipe-separated lists, quoted strings with pipes
+        if stripped.startswith("|") or "|" in stripped[:3]:
+            return 0
+        if '"' in line and "|" in line:
+            return 0
+        if stripped.startswith("- ") and ":" in stripped:
+            return 0
+
+    # --- v0.3.1 FIX: SKILL.md inline code paths (`${VAR}/path`) are NOT backtick execution ---
+    if pat_id == "backtick_exec" and is_skill_md:
+        if not _is_in_markdown_code_block(lines, line_idx):
+            return 0
+
     # --- v0.3.0 FIX: JS template literals are NOT shell backtick execution ---
     if pat_id == "backtick_exec" and file_ext in (".js", ".ts", ".mjs", ".cjs"):
         return 0
