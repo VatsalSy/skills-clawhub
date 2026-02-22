@@ -3,15 +3,14 @@
 Stock Data - Simplywall.st Data Fetcher for OpenClaw
 Fetches comprehensive stock data from Simplywall.st
 
-Environment: ZAI_API_KEY
+Direct HTTP fetch (no API key required)
 """
 
-import os
 import json
 import re
 import asyncio
-from datetime import datetime
-from typing import Optional, Dict, Any, List
+from datetime import datetime, timezone
+from typing import Optional, Dict, Any
 
 try:
     import aiohttp
@@ -19,33 +18,11 @@ except ImportError:
     raise ImportError('aiohttp required: pip install aiohttp')
 
 
-def get_api_key() -> str:
-    """Get Z.AI API key from environment"""
-    key = os.environ.get('ZAI_API_KEY') or os.environ.get('Z_AI_API_KEY')
-    if not key:
-        raise ValueError('ZAI_API_KEY not found in environment')
-    return key
-
-
-async def page_reader(url: str, api_key: str) -> Dict:
-    """Read page content using Z.AI page_reader function"""
-    async with aiohttp.ClientSession() as session:
-        async with session.post(
-            'https://api.z.ai/v1/functions/page_reader',
-            headers={
-                'Content-Type': 'application/json',
-                'Authorization': f'Bearer {api_key}'
-            },
-            json={'url': url, 'extract_type': 'html'}
-        ) as resp:
-            return await resp.json()
-
-
 def get_stock_url(ticker: str, exchange: Optional[str] = None) -> str:
     """Construct URL for stock page based on exchange"""
     ticker_lower = ticker.lower()
     exchange = (exchange or 'idx').lower()
-    
+
     patterns = {
         'idx': f'https://simplywall.st/stock/idx/{ticker_lower}',
         'nasdaq': f'https://simplywall.st/stocks/us/any/nasdaq-{ticker_lower}/{ticker_lower}',
@@ -66,12 +43,12 @@ def parse_react_state(html: str) -> Dict:
     match = re.search(r'window\.__REACT_QUERY_STATE__\s*=\s*(\{[\s\S]+?\});?\s*</script>', html)
     if not match:
         return {}
-    
+
     json_str = match.group(1)
     # Fix undefined values in JSON
     json_str = re.sub(r':undefined([,\]}])', r':null\1', json_str)
     json_str = re.sub(r'([,\[{])undefined([,\]}])', r'\1null\2', json_str)
-    
+
     try:
         return json.loads(json_str)
     except json.JSONDecodeError:
@@ -91,12 +68,12 @@ def extract_data(state: Dict, ticker: str) -> Dict:
         'forecast': {},
         'snowflake': {},
         'recentEvents': [],
-        'fetchedAt': datetime.utcnow().isoformat() + 'Z'
+        'fetchedAt': datetime.now(timezone.utc).isoformat()
     }
-    
+
     for query in state.get('queries', []):
         qd = query.get('state', {}).get('data', {})
-        
+
         # Company info
         if 'Company' in qd:
             info = qd['Company'].get('data', {}).get('info', {})
@@ -108,12 +85,12 @@ def extract_data(state: Dict, ticker: str) -> Dict:
                 'founded': info.get('year_founded'),
                 'website': info.get('url')
             }
-        
+
         # Analysis data (valuation, financials, dividend, forecast)
         if 'data' in qd and 'analysis' in qd.get('data', {}):
             a = qd['data']['analysis'].get('data', {})
             ext = a.get('extended', {}).get('data', {}).get('analysis', {})
-            
+
             result['valuation'] = {
                 'marketCap': a.get('market_cap'),
                 'peRatio': a.get('pe'),
@@ -139,7 +116,7 @@ def extract_data(state: Dict, ticker: str) -> Dict:
                 'roe1Y': a.get('future', {}).get('roe_1y'),
                 'analystCount': a.get('analyst_count')
             }
-        
+
         # Snowflake & Price data
         if qd.get('snowflake', {}).get('data', {}).get('axes'):
             axes = qd['snowflake']['data']['axes']
@@ -162,30 +139,36 @@ def extract_data(state: Dict, ticker: str) -> Dict:
                 {'title': e.get('title'), 'description': (e.get('description') or '')[:200]}
                 for e in events[:5]
             ]
-    
+
     return result
 
 
 async def fetch_stock(ticker: str, exchange: Optional[str] = None) -> Dict:
     """Main function to fetch stock data"""
-    api_key = get_api_key()
     url = get_stock_url(ticker, exchange)
-    
+
     print(f'[stock_data] Fetching: {url}')
-    
-    page = await page_reader(url, api_key)
-    html = page.get('data', {}).get('html', '') or page.get('html', '')
-    
-    if not html:
-        return {'success': False, 'error': 'No HTML returned from page reader'}
-    
-    print(f'[stock_data] HTML length: {len(html)}')
-    
-    state = parse_react_state(html)
-    data = extract_data(state, ticker)
-    data['url'] = url
-    
-    return {'success': True, 'data': data}
+
+    # Direct HTTP fetch
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+    }
+
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=30)) as resp:
+            if resp.status != 200:
+                return {'success': False, 'error': f'HTTP error {resp.status}'}
+
+            html = await resp.text()
+            print(f'[stock_data] HTML length: {len(html)}')
+
+            # Parse SimplyWall.st data from HTML
+            state = parse_react_state(html)
+            data = extract_data(state, ticker)
+            data['url'] = url
+            data['data_source'] = 'direct_http'
+
+            return {'success': True, 'data': data}
 
 
 # OpenClaw skill interface
@@ -194,7 +177,7 @@ async def execute(params: Dict) -> Dict:
     ticker = params.get('ticker')
     if not ticker:
         return {'success': False, 'error': 'ticker parameter is required'}
-    
+
     try:
         return await fetch_stock(ticker, params.get('exchange'))
     except Exception as e:
@@ -208,8 +191,9 @@ METADATA = {
     'category': 'finance',
     'tags': ['stock', 'valuation', 'analysis', 'simplywall', 'investment'],
     'triggers': ['saham', 'stock', 'cek saham', 'valuation', 'dividend', 'analisa'],
-    'requiredEnvVars': ['ZAI_API_KEY'],
-    'version': '1.0.0',
+    'requiredEnvVars': [],  # No API key required - direct HTTP fetch
+    'version': '1.3.0',
+    'changelog': 'v1.3.0 - Switch to direct HTTP fetch (no API key required)',
     'author': 'OpenClaw Community'
 }
 
@@ -218,7 +202,7 @@ if __name__ == '__main__':
     import sys
     ticker = sys.argv[1] if len(sys.argv) > 1 else 'ADRO'
     exchange = sys.argv[2] if len(sys.argv) > 2 else 'IDX'
-    
+
     print(f'Stock Data Skill Test: {ticker} ({exchange})\n')
     result = asyncio.run(execute({'ticker': ticker, 'exchange': exchange}))
     print(json.dumps(result, indent=2, default=str))

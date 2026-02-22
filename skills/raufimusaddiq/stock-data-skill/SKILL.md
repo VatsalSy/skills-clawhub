@@ -4,10 +4,11 @@ description: "Fetch comprehensive stock data from Simplywall.st. Use when user a
 metadata:
   openclaw:
     emoji: "📈"
-    version: "1.0.0"
+    version: "1.3.0"
     author: "OpenClaw Community"
-    requires:
-      envVars: ["ZAI_API_KEY"]
+    requires: {}
+  changelog:
+    - "v1.3.0 - Switch to direct HTTP fetch (no API key required), reliable data extraction from SimplyWall.st"
 ---
 
 # Stock Data - Simplywall.st
@@ -120,11 +121,21 @@ User: "Berapa dividend yield TLKM?"
 
 ## Data Source
 
-- Data from S&P Global Market Intelligence via Simplywall.st
+- Direct HTTP fetch from SimplyWall.st
+- Parses `__REACT_QUERY_STATE__` data embedded in HTML
+- No API key required
 - Price data updated daily
 - Fair value estimates based on proprietary model
 - Use as guide only, not investment advice
 
-## Required Environment
+## Technical Details
 
-- `ZAI_API_KEY`: Z.AI API key for web fetching
+This skill uses direct HTTP requests to fetch SimplyWall.st pages, then parses the `__REACT_QUERY_STATE__` data embedded in the HTML to extract structured stock information including:
+- Company基本信息
+- Current price and returns
+- Valuation metrics (PE, PB, PEG, market cap)
+- Financial ratios (ROE, ROA, EPS, debt/equity)
+- Dividend information (yield, payout ratio)
+- Forecast data (growth estimates, analyst count)
+- Snowflake ratings (5-point scoring system)
+- Recent company events
