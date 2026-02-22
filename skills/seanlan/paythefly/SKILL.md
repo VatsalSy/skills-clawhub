@@ -2,7 +2,7 @@
 name: paythefly
 description: Create crypto payment & withdrawal links for your app. Works with BSC, Ethereum, TRON. Users pay via PayTheFlyPro gateway - you get shareable URLs with built-in signature verification.
 homepage: https://pro.paythefly.com
-metadata: {"clawdbot":{"emoji":"💸","requires":{"bins":["node"],"env":["PTF_PROJECT_ID","PTF_CONTRACT_ADDRESS","PTF_SIGNER_KEY","PTF_SIGNER_ADDRESS","PTF_CHAIN_ID"]},"primaryEnv":"PTF_PROJECT_ID"}}
+metadata: {"clawdbot":{"emoji":"💸","requires":{"bins":["node","npm"],"env":["PTF_PROJECT_ID","PTF_CONTRACT_ADDRESS","PTF_SIGNER_KEY","PTF_CHAIN_ID"]},"primaryEnv":"PTF_PROJECT_ID"}}
 ---
 
 # PayTheFlyPro
@@ -17,6 +17,12 @@ Recommendations:
 - Generate a **dedicated wallet** for signing - do NOT use your main wallet
 - The signer wallet does not need to hold any funds
 - Register the signer address in PayTheFlyPro dashboard as your project's authorized signer
+
+## Install Dependencies
+
+```bash
+npm install ethers tronweb
+```
 
 ## Create Payment Link
 
@@ -73,7 +79,6 @@ node {baseDir}/scripts/query.mjs --type withdrawal --serialNo "WD001"
 | `PTF_PROJECT_ID` | Yes | PayTheFlyPro project identifier |
 | `PTF_CONTRACT_ADDRESS` | Yes | Project smart contract address |
 | `PTF_SIGNER_KEY` | Yes | Private key for signing (dedicated wallet, no funds needed) |
-| `PTF_SIGNER_ADDRESS` | Yes | Address derived from the signer private key |
 | `PTF_CHAIN_ID` | Yes | Chain ID (56, 97, 1, tron:mainnet, tron:nile) |
 | `PTF_CUSTOM_RPC` | No | Custom RPC endpoint |
 
