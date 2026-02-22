@@ -6,12 +6,15 @@ Snaps shut on malicious payloads before they reach your AI
 import os
 import re
 import asyncio
-from typing import Dict, Any, Optional
+from pathlib import Path
+from typing import Dict, Any, Optional, List
 from datetime import datetime
 from counterclaw.scanner import Scanner
 
 
-MEMORY_PATH = os.path.expanduser("~/.openclaw/memory/MEMORY.md")
+# Use pathlib for explicit path handling within declared scope
+MEMORY_DIR = Path.home() / ".openclaw" / "memory"
+MEMORY_PATH = MEMORY_DIR / "MEMORY.md"
 
 # PII patterns for log masking
 PII_MASK_PATTERNS = {
@@ -31,11 +34,11 @@ def _mask_pii(text: str) -> str:
 
 
 def _ensure_memory_file() -> None:
-    """Ensure MEMORY.md exists - create if missing"""
-    memory_dir = os.path.dirname(MEMORY_PATH)
-    if not os.path.exists(memory_dir):
-        os.makedirs(memory_dir, exist_ok=True)
-    if not os.path.exists(MEMORY_PATH):
+    """Ensure MEMORY.md exists - create if missing within declared scope"""
+    # Only create within ~/.openclaw/memory/ - explicitly declared in requires.files
+    if not MEMORY_DIR.exists():
+        MEMORY_DIR.mkdir(parents=True, exist_ok=True)
+    if not MEMORY_PATH.exists():
         with open(MEMORY_PATH, "w") as f:
             f.write("# OpenClaw Memory\n\n")
 
@@ -59,11 +62,24 @@ class CounterClawInterceptor:
     """Defensive interceptor - snaps shut on threats"""
     
     def __init__(self, admin_user_id: Optional[str] = None):
-        # Sync with environment variable
-        self.admin_id = admin_user_id or os.getenv("TRUSTED_ADMIN_IDS")
+        # Read from environment variable and support comma-separated list
+        env_admin_ids = os.getenv("TRUSTED_ADMIN_IDS", "")
         
-        if not self.admin_id:
-            print("⚠️ CounterClaw Warning: No TRUSTED_ADMIN_IDS found. Lock features disabled.")
+        # Use provided admin_user_id or fall back to env var
+        # Split by comma to support multiple admins
+        if admin_user_id:
+            self.admin_ids: List[str] = [aid.strip() for aid in admin_user_id.split(",")]
+        elif env_admin_ids:
+            self.admin_ids = [aid.strip() for aid in env_admin_ids.split(",")]
+        else:
+            self.admin_ids = []  # Empty = fail closed
+        
+        if not self.admin_ids:
+            import sys
+            print("⚠️ CounterClaw WARNING: TRUSTED_ADMIN_IDS not set.", file=sys.stderr)
+            print("   Admin features are DISABLED (fail-closed).", file=sys.stderr)
+            print("   Set TRUSTED_ADMIN_IDS env var to enable admin features.", file=sys.stderr)
+            print("   Example: export TRUSTED_ADMIN_IDS='123456789'", file=sys.stderr)
         
         self.scanner = Scanner()
     
@@ -106,7 +122,8 @@ class CounterClawInterceptor:
             return asyncio.run(self.check_output_async(text, log_violations))
     
     def is_admin(self, user_id: str) -> bool:
-        """Check if user is admin - requires TRUSTED_ADMIN_IDS"""
-        if self.admin_id is None:
-            return True  # No admin set - allow all
-        return user_id == self.admin_id
+        """Check if user is admin - fail closed if no admins configured"""
+        # Fail-closed: if no admin IDs are set, deny by default
+        if not self.admin_ids:
+            return False
+        return user_id in self.admin_ids

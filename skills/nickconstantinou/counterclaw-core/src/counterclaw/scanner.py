@@ -4,7 +4,7 @@ Open-source defensive interceptor for AI agents
 """
 
 import re
-from typing import Dict, Any, List
+from typing import Dict, Any
 
 
 class Scanner:

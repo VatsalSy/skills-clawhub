@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "counterclaw-core"
-version = "1.0.1"
+version = "1.0.9"
 description = "Defensive security for AI agents - snaps shut on malicious payloads"
 readme = "README.md"
 license = {text = "MIT"}
@@ -26,6 +26,17 @@ dev = ["pytest"]
 [project.urls]
 Homepage = "https://github.com/nickconstantinou/counterclaw-core"
 Issues = "https://github.com/nickconstantinou/counterclaw-core/issues"
+
+[project.metadata]
+# Required environment variables
+requires-env = [
+    "TRUSTED_ADMIN_IDS",
+]
+
+# Required/config paths
+paths = [
+    "~/.openclaw/memory/",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
