@@ -1,0 +1,709 @@
+---
+name: code-security-audit
+description: Comprehensive code security audit toolkit combining OWASP Top 10 vulnerability scanning, dependency analysis, secret detection, SSL/TLS verification, and automated security scoring. Use when auditing codebases, scanning for vulnerabilities, detecting hardcoded secrets, checking OWASP compliance, or preparing for security reviews.
+version: 2.0.1
+author: LobsterAI Security Team
+metadata:
+  category: security
+  requires_bins:
+    - git
+    - grep
+    - find
+  optional_bins:
+    - npm
+    - openssl
+    - curl
+    - pip-audit
+    - govulncheck
+    - cargo-audit
+  features:
+    - owasp_top_10: true
+    - dependency_scan: true
+    - secret_detection: true
+    - ssl_verification: true
+    - security_scoring: true
+  languages:
+    - javascript
+    - typescript
+    - python
+    - go
+    - java
+    - rust
+    - php
+    - ruby
+  score_range: 0-100
+---
+
+# Code Security Audit
+
+**Unified security audit toolkit** combining OWASP Top 10 vulnerability scanning, dependency analysis, secret detection, SSL/TLS verification, and automated security scoring.
+
+## Overview
+
+This skill merges the best of `security-auditor` and `security-audit-toolkit` into a comprehensive security auditing solution:
+
+- ✅ **OWASP Top 10 Vulnerability Detection** - All 10 categories with code patterns
+- ✅ **Dependency Vulnerability Scanning** - npm, pip, cargo, go modules
+- ✅ **Secret Detection** - 50+ API key patterns, credentials, private keys
+- ✅ **SSL/TLS Verification** - Certificate validation, cipher suite checks
+- ✅ **Security Scoring** - Quantified 0-100 security score
+- ✅ **Auto-Fix Suggestions** - Actionable remediation recommendations
+- ✅ **Multi-Language Support** - JS/TS, Python, Go, Java, Rust, PHP, Ruby
+- ✅ **CI/CD Integration** - GitHub Actions, GitLab CI templates
+
+## Quick Start
+
+```bash
+# Full security audit with scoring
+./scripts/security-audit.sh --full
+
+# Quick scan (secrets + dependencies only)
+./scripts/security-audit.sh --quick
+
+# OWASP Top 10 check
+./scripts/security-audit.sh --owasp
+
+# Dependency vulnerabilities only
+./scripts/security-audit.sh --deps
+
+# Secret detection only
+./scripts/security-audit.sh --secrets
+
+# SSL/TLS verification
+./scripts/security-audit.sh --ssl example.com
+```
+
+## Security Score Calculation
+
+| Category | Weight | Max Points |
+|----------|--------|------------|
+| OWASP Top 10 Compliance | 30% | 30 |
+| Dependency Security | 25% | 25 |
+| Secret Management | 20% | 20 |
+| SSL/TLS Configuration | 10% | 10 |
+| Code Quality (Security) | 10% | 10 |
+| Documentation & Policies | 5% | 5 |
+| **Total** | **100%** | **100** |
+
+### Score Interpretation
+
+| Score | Risk Level | Action |
+|-------|------------|--------|
+| 90-100 | ✅ Low | Continue monitoring |
+| 70-89 | ⚠️ Medium | Address findings within 1 week |
+| 50-69 | 🔶 High | Priority fixes required |
+| 0-49 | 🚨 Critical | Immediate remediation needed |
+
+---
+
+## 1. OWASP Top 10 Detection
+
+### A01:2021 - Broken Access Control
+
+**Detection Patterns:**
+
+```bash
+# Find endpoints without authentication
+grep -rn "app\.\(get\|post\|put\|delete\|patch\)" --include='*.ts' --include='*.js' . | \
+  grep -v "authenticate\|auth\|isLoggedIn\|requireAuth"
+
+# Find direct object references without ownership check
+grep -rn "params\.id\|req\.params\." --include='*.ts' --include='*.js' . | \
+  grep -v "userId\|authorId\|ownerId\|belongsTo"
+```
+
+**Code Patterns:**
+
+```typescript
+// ❌ VULNERABLE: No authorization check
+app.delete('/api/posts/:id', async (req, res) => {
+  await db.post.delete({ where: { id: req.params.id } })
+  res.json({ success: true })
+})
+
+// ✅ SECURE: Verify ownership
+app.delete('/api/posts/:id', authenticate, async (req, res) => {
+  const post = await db.post.findUnique({ where: { id: req.params.id } })
+  if (!post) return res.status(404).json({ error: 'Not found' })
+  if (post.authorId !== req.user.id && req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden' })
+  }
+  await db.post.delete({ where: { id: req.params.id } })
+  res.json({ success: true })
+})
+```
+
+**Checklist:**
+- [ ] Every endpoint verifies authentication
+- [ ] Every data access verifies authorization
+- [ ] CORS configured with specific origins (not `*`)
+- [ ] Rate limiting on sensitive endpoints
+- [ ] JWT tokens validated on every request
+
+---
+
+### A02:2021 - Cryptographic Failures
+
+**Detection Patterns:**
+
+```bash
+# Find weak hashing algorithms
+grep -rn "md5\|sha1\|SHA1\|MD5" --include='*.ts' --include='*.js' --include='*.py' . | \
+  grep -i "password\|secret\|token\|key"
+
+# Find plaintext password storage
+grep -rn "password\s*[:=]\s*['\"]" --include='*.ts' --include='*.js' --include='*.py' .
+
+# Find disabled SSL verification
+grep -rn "verify\s*=\s*False\|rejectUnauthorized.*false\|InsecureSkipVerify" \
+  --include='*.ts' --include='*.js' --include='*.py' --include='*.go' .
+```
+
+**Code Patterns:**
+
+```typescript
+// ❌ VULNERABLE: Plaintext password
+await db.user.create({ data: { password: req.body.password } })
+
+// ✅ SECURE: Bcrypt with sufficient rounds
+import bcrypt from 'bcryptjs'
+const hashedPassword = await bcrypt.hash(req.body.password, 12)
+await db.user.create({ data: { password: hashedPassword } })
+
+// ❌ VULNERABLE: Disabled SSL verification
+const agent = new https.Agent({ rejectUnauthorized: false })
+
+// ✅ SECURE: Proper SSL verification
+const agent = new https.Agent({ rejectUnauthorized: true })
+```
+
+**Checklist:**
+- [ ] Passwords hashed with bcrypt (12+ rounds) or argon2
+- [ ] Sensitive data encrypted at rest (AES-256)
+- [ ] TLS/HTTPS enforced for all connections
+- [ ] No secrets in source code or logs
+- [ ] API keys rotated regularly
+
+---
+
+### A03:2021 - Injection
+
+**SQL Injection Detection:**
+
+```bash
+# Find string concatenation in queries
+grep -rn "query\|execute\|raw\|cursor" --include='*.ts' --include='*.js' --include='*.py' . | \
+  grep -E "\\\$\{|\+.*\+|%s|format\(|f\""
+
+# Find ORM raw queries with interpolation
+grep -rn "\$queryRaw\|\.raw\(" --include='*.ts' --include='*.js' . | \
+  grep -v "parameterized\|\$\$"
+```
+
+**Command Injection Detection:**
+
+```bash
+# Find dangerous command execution
+grep -rn "exec\|spawn\|system\|popen\|subprocess\|os\.system\|child_process" \
+  --include='*.ts' --include='*.js' --include='*.py' --include='*.go' . | \
+  grep -v "execFile\|spawn.*array\|shell.*False"
+```
+
+**Code Patterns:**
+
+```typescript
+// ❌ VULNERABLE: SQL injection
+const query = `SELECT * FROM users WHERE email = '${email}'`
+
+// ✅ SECURE: Parameterized queries
+const user = await db.query('SELECT * FROM users WHERE email = $1', [email])
+
+// ❌ VULNERABLE: Command injection
+const result = exec(`ls ${userInput}`)
+
+// ✅ SECURE: Argument array
+import { execFile } from 'child_process'
+execFile('ls', [sanitizedPath], callback)
+```
+
+**Checklist:**
+- [ ] All database queries use parameterized statements
+- [ ] No string concatenation in queries
+- [ ] OS commands use argument arrays
+- [ ] No user input in `eval()`, `Function()`, or template code
+
+---
+
+### A04:2021 - Insecure Design
+
+**Detection Patterns:**
+
+```bash
+# Find missing rate limiting
+grep -rn "login\|signin\|auth" --include='*.ts' --include='*.js' . | \
+  grep -v "rateLimit\|throttle\|rate.limit"
+
+# Find weak password requirements
+grep -rn "password\|passwd" --include='*.ts' --include='*.js' . | \
+  grep -v "minLength\|min.*8\|complexity\|uppercase\|lowercase\|number\|special"
+```
+
+---
+
+### A05:2021 - Security Misconfiguration
+
+**Detection Patterns:**
+
+```bash
+# Find debug mode enabled
+grep -rn "DEBUG\s*=\s*true\|debug:\s*true\|NODE_ENV.*development" \
+  --include='*.ts' --include='*.js' --include='*.env' --include='*.yaml' --include='*.json' .
+
+# Find CORS wildcard
+grep -rn "Access-Control-Allow-Origin.*\*\|cors({.*origin.*true" \
+  --include='*.ts' --include='*.js' .
+
+# Find exposed stack traces
+grep -rn "stack\|traceback\|stackTrace" --include='*.ts' --include='*.js' . | \
+  grep -i "response\|send\|return\|res\."
+```
+
+**Security Headers Check:**
+
+```bash
+# Check security headers on a URL
+curl -sI https://example.com | grep -iE 'strict-transport|content-security|x-frame|x-content-type|referrer-policy|permissions-policy'
+```
+
+---
+
+### A06:2021 - Vulnerable Components
+
+**Node.js:**
+
+```bash
+# Built-in npm audit
+npm audit --audit-level=moderate
+
+# JSON output for CI
+npm audit --json | jq '.vulnerabilities | to_entries[] | select(.value.severity == "high" or .value.severity == "critical")'
+
+# Auto-fix where possible
+npm audit fix
+
+# Check specific package
+npm audit --package-lock-only
+```
+
+**Python:**
+
+```bash
+# pip-audit
+pip-audit -r requirements.txt
+
+# safety
+safety check -r requirements.txt --json
+```
+
+**Go:**
+
+```bash
+govulncheck ./...
+```
+
+**Rust:**
+
+```bash
+cargo audit
+```
+
+---
+
+### A07:2021 - Cross-Site Scripting (XSS)
+
+**Detection Patterns:**
+
+```bash
+# Find dangerous React patterns
+grep -rn "dangerouslySetInnerHTML\|v-html\|innerHTML\|document\.write" \
+  --include='*.tsx' --include='*.jsx' --include='*.vue' --include='*.js' .
+
+# Find template injection risks
+grep -rn "{{{.*}}}\|<%=\|<%-\|\$\!{" --include='*.html' --include='*.ejs' --include='*.hbs' .
+
+# Find eval with potential user input
+grep -rn "eval(\|new Function(\|setTimeout.*\[\|setInterval.*\[" \
+  --include='*.ts' --include='*.js' .
+```
+
+**Code Patterns:**
+
+```typescript
+// ❌ VULNERABLE: Unsanitized HTML
+<div dangerouslySetInnerHTML={{ __html: userComment }} />
+
+// ✅ SECURE: Sanitize with DOMPurify
+import DOMPurify from 'isomorphic-dompurify'
+<div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(userComment) }} />
+
+// ✅ BEST: Render as text (React auto-escapes)
+<div>{userComment}</div>
+```
+
+---
+
+### A08:2021 - Software and Data Integrity Failures
+
+**Detection Patterns:**
+
+```bash
+# Find unsigned package installations
+grep -rn "npm install.*--ignore-scripts\|pip install.*--no-verify\|curl.*| bash" \
+  --include='*.sh' --include='*.yml' --include='*.yaml' .
+
+# Find CI/CD without integrity checks
+grep -rn "npm install\|pip install\|go get" --include='*.yml' --include='*.yaml' . | \
+  grep -v "package-lock.json\|requirements.txt\|go.sum\|checksum"
+```
+
+---
+
+### A09:2021 - Security Logging and Monitoring Failures
+
+**Detection Patterns:**
+
+```bash
+# Find missing logging on sensitive actions
+grep -rn "login\|password\|auth\|delete\|admin" --include='*.ts' --include='*.js' . | \
+  grep -v "log\|audit\|monitor\|event\|track"
+
+# Find sensitive data in logs
+grep -rn "log\|console\.\|logger\." --include='*.ts' --include='*.js' . | \
+  grep -i "password\|token\|secret\|key\|credential"
+```
+
+---
+
+### A10:2021 - Server-Side Request Forgery (SSRF)
+
+**Detection Patterns:**
+
+```bash
+# Find URL fetching with user input
+grep -rn "fetch\|axios\|request\|http\.get\|urllib\|curl" \
+  --include='*.ts' --include='*.js' --include='*.py' . | \
+  grep -i "req\.\|params\.\|body\.\|query\."
+
+# Find internal URL access
+grep -rn "localhost\|127\.0\.0\.1\|169\.254\|10\.\|172\.16\|192\.168\|internal\|metadata" \
+  --include='*.ts' --include='*.js' --include='*.py' .
+```
+
+---
+
+## 2. Secret Detection
+
+### API Key Patterns
+
+```bash
+# AWS Access Keys
+grep -rn 'AKIA[0-9A-Z]\{16\}' --include='*.js' --include='*.ts' --include='*.py' --include='*.go' --include='*.java' --include='*.rb' --include='*.yml' --include='*.yaml' --include='*.json' .
+
+# OpenAI API Keys
+grep -rn 'sk-[A-Za-z0-9]\{20,}' --include='*.js' --include='*.ts' --include='*.py' --include='*.go' .
+
+# GitHub Tokens
+grep -rn 'ghp_[A-Za-z0-9]\{36\}\|gho_[A-Za-z0-9]\{36\}\|github_pat_' .
+
+# Slack Tokens
+grep -rn 'xox[bpoas]-[A-Za-z0-9-]+' .
+
+# Generic API Keys
+grep -rn -i 'api[_-]key\s*[:=]\s*["\x27][^"\x27]{10,}' --include='*.js' --include='*.ts' --include='*.py' .
+
+# Private Keys
+grep -rn 'BEGIN.*PRIVATE KEY' .
+
+# JWT Tokens
+grep -rn 'eyJ[A-Za-z0-9_-]*\.eyJ[A-Za-z0-9_-]*\.' --include='*.{js,ts,py,log,json}' .
+```
+
+### Pre-commit Hook
+
+```bash
+#!/bin/bash
+# .git/hooks/pre-commit - Block commits containing potential secrets
+
+PATTERNS=(
+    'AKIA[0-9A-Z]{16}'
+    'BEGIN.*PRIVATE KEY'
+    'password\s*[:=]\s*["\x27][^"\x27]+'
+    'api[_-]?key\s*[:=]\s*["\x27][^"\x27]+'
+    'sk-[A-Za-z0-9]{20,}'
+    'ghp_[A-Za-z0-9]{36}'
+    'xox[bpoas]-[A-Za-z0-9-]+'
+)
+
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM)
+[ -z "$STAGED_FILES" ] && exit 0
+
+EXIT_CODE=0
+for pattern in "${PATTERNS[@]}"; do
+    matches=$(echo "$STAGED_FILES" | xargs grep -Pn "$pattern" 2>/dev/null)
+    if [ -n "$matches" ]; then
+        echo "BLOCKED: Potential secret detected: $pattern"
+        echo "$matches"
+        EXIT_CODE=1
+    fi
+done
+
+[ $EXIT_CODE -ne 0 ] && echo "Use --no-verify to bypass (not recommended)"
+exit $EXIT_CODE
+```
+
+---
+
+## 3. Dependency Vulnerability Scanning
+
+### Universal Scanner (Trivy)
+
+```bash
+# Install: https://aquasecurity.github.io/trivy
+# Scan filesystem
+trivy fs .
+
+# High/Critical only
+trivy fs --scanners vuln --severity HIGH,CRITICAL .
+
+# JSON output
+trivy fs --format json -o results.json .
+```
+
+### Language-Specific Scanners
+
+**Node.js:**
+```bash
+npm audit --audit-level=moderate
+npx audit-ci --moderate
+```
+
+**Python:**
+```bash
+pip-audit -r requirements.txt
+safety check -r requirements.txt
+```
+
+**Go:**
+```bash
+govulncheck ./...
+```
+
+**Rust:**
+```bash
+cargo audit
+```
+
+---
+
+## 4. SSL/TLS Verification
+
+### Certificate Check
+
+```bash
+# Full SSL check
+openssl s_client -connect example.com:443 -servername example.com < /dev/null 2>/dev/null | \
+  openssl x509 -noout -subject -issuer -dates -fingerprint
+
+# Check expiry
+echo | openssl s_client -connect example.com:443 -servername example.com 2>/dev/null | \
+  openssl x509 -noout -enddate
+
+# Check TLS versions
+for v in tls1_2 tls1_3; do
+  result=$(openssl s_client -connect example.com:443 -$v < /dev/null 2>&1)
+  echo "$v: $(echo "$result" | grep -q 'Cipher' && echo 'SUPPORTED' || echo 'NOT SUPPORTED')"
+done
+```
+
+### Security Headers
+
+```bash
+curl -sI https://example.com | grep -iE 'strict-transport|content-security|x-frame|x-content-type|referrer-policy'
+```
+
+---
+
+## 5. File Permission Audit
+
+```bash
+# World-writable files
+find . -type f -perm -o=w -not -path '*/node_modules/*' -not -path '*/.git/*' 2>/dev/null
+
+# SSH key permissions
+if [ -d ~/.ssh ]; then
+    ls -la ~/.ssh/
+    [ "$(stat -c %a ~/.ssh 2>/dev/null || stat -f %Lp ~/.ssh)" != "700" ] && echo "WARNING: ~/.ssh should be 700"
+fi
+
+# Sensitive file permissions
+for f in .env .env.* *.pem *.key id_rsa id_ed25519; do
+    [ -f "$f" ] && ls -la "$f"
+done
+```
+
+---
+
+## 6. Security Audit Script
+
+The complete audit script is located at `scripts/security-audit.sh`.
+
+### Usage
+
+```bash
+# Full audit with scoring
+./scripts/security-audit.sh --full
+
+# Quick scan
+./scripts/security-audit.sh --quick
+
+# Specific checks
+./scripts/security-audit.sh --owasp
+./scripts/security-audit.sh --deps
+./scripts/security-audit.sh --secrets
+./scripts/security-audit.sh --ssl example.com
+
+# Generate report
+./scripts/security-audit.sh --full --output report.md
+```
+
+---
+
+## 7. CI/CD Integration
+
+### GitHub Actions
+
+```yaml
+# .github/workflows/security-audit.yml
+name: Security Audit
+
+on: [push, pull_request]
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run Security Audit
+        run: |
+          npm audit --audit-level=moderate
+          npx audit-ci --moderate
+
+      - name: Secret Scan
+        run: |
+          # Add secret detection patterns
+          ! grep -rn 'AKIA[0-9A-Z]\{16\}' --include='*.{js,ts,env}' .
+          ! grep -rn 'sk-[A-Za-z0-9]\{20,}' --include='*.{js,ts,env}' .
+          ! grep -rn 'BEGIN.*PRIVATE KEY' .
+
+      - name: OWASP Check
+        run: |
+          # Check for common vulnerabilities
+          ! grep -rn 'dangerouslySetInnerHTML' --include='*.tsx' --include='*.jsx' .
+          ! grep -rn 'eval(' --include='*.ts' --include='*.js' .
+          ! grep -rn 'verify.*false\|rejectUnauthorized.*false' --include='*.ts' --include='*.js' .
+```
+
+### GitLab CI
+
+```yaml
+# .gitlab-ci.yml
+security-audit:
+  stage: test
+  image: node:20
+  script:
+    - npm audit --audit-level=moderate
+    - |
+      if grep -rn 'AKIA[0-9A-Z]\{16\}\|sk-[A-Za-z0-9]\{20,\}\|BEGIN.*PRIVATE KEY' --include='*.{js,ts,env}' .; then
+        echo "Secrets detected!"
+        exit 1
+      fi
+    - npm run lint:security || true
+  allow_failure: false
+```
+
+---
+
+## 8. Security Audit Report Format
+
+```markdown
+## Security Audit Report
+
+**Project:** example-app
+**Date:** 2026-02-22
+**Score:** 72/100 (⚠️ Medium Risk)
+
+### Summary
+
+| Category | Score | Status |
+|----------|-------|--------|
+| OWASP Top 10 | 22/30 | ⚠️ 2 findings |
+| Dependencies | 18/25 | 🔶 3 vulnerabilities |
+| Secrets | 15/20 | ⚠️ 1 finding |
+| SSL/TLS | 10/10 | ✅ Pass |
+| Code Quality | 5/10 | 🔶 Issues found |
+| Documentation | 2/5 | ℹ️ Missing |
+
+### Critical (Must Fix)
+1. **[A03:Injection]** SQL injection in `/api/search`
+   - File: `app/api/search/route.ts:15`
+   - Risk: Full database compromise
+   - Fix: Use parameterized queries
+
+### High (Should Fix)
+1. **[A01:Access Control]** Missing auth on DELETE endpoint
+   - File: `app/api/posts/[id]/route.ts:42`
+   - Fix: Add authentication middleware
+
+### Medium (Recommended)
+1. **[A05:Misconfiguration]** Missing security headers
+   - Fix: Add CSP, HSTS, X-Frame-Options
+
+### Low (Consider)
+1. **[A06:Vulnerable Components]** 3 packages with vulnerabilities
+   - Run: `npm audit fix`
+```
+
+---
+
+## Protected File Patterns
+
+Review carefully before modification:
+
+- `.env*` — environment secrets
+- `auth.ts` / `auth.config.ts` — authentication configuration
+- `middleware.ts` — route protection logic
+- `**/api/auth/**` — auth endpoints
+- `prisma/schema.prisma` — database schema (permissions, RLS)
+- `next.config.*` — security headers, redirects
+- `package.json` / `package-lock.json` — dependency changes
+
+---
+
+## Version History
+
+- **2.0.0** (2026-02-22) - Merged security-auditor + security-audit-toolkit
+  - Added security scoring system (0-100)
+  - Added multi-language support
+  - Added CI/CD templates
+  - Added auto-fix suggestions
+  - Added comprehensive audit script
+
+---
+
+*License: MIT*

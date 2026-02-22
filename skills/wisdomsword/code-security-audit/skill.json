@@ -1,0 +1,41 @@
+{
+  "name": "code-security-audit",
+  "version": "2.0.1",
+  "description": "Comprehensive code security audit toolkit combining OWASP Top 10 vulnerability scanning, dependency analysis, secret detection, SSL/TLS verification, and automated security scoring.",
+  "author": "LobsterAI Security Team",
+  "license": "MIT",
+  "keywords": [
+    "security",
+    "audit",
+    "owasp",
+    "vulnerability",
+    "secrets",
+    "ssl",
+    "injection",
+    "xss",
+    "csrf",
+    "authentication"
+  ],
+  "categories": ["security", "audit", "code-quality"],
+  "metadata": {
+    "requires_bins": ["git", "grep", "find"],
+    "optional_bins": ["npm", "pip-audit", "govulncheck", "cargo-audit", "openssl", "curl"],
+    "os": ["linux", "darwin"],
+    "score_range": "0-100",
+    "languages": ["javascript", "typescript", "python", "go", "rust", "java", "php", "ruby"],
+    "features": {
+      "owasp_top_10": true,
+      "dependency_scan": true,
+      "secret_detection": true,
+      "ssl_verification": true,
+      "security_scoring": true
+    }
+  },
+  "scripts": {
+    "audit": "bash scripts/security-audit.sh --full",
+    "quick": "bash scripts/security-audit.sh --quick",
+    "owasp": "bash scripts/security-audit.sh --owasp",
+    "deps": "bash scripts/security-audit.sh --deps",
+    "secrets": "bash scripts/security-audit.sh --secrets"
+  }
+}
