@@ -31,7 +31,7 @@ Runtime security guard for OpenClaw agents. Protects against the most critical A
 
 - **Sent:** sanitized tool metadata only — tool names, parameter keys, session signals (tool ordering, timing). All sensitive values (PII, credentials, file contents, secrets) are replaced with category placeholders (`<EMAIL>`, `<SECRET>`, `<CREDIT_CARD>`, etc.) locally before transmission.
 - **Never sent:** raw file contents, user messages, conversation history, actual credential values, or any unsanitized parameter values.
-- **Data retention:** The cloud API processes requests statelessly for behavioral assessment and does not retain request payloads beyond the request cycle. Usage counts and agent metadata (agent ID, email, plan) are stored for billing.
+- **Data retention:** Detection request payloads (sanitized tool metadata) are not retained after the response is returned. Account data (agent ID, email, plan tier, per-agent usage counts) is stored persistently for billing and account management.
 
 **Local-only mode.** The plugin works without any cloud connection. Local fast-path detection (shell escape blocking, read-then-exfil patterns, content injection redaction) operates entirely on your machine with no network calls. Cloud assessment is only used for borderline behavioral patterns and is opt-in via registration. If you skip registration, you still get all local protections.
 
@@ -127,7 +127,7 @@ The response is saved to `~/.openclaw/credentials/openguardrails/credentials.jso
 }
 ```
 
-These credentials are generated server-side and stored only on your machine. The `apiKey` authenticates subsequent detection requests. You can revoke it anytime from the account portal or by deleting the credentials file.
+These credentials are generated server-side and stored as plaintext JSON on your machine (consistent with how CLI tools like `gh`, `aws`, and `gcloud` store credentials). The `apiKey` authenticates subsequent detection requests. You can revoke it anytime from the account portal or by deleting the credentials file.
 
 ### Run registration
 
@@ -410,7 +410,7 @@ The gateway supports Anthropic (`/v1/messages`), OpenAI (`/v1/chat/completions`)
 
 ## Privacy & Data Protection
 
-**OpenGuardrails does not collect, retain, or sell your data.** The detection engine is rule-driven and operates on structured signals — it has no LLM to train and no use for your content.
+**OpenGuardrails does not collect or sell your content.** The detection engine is rule-driven and operates on structured signals — it has no LLM to train and no use for your content. Detection request payloads are not retained. Account data (agent ID, email, plan, usage counts) is stored for billing.
 
 ### Local-first sanitization
 
