@@ -549,6 +549,45 @@ function applyAffectBleed(bleed, identityName = "agent", conversationId = null) 
   }
 }
 
+/**
+ * Get active precognitions (predictions) for injection into recall context.
+ * Uses NimaPrecognition class from nima_core package (portable, no hardcoded paths).
+ */
+async function getPrecognitions(queryText) {
+  try {
+    const pythonScript = `
+import sys, os
+
+# Try installed package first, then common dev locations
+try:
+    from nima_core.precognition import NimaPrecognition
+except ImportError:
+    # Dev fallback: find nima-core relative to common install locations
+    candidates = [
+        os.path.expanduser("~/.openclaw/workspace/nima-core"),
+        os.path.expanduser("~/nima-core"),
+    ]
+    for c in candidates:
+        if os.path.exists(c):
+            sys.path.insert(0, c)
+            break
+    from nima_core.precognition import NimaPrecognition
+
+try:
+    pc = NimaPrecognition()
+    result = pc.inject("""${queryText.replace(/\\/g, '\\\\').replace(/"""/g, '\\"\\"\\"')}""", top_k=3)
+    print(result or "")
+except Exception as e:
+    print("")
+`;
+    const result = await execPython("python3", ["-c", pythonScript], { timeout: 5000 });
+    return result.trim();
+  } catch (e) {
+    console.error(`[nima-recall-live] Precognition query failed: ${e.message}`);
+    return "";
+  }
+}
+
 // Export metadata for gateway hook registration
 export const metadata = {
   events: ["before_agent_start", "before_compaction"],
@@ -664,8 +703,11 @@ export default function nimaRecallLivePlugin(api, config) {
       lastBleed = affectBleed;
       
       if (formatted) {
+        // Inject precognitions above memories
+        const precogText = await getPrecognitions(userMessage);
+        const fullContext = precogText ? `${precogText}\n\n${formatted}` : formatted;
         log.info?.(`[nima-recall-live] Injected ${memories.length} memories`);
-        return { prependContext: formatted };
+        return { prependContext: fullContext };
       }
     } catch (err) {
       console.error(`[nima-recall-live] Error: ${err.message}`);

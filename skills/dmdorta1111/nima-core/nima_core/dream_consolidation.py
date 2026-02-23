@@ -1030,7 +1030,29 @@ class DreamConsolidator:
                 if narrative:
                     _save_dream_markdown(narrative, session, self._dreams_dir)
 
-            # 9. Summary
+            # 9. Darwinian selection — merge near-duplicate memories
+            darwin_stats = {"clusters_found": 0, "ghosted": 0}
+            if not self.dry_run:
+                try:
+                    from nima_core.darwinism import DarwinianEngine
+                    if str(self.db_path).endswith(".lbug"):
+                        darwin = DarwinianEngine(
+                            db_path=str(self.db_path),
+                            skip_llm=False,
+                            dry_run=False,
+                        )
+                        darwin_stats = darwin.run_cycle(seeds=5)
+                    elif verbose:
+                        logger.info("Darwinism skipped: non-Ladybug DB path")
+                    if verbose:
+                        logger.info(
+                            f"Darwinism: {darwin_stats['clusters_found']} clusters, "
+                            f"{darwin_stats['ghosted']} memories ghosted."
+                        )
+                except Exception as e:
+                    logger.warning(f"Darwinian cycle skipped: {e}")
+
+            # 10. Summary
             summary = (
                 f"Consolidated {len(memories)} memories over {hours}h. "
                 f"Found {len(patterns)} patterns, {len(insights)} insights. "
@@ -1061,6 +1083,7 @@ class DreamConsolidator:
                 ],
                 "summary":   summary,
                 "dry_run":   self.dry_run,
+                "darwinism": darwin_stats,
             }
         finally:
             conn.close()

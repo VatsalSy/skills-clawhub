@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="nima-core",
-    version="3.0.3",
+    version="3.0.7",
     description="Biologically-inspired Dynamic Affect System for AI agents",
     long_description=open("README.md").read() if __import__("os").path.exists("README.md") else "",
     long_description_content_type="text/markdown",
@@ -32,6 +32,9 @@ setup(
         'console_scripts': [
             'nima-core=nima_core:main',
             'nima-dream=nima_core.dream_consolidation:main',
+            'nima-lucid=nima_core.lucid_moments:main',
+            'nima-darwin=nima_core.darwinism:main',
+            'nima-swarm=nima_core.hive_mind:_swarm_cli',
         ],
     },
 )

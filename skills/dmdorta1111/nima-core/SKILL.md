@@ -1,8 +1,8 @@
 ---
 name: nima-core
 description: "Noosphere Integrated Memory Architecture — Complete cognitive stack for AI agents: persistent memory, emotional intelligence, dream consolidation, hive mind, precognitive recall, and lucid moments. 4 embedding providers, LadybugDB graph backend, zero-config install. nima-core.ai"
-version: 3.0.3
-metadata: {"openclaw":{"emoji":"🧠","requires":{"bins":["python3","node"],"env":["NIMA_DATA_DIR"]},"optional_env":{"NIMA_EMBEDDER":"voyage|openai|ollama|local (default: local)","VOYAGE_API_KEY":"Required when NIMA_EMBEDDER=voyage","OPENAI_API_KEY":"Required when NIMA_EMBEDDER=openai","NIMA_OLLAMA_MODEL":"Model name when NIMA_EMBEDDER=ollama","NIMA_VOICE_TRANSCRIBER":"whisper|local (for voice notes)","WHISPER_MODEL":"tiny|base|small|medium|large","ANTHROPIC_API_KEY":"For memory pruner LLM distillation"},"permissions":{"reads":["~/.openclaw/agents/*/sessions/*.jsonl"],"writes":["~/.nima/"],"network":["voyage.ai (conditional)","openai.com (conditional)"]}}}
+version: 3.0.7
+metadata: {"openclaw":{"emoji":"🧠","source":"https://github.com/lilubot/nima-core","homepage":"https://nima-core.ai","requires":{"bins":["python3","node"],"env":[]},"optional_env":{"NIMA_DATA_DIR":"Override default ~/.nima data directory","NIMA_EMBEDDER":"voyage|openai|ollama|local (default: local — zero external calls)","VOYAGE_API_KEY":"Required when NIMA_EMBEDDER=voyage","OPENAI_API_KEY":"Required when NIMA_EMBEDDER=openai","NIMA_OLLAMA_MODEL":"Model name when NIMA_EMBEDDER=ollama","NIMA_VOICE_TRANSCRIBER":"whisper|local (for voice notes)","WHISPER_MODEL":"tiny|base|small|medium|large","ANTHROPIC_API_KEY":"For memory pruner LLM distillation (opt-in only)"},"permissions":{"reads":["~/.nima/"],"writes":["~/.nima/","~/.openclaw/extensions/nima-*/"],"network":["voyage.ai (only if NIMA_EMBEDDER=voyage)","openai.com (only if NIMA_EMBEDDER=openai)"]},"external_calls":"All external API calls are opt-in via explicit env vars. Default mode uses local embeddings with zero network calls."}}
 ---
 
 # NIMA Core 3.0
@@ -36,10 +36,14 @@ NIMA evolved from a memory plugin into a full cognitive architecture:
 | **Hive Mind** | Multi-agent memory sharing via shared DB + optional Redis pub/sub | v2.5 |
 | **Precognition** | Temporal pattern mining → predictive memory pre-loading | v2.5 |
 | **Lucid Moments** | Spontaneous surfacing of emotionally-resonant memories | v2.5 |
+| **Darwinian Memory** | Clusters similar memories, ghosts duplicates via cosine + LLM verification | v3.0 |
+| **Installer** | One-command setup — LadybugDB, hooks, directories, embedder config | v3.0 |
 
-### v3.0.2 Fixes
-- **CRITICAL:** v3.0.0 ClawHub package was missing `nima_core/cognition/` (10 files) and all OpenClaw hook files due to `.clawhubignore` glob bug — now fixed
-- README fully rewritten, all versions aligned
+### v3.0 Highlights
+- All cognitive modules unified under a single package
+- Installer (`install.sh`) for zero-friction setup
+- All OpenClaw hooks bundled and ready to drop in
+- README rewritten, all versions aligned to `3.0.4`
 
 ## Architecture
 
@@ -133,7 +137,7 @@ OPENAI_API_KEY=sk-xxx
 NIMA_OLLAMA_MODEL=nomic-embed-text
 
 # Data paths
-NIMA_DATA_DIR=~/.nima/memory
+NIMA_DATA_DIR=~/.nima
 NIMA_DB_PATH=~/.nima/memory/ladybug.lbug
 
 # Memory pruner
@@ -250,8 +254,7 @@ moment = lucid.surface_moment()
 See [CHANGELOG.md](./CHANGELOG.md) for full version history.
 
 ### Recent Releases
-- **v3.0.2** (Feb 22, 2026) — Fix missing cognition folder and hooks in ClawHub package
-- **v3.0.0** (Feb 22, 2026) — Version alignment, package audit
+- **v3.0.4** (Feb 23, 2026) — Darwinian memory engine, new CLIs, installer, bug fixes
 - **v2.5.0** (Feb 21, 2026) — Hive Mind, Precognition, Lucid Moments
 - **v2.4.0** (Feb 20, 2026) — Dream Consolidation engine
 - **v2.3.0** (Feb 19, 2026) — Memory Pruner, connection pool, Ollama support

@@ -847,7 +847,7 @@ if not db_path:
     sys.exit(1)
 
 try:
-    db = sqlite3.connect(db_path)
+  with sqlite3.connect(db_path, timeout=5.0) as db:
     db.execute("PRAGMA journal_mode=WAL")
     db.execute("PRAGMA foreign_keys=ON")
 
@@ -943,7 +943,6 @@ try:
         pass  # Column already exists
 
     db.commit()
-    db.close()
     print("ok")
 
 except Exception as e:
@@ -1029,8 +1028,7 @@ if not db_path:
     sys.exit(1)
 
 try:
-    db = sqlite3.connect(db_path, timeout=2.0)
-    
+  with sqlite3.connect(db_path, timeout=2.0) as db:
     # Check table exists
     tables = db.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
     table_names = [t[0] for t in tables]
@@ -1069,7 +1067,6 @@ try:
         }
     }
     
-    db.close()
     print(json.dumps(result))
 
 except Exception as e:
@@ -1157,7 +1154,7 @@ try:
     with open(data_file, 'r') as f:
         data = json.load(f)
 
-    db = sqlite3.connect(data['db_path'])
+    db = sqlite3.connect(data['db_path'], timeout=5.0)
     db.execute("PRAGMA journal_mode=WAL")
 
     # BEGIN TRANSACTION - all or nothing (atomicity fix)
@@ -1200,12 +1197,16 @@ try:
 
     # COMMIT TRANSACTION - make all changes permanent
     db.commit()
-    db.close()
     print(f"stored:{input_id},{contemp_id},{output_id}")
 
 except Exception as e:
     print(f"error:{str(e)}", file=sys.stderr)
     sys.exit(1)
+finally:
+    try:
+        db.close()
+    except:
+        pass
 `;
 
     // AUDIT FIX: Add retry logic for transient failures (Issue #3)

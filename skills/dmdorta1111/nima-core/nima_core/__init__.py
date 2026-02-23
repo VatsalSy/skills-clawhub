@@ -1,6 +1,6 @@
 """NIMA Core — Dynamic Affect System for AI agents."""
 
-__version__ = "3.0.3"
+__version__ = "3.0.7"
 
 from .cognition.dynamic_affect import DynamicAffectSystem, AffectVector, get_affect_system
 from .cognition.personality_profiles import PersonalityManager, get_profile, list_profiles

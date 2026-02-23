@@ -387,4 +387,179 @@ def _escape(s: str) -> str:
     return s.replace("'", "\\'").replace("\\", "\\\\")
 
 
-__all__ = ["HiveMind", "HiveBus"]
+# ── Standalone Hive Utilities (Proposal 07: Memory Entanglement) ──────────────
+
+def capture_agent_result(
+    agent_label: str,
+    result_summary: str,
+    model_used: str,
+    db_path: str = None,
+) -> None:
+    """
+    Store a sub-agent's result in LadybugDB with source_agent attribution.
+
+    This is the core of Memory Entanglement — sub-agent outputs are tagged
+    with their identity so the orchestrator (and future agents) can query
+    "what did agent X find recently?"
+
+    Args:
+        agent_label:    Human-readable name (e.g. "research-agent", "code-review")
+        result_summary: The agent's output (truncated to 2000 chars)
+        model_used:     Model that produced the result (e.g. "gemini-3-flash")
+        db_path:        Path to LadybugDB (default: NIMA_HOME/memory/ladybug.lbug)
+    """
+    import hashlib
+    import time
+
+    try:
+        import real_ladybug as lb
+    except ImportError:
+        print("[nima-hive] real_ladybug not available — cannot capture agent result", flush=True)
+        return
+
+    nima_home = os.environ.get("NIMA_HOME", os.path.expanduser("~/.nima"))
+    db_path = db_path or os.path.join(nima_home, "memory", "ladybug.lbug")
+
+    db   = lb.Database(db_path)
+    conn = lb.Connection(db)
+
+    try:
+        conn.execute("LOAD VECTOR")
+    except Exception:
+        pass
+
+    # Get next ID
+    try:
+        res    = conn.execute("MATCH (n:MemoryNode) RETURN max(n.id) AS max_id")
+        max_id = 0
+        for row in res:
+            max_id = row[0] or 0
+        new_id = int(max_id) + 1
+    except Exception:
+        new_id = int(time.time())
+
+    # Deterministic hash-based embedding (no numpy required)
+    content_hash = hashlib.sha256(result_summary.encode()).digest()
+    seed_bytes   = content_hash[:4]
+    seed         = int.from_bytes(seed_bytes, "big")
+    import random as _rnd
+    rng = _rnd.Random(seed)
+    embedding = [rng.gauss(0, 1) for _ in range(512)]
+
+    now_ms  = int(time.time() * 1000)
+    content = result_summary[:2000]
+
+    try:
+        conn.execute("""
+            CREATE (n:MemoryNode {
+                id:           $id,
+                who:          $who,
+                text:         $text,
+                summary:      $summary,
+                layer:        $layer,
+                fe_score:     $fe_score,
+                source_agent: $source_agent,
+                model:        $model,
+                timestamp:    $timestamp,
+                strength:     $strength,
+                is_ghost:     $is_ghost,
+                embedding:    $embedding
+            })
+        """, {
+            "id":           new_id,
+            "who":          f"agent:{agent_label}",
+            "text":         content,
+            "summary":      result_summary[:200],
+            "layer":        "output",
+            "fe_score":     0.7,
+            "source_agent": agent_label,
+            "model":        model_used,
+            "timestamp":    now_ms,
+            "strength":     1.0,
+            "is_ghost":     False,
+            "embedding":    embedding,
+        })
+
+        # Link to 3 most recent memories (co-occurrence edges)
+        for offset in range(3):
+            prev_id = int(max_id) - offset
+            if prev_id > 0:
+                try:
+                    conn.execute("""
+                        MATCH (a:MemoryNode {id: $aid}), (b:MemoryNode {id: $bid})
+                        CREATE (a)-[:relates_to {relation: 'co_occurrence', weight: 1.0}]->(b)
+                    """, {"aid": new_id, "bid": prev_id})
+                except Exception:
+                    pass
+
+        print(f"[nima-hive] ✅ Captured {agent_label} → node {new_id}", flush=True)
+
+    except Exception as e:
+        print(f"[nima-hive] ❌ capture_agent_result failed: {e}", flush=True)
+    finally:
+        conn.close()
+
+
+def get_swarm_status(db_path: str = None, hours: int = 24) -> dict:
+    """
+    Query LadybugDB for all sub-agent activity in the last N hours.
+
+    Returns dict with count, agent_labels, and recent_activity.
+    """
+    try:
+        import real_ladybug as lb
+    except ImportError:
+        return {"error": "real_ladybug not available", "count": 0}
+
+    import time
+    nima_home = os.environ.get("NIMA_HOME", os.path.expanduser("~/.nima"))
+    db_path   = db_path or os.path.join(nima_home, "memory", "ladybug.lbug")
+
+    cutoff_ms = int((time.time() - hours * 3600) * 1000)
+    db   = lb.Database(db_path)
+    conn = lb.Connection(db)
+
+    try:
+        res = conn.execute(f"""
+            MATCH (n:MemoryNode)
+            WHERE n.timestamp > {cutoff_ms} AND n.who STARTS WITH 'agent:'
+            RETURN n.who, n.source_agent, n.timestamp
+            ORDER BY n.timestamp DESC
+        """)
+
+        results = [
+            {"who": row[0], "source_agent": row[1], "timestamp": row[2]}
+            for row in res
+        ]
+        agents = sorted(set(r["who"] for r in results))
+
+        return {
+            "count":           len(results),
+            "agent_labels":    agents,
+            "recent_activity": results[:10],
+        }
+    except Exception as e:
+        return {"error": str(e), "count": 0}
+    finally:
+        conn.close()
+
+
+__all__ = ["HiveMind", "HiveBus", "capture_agent_result", "get_swarm_status"]
+
+
+def _swarm_cli():
+    """CLI: nima-swarm — show swarm status or capture a test result."""
+    import argparse, json as _json
+    parser = argparse.ArgumentParser(description="NIMA Swarm Status (Proposal 07)")
+    parser.add_argument("--hours",   type=int,   default=24,  help="Lookback hours")
+    parser.add_argument("--capture", nargs=3, metavar=("AGENT", "SUMMARY", "MODEL"),
+                        help="Capture agent result: agent summary model")
+    parser.add_argument("--db",      default=None, help="Path to LadybugDB")
+    args = parser.parse_args()
+
+    if args.capture:
+        agent, summary, model = args.capture
+        capture_agent_result(agent, summary, model, db_path=args.db)
+    else:
+        status = get_swarm_status(db_path=args.db, hours=args.hours)
+        print(_json.dumps(status, indent=2, default=str))

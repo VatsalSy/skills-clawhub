@@ -374,3 +374,79 @@ class LucidMoments:
 
 
 __all__ = ["LucidMoments"]
+
+
+def main():
+    """CLI entry point: nima-lucid-moments"""
+    import argparse
+    import os
+
+    logging.basicConfig(level=logging.WARNING)
+
+    parser = argparse.ArgumentParser(description="NIMA Lucid Memory Moments — surface memories spontaneously")
+    parser.add_argument("--status",   action="store_true", help="Show timing status without surfacing")
+    parser.add_argument("--force",    action="store_true", help="Skip timing gates, surface immediately")
+    parser.add_argument("--dry-run",  action="store_true", help="Select + enrich but don't deliver")
+    parser.add_argument("--db",       default=None,        help="Path to LadybugDB file")
+    parser.add_argument("--api-key",  default=None,        help="LLM API key")
+    parser.add_argument("--api-url",  default="https://api.openai.com/v1", help="LLM base URL")
+    parser.add_argument("--model",    default="gpt-4o-mini", help="LLM model for enrichment")
+    args = parser.parse_args()
+
+    nima_home = os.environ.get("NIMA_HOME", os.path.expanduser("~/.nima"))
+    db_path   = args.db or os.path.join(nima_home, "memory", "ladybug.lbug")
+    api_key   = args.api_key or os.environ.get("OPENAI_API_KEY") or os.environ.get("NIMA_LLM_API_KEY")
+
+    delivered_text = []
+
+    def capture_or_print(text: str):
+        delivered_text.append(text)
+        if not args.dry_run:
+            # Write to pending file for cron pickup
+            pending = os.path.join(nima_home, "memory", "pending_lucid_moment.txt")
+            os.makedirs(os.path.dirname(pending), exist_ok=True)
+            with open(pending, "w") as f:
+                f.write(text)
+            print(f"✅ Lucid moment written to: {pending}")
+            print(f"\n{text}")
+
+    lm = LucidMoments(
+        db_path=db_path,
+        llm_base_url=args.api_url,
+        llm_api_key=api_key or "",
+        llm_model=args.model,
+        delivery_callback=capture_or_print,
+    )
+
+    if args.status:
+        ok, reason = lm._is_good_timing()
+        print(f"{'Ready ✅' if ok else '⏸ Not ready'}: {reason}")
+        candidate = lm.select_candidate()
+        if candidate:
+            preview = (candidate.get("text") or "")[:80].replace("\n", " ")
+            print(f"Candidate: [{candidate.get('id')}] {preview}...")
+        else:
+            print("No suitable candidate found.")
+        return
+
+    if args.force:
+        result = lm.force_surface()
+    else:
+        result = lm.maybe_surface()
+
+    if not result:
+        if args.dry_run:
+            candidate = lm.select_candidate()
+            if candidate:
+                print(f"[DRY RUN] Candidate: {candidate.get('text', '')[:120]}")
+            else:
+                print("⏸ No suitable candidate found or timing not right.")
+        else:
+            print("⏸ No lucid moment surfaced (timing or no candidate).")
+    elif args.dry_run:
+        print(f"[DRY RUN] Would deliver:
+{delivered_text[-1] if delivered_text else result}")
+
+
+if __name__ == "__main__":
+    main()

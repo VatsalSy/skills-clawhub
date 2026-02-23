@@ -3,7 +3,35 @@
 All notable changes to NIMA Core will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+
+## [3.0.7] - 2026-02-23
+
+### Added
+- **Scheduling Setup section in README** — full OpenClaw cron configs for Lucid Moments (4×/day), Dream Consolidation, Memory Pruner, Embedding Index rebuild, and Precognition explanation
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [3.0.6] - 2026-02-23
+
+### Fixed
+- **CRITICAL:** SyntaxError in lucid_moments.py line 447 — unterminated f-string with literal newline, preventing NIMA from loading
+
+## [3.0.5] - 2026-02-23
+
+### Changed
+- SKILL.md: remove internal post-mortem language, fix NIMA_DATA_DIR example (~/.nima/memory → ~/.nima), update changelog to v3.0.4, add Darwinian Memory + Installer to module table
+
+## [3.0.4] - 2026-02-23
+
+### Fixed
+- **Version alignment:** Synced `__init__.py`, `README.md` badge, and all three OpenClaw hook `package.json` files to match canonical `setup.py` version `3.0.4`
+- **nima-affect missing package.json:** Added `package.json` to `openclaw_hooks/nima-affect/` — consistent with `nima-memory` and `nima-recall-live` hook format
+- Hook versions were scattered across `2.0.2`, `2.0.3`, `2.0.11` — all unified to `3.0.4`
+
+## [3.0.3] - 2026-02-22
+
+### Changed
+- Minor internal refinements post `3.0.2` publish
+- `setup.py` bumped to `3.0.3` → `3.0.4` for subsequent release
 
 ## [3.0.2] - 2026-02-22
 

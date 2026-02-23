@@ -1,8 +1,14 @@
 {
   "id": "nima-memory",
   "name": "nima-memory",
-  "version": "2.0.8",
+  "version": "2.0.9",
   "kind": "memory",
+  "events": [
+    "agent_end",
+    "before_compaction",
+    "after_compaction",
+    "gateway_start"
+  ],
   "description": "NIMA Unified Memory - Three-layer experiential capture and graph-augmented recall",
   "main": "index.js",
   "type": "module",
@@ -108,7 +114,10 @@
         "properties": {
           "backend": {
             "type": "string",
-            "enum": ["sqlite", "ladybugdb"],
+            "enum": [
+              "sqlite",
+              "ladybugdb"
+            ],
             "default": "sqlite"
           },
           "auto_migrate": {

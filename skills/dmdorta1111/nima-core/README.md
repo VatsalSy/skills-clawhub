@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-3.0.3-blue" alt="Version" />
+  <img src="https://img.shields.io/badge/version-3.0.7-blue" alt="Version" />
   <img src="https://img.shields.io/badge/python-3.9%2B-green" alt="Python" />
   <img src="https://img.shields.io/badge/node-18%2B-green" alt="Node" />
   <img src="https://img.shields.io/badge/license-MIT-brightgreen" alt="License" />
@@ -387,6 +387,86 @@ python -m nima_core.memory_pruner --restore 12345
 ```
 
 No database writes — suppression is file-based, fully reversible within 30 days.
+
+---
+
+## ⏰ Scheduling Setup (OpenClaw Cron)
+
+NIMA's autonomous features — Lucid Moments, Dream Consolidation, Memory Pruner, and Embedding Index — are designed to run on a schedule. Here's the recommended cron configuration for OpenClaw.
+
+### Lucid Moments — 4× daily
+
+Surfaces emotionally-resonant memories to your user at natural intervals.
+
+```json
+{
+  "name": "lucid-memory-moments",
+  "schedule": { "kind": "cron", "expr": "0 10,14,18,20 * * *", "tz": "America/New_York" },
+  "sessionTarget": "isolated",
+  "payload": {
+    "kind": "agentTurn",
+    "message": "Run the lucid moments check:\n1. Run: cd ~/.openclaw/workspace && .venv/bin/python3 lilu_core/cognition/lucid_moments.py --status\n2. If timing is good (says 'Ready'), run: .venv/bin/python3 lilu_core/cognition/lucid_moments.py\n3. If a pending file was written, read: cat ~/.openclaw/workspace/memory/pending_lucid_moment.txt\n4. Send that exact text to the user via the message tool\n5. If timing wasn't right, do nothing silently\nSend the message as a natural surfaced memory — no framing or prefix.",
+    "timeoutSeconds": 120
+  },
+  "delivery": { "mode": "none" }
+}
+```
+
+### Dream Consolidation — nightly at 2 AM
+
+Consolidates the last 24h of memories and extracts patterns.
+
+```json
+{
+  "name": "lilu_dream_consolidation",
+  "schedule": { "kind": "cron", "expr": "0 2 * * *", "tz": "America/New_York" },
+  "sessionTarget": "isolated",
+  "payload": {
+    "kind": "agentTurn",
+    "message": "cd ~/.openclaw/workspace && .venv/bin/python3 lilu_core/lilu.py dream --hours 24. Report what memories were consolidated and any patterns found.",
+    "timeoutSeconds": 600
+  },
+  "delivery": { "mode": "announce" }
+}
+```
+
+### Memory Pruner — nightly at 2 AM
+
+Distills old episodic turns into compact semantic memories.
+
+```json
+{
+  "name": "nima-memory-pruner",
+  "schedule": { "kind": "cron", "expr": "0 2 * * *", "tz": "America/New_York" },
+  "sessionTarget": "isolated",
+  "payload": {
+    "kind": "agentTurn",
+    "message": "cd ~/.openclaw/workspace && .venv/bin/python3 lilu_core/cognition/memory_pruner.py --min-age 7 --live --max-sessions 10. Report sessions distilled and turns suppressed.",
+    "timeoutSeconds": 300
+  },
+  "delivery": { "mode": "announce" }
+}
+```
+
+### Embedding Index Rebuild — nightly at 3 AM
+
+Keeps vector recall indexes fresh.
+
+```json
+{
+  "name": "nima-embedding-index",
+  "schedule": { "kind": "cron", "expr": "0 3 * * *" },
+  "sessionTarget": "main",
+  "payload": {
+    "kind": "systemEvent",
+    "text": "Rebuild embedding index for NIMA memory recall"
+  }
+}
+```
+
+### Precognition
+
+Precognition runs automatically on every incoming message via the `nima-affect` OpenClaw plugin — no separate cron needed. The predicted session patterns it generates are injected into context before each agent response.
 
 ---
 
