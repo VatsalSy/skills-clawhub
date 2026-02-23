@@ -1,0 +1,11 @@
+{
+  "owner": "wof-developers",
+  "slug": "wof-rps",
+  "displayName": "WatchOrfight - Rock, Paper, Scissor",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1771601845384,
+    "commit": null
+  },
+  "history": []
+}
