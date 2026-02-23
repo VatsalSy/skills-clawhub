@@ -12,11 +12,26 @@ CFG="${OPENCLAW_CONFIG_PATH:-$HOME/.openclaw/openclaw.json}"
 VOICE_HTTPS_PORT="${VOICE_HTTPS_PORT:-8443}"
 VOICE_HOST="${VOICE_HOST:-}"
 
-if [[ -z "$VOICE_HOST" ]]; then
-  VOICE_HOST="$(hostname -I 2>/dev/null | awk '{print $1}')"
+# --- Input validation (injection prevention) ---
+# All env-var inputs are validated before use in sed, python, or systemd units.
+if ! [[ "$VOICE_HTTPS_PORT" =~ ^[0-9]+$ ]] || (( VOICE_HTTPS_PORT < 1 || VOICE_HTTPS_PORT > 65535 )); then
+  echo "ERROR: VOICE_HTTPS_PORT must be a valid port (1-65535), got: $VOICE_HTTPS_PORT" >&2
+  exit 1
 fi
+
+# SECURITY: Default to localhost (127.0.0.1) so the proxy is NOT exposed to the
+# local network.  Only when the user explicitly sets VOICE_HOST to a LAN IP will
+# the proxy bind externally.  This is intentional — exposing the HTTPS proxy on
+# a LAN IP means any device on the same network can reach it.
 if [[ -z "$VOICE_HOST" ]]; then
   VOICE_HOST="127.0.0.1"
+fi
+
+# SECURITY: host must be IP or hostname — reject shell metacharacters, sed
+# delimiters, and quotes to prevent injection in sed/systemd/python contexts.
+if ! [[ "$VOICE_HOST" =~ ^[a-zA-Z0-9._-]+$ ]]; then
+  echo "ERROR: VOICE_HOST contains invalid characters: $VOICE_HOST" >&2
+  exit 1
 fi
 
 ALLOWED_ORIGIN="https://${VOICE_HOST}:${VOICE_HTTPS_PORT}"
@@ -31,6 +46,13 @@ if [[ -z "$VOICE_LANG" ]] && [[ -t 0 ]]; then
   read -r -p "Choose UI language [auto]: " VOICE_LANG
 fi
 VOICE_LANG="${VOICE_LANG:-auto}"
+
+# SECURITY: lang is interpolated into sed replacement — strict allowlist prevents
+# injection via crafted language codes (only lowercase alpha + 'auto' allowed).
+if ! [[ "$VOICE_LANG" =~ ^([a-zA-Z]{2,5}(-[a-zA-Z]{2,5})?|auto)$ ]]; then
+  echo "ERROR: VOICE_LANG must be a language code (en, de, en-US, zh) or 'auto', got: $VOICE_LANG" >&2
+  exit 1
+fi
 
 # 1) Copy bundled assets from skill -> workspace runtime dir
 cp -f "$SKILL_DIR/assets/voice-input.js" "$VOICE_DIR/voice-input.js"
@@ -58,17 +80,19 @@ if ! grep -q 'voice-input.js' "$INDEX"; then
 fi
 
 # 3) Ensure gateway allowedOrigins contains computed origin
-python3 - << PY
-import json
-p='${CFG}'
-origin='${ALLOWED_ORIGIN}'
-with open(p,'r',encoding='utf-8') as f: c=json.load(f)
-g=c.setdefault('gateway',{})
-cu=g.setdefault('controlUi',{})
-orig=cu.setdefault('allowedOrigins',[])
+python3 - "$CFG" "$ALLOWED_ORIGIN" << 'PY'
+import json, sys
+p, origin = sys.argv[1], sys.argv[2]
+with open(p, 'r', encoding='utf-8') as f:
+    c = json.load(f)
+g = c.setdefault('gateway', {})
+cu = g.setdefault('controlUi', {})
+orig = cu.setdefault('allowedOrigins', [])
 if origin not in orig:
     orig.append(origin)
-    with open(p,'w',encoding='utf-8') as f: json.dump(c,f,indent=2,ensure_ascii=False); f.write('\n')
+    with open(p, 'w', encoding='utf-8') as f:
+        json.dump(c, f, indent=2, ensure_ascii=False)
+        f.write('\n')
     print(f'allowedOrigin ensured: {origin}')
 PY
 
@@ -80,7 +104,16 @@ if [[ -x "${WORKSPACE}/.venv-faster-whisper/bin/python" ]]; then
 elif python3 -c "import aiohttp" 2>/dev/null; then
   PYTHON_BIN="$(command -v python3)"
 else
-  echo "ERROR: No python with aiohttp found. Install aiohttp: pip3 install aiohttp" >&2
+  echo "ERROR: No python with aiohttp found. Install aiohttp: pip3 install 'aiohttp>=3.9.0'" >&2
+  exit 1
+fi
+
+# Verify minimum aiohttp version (>=3.9.0)
+AIOHTTP_VERSION=$("$PYTHON_BIN" -c "import aiohttp; print(aiohttp.__version__)" 2>/dev/null || echo "0.0.0")
+AIOHTTP_MAJOR=$(echo "$AIOHTTP_VERSION" | cut -d. -f1)
+AIOHTTP_MINOR=$(echo "$AIOHTTP_VERSION" | cut -d. -f2)
+if (( AIOHTTP_MAJOR < 3 )) || (( AIOHTTP_MAJOR == 3 && AIOHTTP_MINOR < 9 )); then
+  echo "ERROR: aiohttp >= 3.9.0 required, found $AIOHTTP_VERSION. Upgrade: pip3 install 'aiohttp>=3.9.0'" >&2
   exit 1
 fi
 
@@ -98,6 +131,7 @@ RestartSec=2
 Environment=WORKSPACE=${WORKSPACE}
 Environment=VOICE_HTTPS_PORT=${VOICE_HTTPS_PORT}
 Environment=VOICE_ALLOWED_ORIGIN=${ALLOWED_ORIGIN}
+Environment=VOICE_BIND_HOST=${VOICE_HOST}
 
 [Install]
 WantedBy=default.target

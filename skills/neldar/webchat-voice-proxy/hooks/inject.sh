@@ -24,6 +24,7 @@ fi
 cp -f "$SRC" "$ASSET_DIR/voice-input.js"
 
 if ! grep -q "$MARKER" "$INDEX" 2>/dev/null; then
+  # SECURITY: sed uses only hardcoded strings — no variable interpolation.
   sed -i 's|</body>|    <script src="./assets/voice-input.js"></script>\n  </body>|' "$INDEX"
   echo "[voice-input-inject] Injected into $INDEX"
 else

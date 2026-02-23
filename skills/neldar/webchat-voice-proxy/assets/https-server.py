@@ -1,16 +1,29 @@
 #!/usr/bin/env python3
 """HTTPS reverse proxy: Control UI + /transcribe + WebSocket proxy to gateway."""
 import asyncio
+import re
 import ssl
 import os
 import mimetypes
 import urllib.request
 import subprocess
+import sys
 from pathlib import Path
 
 from aiohttp import web, WSMsgType, ClientSession, WSCloseCode
 
-PORT = int(os.environ.get("VOICE_HTTPS_PORT", "8443"))
+# --- Input validation for env vars ---
+_raw_port = os.environ.get("VOICE_HTTPS_PORT", "8443")
+if not re.fullmatch(r'[0-9]+', _raw_port) or not (1 <= int(_raw_port) <= 65535):
+    print(f"ERROR: VOICE_HTTPS_PORT must be 1-65535, got: {_raw_port}", file=sys.stderr)
+    sys.exit(1)
+PORT = int(_raw_port)
+
+_raw_bind = os.environ.get("VOICE_BIND_HOST", "127.0.0.1")
+if not re.fullmatch(r'[a-zA-Z0-9._-]+', _raw_bind):
+    print(f"ERROR: VOICE_BIND_HOST contains invalid characters: {_raw_bind}", file=sys.stderr)
+    sys.exit(1)
+
 WORKSPACE = os.environ.get("WORKSPACE", os.path.join(Path.home(), ".openclaw", "workspace"))
 CERT = os.environ.get("VOICE_CERT", os.path.join(WORKSPACE, "voice-input", "certs", "voice-cert.pem"))
 KEY = os.environ.get("VOICE_KEY", os.path.join(WORKSPACE, "voice-input", "certs", "voice-key.pem"))
@@ -21,6 +34,7 @@ def _detect_control_ui():
     if explicit and os.path.isdir(explicit):
         return explicit
     try:
+        # Safe: fixed argument list, no user input, no shell=True
         npm_root = subprocess.check_output(["npm", "-g", "root"], text=True, stderr=subprocess.DEVNULL).strip()
         candidate = os.path.join(npm_root, "openclaw", "dist", "control-ui")
         if os.path.isdir(candidate):
@@ -34,10 +48,46 @@ def _detect_control_ui():
 CONTROL_UI = _detect_control_ui()
 TRANSCRIBE = os.environ.get("VOICE_TRANSCRIBE_URL", "http://127.0.0.1:18790/transcribe")
 GATEWAY_WS = os.environ.get("VOICE_GATEWAY_WS", "ws://127.0.0.1:18789")
-ALLOWED_ORIGIN = os.environ.get("VOICE_ALLOWED_ORIGIN", f"https://localhost:{PORT}")
+# SECURITY: Default bind address is localhost only. Set VOICE_BIND_HOST to
+# 0.0.0.0 or a specific IP to expose externally (e.g. for LAN access).
+BIND_HOST = _raw_bind
+ALLOWED_ORIGIN = os.environ.get("VOICE_ALLOWED_ORIGIN", f"https://127.0.0.1:{PORT}")
+
+
+def _read_gateway_token():
+    """Read gateway auth token from openclaw config."""
+    try:
+        import json
+        cfg_path = os.path.join(Path.home(), ".openclaw", "openclaw.json")
+        with open(cfg_path, "r") as f:
+            cfg = json.load(f)
+        return cfg.get("gateway", {}).get("auth", {}).get("token", None)
+    except Exception:
+        return None
+
+
+def _check_auth(request):
+    """Validate Bearer token against gateway auth token. Returns error response or None."""
+    gateway_token = _read_gateway_token()
+    if not gateway_token:
+        # No gateway token configured — allow (localhost-only safe default)
+        return None
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        provided = auth_header[7:].strip()
+        if provided == gateway_token:
+            return None
+    return web.json_response(
+        {"error": "unauthorized"},
+        status=401,
+        headers={"Access-Control-Allow-Origin": ALLOWED_ORIGIN},
+    )
 
 
 async def handle_transcribe(request):
+    auth_err = _check_auth(request)
+    if auth_err is not None:
+        return auth_err
     body = await request.read()
     try:
         req = urllib.request.Request(
@@ -65,7 +115,7 @@ async def handle_options(_request):
         headers={
             "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
             "Access-Control-Allow-Methods": "POST, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization",
         },
     )
 
@@ -156,7 +206,8 @@ async def handle_catchall(request):
         path = "/index.html"
 
     fpath = os.path.normpath(os.path.join(CONTROL_UI, path.lstrip("/")))
-    if not fpath.startswith(CONTROL_UI):
+    # Path traversal protection: ensure resolved path is within CONTROL_UI
+    if not fpath.startswith(os.path.normpath(CONTROL_UI) + os.sep) and fpath != os.path.normpath(CONTROL_UI):
         raise web.HTTPForbidden()
 
     if not os.path.isfile(fpath):
@@ -185,6 +236,7 @@ def ensure_cert_files():
     if cert_path.exists() and key_path.exists():
         return
 
+    # Safe: fixed argument list, no user input, no shell=True
     subprocess.run([
         "openssl", "req", "-x509", "-nodes", "-newkey", "rsa:2048",
         "-keyout", str(key_path),
@@ -193,6 +245,9 @@ def ensure_cert_files():
         "-subj", "/CN=openclaw-voice-local",
     ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
+    # SECURITY: Ensure private key is not group/world-readable
+    os.chmod(str(key_path), 0o600)
+
 
 if __name__ == "__main__":
     ensure_cert_files()
@@ -200,5 +255,5 @@ if __name__ == "__main__":
     ssl_ctx.load_cert_chain(CERT, KEY)
 
     app = create_app()
-    print(f"[voice-https] HTTPS+WSS on https://0.0.0.0:{PORT}", flush=True)
-    web.run_app(app, host="0.0.0.0", port=PORT, ssl_context=ssl_ctx, print=None)
+    print(f"[voice-https] HTTPS+WSS on https://{BIND_HOST}:{PORT}", flush=True)
+    web.run_app(app, host=BIND_HOST, port=PORT, ssl_context=ssl_ctx, print=None)

@@ -24,7 +24,7 @@ requires:
     - ~/.openclaw/workspace/voice-input/certs/ (generates self-signed TLS cert)
   env:
     - VOICE_HTTPS_PORT (optional, default: 8443)
-    - VOICE_HOST (optional, auto-detected from hostname -I)
+    - VOICE_HOST (optional, default: 127.0.0.1 — set to a LAN IP to expose externally)
     - VOICE_ALLOWED_ORIGIN (optional, default: https://<VOICE_HOST>:<VOICE_HTTPS_PORT>)
     - VOICE_LANG (optional, default: auto — prompts interactively if not set)
   persistence:
@@ -32,7 +32,7 @@ requires:
     - "Gateway startup hook: voice-input-inject (re-injects JS after updates)"
   privileges: user-level only, no root/sudo required
   dependencies:
-    - python3 with aiohttp (pip)
+    - python3 with aiohttp >= 3.9.0 (pip)
     - faster-whisper transcription service on port 18790
     - openssl (for self-signed cert generation)
 ---
@@ -77,14 +77,21 @@ Related skills:
 4. Run HTTPS+WSS proxy as persistent user systemd service (`openclaw-voice-https.service`).
 5. Verify pairing/token/origin errors and resolve in order.
 
+## Security Notes
+
+- **Localhost by default**: The HTTPS proxy binds to `127.0.0.1` only. It is **not** reachable from other devices on your network unless you explicitly set `VOICE_HOST` to a LAN IP.
+- **LAN exposure**: Setting `VOICE_HOST=<LAN-IP>` exposes the proxy (and by extension the gateway WebSocket and transcription endpoint) to all devices on that network. Only do this on trusted networks.
+- **Persistence**: This skill installs a **user systemd service** (`openclaw-voice-https.service`) that starts automatically on boot, and a **gateway hook** that re-injects the UI script after updates. Use `uninstall.sh` to fully revert.
+- **Self-signed TLS**: The auto-generated certificate is not trusted by browsers. You will see a certificate warning on first access.
+
 ## Deploy
 
-Run (auto-detect host IP):
+Run (localhost only — default, most secure):
 ```bash
 bash scripts/deploy.sh
 ```
 
-Or set host/port/language explicitly:
+Or expose on LAN (required to access from other devices):
 ```bash
 VOICE_HOST=10.0.0.42 VOICE_HTTPS_PORT=8443 VOICE_LANG=de bash scripts/deploy.sh
 ```
@@ -141,7 +148,8 @@ The injected JS (`voice-input.js`) runs inside the Control UI and interacts with
 | **Double-click** | Switch between PTT and Toggle mode |
 | **Right-click** | Toggle beep sound on/off |
 | **Ctrl+Space** (hold) | Push-to-Talk via keyboard (works even with text field focused) |
-| **Ctrl+Shift+M** | Start/stop continuous recording |
+| **Ctrl+Shift+M** | Start/stop recording (transcribes on stop) |
+| **Ctrl+Shift+B** | Start/stop live transcription [beta] — text appears in real-time, auto-sends after 2s review, stops on 5s silence or "Stop Hugo" keyword |
 
 The current mode and available actions are shown in the button tooltip on hover.
 
@@ -211,11 +219,7 @@ This will:
 3. Remove `voice-input.js` from Control UI and undo the index.html injection
 4. Remove the HTTPS origin from gateway config
 5. Restart the gateway
-
-Workspace files (`voice-input/`) and TLS certs are kept by default.
-To remove them too:
-```bash
-rm -rf ~/.openclaw/workspace/voice-input
-```
+6. Remove TLS certificates
+7. Remove workspace runtime files (`voice-input.js`, `https-server.py`, `i18n.json`)
 
 The faster-whisper backend is **not** touched by uninstall — remove it separately via `faster-whisper-local-service` if needed.
