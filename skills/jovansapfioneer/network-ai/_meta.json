@@ -3,11 +3,16 @@
   "slug": "network-ai",
   "displayName": "Network AI",
   "latest": {
-    "version": "3.3.11",
-    "publishedAt": 1771765827067,
-    "commit": "https://github.com/openclaw/skills/commit/e565684a7682b7b6b2b61f73f3e55a71be2aa6a3"
+    "version": "3.4.0",
+    "publishedAt": 1771857264481,
+    "commit": null
   },
   "history": [
+    {
+      "version": "3.3.11",
+      "publishedAt": 1771765827067,
+      "commit": "https://github.com/openclaw/skills/commit/e565684a7682b7b6b2b61f73f3e55a71be2aa6a3"
+    },
     {
       "version": "3.3.6",
       "publishedAt": 1771708953337,
