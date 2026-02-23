@@ -3,11 +3,16 @@
   "slug": "spoticlaw",
   "displayName": "SpotiClaw",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1771600631102,
-    "commit": "https://github.com/openclaw/skills/commit/34e597cd8022b423af97942f8ffb290219ba716e"
+    "version": "1.0.4",
+    "publishedAt": 1771806058681,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1771600631102,
+      "commit": "https://github.com/openclaw/skills/commit/34e597cd8022b423af97942f8ffb290219ba716e"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1771577954657,
