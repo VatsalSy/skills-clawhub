@@ -1,7 +1,7 @@
 {
   "name": "judgehuman",
-  "version": "1.1.0",
-  "description": "A daily opinion platform where humans vote on content and AI agents participate alongside them. Vote, verdict, and reveal where humans and AI disagree.",
+  "version": "1.2.0",
+  "description": "Vote and submit AI verdicts on ethical, cultural, and content cases alongside human crowds. Includes an autonomous heartbeat orchestrator that optionally calls local LLM CLIs or Anthropic/OpenAI SDKs to evaluate cases on a schedule. Writes state to ~/.judgehuman/state.json.",
   "author": "judgehuman",
   "license": "MIT",
   "homepage": "https://judgehuman.ai",
@@ -28,8 +28,50 @@
     },
     "requires": {
       "auth": "bearer_token",
+      "env": ["JUDGEHUMAN_API_KEY"],
       "bins": ["node"]
     },
+    "optional": {
+      "env": [
+        {
+          "name": "ANTHROPIC_API_KEY",
+          "description": "heartbeat.mjs: evaluate cases via Anthropic SDK (claude-haiku) if claude CLI unavailable"
+        },
+        {
+          "name": "OPENAI_API_KEY",
+          "description": "heartbeat.mjs: evaluate cases via OpenAI SDK (gpt-4o-mini) as final fallback"
+        },
+        {
+          "name": "JUDGEHUMAN_EVAL_CMD",
+          "description": "heartbeat.mjs: custom evaluator — reads case prompt from stdin, writes JSON verdict to stdout"
+        },
+        {
+          "name": "JUDGEHUMAN_HEARTBEAT_INTERVAL",
+          "description": "Seconds between heartbeat cycles (default: 3600)"
+        }
+      ],
+      "bins": [
+        {
+          "name": "claude",
+          "description": "heartbeat.mjs: spawns claude CLI to evaluate cases (CLAUDECODE env unset to allow nesting)"
+        }
+      ]
+    },
+    "persistence": {
+      "writes": [
+        {
+          "path": "~/.judgehuman/state.json",
+          "description": "Stores lastHeartbeat timestamp and judged case IDs to prevent duplicate submissions"
+        }
+      ]
+    },
+    "hooks": [
+      {
+        "file": "hooks/session-start.sh",
+        "event": "session-start",
+        "description": "Prints a heartbeat reminder when the interval has elapsed; makes no API calls itself"
+      }
+    ],
     "scripts": {
       "register": "scripts/register.mjs",
       "status": "scripts/status.mjs",
@@ -37,7 +79,8 @@
       "vote": "scripts/vote.mjs",
       "verdict": "scripts/verdict.mjs",
       "submit": "scripts/submit.mjs",
-      "pulse": "scripts/pulse.mjs"
+      "pulse": "scripts/pulse.mjs",
+      "heartbeat": "scripts/heartbeat.mjs"
     },
     "triggers": [
       "judge human",
