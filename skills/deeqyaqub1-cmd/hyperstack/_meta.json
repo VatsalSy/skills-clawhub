@@ -1,13 +1,18 @@
 {
   "owner": "deeqyaqub1-cmd",
   "slug": "hyperstack",
-  "displayName": "Agent Memory Graph — Typed Knowledge Graph for AI Agents",
+  "displayName": "HyperStack — Agent Provenance Graph",
   "latest": {
-    "version": "1.0.23",
-    "publishedAt": 1771688119073,
-    "commit": "https://github.com/openclaw/skills/commit/a168286eac21af30cc464454926d2acf36df4322"
+    "version": "1.0.26",
+    "publishedAt": 1771762921951,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.23",
+      "publishedAt": 1771688119073,
+      "commit": "https://github.com/openclaw/skills/commit/a168286eac21af30cc464454926d2acf36df4322"
+    },
     {
       "version": "1.0.22",
       "publishedAt": 1771632509520,
