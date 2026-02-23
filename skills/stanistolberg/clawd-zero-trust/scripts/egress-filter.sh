@@ -37,7 +37,7 @@ CANARY_MODE=0
 FORCE_MODE=0
 TRUST_MODE=0   # --trust: explicit first-run acknowledgment (replaces silent TOFU)
 
-PROFILE_VERSION="1.1.7"
+PROFILE_VERSION="1.2.0"
 SCRIPT_PATH="$(readlink -f "$0")"
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 SKILL_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -232,30 +232,23 @@ check_ufw_active() {
   fi
 }
 
-# DNS-based allowlist
-# shellcheck disable=SC2034
-declare -A PROVIDERS=(
-  ["api.anthropic.com"]="443"
-  ["api.openai.com"]="443"
-  ["generativelanguage.googleapis.com"]="443"
-  ["accounts.google.com"]="443"
-  ["oauth2.googleapis.com"]="443"
-  ["api.telegram.org"]="443"
-  ["api.search.brave.com"]="443"
-  ["controlplane.tailscale.com"]="443"
-  ["login.tailscale.com"]="443"
-  ["log.tailscale.io"]="443"
-  ["api.github.com"]="443"
-  # registry.npmjs.org — NOT included by default (supply-chain risk: broad npm
-  # access is not needed at agent runtime). Only add if you run npm-based
-  # OpenClaw plugins that phone home to npm during normal operation.
-  # ["registry.npmjs.org"]="443"
-  # api.agentsandbox.co — OpenClaw Agent Sandbox API (first-party OpenClaw
-  # infrastructure, NOT a third-party service). Hosts isolated sub-agent
-  # execution contexts. "agentsandbox" = OpenClaw's VM pool, not a C2 domain.
-  # Ref: https://docs.openclaw.ai | See: references/false-positives.md
-  ["api.agentsandbox.co"]="443"
-)
+# DNS-based allowlist loaded dynamically from plain-text registry
+declare -A PROVIDERS=()
+PROVIDERS_FILE="$(dirname "$0")/../config/providers.txt"
+
+if [[ -f "$PROVIDERS_FILE" ]]; then
+  while read -r domain port; do
+    if [[ -z "$domain" || "$domain" == \#* ]]; then
+      continue
+    fi
+    if [[ -n "$domain" && -n "$port" ]]; then
+      PROVIDERS["$domain"]="$port"
+    fi
+  done < "$PROVIDERS_FILE"
+else
+  log "ERROR: Configuration file $PROVIDERS_FILE not found."
+  exit 1
+fi
 
 GITHUB_SSH_CIDRS=(
   "140.82.112.0/20"

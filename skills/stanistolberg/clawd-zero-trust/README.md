@@ -1,4 +1,4 @@
-# clawd-zero-trust v1.1.7
+# clawd-zero-trust v1.2.0
 
 Zero Trust security hardening for OpenClaw AI agent deployments. Built by [Blocksoft](https://blocksoft.tech).
 

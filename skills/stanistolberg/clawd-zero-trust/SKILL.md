@@ -1,12 +1,12 @@
 ---
 name: clawd-zero-trust
-version: "1.1.7"
+version: "1.2.0"
 author: stanistolberg
 homepage: https://github.com/stanistolberg/clawd-zero-trust
 description: "Zero Trust security hardening for OpenClaw deployments. Use when asked to audit, harden, or apply Zero Trust architecture to an OpenClaw instance — including NHI identity scoping, Principle of Least Privilege (PLP), Plan-First protocol, DNS-based egress filtering, plugin allowlisting, and SSH/network lockdown. Also triggers on security audit requests, vulnerability analysis, SecureClaw installation, firewall hardening, and post-deployment security reviews."
 ---
 
-# clawd-zero-trust (v1.1.7)
+# clawd-zero-trust (v1.2.0)
 
 Zero Trust hardening framework for OpenClaw. Built by Blocksoft.
 
@@ -55,9 +55,6 @@ bash /home/claw/.openclaw/workspace/skills/clawd-zero-trust/scripts/egress-filte
 # Canary mode: temporary apply + 120s periodic verification, then commit/rollback
 bash /home/claw/.openclaw/workspace/skills/clawd-zero-trust/scripts/egress-filter.sh --canary
 
-# Force apply when script hash changed from stored profile
-bash /home/claw/.openclaw/workspace/skills/clawd-zero-trust/scripts/egress-filter.sh --apply --force
-
 # Verify endpoints only
 bash /home/claw/.openclaw/workspace/skills/clawd-zero-trust/scripts/egress-filter.sh --verify
 
@@ -65,7 +62,14 @@ bash /home/claw/.openclaw/workspace/skills/clawd-zero-trust/scripts/egress-filte
 bash /home/claw/.openclaw/workspace/skills/clawd-zero-trust/scripts/egress-filter.sh --reset
 ```
 
-### 4) Release Gate (v1.1.7)
+### 4) Dynamic Whitelisting (MAX USER-FRIENDLY API)
+To open a new port or add a service securely (e.g. for custom email, video extraction, new AI agents), **DO NOT edit the bash script or hardcoded arrays**. Always use the dynamic configuration helper command:
+```bash
+bash /home/claw/.openclaw/workspace/skills/clawd-zero-trust/scripts/whitelist.sh <domain> <port>
+```
+*(Example: `bash whitelist.sh youtu.be 443`). This automatically injects the domain cleanly into the `config/providers.txt` engine, triggers a transactional configuration flush, and instantly applies the changes to UFW.*
+
+### 5) Release Gate (v1.2.0)
 ```bash
 bash scripts/release-gate.sh
 ```
@@ -87,7 +91,7 @@ Tracked fields:
 - `lastAppliedAt`
 - `lastResult`
 
-On apply/canary, hash mismatch is refused unless `--force` is provided.
+On apply/canary, hash mismatch is refused unless `--force` is provided. The `whitelist.sh` helper intrinsically handles hash mismatches seamlessly.
 
 ## References
 - `references/zero-trust-principles.md` — Detailed ZT framework for AI agents
