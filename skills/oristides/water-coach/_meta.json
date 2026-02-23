@@ -3,11 +3,16 @@
   "slug": "water-coach",
   "displayName": "Water Coach",
   "latest": {
-    "version": "1.6.3",
-    "publishedAt": 1771621949286,
-    "commit": "https://github.com/openclaw/skills/commit/453cfd69654b7eac81eeaf1034781f7969654c68"
+    "version": "1.7.0",
+    "publishedAt": 1771809092144,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.6.3",
+      "publishedAt": 1771621949286,
+      "commit": "https://github.com/openclaw/skills/commit/453cfd69654b7eac81eeaf1034781f7969654c68"
+    },
     {
       "version": "1.5.8",
       "publishedAt": 1771527238172,

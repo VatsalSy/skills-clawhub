@@ -676,7 +676,13 @@ def should_send_extra_notification() -> dict:
             "message": f"At {status['percentage']}% - doing great! No extra notification needed."
         }
     
-    # Check max per hour
+    # Check max per hour - FIRST reset counter if hour changed
+    current_hour = now.hour
+    last_extra_hour = config.get("status", {}).get("last_extra_hour", None)
+    if last_extra_hour is not None and last_extra_hour != current_hour:
+        # Hour changed - reset the hourly counter
+        config.setdefault("status", {})["extras_this_hour"] = 0
+    
     extras_this_hour = config.get("status", {}).get("extras_this_hour", 0)
     if extras_this_hour >= max_per_hour:
         return {
@@ -801,31 +807,34 @@ def get_week_stats(days: int = 7) -> dict:
         reader = csv.DictReader(f)
         rows = list(reader)
     
-    # Group by date
+    # Group by date - sum ml_drank for each day
     by_date = {}
     for row in rows:
         d = row.get("date")
         if d:
             if d not in by_date:
                 by_date[d] = {"ml": 0, "goal": 3325}
-            by_date[d]["ml"] = max(by_date[d]["ml"], int(row.get("cumulative_ml", 0)))
-            by_date[d]["goal"] = int(float(row.get("daily_goal", 3325)))
+            by_date[d]["ml"] += int(row.get("ml_drank", 0))
+            by_date[d]["goal"] = int(float(row.get("goal_at_time", 3325)))
     
-    # Last N days
+    # Last N days - include ALL days, even with 0ml
     import datetime as dt
+    daily_goal = 3325  # Default goal
     for i in range(days):
         d = (dt.date.today() - dt.timedelta(days=i)).strftime("%Y-%m-%d")
-        if d in by_date:
-            stats["days"].append({
-                "date": d, 
-                "ml": by_date[d]["ml"], 
-                "goal": by_date[d]["goal"],
-                "percentage": round(by_date[d]["ml"] / by_date[d]["goal"] * 100, 1)
-            })
-            stats["total_ml"] += by_date[d]["ml"]
-            stats["days_tracked"] += 1
-            if by_date[d]["ml"] >= by_date[d]["goal"]:
-                stats["goal_hits"] += 1
+        ml = by_date.get(d, {}).get("ml", 0)
+        goal = by_date.get(d, {}).get("goal", daily_goal)
+        
+        stats["days"].append({
+            "date": d, 
+            "ml": ml, 
+            "goal": goal,
+            "percentage": round(ml / goal * 100, 1) if goal > 0 else 0
+        })
+        stats["total_ml"] += ml
+        stats["days_tracked"] += 1
+        if ml >= goal:
+            stats["goal_hits"] += 1
     
     stats["avg_ml"] = stats["total_ml"] // stats["days_tracked"] if stats["days_tracked"] else 0
     return stats

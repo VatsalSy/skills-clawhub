@@ -4,6 +4,29 @@ All notable changes to this skill will be documented in this file.
 
 ---
 
+## [1.7.0] - 2026-02-22
+
+### 🐛 Bug Fixes
+
+- **Hour counter not resetting**: Fixed `water dynamic` to properly reset hourly notification counter when hour changes (was causing false "max_per_hour_reached")
+- **Analytics sum bug**: Fixed weekly/monthly reports - was looking for non-existent `cumulative_ml` column, now correctly sums `ml_drank` per day
+- **Include 0ml days**: Weekly reports now include all days (even with 0ml) for true average calculation
+- **Day name mapping**: Fixed Portuguese day names (was mapping 0=Dom, now correctly 0=Seg)
+
+### ✨ Improvements
+
+- **Better weekly report format**: Table format with day names in Portuguese (Seg, Ter, Qua, Qui, Sex, Sáb, Dom)
+- **SKILL.md guide**: Added "How to Build Good Weekly/Monthly Reports" section for agents
+
+### 📋 Commands Updated
+
+```bash
+# Weekly report now shows correct days and includes all 7 days
+analytics week
+```
+
+---
+
 ## [1.5.1] - 2026-02-19
 
 ### 🔒 Security & Privacy

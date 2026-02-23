@@ -198,7 +198,55 @@ Example path: `/home/oriel/.openclaw/workspace/memory/data/`
 | Weekly report | `water_coach.py analytics week` |
 | Monthly report | `water_coach.py analytics month` |
 
-## Dynamic Scheduling details→ [references/dynamic.md](references/dynamic.md)
+## Dynamic Scheduling details
+→ [references/dynamic.md](references/dynamic.md)
+
+### ⚠️ Bug Fix (Feb 2026)
+The `water dynamic` command had a bug where the hourly notification counter wouldn't reset when the hour changed. This is now fixed:
+- The script now checks if the current hour differs from `last_extra_hour` and resets the counter accordingly
+- This ensures notifications work correctly after hour boundaries (e.g., 4PM)
+
+### ⚠️ Bug Fix (Feb 2026) - Analytics
+The `analyticsPM → 5 week` and `analytics month` commands had a bug:
+- Was looking for non-existent `cumulative_ml` column in CSV
+- Fixed to sum `ml_drank` per day instead
+
+### ✅ How to Build Good Weekly/Monthly Reports
+
+**Use these functions (don't reinvent):**
+
+| Report | Script | Function |
+|--------|--------|----------|
+| Weekly | `water_coach.py analytics week` | `analytics_week()` in `water_coach.py` |
+| Monthly | `water_coach.py analytics month` | `analytics_month()` in `water_coach.py` |
+
+These call `get_week_stats()` and `get_month_stats()` in `water.py`.
+
+**When updating analytics functions, follow these rules:**
+
+**1. Include ALL days, even with 0ml**
+```python
+# In get_week_stats() / get_month_stats()
+# Include every day in the range, not just days with data
+for i in range(days):
+    d = (date.today() - timedelta(days=i)).strftime("%Y-%m-%d")
+    ml = by_date.get(d, {}).get("ml", 0)  # Default to 0, not skip
+```
+
+**2. Calculate true average**
+```python
+# Average = total_ml / ALL days (including zeros), not just tracked days
+avg_ml = total_ml / days  # e.g., 15440ml / 7 days = 2205ml/day
+```
+
+**3. Show all days in table format**
+```python
+| Dia | ML | % | Status |
+| Sab 22 | 2250ml | 67.7% | ⚠️ |
+| Seg 17 | 0ml | 0.0% | ❌ |
+```
+
+This gives users an accurate picture of their habits!
 
 
 

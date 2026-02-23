@@ -67,7 +67,7 @@ def analytics_week():
     avg_daily = stats["total_ml"] // total_days
     goal_hits = stats["goal_hits"]
     
-    # Build message
+    # Build message with table format
     message = f"📊 **Weekly Water Report**\n\n"
     message += f"**This Week:**\n"
     message += f"- Total: {stats['total_ml']}ml\n"
@@ -75,11 +75,28 @@ def analytics_week():
     message += f"- Goal hits: {goal_hits}/{total_days} days\n\n"
     
     message += f"**Daily Breakdown:**\n"
+    message += f"| Dia | ML | % | Status |\n"
+    message += f"| -----|-----|-----|-------- |\n"
+    
+    # Portuguese day names (Python weekday: Mon=0, Sun=6)
+    day_names = {"0": "Seg", "1": "Ter", "2": "Qua", "3": "Qui", "4": "Sex", "5": "Sáb", "6": "Dom"}
+    import datetime as dt
+    
     for day in stats.get("days", []):
         pct = day.get("percentage", 0)
         ml = day.get("ml", 0)
+        date_str = day.get("date", "")
+        
+        # Get day name
+        try:
+            d = dt.datetime.strptime(date_str, "%Y-%m-%d")
+            day_name = day_names.get(str(d.weekday()), date_str)
+            date_display = f"{day_name} {d.day}"
+        except:
+            date_display = date_str
+        
         emoji = "✅" if pct >= 100 else "⚠️" if pct >= 50 else "❌"
-        message += f"{emoji} {day['date']}: {ml}ml ({pct}%)\n"
+        message += f"| {date_display} | {ml}ml | {pct:.1f}% | {emoji} |\n"
     
     return {"message": message, "stats": stats}
 
