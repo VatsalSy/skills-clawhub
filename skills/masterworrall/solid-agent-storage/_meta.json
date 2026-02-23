@@ -3,11 +3,16 @@
   "slug": "solid-agent-storage",
   "displayName": "Solid Agent Storage",
   "latest": {
-    "version": "0.0.5",
-    "publishedAt": 1771765238475,
-    "commit": "https://github.com/openclaw/skills/commit/e352dfa28457d2b1a06b655d7f75c713e6065df4"
+    "version": "0.0.6",
+    "publishedAt": 1771851518990,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.0.5",
+      "publishedAt": 1771765238475,
+      "commit": "https://github.com/openclaw/skills/commit/e352dfa28457d2b1a06b655d7f75c713e6065df4"
+    },
     {
       "version": "0.0.4",
       "publishedAt": 1771621644983,

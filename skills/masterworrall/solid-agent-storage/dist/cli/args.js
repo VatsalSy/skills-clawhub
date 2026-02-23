@@ -12,7 +12,7 @@ export function requireArg(name, usage) {
     return value;
 }
 export function getServerUrl() {
-    return process.env.SOLID_SERVER_URL ?? getArg('serverUrl') ?? 'http://localhost:3000';
+    return process.env.SOLID_SERVER_URL ?? getArg('serverUrl') ?? 'https://crawlout.io';
 }
 export function getPassphrase() {
     const passphrase = process.env.INTERITION_PASSPHRASE;
