@@ -1,0 +1,11 @@
+{
+  "owner": "sivulich",
+  "slug": "mqttasgi",
+  "displayName": "mqttasgi - IOT backbone for Django",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1771689094430,
+    "commit": null
+  },
+  "history": []
+}
