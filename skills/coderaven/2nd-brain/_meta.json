@@ -3,9 +3,15 @@
   "slug": "2nd-brain",
   "displayName": "2nd Brain",
   "latest": {
-    "version": "1.2.0",
-    "publishedAt": 1771675811738,
-    "commit": "https://github.com/openclaw/skills/commit/0bdad2d7886decfe55ae8592d6b1bfc2dcbe1215"
+    "version": "1.2.1",
+    "publishedAt": 1771678326092,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.2.0",
+      "publishedAt": 1771675811738,
+      "commit": "https://github.com/openclaw/skills/commit/0bdad2d7886decfe55ae8592d6b1bfc2dcbe1215"
+    }
+  ]
 }

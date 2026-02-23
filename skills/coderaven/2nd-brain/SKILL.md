@@ -1,6 +1,6 @@
 ---
 name: brain
-version: 1.2.0
+version: 1.2.1
 description: |
   Personal knowledge base for capturing and retrieving information about people,
   places, restaurants, games, tech, events, media, ideas, and organizations.
@@ -28,6 +28,8 @@ Trigger this skill when:
 **Keywords that trigger:** "remember", "note that", "met this person", "visited", "played", "watched", "read", "idea:", "what do I know about", "who is", "where was"
 
 **⚠️ Do NOT put brain-eligible content in daily logs.** If it's a named entity (person, place, restaurant, product, game, etc.), it belongs in `brain/`, not `memory/YYYY-MM-DD.md`. Daily logs are for session context and ephemeral notes only.
+
+**🚨 MEDIA FILES MUST BE SAVED.** When user sends photos/audio/video/PDFs about a brain entry, you MUST save the actual file to `attachments/`. Transcribing content is NOT the same as saving the file. Do BOTH.
 
 ## Data Location
 
@@ -141,6 +143,23 @@ This makes relationships explicit and searchable.
 ## Attachments
 
 Brain entries can have attachments: photos, PDFs, videos, audio, transcripts, etc.
+
+### 🚨 MANDATORY: Save All Media Files
+
+**When user sends ANY media (photos, audio, video, PDF) related to a brain entry:**
+
+1. **ALWAYS save the actual file** to `attachments/` — this is NON-NEGOTIABLE
+2. THEN analyze/transcribe the content into the profile
+3. NEVER skip saving the file just because you processed its content
+
+**"Saved" means the FILE exists in `attachments/`, not just that content was transcribed.**
+
+```bash
+# REQUIRED: Copy the file
+cp /path/to/inbound/media.jpg brain/places/entry/attachments/descriptive-name.jpg
+```
+
+If you transcribed content but didn't save the file → YOU DID IT WRONG. Go back and save it.
 
 ### Structure
 
