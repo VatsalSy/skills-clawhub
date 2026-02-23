@@ -1,0 +1,11 @@
+{
+  "owner": "mikonos",
+  "slug": "dmn-default-mode-network",
+  "displayName": "Dmn Default Mode Network",
+  "latest": {
+    "version": "3.0.4",
+    "publishedAt": 1771870793571,
+    "commit": null
+  },
+  "history": []
+}
