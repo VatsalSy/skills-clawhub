@@ -1,6 +1,6 @@
 ---
 name: whatsapp-ultimate
-version: 3.3.0
+version: 3.4.0
 description: "WhatsApp skill with a 3-rule security gate. Your agent speaks only when spoken to — in the right chat, by the right person."
 metadata:
   {
@@ -8,16 +8,19 @@ metadata:
       {
         "emoji": "💬",
         "os": ["linux", "darwin"],
-        "requires":
-          {
-            "bins": ["npx", "tsx", "sed", "python3"],
-            "channels": ["whatsapp"],
-          },
+        "requires": { "bins": ["npx", "tsx", "sed", "python3"], "channels": ["whatsapp"] },
         "patches":
           {
             "description": "Two optional bash scripts patch OpenClaw source files to add (1) self-chat history capture in monitor.ts and (2) model/auth prefix template variables in response-prefix-template.ts, types.ts, reply-prefix.ts, and agent-runner-execution.ts. Both scripts are idempotent (safe to run multiple times) and skip if already applied. Review the scripts before running.",
             "files": ["scripts/apply-history-fix.sh", "scripts/apply-model-prefix.sh"],
-            "modifies": ["src/web/inbound/monitor.ts", "src/auto-reply/reply/response-prefix-template.ts", "src/auto-reply/types.ts", "src/channels/reply-prefix.ts", "src/auto-reply/reply/agent-runner-execution.ts"],
+            "modifies":
+              [
+                "src/web/inbound/monitor.ts",
+                "src/auto-reply/reply/response-prefix-template.ts",
+                "src/auto-reply/types.ts",
+                "src/channels/reply-prefix.ts",
+                "src/auto-reply/reply/agent-runner-execution.ts",
+              ],
             "mechanism": "sed + python3 string replacement with anchor-point matching",
             "reversible": "git checkout on modified files restores originals",
           },
@@ -58,6 +61,7 @@ Pair with [**jarvis-voice**](https://clawhub.com/globalcaos/jarvis-voice) for Wh
 ## Features
 
 ### Messaging & Monitoring
+
 - **Model ID Prefix:** Every bot message shows which model and auth mode is active: `🤖(claude-opus-4-6|sub)` or `🤖(gpt-4o|api)`. Instantly know what's running.
 - **Complete Message History:** Captures ALL messages — including self-chat inbound messages that Baileys misses
 - **Self-Chat Mode:** Full bidirectional logging in your own chat (command channel)
@@ -65,6 +69,7 @@ Pair with [**jarvis-voice**](https://clawhub.com/globalcaos/jarvis-voice) for Wh
 - **Full History Sync:** Enable `syncFullHistory: true` to backfill messages on reconnect
 
 ### Administration & Group Management
+
 - **Contact Sync:** Extract all contacts from all WhatsApp groups with phone numbers, admin status, and LID resolution
 - **Group Creation:** Create groups programmatically with participant lists
 - **Group Management:** Rename, update descriptions, add/remove/promote/demote participants
@@ -73,6 +78,7 @@ Pair with [**jarvis-voice**](https://clawhub.com/globalcaos/jarvis-voice) for Wh
 ## Setup
 
 ### Install
+
 ```bash
 clawhub install whatsapp-ultimate
 ```
@@ -85,6 +91,7 @@ This skill includes two **optional** bash scripts that patch OpenClaw source fil
 2. **`apply-model-prefix.sh`** — Adds model/auth info to every reply. Modifies `response-prefix-template.ts`, `types.ts`, `reply-prefix.ts`, `agent-runner-execution.ts`.
 
 **Before running:**
+
 - Read each script — they're short and commented
 - `git commit` your OpenClaw repo first (so you can `git checkout` to revert)
 - Both scripts are idempotent (safe to run multiple times)
@@ -105,6 +112,7 @@ bash ~/.openclaw/workspace/skills/whatsapp-ultimate/scripts/apply-model-prefix.s
 **To revert:** `git checkout -- src/` from your OpenClaw repo root.
 
 ### Config (openclaw.json)
+
 ```json
 {
   "channels": {
@@ -124,22 +132,24 @@ bash ~/.openclaw/workspace/skills/whatsapp-ultimate/scripts/apply-model-prefix.s
 
 The `responsePrefix` supports template variables:
 
-| Variable | Example | Description |
-|----------|---------|-------------|
-| `{model}` | `claude-opus-4-6` | Short model name |
-| `{authMode}` | `sub` / `api` | Auth mode: `sub` = subscription/OAuth, `api` = API key |
-| `{provider}` | `anthropic` | Provider name |
-| `{auth}` | `sub` | Alias for `{authMode}` |
-| `{authProfile}` | `anthropic:oauth` | Full auth profile ID |
-| `{think}` | `low` | Current thinking level |
+| Variable        | Example           | Description                                            |
+| --------------- | ----------------- | ------------------------------------------------------ |
+| `{model}`       | `claude-opus-4-6` | Short model name                                       |
+| `{authMode}`    | `sub` / `api`     | Auth mode: `sub` = subscription/OAuth, `api` = API key |
+| `{provider}`    | `anthropic`       | Provider name                                          |
+| `{auth}`        | `sub`             | Alias for `{authMode}`                                 |
+| `{authProfile}` | `anthropic:oauth` | Full auth profile ID                                   |
+| `{think}`       | `low`             | Current thinking level                                 |
 
 **Prefix examples:**
+
 - `🤖(claude-opus-4-6|sub)` — Opus on subscription
 - `🤖(claude-opus-4-6|api)` — Opus on API key (costs money!)
 - `🤖(gpt-4o|api)` — GPT-4o fallback
 - `🤖(llama3.2:1b|api)` — Local Ollama model
 
 This lets you immediately identify:
+
 1. Which model answered (was it a fallback?)
 2. Whether you're burning subscription or API credits
 
@@ -183,14 +193,14 @@ Phone numbers in E.164 format. Creator auto-added as admin. Returns group JID.
 
 ### Key Baileys Methods
 
-| Method | Description |
-|--------|-------------|
-| `groupFetchAllParticipating()` | Get all groups + participants |
-| `groupMetadata(jid)` | Get single group details |
-| `groupCreate(name, participants)` | Create new group |
-| `groupUpdateSubject(jid, name)` | Rename group |
-| `groupUpdateDescription(jid, desc)` | Update group description |
-| `groupParticipantsUpdate(jid, participants, action)` | Add/remove/promote/demote |
+| Method                                               | Description                   |
+| ---------------------------------------------------- | ----------------------------- |
+| `groupFetchAllParticipating()`                       | Get all groups + participants |
+| `groupMetadata(jid)`                                 | Get single group details      |
+| `groupCreate(name, participants)`                    | Create new group              |
+| `groupUpdateSubject(jid, name)`                      | Rename group                  |
+| `groupUpdateDescription(jid, desc)`                  | Update group description      |
+| `groupParticipantsUpdate(jid, participants, action)` | Add/remove/promote/demote     |
 
 ### LID Resolution
 
@@ -198,20 +208,30 @@ WhatsApp uses LIDs (Linked IDs) internally. The contact sync script automaticall
 
 ## Changelog
 
+### 3.4.0
+
+- **Fixed:** Chat search now resolves LID/JID aliases — searching by chat name finds messages across both `@lid` and `@s.whatsapp.net` JID formats
+- **Added:** `resolveChatJids()` cross-references chats, contacts, and messages tables to discover all JID aliases for a given chat filter
+- **Improved:** Search falls back to original LIKE behaviour if no JIDs resolve, so no regressions
+
 ### 3.0.0
+
 - **Merged:** whatsapp-tools into whatsapp-ultimate — contact sync, group creation, and admin operations now included
 - **Added:** Proper metadata.openclaw block with required bins, channels, and security notes
 - **Added:** Administration Tools section with Baileys API reference and LID resolution docs
 
 ### 2.2.0
+
 - **Added:** Model + auth mode prefix in every message (`{model}`, `{authMode}` template vars)
 - **Added:** Install script for model prefix patch
 - **Added:** Full template variable documentation
 
 ### 2.1.0
+
 - **Fixed:** Self-chat inbound messages now captured in history DB
 - **Added:** Install script for history capture patch
 - **Added:** `syncFullHistory` config for full backfill
 
 ### 2.0.3
+
 - Initial ClawHub release with security gating and bot prefix
