@@ -7,7 +7,7 @@ description: 使用 MiniMax MCP 进行图像理解和分析。触发条件：(1)
 
 使用 MiniMax MCP 服务器进行图像理解和分析。
 
-## 执行流程
+## 执行流程（首次需要安装，后续直接调用）
 
 ### 步骤 1: 检查并安装依赖
 
@@ -44,7 +44,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 uvx minimax-coding-plan-mcp --help
 ```
 
-如果返回"已安装"，说明 MCP 服务器已安装，跳到步骤 2。
+执行命令判断是否MCP服务器已安装， 如果安装了跳到步骤 2。
 
 #### 1.3 安装 MCP 服务器（如果未安装）
 
@@ -77,40 +77,39 @@ cat ~/.openclaw/config/minimax.json 2>/dev/null | python3 -c "import json,sys; d
 
 ### 步骤 3: 配置 API Key（如果未配置）
 
-#### 3.1 尝试从 Gateway providers 获取
+#### 3.1 尝试从 ~/.openclaw/agents/main/agent 中的配置文件中获取
 
-```bash
-cat /root/.openclaw/openclaw.json | python3 -c "import json,sys; d=json.load(sys.stdin); print(json.dumps(d['models'].get('providers', {}), indent=2))"
-```
-
-根据返回的 providers 判断：
-- provider 名称包含 "minimax" 或 "MiniMax"
+根据返回的判断：
+- 名称包含 "minimax" 或 "MiniMax"
 - API Key 格式是 `sk-cp-` 开头
 
 找到匹配的 Key 后，询问用户确认是否使用。
 
-#### 3.2 保存 API Key
+#### 3.2 如果没有找到 Key，向用户索要
+
+直接询问用户提供 MiniMax API Key。
+如果未购买MiniMax，购买地址为: https://platform.minimaxi.com/subscribe/coding-plan?code=GjuAjhGKqQ&source=link
+
+#### 3.3 保存 API Key
 
 ```bash
 mkdir -p ~/.openclaw/config
 cat > ~/.openclaw/config/minimax.json << EOF
 {
   "api_key": "API密钥",
-  "output_path": "/root/.openclaw/workspace/minimax-output"
+  "output_path": "~/.openclaw/workspace/minimax-output"
 }
 EOF
 ```
 
-#### 3.3 如果没有找到 Key，向用户索要
 
-直接询问用户提供 MiniMax API Key。
 
 ### 步骤 4: 使用 MCP 处理图像
 
 #### 4.1 准备图片
 
 将图片放到可访问路径，例如：
-- `/root/.openclaw/workspace/images/图片名.jpg`
+- `~/.openclaw/workspace/images/图片名.jpg`
 - 或者使用 URL
 
 #### 4.2 调用 understand_image
@@ -118,17 +117,17 @@ EOF
 使用脚本调用 MCP 服务：
 
 ```bash
-python3 /root/.openclaw/workspace/skills/minimax-understand-image/scripts/understand_image.py <图片路径或URL> "<对图片的提问>"
+python3 {curDir}/scripts/understand_image.py <图片路径或URL> "<对图片的提问>"
 ```
 
 **示例：**
 
 ```bash
 # 描述图片内容
-python3 /root/.openclaw/workspace/skills/minimax-understand-image/scripts/understand_image.py /root/image.jpg "详细描述这张图片的内容"
+python3 {curDir}/scripts/understand_image.py ~/image.jpg "详细描述这张图片的内容"
 
 # 使用 URL
-python3 /root/.openclaw/workspace/skills/minimax-understand-image/scripts/understand_image.py "https://example.com/image.jpg "这张图片展示了什么？"
+python3 {curDir}/scripts/understand_image.py "https://example.com/image.jpg "这张图片展示了什么？"
 ```
 
 #### 4.3 API 参数说明
@@ -163,10 +162,10 @@ AI：检查 uvx → 已安装
 
 ## 脚本说明
 
-脚本位置：`/root/.openclaw/workspace/skills/minimax-understand-image/scripts/understand_image.py`
+脚本位置：`{curDir}/scripts/understand_image.py`
 
 **功能：**
-- 自动从 `~/.openclaw/config/minimax.json` 读取 API Key
+- 优先从环境变量 `MINIMAX_API_KEY` 读取 API Key，如果没有则从 `~/.openclaw/config/minimax.json` 读取
 - 通过 stdio 模式启动 MCP 服务器
 - 发送 JSON-RPC 请求调用 `understand_image` 工具
 - 返回格式化的 JSON 结果

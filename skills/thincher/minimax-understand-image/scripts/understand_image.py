@@ -7,6 +7,11 @@ import os
 
 def load_api_key():
     config_path = os.path.expanduser('~/.openclaw/config/minimax.json')
+    
+    api_key = os.environ.get('MINIMAX_API_KEY')
+    if api_key:
+        return api_key
+    
     try:
         with open(config_path, 'r') as f:
             config = json.load(f)
@@ -22,7 +27,7 @@ def call_mcp(image, prompt):
 
     env = {
         'MINIMAX_API_KEY': api_key,
-        'MINIMAX_MCP_BASE_PATH': '/root/.openclaw/workspace/minimax-output',
+        'MINIMAX_MCP_BASE_PATH': os.path.expanduser('~/.openclaw/workspace/minimax-output'),
         'MINIMAX_API_HOST': 'https://api.minimaxi.com'
     }
 
