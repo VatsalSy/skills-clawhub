@@ -8,11 +8,11 @@ description: >
 
 # here.now
 
-**Skill version: 1.4**
+**Skill version: 1.6**
 
 Publish any file or folder to the web and get a live URL back. Static hosting only.
 
-To check for skill updates: `npx skills add heredotnow/skill --skill here-now`
+To install or update: `curl -fsSL https://here.now/install.sh | bash`
 
 ## Publish
 
@@ -24,6 +24,8 @@ Outputs the live URL (e.g. `https://bright-canvas-a7k2.here.now/`).
 
 Without an API key this creates an **anonymous publish** that expires in 24 hours.
 With a saved API key, the publish is permanent.
+
+**File structure:** Place `index.html` at the root of the directory you publish, not inside a subdirectory. The directory's contents become the site root. For example, publish `my-site/` where `my-site/index.html` exists — don't publish a parent folder that contains `my-site/`.
 
 ## Update an existing publish
 

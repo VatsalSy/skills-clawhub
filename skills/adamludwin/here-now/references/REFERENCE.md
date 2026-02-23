@@ -58,7 +58,7 @@ Creates a new publish with a random slug. Works with or without authentication.
 }
 ```
 
-- `files` (required): array of `{ path, size, contentType }`. At least one file.
+- `files` (required): array of `{ path, size, contentType }`. At least one file. Paths should be relative to the site root (e.g. `index.html`, `assets/style.css`) — don't include a parent directory name like `my-project/index.html`.
 - `ttlSeconds` (optional): expiry in seconds. Ignored for anonymous publishes (always 24h).
 - `viewer` (optional): metadata for auto-viewer pages (only used when no `index.html`).
 
@@ -299,7 +299,8 @@ Asset paths work naturally from the subdomain root:
 
 1. If `index.html` exists at root → serve it as the document.
 2. Else if exactly one file at root → serve an auto-viewer page (images, PDF, video, audio get rich viewers; everything else gets a download page).
-3. Else → 404.
+3. Else if an `index.html` exists in any subdirectory → serve the first one found.
+4. Else → 404.
 
 Direct file paths always work: `https://<slug>.here.now/report.pdf`
 

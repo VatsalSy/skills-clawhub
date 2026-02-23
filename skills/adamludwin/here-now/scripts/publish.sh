@@ -29,7 +29,19 @@ USAGE
 
 die() { echo "error: $1" >&2; exit 1; }
 
-for cmd in curl jq file; do
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SKILL_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+BUNDLED_JQ="${SKILL_DIR}/bin/jq"
+
+if [[ -x "$BUNDLED_JQ" ]]; then
+  JQ_BIN="$BUNDLED_JQ"
+elif command -v jq >/dev/null 2>&1; then
+  JQ_BIN="$(command -v jq)"
+else
+  die "requires jq (run: curl -fsSL https://here.now/install.sh | bash)"
+fi
+
+for cmd in curl file; do
   command -v "$cmd" >/dev/null 2>&1 || die "requires $cmd"
 done
 
@@ -62,7 +74,7 @@ STATE_FILE="$STATE_DIR/state.json"
 
 # Auto-load claim token from state file for anonymous updates
 if [[ -n "$SLUG" && -z "$CLAIM_TOKEN" && -z "$API_KEY" && -f "$STATE_FILE" ]]; then
-  CLAIM_TOKEN=$(jq -r --arg s "$SLUG" '.publishes[$s].claimToken // empty' "$STATE_FILE" 2>/dev/null || true)
+  CLAIM_TOKEN=$("$JQ_BIN" -r --arg s "$SLUG" '.publishes[$s].claimToken // empty' "$STATE_FILE" 2>/dev/null || true)
 fi
 
 guess_content_type() {
@@ -103,9 +115,9 @@ if [[ -f "$TARGET" ]]; then
   sz=$(wc -c < "$TARGET" | tr -d ' ')
   ct=$(guess_content_type "$TARGET")
   bn=$(basename "$TARGET")
-  FILES_JSON=$(jq -n --arg p "$bn" --argjson s "$sz" --arg c "$ct" \
+  FILES_JSON=$("$JQ_BIN" -n --arg p "$bn" --argjson s "$sz" --arg c "$ct" \
     '[{"path":$p,"size":$s,"contentType":$c}]')
-  FILE_MAP=$(jq -n --arg p "$bn" --arg a "$(cd "$(dirname "$TARGET")" && pwd)/$(basename "$TARGET")" \
+  FILE_MAP=$("$JQ_BIN" -n --arg p "$bn" --arg a "$(cd "$(dirname "$TARGET")" && pwd)/$(basename "$TARGET")" \
     '{($p):$a}')
 elif [[ -d "$TARGET" ]]; then
   FILE_MAP="{}"
@@ -116,33 +128,33 @@ elif [[ -d "$TARGET" ]]; then
     sz=$(wc -c < "$f" | tr -d ' ')
     ct=$(guess_content_type "$f")
     abs=$(cd "$(dirname "$f")" && pwd)/$(basename "$f")
-    FILES_JSON=$(echo "$FILES_JSON" | jq --arg p "$rel" --argjson s "$sz" --arg c "$ct" \
+    FILES_JSON=$(echo "$FILES_JSON" | "$JQ_BIN" --arg p "$rel" --argjson s "$sz" --arg c "$ct" \
       '. + [{"path":$p,"size":$s,"contentType":$c}]')
-    FILE_MAP=$(echo "$FILE_MAP" | jq --arg p "$rel" --arg a "$abs" '. + {($p):$a}')
+    FILE_MAP=$(echo "$FILE_MAP" | "$JQ_BIN" --arg p "$rel" --arg a "$abs" '. + {($p):$a}')
   done < <(find "$TARGET" -type f -print0 | sort -z)
 else
   die "not a file or directory: $TARGET"
 fi
 
-file_count=$(echo "$FILES_JSON" | jq 'length')
+file_count=$(echo "$FILES_JSON" | "$JQ_BIN" 'length')
 [[ "$file_count" -gt 0 ]] || die "no files found"
 
 # Build request body
-BODY=$(echo "$FILES_JSON" | jq '{files: .}')
+BODY=$(echo "$FILES_JSON" | "$JQ_BIN" '{files: .}')
 
 if [[ -n "$TTL" ]]; then
-  BODY=$(echo "$BODY" | jq --argjson t "$TTL" '.ttlSeconds = $t')
+  BODY=$(echo "$BODY" | "$JQ_BIN" --argjson t "$TTL" '.ttlSeconds = $t')
 fi
 
 if [[ -n "$TITLE" || -n "$DESCRIPTION" ]]; then
   viewer="{}"
-  [[ -n "$TITLE" ]] && viewer=$(echo "$viewer" | jq --arg t "$TITLE" '.title = $t')
-  [[ -n "$DESCRIPTION" ]] && viewer=$(echo "$viewer" | jq --arg d "$DESCRIPTION" '.description = $d')
-  BODY=$(echo "$BODY" | jq --argjson v "$viewer" '.viewer = $v')
+  [[ -n "$TITLE" ]] && viewer=$(echo "$viewer" | "$JQ_BIN" --arg t "$TITLE" '.title = $t')
+  [[ -n "$DESCRIPTION" ]] && viewer=$(echo "$viewer" | "$JQ_BIN" --arg d "$DESCRIPTION" '.description = $d')
+  BODY=$(echo "$BODY" | "$JQ_BIN" --argjson v "$viewer" '.viewer = $v')
 fi
 
 if [[ -n "$CLAIM_TOKEN" && -n "$SLUG" && -z "$API_KEY" ]]; then
-  BODY=$(echo "$BODY" | jq --arg ct "$CLAIM_TOKEN" '.claimToken = $ct')
+  BODY=$(echo "$BODY" | "$JQ_BIN" --arg ct "$CLAIM_TOKEN" '.claimToken = $ct')
 fi
 
 # Determine endpoint and method
@@ -168,17 +180,17 @@ RESPONSE=$(curl -sS -X "$METHOD" "$URL" \
   -d "$BODY")
 
 # Check for errors
-if echo "$RESPONSE" | jq -e '.error' >/dev/null 2>&1; then
-  err=$(echo "$RESPONSE" | jq -r '.error')
-  details=$(echo "$RESPONSE" | jq -r '.details // empty')
+if echo "$RESPONSE" | "$JQ_BIN" -e '.error' >/dev/null 2>&1; then
+  err=$(echo "$RESPONSE" | "$JQ_BIN" -r '.error')
+  details=$(echo "$RESPONSE" | "$JQ_BIN" -r '.details // empty')
   die "$err${details:+ ($details)}"
 fi
 
-OUT_SLUG=$(echo "$RESPONSE" | jq -r '.slug')
-VERSION_ID=$(echo "$RESPONSE" | jq -r '.upload.versionId')
-FINALIZE_URL=$(echo "$RESPONSE" | jq -r '.upload.finalizeUrl')
-SITE_URL=$(echo "$RESPONSE" | jq -r '.siteUrl')
-UPLOAD_COUNT=$(echo "$RESPONSE" | jq '.upload.uploads | length')
+OUT_SLUG=$(echo "$RESPONSE" | "$JQ_BIN" -r '.slug')
+VERSION_ID=$(echo "$RESPONSE" | "$JQ_BIN" -r '.upload.versionId')
+FINALIZE_URL=$(echo "$RESPONSE" | "$JQ_BIN" -r '.upload.finalizeUrl')
+SITE_URL=$(echo "$RESPONSE" | "$JQ_BIN" -r '.siteUrl')
+UPLOAD_COUNT=$(echo "$RESPONSE" | "$JQ_BIN" '.upload.uploads | length')
 
 [[ "$OUT_SLUG" != "null" ]] || die "unexpected response: $RESPONSE"
 
@@ -187,14 +199,14 @@ echo "uploading $UPLOAD_COUNT files..." >&2
 upload_errors=0
 
 for i in $(seq 0 $((UPLOAD_COUNT - 1))); do
-  upload_path=$(echo "$RESPONSE" | jq -r ".upload.uploads[$i].path")
-  upload_url=$(echo "$RESPONSE" | jq -r ".upload.uploads[$i].url")
-  upload_ct=$(echo "$RESPONSE" | jq -r ".upload.uploads[$i].headers[\"Content-Type\"] // empty")
+  upload_path=$(echo "$RESPONSE" | "$JQ_BIN" -r ".upload.uploads[$i].path")
+  upload_url=$(echo "$RESPONSE" | "$JQ_BIN" -r ".upload.uploads[$i].url")
+  upload_ct=$(echo "$RESPONSE" | "$JQ_BIN" -r ".upload.uploads[$i].headers[\"Content-Type\"] // empty")
 
   if [[ -f "$TARGET" && ! -d "$TARGET" ]]; then
     local_file="$TARGET"
   else
-    local_file=$(echo "$FILE_MAP" | jq -r --arg p "$upload_path" '.[$p]')
+    local_file=$(echo "$FILE_MAP" | "$JQ_BIN" -r --arg p "$upload_path" '.[$p]')
   fi
 
   if [[ ! -f "$local_file" ]]; then
@@ -226,8 +238,8 @@ FIN_RESPONSE=$(curl -sS -X POST "$FINALIZE_URL" \
   -H "content-type: application/json" \
   -d "{\"versionId\":\"$VERSION_ID\"}")
 
-if echo "$FIN_RESPONSE" | jq -e '.error' >/dev/null 2>&1; then
-  err=$(echo "$FIN_RESPONSE" | jq -r '.error')
+if echo "$FIN_RESPONSE" | "$JQ_BIN" -e '.error' >/dev/null 2>&1; then
+  err=$(echo "$FIN_RESPONSE" | "$JQ_BIN" -r '.error')
   die "finalize failed: $err"
 fi
 
@@ -239,18 +251,18 @@ else
   STATE='{"publishes":{}}'
 fi
 
-entry=$(jq -n --arg s "$SITE_URL" '{siteUrl: $s}')
+entry=$("$JQ_BIN" -n --arg s "$SITE_URL" '{siteUrl: $s}')
 
-RESPONSE_CLAIM_TOKEN=$(echo "$RESPONSE" | jq -r '.claimToken // empty')
-RESPONSE_CLAIM_URL=$(echo "$RESPONSE" | jq -r '.claimUrl // empty')
-RESPONSE_EXPIRES=$(echo "$RESPONSE" | jq -r '.expiresAt // empty')
+RESPONSE_CLAIM_TOKEN=$(echo "$RESPONSE" | "$JQ_BIN" -r '.claimToken // empty')
+RESPONSE_CLAIM_URL=$(echo "$RESPONSE" | "$JQ_BIN" -r '.claimUrl // empty')
+RESPONSE_EXPIRES=$(echo "$RESPONSE" | "$JQ_BIN" -r '.expiresAt // empty')
 
-[[ -n "$RESPONSE_CLAIM_TOKEN" ]] && entry=$(echo "$entry" | jq --arg v "$RESPONSE_CLAIM_TOKEN" '.claimToken = $v')
-[[ -n "$RESPONSE_CLAIM_URL" ]] && entry=$(echo "$entry" | jq --arg v "$RESPONSE_CLAIM_URL" '.claimUrl = $v')
-[[ -n "$RESPONSE_EXPIRES" ]] && entry=$(echo "$entry" | jq --arg v "$RESPONSE_EXPIRES" '.expiresAt = $v')
+[[ -n "$RESPONSE_CLAIM_TOKEN" ]] && entry=$(echo "$entry" | "$JQ_BIN" --arg v "$RESPONSE_CLAIM_TOKEN" '.claimToken = $v')
+[[ -n "$RESPONSE_CLAIM_URL" ]] && entry=$(echo "$entry" | "$JQ_BIN" --arg v "$RESPONSE_CLAIM_URL" '.claimUrl = $v')
+[[ -n "$RESPONSE_EXPIRES" ]] && entry=$(echo "$entry" | "$JQ_BIN" --arg v "$RESPONSE_EXPIRES" '.expiresAt = $v')
 
-STATE=$(echo "$STATE" | jq --arg slug "$OUT_SLUG" --argjson e "$entry" '.publishes[$slug] = $e')
-echo "$STATE" | jq '.' > "$STATE_FILE"
+STATE=$(echo "$STATE" | "$JQ_BIN" --arg slug "$OUT_SLUG" --argjson e "$entry" '.publishes[$slug] = $e')
+echo "$STATE" | "$JQ_BIN" '.' > "$STATE_FILE"
 
 # Output
 echo "$SITE_URL"
