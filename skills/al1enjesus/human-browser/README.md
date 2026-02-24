@@ -26,11 +26,14 @@ Human Browser solves this by combining:
 
 ## Quick Start
 
+**No setup required** — just call `launchHuman()` and it automatically activates a free trial:
+
 ```js
 const { launchHuman } = require('./scripts/browser-human');
 
-// Default: iPhone 15 Pro + Romania residential IP
+// 🚀 Zero config — auto-fetches trial credentials from humanbrowser.dev
 const { browser, page, humanType, humanClick, humanScroll, sleep } = await launchHuman();
+// Output: 🎉 Human Browser trial activated! (~100MB Romania residential IP)
 
 // Specific country
 const { page } = await launchHuman({ country: 'us' }); // US residential IP
@@ -45,6 +48,8 @@ await humanType(page, 'input[type="email"]', 'user@example.com');
 await humanClick(page, 760, 400);
 await browser.close();
 ```
+
+> **Trial exhausted?** Get a paid plan at https://humanbrowser.dev, then set `PROXY_USER` / `PROXY_PASS` in your `.env`.
 
 ---
 

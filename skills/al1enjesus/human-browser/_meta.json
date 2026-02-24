@@ -3,11 +3,16 @@
   "slug": "human-browser",
   "displayName": "Human Browser",
   "latest": {
-    "version": "3.9.2",
-    "publishedAt": 1771685423477,
-    "commit": "https://github.com/openclaw/skills/commit/574b99314b62be39c10d4686317b7ad3c3ac544d"
+    "version": "4.1.1",
+    "publishedAt": 1771947980736,
+    "commit": null
   },
   "history": [
+    {
+      "version": "3.9.2",
+      "publishedAt": 1771685423477,
+      "commit": "https://github.com/openclaw/skills/commit/574b99314b62be39c10d4686317b7ad3c3ac544d"
+    },
     {
       "version": "3.8.0",
       "publishedAt": 1771661739168,
