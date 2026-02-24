@@ -3,11 +3,16 @@
   "slug": "openclaw-workspace-governance-installer",
   "displayName": "Openclaw Workspace Governance Installer",
   "latest": {
-    "version": "0.1.47",
-    "publishedAt": 1771876639085,
-    "commit": "https://github.com/openclaw/skills/commit/e7c75153934d671c18d92a9631bc8c55e421876c"
+    "version": "0.1.49",
+    "publishedAt": 1771955391736,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.1.47",
+      "publishedAt": 1771876639085,
+      "commit": "https://github.com/openclaw/skills/commit/e7c75153934d671c18d92a9631bc8c55e421876c"
+    },
     {
       "version": "0.1.25",
       "publishedAt": 1771678683591,
