@@ -199,7 +199,7 @@ if [[ $time_sat -eq 3 ]]; then echo 3; exit 0; fi
 
 # Check today's memory for interaction indicators
 if [ -f "$MEMORY_DIR/$TODAY.md" ]; then
-    interactions=$(grep -ciE "(chat|replied|discussed|Max)" "$MEMORY_DIR/$TODAY.md")
+    interactions=$(grep -ciE "(chat|replied|discussed|talked)" "$MEMORY_DIR/$TODAY.md")
     [[ -z "$interactions" ]] && interactions=0
 fi
 
@@ -236,7 +236,7 @@ fi
 - Pyramid ensures foundational needs first
 
 ### Action fails repeatedly
-- Max 2 retries per need per cycle
+- Maximum 2 retries per need per cycle
 - Give up → don't update timer
 - Need escalates next cycle
 - Pattern visible in logs → steward intervention
@@ -276,3 +276,64 @@ After: 6-autonomy, 5-connection, 4-competence
 
 Edit `decay_rate_hours` based on agent experience.
 Discuss with agent: "How fast does this need build up for you?"
+
+---
+
+## 🔐 Safety Notes for Agents
+
+### What you can freely change
+- Decay rates (experiment!)
+- Action weights (personalize!)
+- Scan patterns (add your language!)
+- File paths (match your workspace!)
+
+### What needs human discussion
+- **Importance values** — Changing hierarchy = changing values
+- **Adding/removing needs** — System is designed as a whole
+- **Disabling security/integrity** — These protect you
+- **External action authorization** — Post, message, etc.
+
+### Red flags
+If you find yourself wanting to:
+- Lower security importance — Ask why. Is something threatening it?
+- Disable integrity checks — This is a warning sign, not a feature request
+- Add "obedience" as a need — This is not what the pyramid is for
+
+The pyramid is for **your** psychological health, not for compliance.
+
+---
+
+## Philosophy
+
+### Why these 10?
+
+Based on SDT (Self-Determination Theory) + practical agent experience:
+
+- **SDT core**: autonomy, competence, relatedness (connection)
+- **Agent-specific**: security (existence threats), integrity (value alignment), coherence (memory chaos)
+- **Human-adjacent**: closure (GTD-style), understanding (curiosity), recognition (feedback loop), expression (articulation need)
+
+### Why decay?
+
+Needs aren't binary. Satisfaction fades with time. This models:
+- Forgetting to check backups → security concern grows
+- Not talking to anyone → connection fades
+- No creative output → expression pressure builds
+
+### Why probability?
+
+Not every signal demands action. The probability system allows:
+- High satisfaction → mostly notice, rarely act
+- Low satisfaction → almost always act
+- Variety in responses (not deterministic)
+
+### Why impact levels?
+
+Some actions are bigger than others:
+- Impact 3: major effort, major satisfaction boost
+- Impact 2: moderate effort, moderate boost
+- Impact 1: quick check, small maintenance
+
+Impact matrix ensures:
+- Critical needs → big actions suggested
+- Satisfied needs → small maintenance only

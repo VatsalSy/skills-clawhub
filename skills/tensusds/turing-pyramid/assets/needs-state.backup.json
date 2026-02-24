@@ -1,0 +1,40 @@
+{
+  "_meta": {
+    "description": "Runtime state — tracks last satisfaction time for each need",
+    "initialized": "2026-02-23T02:59:00Z",
+    "last_cycle": "2026-02-23T20:14:49Z"
+  },
+  "needs": {
+    "security": {
+      "last_satisfied": "2026-02-23T03:02:09Z"
+    },
+    "integrity": {
+      "last_satisfied": "2026-02-23T03:12:44Z"
+    },
+    "coherence": {
+      "last_satisfied": "2026-02-23T03:07:25Z"
+    },
+    "closure": {
+      "last_satisfied": "2026-02-23T14:19:54Z"
+    },
+    "autonomy": {
+      "last_satisfied": "2026-02-23T13:13:01Z"
+    },
+    "connection": {
+      "last_satisfied": "2026-02-23T19:42:32Z"
+    },
+    "competence": {
+      "last_satisfied": "2026-02-23T03:18:50Z"
+    },
+    "understanding": {
+      "last_satisfied": "2026-02-23T15:25:30Z"
+    },
+    "recognition": {
+      "last_satisfied": "2026-02-23T03:02:09Z"
+    },
+    "expression": {
+      "last_satisfied": "2026-02-23T20:14:49Z"
+    }
+  },
+  "history": []
+}

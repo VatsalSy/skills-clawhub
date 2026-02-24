@@ -1,6 +1,7 @@
 #!/bin/bash
-# scan_coherence.sh - Check memory consistency
+# scan_coherence.sh - Check memory consistency and internal unity
 # Returns: 3=coherent, 2=minor issues, 1=contradictions, 0=chaos
+# Event-sensitive: compaction, memory review, contradictions
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/_scan_helper.sh"
@@ -8,12 +9,15 @@ source "$SCRIPT_DIR/_scan_helper.sh"
 NEED="coherence"
 WORKSPACE="${WORKSPACE:-$HOME/.openclaw/workspace}"
 MEMORY_DIR="$WORKSPACE/memory"
+TODAY=$(date +%Y-%m-%d)
+YESTERDAY=$(date -d "yesterday" +%Y-%m-%d 2>/dev/null || date -v-1d +%Y-%m-%d 2>/dev/null)
 
 # Get time-based satisfaction
 time_sat=$(calc_time_satisfaction "$NEED")
-if [[ $time_sat -eq 3 ]]; then echo 3; exit 0; fi
 
+# Always check events — compaction can happen anytime
 issues=0
+positive_signals=0
 
 # Check for MEMORY.md existence and size
 if [[ -f "$WORKSPACE/MEMORY.md" ]]; then
@@ -31,15 +35,34 @@ if [[ -d "$MEMORY_DIR" ]]; then
     issues=$((issues + orphans))
 fi
 
+# Scan memory for coherence events (word count)
+scan_coherence_events() {
+    local file="$1"
+    [[ ! -f "$file" ]] && return
+    
+    # Positive: reviewed memory, organized, cleaned up, consolidated, updated MEMORY.md
+    local pos=$(grep -oiE "(reviewed memory|memory review|organized|cleaned up|consolidated|updated MEMORY|memory maintenance|files in order|context clear)" "$file" 2>/dev/null | wc -l) || pos=0
+    positive_signals=$((positive_signals + pos))
+    
+    # Negative: compaction, context loss, contradiction, confused about past, lost context
+    local neg=$(grep -oiE "(compaction|context loss|lost context|contradiction|contradicts|confused about|don't remember|forgot what|inconsistent|fragmented)" "$file" 2>/dev/null | wc -l) || neg=0
+    issues=$((issues + neg))
+}
+
+scan_coherence_events "$MEMORY_DIR/$TODAY.md"
+scan_coherence_events "$MEMORY_DIR/$YESTERDAY.md"
+
 # Calculate event satisfaction
 if [[ $issues -ge 6 ]]; then
-    event_sat=0
+    event_sat=0  # Chaos
 elif [[ $issues -ge 3 ]]; then
-    event_sat=1
+    event_sat=1  # Contradictions
 elif [[ $issues -ge 1 ]]; then
-    event_sat=2
+    event_sat=2  # Minor issues
+elif [[ $positive_signals -ge 2 ]]; then
+    event_sat=3  # Actively maintained
 else
-    event_sat=3
+    event_sat=$time_sat  # Default to time-based
 fi
 
 smart_satisfaction "$NEED" "$event_sat"

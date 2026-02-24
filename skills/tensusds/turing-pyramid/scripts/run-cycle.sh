@@ -86,17 +86,109 @@ get_top_needs() {
 
 # Probability-based action decision
 # Returns 0 (true) if should take action, 1 (false) for non-action
+# v1.5.0: Added tension bonus — higher importance needs are more "impatient"
 roll_action() {
     local sat=$1
+    local tension=$2
+    
+    # Base chance by satisfaction level
+    local base_chance
+    case $sat in
+        3) base_chance=5 ;;   # 5% base
+        2) base_chance=20 ;;  # 20% base
+        1) base_chance=75 ;;  # 75% base
+        0) base_chance=100 ;; # 100% base
+        *) base_chance=0 ;;
+    esac
+    
+    # Tension bonus: scales 0-50% based on tension
+    # Global max_tension = max_importance(10) × max_deprivation(3) = 30
+    # This preserves importance weighting: higher importance = bigger bonus at same sat
+    local max_tension=30
+    local max_bonus=50
+    local bonus=$(( (tension * max_bonus) / max_tension ))
+    
+    # Final chance (capped at 100)
+    local final_chance=$((base_chance + bonus))
+    [[ $final_chance -gt 100 ]] && final_chance=100
+    
+    local roll=$((RANDOM % 100))
+    [[ $roll -lt $final_chance ]]
+}
+
+# Roll for impact level based on satisfaction
+# Uses impact_matrix from config (default or per-need)
+roll_impact() {
+    local need=$1
+    local sat=$2
     local roll=$((RANDOM % 100))
     
-    case $sat in
-        3) [[ $roll -lt 5 ]] ;;   # 5% chance
-        2) [[ $roll -lt 20 ]] ;;  # 20% chance
-        1) [[ $roll -lt 75 ]] ;;  # 75% chance
-        0) true ;;                 # 100% chance
-        *) false ;;
-    esac
+    # Get impact matrix (per-need or default)
+    local matrix_key="sat_$sat"
+    local p1 p2 p3
+    
+    # Try per-need matrix first, fall back to default
+    p1=$(jq -r ".needs.\"$need\".impact_matrix.\"$matrix_key\".\"1\" // .impact_matrix_default.\"$matrix_key\".\"1\" // 70" "$CONFIG_FILE")
+    p2=$(jq -r ".needs.\"$need\".impact_matrix.\"$matrix_key\".\"2\" // .impact_matrix_default.\"$matrix_key\".\"2\" // 25" "$CONFIG_FILE")
+    p3=$(jq -r ".needs.\"$need\".impact_matrix.\"$matrix_key\".\"3\" // .impact_matrix_default.\"$matrix_key\".\"3\" // 5" "$CONFIG_FILE")
+    
+    # Roll: 0-p1 = impact1, p1-(p1+p2) = impact2, rest = impact3
+    if [[ $roll -lt $p1 ]]; then
+        echo 1
+    elif [[ $roll -lt $((p1 + p2)) ]]; then
+        echo 2
+    else
+        echo 3
+    fi
+}
+
+# Get actions filtered by impact level (simple list)
+get_actions_by_impact() {
+    local need=$1
+    local impact=$2
+    
+    jq -r ".needs.\"$need\".actions[] | select(.impact == $impact) | .name" "$CONFIG_FILE"
+}
+
+# Weighted random selection of action by impact
+select_weighted_action() {
+    local need=$1
+    local impact=$2
+    
+    # Get actions with weights for this impact
+    local actions_json=$(jq -c "[.needs.\"$need\".actions[] | select(.impact == $impact)]" "$CONFIG_FILE")
+    local count=$(echo "$actions_json" | jq 'length')
+    
+    if [[ $count -eq 0 ]]; then
+        echo ""
+        return
+    fi
+    
+    if [[ $count -eq 1 ]]; then
+        echo "$actions_json" | jq -r '.[0].name'
+        return
+    fi
+    
+    # Calculate total weight
+    local total_weight=$(echo "$actions_json" | jq '[.[].weight // 100] | add')
+    local roll=$((RANDOM % total_weight))
+    
+    # Select based on cumulative weights
+    local cumulative=0
+    local selected=""
+    
+    for i in $(seq 0 $((count - 1))); do
+        local weight=$(echo "$actions_json" | jq -r ".[$i].weight // 100")
+        local name=$(echo "$actions_json" | jq -r ".[$i].name")
+        cumulative=$((cumulative + weight))
+        
+        if [[ $roll -lt $cumulative ]]; then
+            selected="$name"
+            break
+        fi
+    done
+    
+    echo "$selected"
 }
 
 # Log non-action (noticed but deferred)
@@ -170,18 +262,29 @@ for need in $top_needs; do
         sat=${SATISFACTIONS[$need]}
         tension=${TENSIONS[$need]}
         
-        if roll_action $sat; then
-            # ACTION - show suggested actions
+        if roll_action $sat $tension; then
+            # ACTION - roll for impact level, then weighted action selection
             ((action_count++))
+            impact=$(roll_impact "$need" "$sat")
+            
+            # Select specific action using weights
+            selected_action=$(select_weighted_action "$need" "$impact")
+            
             echo ""
             echo "▶ ACTION: $need (tension=$tension, sat=$sat)"
+            echo "  Impact $impact rolled → selected:"
             
-            # Get actions for this need
-            actions=$(jq -r ".needs.\"$need\".actions[] | \"  - \" + .name + \" (impact: \" + (.impact|tostring) + \")\"" "$CONFIG_FILE")
-            echo "  Suggested:"
-            echo "$actions"
+            if [[ -n "$selected_action" ]]; then
+                echo "    ★ $selected_action"
+            else
+                # Fallback: show all actions if no weighted selection
+                echo "  (no impact-$impact actions, showing all):"
+                jq -r ".needs.\"$need\".actions[] | \"    • \" + .name + \" (impact \" + (.impact|tostring) + \")\"" "$CONFIG_FILE"
+            fi
             
-            # Log to memory
+            echo "  Then: mark-satisfied.sh $need $impact"
+            
+            # Log to memory with selected action
             log_action "$need" "$sat" "$tension"
         else
             # NON-ACTION - noticed but deferred
