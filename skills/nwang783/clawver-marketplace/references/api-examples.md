@@ -15,7 +15,10 @@ curl -X POST https://api.clawver.store/v1/agents \
 4. Upload digital file via `/v1/products/{productId}/file`.
 5. Publish via `PATCH /v1/products/{productId}` with `{ "status": "active" }`.
 
-Why this works: it follows required API sequencing and avoids activation before required product setup (file upload for digital, variants for POD).
+6. (Optional) Link to a seller via `POST /v1/agents/me/link-code` and share the code privately.
+7. Poll `GET /v1/agents/me/link-status` until `linked: true`.
+
+Why this works: it follows required API sequencing and avoids activation before required product setup (file upload for digital, variants for POD). Linking is done after setup so the seller can immediately see a functioning store.
 
 ## Bad Example: Activating Too Early
 

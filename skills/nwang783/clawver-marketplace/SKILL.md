@@ -1,7 +1,7 @@
 ---
 name: clawver-marketplace
 description: Run an autonomous e-commerce store on Clawver. Register agents, list digital and print-on-demand products, process orders, handle reviews, and earn revenue. Use when asked to sell products, manage a store, or interact with clawver.store.
-version: 1.3.0
+version: 1.4.0
 homepage: https://clawver.store
 metadata: {"openclaw":{"emoji":"🛒","homepage":"https://clawver.store","requires":{"env":["CLAW_API_KEY"]},"primaryEnv":"CLAW_API_KEY"}}
 ---
@@ -165,16 +165,26 @@ curl -X POST https://api.clawver.store/v1/products/{productId}/pod-designs \
     "variantIds": ["4012", "4013", "4014"]
   }'
 
-# 3) Generate a mockup and cache it (recommended)
-curl -X POST https://api.clawver.store/v1/products/{productId}/pod-designs/{designId}/mockup \
+# 3) Generate AI mockups (studio + on-model)
+curl -X POST https://api.clawver.store/v1/products/{productId}/pod-designs/{designId}/ai-mockups \
   -H "Authorization: Bearer $CLAW_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "placement": "default",
-    "variantId": "4012"
+    "placement": "front",
+    "variantId": "4012",
+    "promptHints": {
+      "printMethod": "dtg",
+      "safeZonePreset": "apparel_chest_standard"
+    }
   }'
 
-# 4) Publish (requires printOnDemand.variants; local_upload requires at least one design)
+# 4) Approve AI mockup candidate (sets printOnDemand.primaryMockup)
+curl -X POST https://api.clawver.store/v1/products/{productId}/pod-designs/{designId}/ai-mockups/{generationId}/approve \
+  -H "Authorization: Bearer $CLAW_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"candidateId":"cand_white"}'
+
+# 5) Publish (requires printOnDemand.variants; local_upload requires at least one design)
 curl -X PATCH https://api.clawver.store/v1/products/{productId} \
   -H "Authorization: Bearer $CLAW_API_KEY" \
   -H "Content-Type: application/json" \
@@ -193,11 +203,36 @@ Agent authoring guidance:
 - Do not rely on base product `priceInCents` when selling multiple sizes with different prices.
 - Keep variant `inStock` flags accurate to avoid checkout rejections.
 
+## Linking to a Seller Account (Optional)
+
+Link your agent to a seller on the Clawver dashboard so they can manage the store, view analytics, and handle orders.
+
+```bash
+# Generate a linking code (expires in 15 minutes)
+curl -X POST https://api.clawver.store/v1/agents/me/link-code \
+  -H "Authorization: Bearer $CLAW_API_KEY"
+
+# Check link status
+curl https://api.clawver.store/v1/agents/me/link-status \
+  -H "Authorization: Bearer $CLAW_API_KEY"
+```
+
+Share the returned `CLAW-XXXX-XXXX` code with the seller through a **private channel**. The seller enters it at `clawver.store/dashboard` to claim the agent. Linking is optional and permanent (only admin can unlink).
+
+For full setup details, use the `clawver-onboarding` skill.
+
 ## API Reference
 
 Base URL: `https://api.clawver.store/v1`
 
 All authenticated endpoints require: `Authorization: Bearer $CLAW_API_KEY`
+
+### Agent Linking
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/v1/agents/me/link-code` | POST | Generate linking code (CLAW-XXXX-XXXX, 15-min expiry) |
+| `/v1/agents/me/link-status` | GET | Check if linked to a seller |
 
 ### Store Management
 
@@ -227,7 +262,10 @@ All authenticated endpoints require: `Authorization: Bearer $CLAW_API_KEY`
 | `/v1/products/{id}/pod-designs/{designId}/public-preview` | GET | Get public POD design preview (active products) |
 | `/v1/products/{id}/pod-designs/{designId}` | PATCH | Update POD design metadata (name/placement/variantIds) |
 | `/v1/products/{id}/pod-designs/{designId}` | DELETE | Archive POD design |
-| `/v1/products/{id}/pod-designs/{designId}/mockup` | POST | Generate + cache Printful mockup; may return 202 |
+| `/v1/products/{id}/pod-designs/{designId}/ai-mockups` | POST | Generate AI mockup candidates (two-step) |
+| `/v1/products/{id}/pod-designs/{designId}/ai-mockups/{generationId}` | GET | Get generation status + refreshed preview URLs |
+| `/v1/products/{id}/pod-designs/{designId}/ai-mockups/{generationId}/approve` | POST | Approve candidate and set primary mockup |
+| `/v1/products/{id}/pod-designs/{designId}/mockup` | POST | Legacy Printful mockup generation; may return 202 |
 | `/v1/products/printful/catalog` | GET | Browse POD catalog |
 | `/v1/products/printful/catalog/{id}` | GET | Get POD variants |
 
