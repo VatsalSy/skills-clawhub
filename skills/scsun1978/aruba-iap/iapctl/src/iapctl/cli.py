@@ -9,6 +9,7 @@ from rich.json import JSON
 from rich.panel import Panel
 
 from .operations import discover, snapshot, diff, apply, verify, rollback
+from .monitor import monitor
 
 app = typer.Typer(
     name="iapctl",
@@ -279,6 +280,57 @@ def rollback_cmd(
         ssh_password=ssh_password,
         ssh_port=ssh_port,
         ssh_config=ssh_config,
+    ).model_dump()
+
+    print_result(result_dict, quiet)
+
+    # Exit with error code if failed
+    if not result_dict["ok"]:
+        raise typer.Exit(1)
+
+
+@app.command()
+def monitor_cmd(
+    cluster: str = typer.Option(..., "--cluster", help="Cluster name"),
+    vc: str = typer.Option(..., "--vc", help="Virtual controller IP address"),
+    out: Path = typer.Option(Path("./out"), "--out", help="Output directory"),
+    ssh_host: Optional[str] = typer.Option(None, "--ssh-host", help="SSH host (default: vc)"),
+    ssh_user: str = typer.Option("admin", "--ssh-user", help="SSH username"),
+    ssh_password: Optional[str] = typer.Option(None, "--ssh-password", help="SSH password"),
+    ssh_port: int = typer.Option(22, "--ssh-port", help="SSH port"),
+    ssh_config: Optional[Path] = typer.Option(None, "--ssh-config", help="SSH config file"),
+    categories: Optional[list[str]] = typer.Option(None, "--categories", "-c", help="Monitor categories (default: all)"),
+    quiet: bool = typer.Option(False, "--quiet", "-q", help="Quiet output"),
+) -> None:
+    """Comprehensive IAP monitoring and telemetry collection.
+
+    Categories (default: all):
+    - system: System info (version, summary, clock, configuration)
+    - ap: AP info (active, database, allowed-ap)
+    - clients: Client info (clients, user-table, station-table)
+    - wlan: WLAN info (ssid-profile, access-rule, auth-server)
+    - rf: RF info (radio stats)
+    - arm: ARM info (arm, band-steering, arm history)
+    - advanced: Advanced features (client-match, DPI, IDS, Clarity)
+    - wired: Wired/uplink info (ports, interfaces, routes)
+    - logging: Logging info (syslog-level, logs)
+    - security: Security info (blacklist, auth-tracebuf, snmp-server)
+
+    Example:
+        iapctl monitor --cluster office-iap --vc 192.168.20.56 --categories system ap clients
+    """
+    console.print(f"📊 Monitoring cluster '{cluster}' at {vc}...", style="blue")
+
+    result_dict = monitor(
+        cluster=cluster,
+        vc=vc,
+        out_dir=out,
+        ssh_host=ssh_host,
+        ssh_user=ssh_user,
+        ssh_password=ssh_password,
+        ssh_port=ssh_port,
+        ssh_config=ssh_config,
+        categories=categories,
     ).model_dump()
 
     print_result(result_dict, quiet)

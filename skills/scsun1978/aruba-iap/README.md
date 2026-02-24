@@ -1,333 +1,415 @@
 # Aruba IAP Skill for OpenClaw
 
-Aruba Instant AP (IAP/UAP) 配置管理、故障排除和自动化 OpenClaw Skill。
+Comprehensive Aruba Instant AP (IAP) configuration management with automatic baseline capture, rollback support, and health monitoring.
 
-## 功能特性
+## Features
 
-- ✅ **稳定连接** - 自动处理提示符、分页、超时和重试
-- ✅ **标准化输出** - JSON + 原始文本日志，便于 OpenClaw 审计和仪表板
-- ✅ **安全性** - SSH 密钥认证、密钥脱敏、审批工作流
-- ✅ **完整操作** - discover, snapshot, diff, apply, verify, rollback
-- ✅ **密钥管理** - 支持多种密钥存储方式（内存、环境变量、文件）
-- ✅ **风险评估** - 自动评估配置变更的风险级别
-- ✅ **完整审计** - 每个操作都有完整的时间戳、步骤和输出生成
+### ✨ Core Capabilities
 
-## 快速开始
+- **Device Mode Detection**: Automatically detects Virtual Controller, Single-Node Cluster, or Standalone AP mode
+- **Configuration Snapshots**: Full configuration capture with structured JSON output
+- **Safe Configuration Changes**: Apply changes with automatic baseline capture and rollback
+- **Comprehensive Monitoring**: 40+ monitoring commands across 10 categories
+- **Risk Assessment**: Automatic risk evaluation for configuration changes
+- **Secret Management**: Secure secret references (no plain-text passwords)
+- **Change History**: Full audit trail with timestamped artifacts
 
-1. **安装**：
+### 📊 Monitoring Categories
+
+| Category | Commands | Description |
+|----------|-----------|-------------|
+| **System** | 4 commands | Version, summary, clock, configuration |
+| **AP** | 3 commands | Active APs, database, allowlist |
+| **Clients** | 4 commands | Clients list, details, user-table, station-table |
+| **WLAN** | 4 commands | SSID profiles, access rules, auth servers |
+| **RF** | 1 command | Radio statistics |
+| **ARM** | 3 commands | ARM, band-steering, ARM history |
+| **Advanced** | 5 commands | Client-match, DPI, IDS, Clarity |
+| **Wired** | 6 commands | Ports, interfaces, routing |
+| **Logging** | 4 commands | Syslog levels, logs |
+| **Security** | 3 commands | Blacklist, auth-tracebuf, SNMP |
+
+### 🔧 Configuration Change Types
+
+| Type | Risk | Description |
+|------|-------|-------------|
+| `snmp_community` | Low | SNMP community configuration |
+| `snmp_host` | Low-Medium | SNMP host/trap destination |
+| `syslog_level` | Low | Syslog logging levels |
+| `ssid_profile` | Medium | Complete SSID profile with WPA2-PSK |
+| `auth_server` | Medium | RADIUS/CPPM authentication server |
+| `ap_allowlist` | Medium | Add/remove APs from allowlist |
+| `wired_port_profile` | Medium | Wired port configuration |
+| `ntp` | Low | NTP server configuration |
+| `dns` | Low | DNS server configuration |
+| `rf_template` | Low | RF template application |
+
+## Quick Start
+
+### 1. Installation
 
 ```bash
-cd /Users/scsun/.openclaw/workspace/skills/aruba-iap
+cd /Users/scsun/.openclaw/workspace/skills/aruba-iap-publish
 ./install.sh
 ```
 
-2. **发现集群**：
+### 2. Quick Health Check
 
 ```bash
-iapctl discover --cluster office-iap --vc 192.168.20.56 --out ./out
+./scripts/quick-monitor.sh office-iap 192.168.20.56
 ```
 
-3. **查看完整文档**：
+### 3. Apply Configuration Changes
 
-- [快速开始指南](QUICKSTART.md) - 5 分钟上手
-- [技能文档](SKILL.md) - 完整 API 文档
-- [功能清单](FEATURES.md) - 所有支持的命令和变更类型
-- [开发总结](DEVELOPMENT_SUMMARY.md) - 开发进度和测试结果
-- [CLI 文档](iapctl/README.md) - 命令参考
-
-## 支持的操作
-
-| 操作 | 功能 | 状态 |
-|------|------|------|
-| `discover` | 发现 IAP 集群并收集基本信息 | ✅ 已实现 |
-| `snapshot` | 获取完整的配置快照 | ✅ 已实现 |
-| `diff` | 生成当前配置与期望配置的差异 | ✅ 已实现 |
-| `apply` | 应用配置变更 | ✅ 已实现 |
-| `verify` | 验证配置状态 | ✅ 已实现 |
-| `rollback` | 回滚到之前的配置 | ✅ 已实现 |
-
-## 目录结构
-
-```
-aruba-iap/
-├── SKILL.md              # OpenClaw 技能文档
-├── README.md             # 本文件
-├── QUICKSTART.md         # 快速开始指南
-├── install.sh            # 安装脚本
-├── _meta.json            # 技能元数据
-├── examples/             # 示例文件
-│   ├── example-changes.json
-│   └── example-secrets.json
-├── iapctl/               # iapctl CLI 工具
-│   ├── src/
-│   │   └── iapctl/
-│   │       ├── __init__.py
-│   │       ├── cli.py          # CLI 界面
-│   │       ├── models.py       # 数据模型
-│   │       ├── connection.py   # 连接管理
-│   │       ├── operations.py   # 操作实现
-│   │       ├── diff_engine.py  # 差异生成引擎
-│   │       └── secrets.py      # 密钥管理
-│   ├── tests/
-│   │   └── test_manual.py      # 手动测试
-│   ├── pyproject.toml          # Python 项目配置
-│   ├── README.md               # CLI 文档
-│   └── install.sh              # CLI 安装脚本
-├── references/           # 参考文档
-└── scripts/             # 辅助脚本
+```bash
+./scripts/safe-apply.sh office-iap 192.168.20.56 ./changes.json
 ```
 
-## 技术栈
+### 4. Automatic Backup
 
-- **Python**: 3.9+
-- **CLI 框架**: Typer
-- **网络自动化**: Scrapli (Paramiko transport)
-- **数据验证**: Pydantic
-- **终端输出**: Rich
-- **SSH**: Paramiko
-
-## 工作流程
-
-```
-┌─────────────┐
-│  discover   │  发现集群
-└──────┬──────┘
-       │
-┌──────▼─────────┐
-│   snapshot     │  建立基线
-└──────┬─────────┘
-       │
-┌──────▼─────────┐
-│     diff       │  生成差异
-└──────┬─────────┘
-       │
-┌──────▼─────────┐
-│   review       │  审查命令
-└──────┬─────────┘
-       │
-┌──────▼─────────┐
-│    apply       │  应用变更
-└──────┬─────────┘
-       │
-┌──────▼─────────┐
-│    verify      │  验证配置
-└───────────────┘
+```bash
+./scripts/auto-backup.sh office-iap 192.168.20.56
 ```
 
-如果出现问题，可以随时使用 `rollback` 命令回滚。
+## Usage Examples
 
-## 输出格式
+### Discovery
 
-每个操作都会生成：
-
-1. **result.json** - 结构化输出（机器可读）
-2. **raw/*.txt** - 原始 CLI 输出（人类可审计）
-
-### result.json 示例
-
-```json
-{
-  "ok": true,
-  "action": "snapshot",
-  "cluster": "office-iap",
-  "vc": "192.168.20.56",
-  "os_major": "8",
-  "is_vc": true,
-  "artifacts": [
-    {
-      "name": "result.json",
-      "path": "./out/snapshot/result.json",
-      "size_bytes": 1024,
-      "content_type": "application/json"
-    }
-  ],
-  "checks": [],
-  "warnings": [],
-  "errors": [],
-  "timing": {
-    "total_seconds": 2.5,
-    "steps": {
-      "version": 0.3,
-      "running_config": 0.8,
-      "wlan": 0.4
-    }
-  },
-  "timestamp": "2026-02-22T10:30:00.000Z"
-}
+```bash
+iapctl discover-cmd \
+  --cluster office-iap \
+  --vc 192.168.20.56 \
+  --out ./discover
 ```
 
-## OpenClaw 集成
+### Full Monitoring
 
-### 工具白名单
-
-```json
-{
-  "allowedTools": [
-    "Bash(iapctl:*)"
-  ]
-}
+```bash
+iapctl monitor-cmd \
+  --cluster office-iap \
+  --vc 192.168.20.56 \
+  --out ./monitor
 ```
 
-### 审批流程
+### Selective Monitoring
 
-- **需要审批**: `apply`, `rollback` 命令
-- **自动批准**: `discover`, `snapshot`, `diff`, `verify` 命令
-
-### 工作流示例
-
-```python
-# OpenClaw 自动化工作流
-
-# 1. 建立基线
-run("iapctl snapshot --cluster office-iap --vc 192.168.20.56 --out ./baseline")
-
-# 2. 生成差异
-run("iapctl diff --cluster office-iap --vc 192.168.20.56 --in changes.json --out ./diff")
-
-# 3. 审查差异（OpenClaw 会自动显示命令）
-review("./diff/commands.txt")
-
-# 4. 请求审批
-request_approval("Apply configuration changes?")
-
-# 5. 应用变更（审批后）
-run("iapctl apply --cluster office-iap --vc 192.168.20.56 --change-id chg_20260222_0001 --in ./diff/commands.json --out ./apply")
-
-# 6. 验证
-run("iapctl verify --cluster office-iap --vc 192.168.20.56 --level basic --out ./verify")
+```bash
+iapctl monitor-cmd \
+  --cluster office-iap \
+  --vc 192.168.20.56 \
+  --out ./monitor \
+  --categories system ap clients wlan
 ```
 
-## 配置变更格式
+### Configuration Snapshot
+
+```bash
+iapctl snapshot-cmd \
+  --cluster office-iap \
+  --vc 192.168.20.56 \
+  --out ./snapshot
+```
+
+### Apply Changes (Manual)
+
+```bash
+# Step 1: Generate diff
+iapctl diff-cmd \
+  --cluster office-iap \
+  --vc 192.168.20.56 \
+  --in ./changes.json \
+  --out ./diff
+
+# Step 2: Review risk
+cat ./diff/risk.json
+
+# Step 3: Apply changes
+iapctl apply-cmd \
+  --cluster office-iap \
+  --vc 192.168.20.56 \
+  --change-id chg_20260223_143022 \
+  --in ./diff/commands.json \
+  --out ./apply
+
+# Step 4: Verify
+iapctl verify-cmd \
+  --cluster office-iap \
+  --vc 192.168.20.56 \
+  --level full \
+  --out ./verify
+```
+
+### Rollback
+
+```bash
+iapctl rollback-cmd \
+  --cluster office-iap \
+  --vc 192.168.20.56 \
+  --from-change-id chg_20260223_143022 \
+  --out ./rollback
+```
+
+## Secret Management
+
+### Using Secret References
+
+Avoid plain-text passwords in your changes file:
 
 ```json
 {
   "changes": [
     {
-      "type": "ntp",
-      "servers": ["10.10.10.1", "10.10.10.2"]
-    },
-    {
-      "type": "dns",
-      "servers": ["10.10.10.3", "10.10.10.4"]
-    },
-    {
-      "type": "ssid_vlan",
-      "profile": "Corporate",
-      "essid": "CorporateWiFi",
-      "vlan_id": 100
-    },
-    {
-      "type": "radius_server",
-      "name": "radius-primary",
-      "ip": "10.10.10.5",
-      "auth_port": 1812,
-      "acct_port": 1813,
-      "secret_ref": "secret:radius-primary-key"
-    },
-    {
-      "type": "ssid_bind_radius",
-      "profile": "Corporate",
-      "radius_primary": "radius-primary"
-    },
-    {
-      "type": "rf_template",
-      "template": "office-default"
+      "type": "auth_server",
+      "server_name": "cppm",
+      "ip": "10.10.10.50",
+      "secret_ref": "secret:cppm-radius-key",
+      "nas_id_type": "mac"
     }
   ]
 }
 ```
 
-## 支持的变更类型
+### Load Secrets from File
 
-- **ntp** - NTP 服务器配置
-- **dns** - DNS 服务器配置
-- **ssid_vlan** - SSID 和 VLAN 配置
-- **radius_server** - RADIUS 服务器配置
-- **ssid_bind_radius** - SSID 与 RADIUS 绑定
-- **rf_template** - RF 模板配置
+Create `secrets.json`:
 
-## 版本兼容性
-
-- **Aruba Instant 6.x** - 基础 IAP 功能
-- **Aruba Instant 8.x** - WiFi 6 (802.11ax) 支持
-- **Aruba AOS 10.x** - 最新功能和云管理
-
-## 开发
-
-### 本地开发
-
-```bash
-cd /Users/scsun/.openclaw/workspace/skills/aruba-iap/iapctl
-source venv/bin/activate
-pip install -e . 'scrapli[paramiko]'
-
-# 运行测试
-python tests/test_manual.py
-
-# 代码格式化
-black src/
-ruff check src/
-
-# 类型检查
-mypy src/
+```json
+{
+  "cppm-radius-key": "MySuperSecretRADIUSKey123!",
+  "wpa-psk-key": "WPA2SecurePassword!"
+}
 ```
 
-### 添加新功能
+### Load Secrets from Environment
 
-1. 在 `models.py` 中定义数据模型
-2. 在 `diff_engine.py` 中实现命令生成逻辑
-3. 在 `operations.py` 中实现操作逻辑
-4. 在 `cli.py` 中添加 CLI 命令
-5. 在 `SKILL.md` 中更新文档
+```bash
+export CPPM_RADIUS_KEY="MySuperSecretRADIUSKey123!"
+```
 
-## 贡献
+Reference in changes:
 
-欢迎提交 Issue 和 Pull Request！
+```json
+{
+  "secret_ref": "env:CPPM_RADIUS_KEY"
+}
+```
 
-## 许可证
+## File Structure
 
-MIT License
+```
+skills/aruba-iap-publish/
+├── iapctl/                    # Core CLI tool
+│   └── src/iapctl/
+│       ├── __init__.py
+│       ├── cli.py             # CLI interface
+│       ├── connection.py      # SSH connection handling
+│       ├── diff_engine.py     # Change generation
+│       ├── models.py          # Data models
+│       ├── monitor.py         # Monitoring commands
+│       ├── operations.py      # Core operations
+│       └── secrets.py        # Secret management
+├── scripts/                  # Utility scripts
+│   ├── quick-monitor.sh       # Quick health check
+│   ├── safe-apply.sh        # Safe config change workflow
+│   └── auto-backup.sh       # Automatic backup
+├── examples/                 # Example files
+│   ├── config-changes.json   # Configuration examples
+│   └── secrets.json         # Secret examples
+├── docs/                    # Documentation
+│   ├── CONFIG-CHANGES.md     # Configuration guide
+│   └── QUICKSTART-CONFIG.md # Quick start guide
+└── SKILL.md                 # Skill documentation
+```
 
-## 联系方式
+## Output Artifacts
 
-- OpenClaw 社区: https://discord.gg/clawd
-- 文档: https://docs.openclaw.ai
-- GitHub: https://github.com/openclaw/openclaw
+All iapctl commands generate structured output:
 
-## 更新日志
+```
+./out/<timestamp>/
+├── result.json              # Structured result (machine-readable)
+├── raw/                    # Raw CLI outputs (human-auditable)
+│   ├── show_version.txt
+│   ├── show_running-config.txt
+│   ├── show_ap_database.txt
+│   └── ...
+├── commands.json            # Generated commands (for apply)
+├── commands.txt            # Human-readable command list
+├── risk.json               # Risk assessment
+├── pre_running-config.txt   # Baseline (for apply)
+└── post_running-config.txt  # Post-config (for apply)
+```
+
+## Device Mode Adaptation
+
+iapctl automatically adapts to three device modes:
+
+### Virtual Controller Mode
+- Commands: `show ap database`, `show wlan`, `show ap-group`
+- Use case: Multi-AP clusters managed by virtual controller
+
+### Single-Node Cluster Mode
+- Commands: `show ap bss-table`, `show ap bss-table`
+- Use case: Single AP with VC configuration but only one BSS
+
+### Standalone AP Mode
+- Commands: `show ap info`, `wlan`
+- Use case: Single AP operating independently
+
+All commands automatically fallback to safe alternatives if primary commands fail.
+
+## Risk Assessment
+
+iapctl automatically assesses risks for each change:
+
+### Risk Levels
+
+- **low**: Minimal impact, safe to apply
+- **medium**: May affect connectivity, review recommended
+- **high**: Major changes, requires careful planning
+
+### Common Warnings
+
+- Removing WLAN or RADIUS configuration may disconnect users
+- WPA passphrase changes will require clients to re-authenticate
+- AP allowlist changes may prevent APs from joining cluster
+- VLAN changes may affect network connectivity
+- Large number of changes - consider applying in stages
+
+## Best Practices
+
+### 1. Always Review Risk Assessment
+
+```bash
+cat diff/risk.json
+```
+
+### 2. Use Dry Run Mode
+
+```bash
+iapctl apply-cmd --dry-run ...
+```
+
+### 3. Apply Changes in Stages
+
+Break large change sets into smaller batches:
+1. SNMP and syslog
+2. Authentication servers
+3. SSID profiles
+4. AP allowlist and wired ports
+
+### 4. Keep Change History
+
+Archive change sets for audit and rollback:
+
+```bash
+mkdir -p /archive/changes/chg_20260223_143022
+cp -r diff apply verify /archive/changes/chg_20260223_143022/
+```
+
+### 5. Schedule Regular Backups
+
+```bash
+# Add to crontab for daily backups
+0 2 * * * /path/to/scripts/auto-backup.sh office-iap 192.168.20.56
+```
+
+## Troubleshooting
+
+### Secret Resolution Failed
+
+**Error:** `Failed to resolve secret_ref: secret:my-key`
+
+**Solution:**
+1. Check `secrets.json` exists and contains the key
+2. Verify secret reference format: `secret:key-name`
+3. Check environment variables if using `env:VAR_NAME`
+
+### Change Failed Partially
+
+**Error:** `Command 3 failed: ...`
+
+**Solution:**
+1. Check `apply/apply_step_003.txt` for error details
+2. Check `apply/result.json` for errors array
+3. Automatic rollback attempts may have occurred
+4. Manual rollback: `iapctl rollback-cmd --from-change-id <change-id>`
+
+### Rollback Failed
+
+**Error:** `Rollback command 2 failed: ...`
+
+**Solution:**
+1. Check `rollback/rollback_step_002.txt` for error details
+2. Manual intervention may be required
+3. Restore from `pre_running-config.txt` backup if needed
+
+### Device Mode Detection Issues
+
+**Incorrect mode detected:**
+```bash
+# Check detected mode
+cat ./out/discover/result.json | jq '.is_vc, .device_mode'
+
+# Review version output
+cat ./out/discover/raw/show_version.txt
+```
+
+## Documentation
+
+- **[SKILL.md](SKILL.md)** - Complete skill documentation
+- **[docs/CONFIG-CHANGES.md](docs/CONFIG-CHANGES.md)** - Configuration change guide
+- **[docs/QUICKSTART-CONFIG.md](docs/QUICKSTART-CONFIG.md)** - Quick start guide
+
+## Version History
+
+### v0.5.0 (2026-02-23)
+- Monitor command with 10 categories and 40+ commands
+- Category-based filtering
+- Quick monitoring script
+- Safe apply script
+- Auto backup script
+
+### v0.4.0 (2026-02-23)
+- Config-change commands with auto-baseline
+- SNMP configuration support
+- Syslog configuration support
+- Complete SSID profile support
+- RADIUS/CPPM auth servers
+- AP allowlist management
+- Wired port profiles
+
+### v0.3.0 (2026-02-22)
+- Single-Node Cluster mode
+- Enhanced device mode detection
+- Instant AP command support
+- Smart command fallback
+
+### v0.2.0 (2026-02-22)
+- Device mode detection
+- Command adaptation
+- Fallback behavior
+- Improved standalone AP support
 
 ### v0.1.0 (2026-02-22)
+- Initial release
+- `discover`, `snapshot`, `diff`, `apply`, `verify`, `rollback` commands
+- JSON + raw output format
+- SSH key and password authentication
 
-**新增功能：**
-- ✅ `discover` 命令 - 收集基本 IAP 信息
-- ✅ `snapshot` 命令 - 完整配置快照
-- ✅ `diff` 命令 - 生成配置差异
-- ✅ `apply` 命令 - 应用配置变更（含 dry_run 模式）
-- ✅ `verify` 命令 - 验证配置状态（basic/full 级别）
-- ✅ `rollback` 命令 - 回滚到之前配置
-- ✅ 密钥管理（内存存储、环境变量、文件）
-- ✅ 风险评估功能
-- ✅ 完整审计日志
-- ✅ SSH 密钥和密码认证
-- ✅ 结构化 JSON 输出 + 原始文本日志
+## License
 
-**技术实现：**
-- 使用 Scrapli + Paramiko 进行 SSH 连接
-- Pydantic 数据模型验证
-- Rich 终端输出
-- Typer CLI 框架
+This skill is part of OpenClaw and follows the same license.
 
-**文档：**
-- SKILL.md - 完整 API 文档
-- QUICKSTART.md - 快速开始指南
-- README.md - CLI 文档
-- 示例文件和测试
+## Support
 
-### TODO
+For issues and questions:
+- Check [SKILL.md](SKILL.md) for detailed documentation
+- Review [docs/CONFIG-CHANGES.md](docs/CONFIG-CHANGES.md) for configuration examples
+- Use `--verbose` flag for detailed output
 
-- [ ] macOS Keychain 密钥解析
-- [ ] Vault 集成（HashiCorp Vault、AWS Secrets Manager）
-- [ ] OpenClaw 审批工作流集成
-- [ ] 单元测试覆盖
-- [ ] 集成测试（真实 IAP 硬件）
-- [ ] verify 命令中的期望状态比较
+---
+
+**Version:** v0.5.0
+**Last Updated:** 2026-02-23
+**Author:** scsun

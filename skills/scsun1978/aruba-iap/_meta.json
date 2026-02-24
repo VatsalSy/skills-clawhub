@@ -1,11 +1,17 @@
 {
   "owner": "scsun1978",
   "slug": "aruba-iap",
-  "displayName": "Aruba Iap",
+  "displayName": "Aruba Iap Publish",
   "latest": {
-    "version": "0.3.1",
-    "publishedAt": 1771773870886,
-    "commit": "https://github.com/openclaw/skills/commit/f62c3ac98b274cf602c5cffcb2c89a57cb341126"
+    "version": "1.2.0",
+    "publishedAt": 1771861639891,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.3.1",
+      "publishedAt": 1771773870886,
+      "commit": "https://github.com/openclaw/skills/commit/f62c3ac98b274cf602c5cffcb2c89a57cb341126"
+    }
+  ]
 }

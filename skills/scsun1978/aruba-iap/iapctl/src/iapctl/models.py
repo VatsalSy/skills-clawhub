@@ -30,7 +30,7 @@ class Artifact(BaseModel):
 class Result(BaseModel):
     """Unified result format for all iapctl operations."""
     ok: bool
-    action: str = Field(..., pattern="^(discover|snapshot|diff|apply|verify|rollback)$")
+    action: str = Field(..., pattern="^(discover|snapshot|diff|apply|verify|rollback|monitor)$")
     cluster: str
     vc: str
     os_major: Optional[str] = None
@@ -112,10 +112,83 @@ class RfTemplateChange(BaseModel):
     template: str = Field(..., pattern="^(office-default|high-density|conference|corridor)$")
 
 
+class SnmpCommunityChange(BaseModel):
+    """SNMP community configuration change."""
+    type: str = "snmp_community"
+    community_string: str
+    access: str = Field(default="ro", pattern="^(ro|rw)$")
+
+
+class SnmpHostChange(BaseModel):
+    """SNMP host configuration change."""
+    type: str = "snmp_host"
+    host_ip: str
+    version: str = Field(default="2c", pattern="^(1|2c|3)$")
+    community_string: Optional[str] = None
+    inform: bool = False
+
+
+class SyslogLevelChange(BaseModel):
+    """Syslog level configuration change."""
+    type: str = "syslog_level"
+    level: str = Field(..., pattern="^(emergency|alert|critical|error|warning|notice|info|debug)$")
+    categories: List[str] = Field(
+        default_factory=lambda: ["ap-debug", "network", "security", "system", "user", "user-debug", "wireless"]
+    )
+
+
+class SsidProfileChange(BaseModel):
+    """Complete SSID profile configuration change."""
+    type: str = "ssid_profile"
+    profile_name: str
+    essid: str
+    opmode: str = Field(default="wpa2-psk-aes", pattern="^(wpa2-psk-aes|wpa2-enterprise|open)$")
+    wpa_passphrase: Optional[str] = None
+    vlan: int = Field(default=1)
+    rf_band: str = Field(default="all", pattern="^(all|2.4|5|6)$")
+
+
+class AuthServerChange(BaseModel):
+    """Authentication server (RADIUS/CPPM) configuration change."""
+    type: str = "auth_server"
+    server_name: str
+    ip: str
+    port: int = Field(default=1812)
+    acct_port: int = Field(default=1813)
+    secret_ref: str = Field(..., description="Reference to secret storage")
+    nas_id_type: str = Field(default="mac", pattern="^(mac|ip|serial)$")
+
+
+class ApAllowlistChange(BaseModel):
+    """AP allowlist configuration change."""
+    type: str = "ap_allowlist"
+    action: str = Field(..., pattern="^(add|remove)$")
+    mac_address: str = Field(..., pattern="^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$")
+
+
+class WiredPortProfileChange(BaseModel):
+    """Wired port profile configuration change."""
+    type: str = "wired_port_profile"
+    profile_name: str
+    switchport_mode: str = Field(default="access", pattern="^(access|trunk)$")
+    native_vlan: int = Field(default=1)
+    access_rule_name: Optional[str] = None
+    shutdown: bool = False
+
+
+class SsidDeleteChange(BaseModel):
+    """Delete SSID profile change."""
+    type: str = "ssid_delete"
+    profile_name: str
+
+
 # Union type for all change types
 Change = (
     NTPChange | DNSChange | SsidVlanChange |
-    RadiusServerChange | SsidBindRadiusChange | RfTemplateChange
+    RadiusServerChange | SsidBindRadiusChange | RfTemplateChange |
+    SnmpCommunityChange | SnmpHostChange | SyslogLevelChange |
+    SsidProfileChange | AuthServerChange | ApAllowlistChange |
+    WiredPortProfileChange | SsidDeleteChange
 )
 
 

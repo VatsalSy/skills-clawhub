@@ -454,3 +454,104 @@ class IAPConnection:
             "is_vc": False,
             "role": "standalone",
         }
+
+    def send_config_commands(self, config_commands: list[str]) -> str:
+        """Send configuration commands in config mode.
+
+        Aruba IAP uses interactive configuration mode:
+        1. Enter config mode: configure terminal
+        2. Enter sub-mode (e.g., wlan ssid-profile <name>)
+        3. Configure parameters
+        4. Exit sub-mode: exit
+        5. Exit config mode: exit
+        6. Save: write memory
+        7. Apply: commit apply
+
+        Args:
+            config_commands: List of configuration commands
+
+        Returns:
+            Combined output from all commands
+        """
+        if self._conn is None:
+            raise RuntimeError("Not connected to IAP. Call connect() first.")
+
+        outputs = []
+        delay = 0.3  # Delay between commands
+
+        try:
+            # Enter configuration mode
+            self._conn.channel.write("configure terminal\n")
+            time.sleep(2)
+            response = self._conn.channel.read()
+            outputs.append(response.decode('utf-8', errors='ignore'))
+
+            # Send each configuration command
+            for cmd in config_commands:
+                self._conn.channel.write(f"{cmd}\n")
+                time.sleep(delay)
+
+            # Read final response
+            time.sleep(1)
+            response = self._conn.channel.read()
+            outputs.append(response.decode('utf-8', errors='ignore'))
+
+            return "\n".join(outputs)
+
+        except Exception as e:
+            raise RuntimeError(f"Config commands failed: {e}") from e
+
+    def send_config_and_apply(self, config_commands: list[str]) -> str:
+        """Send configuration commands and apply them.
+
+        Args:
+            config_commands: List of configuration commands
+
+        Returns:
+            Combined output from all commands
+        """
+        if self._conn is None:
+            raise RuntimeError("Not connected to IAP. Call connect() first.")
+
+        outputs = []
+        delay = 0.3  # Delay between commands
+
+        try:
+            # Enter configuration mode
+            self._conn.channel.write("configure terminal\n")
+            time.sleep(2)
+            response = self._conn.channel.read()
+            outputs.append(response.decode('utf-8', errors='ignore'))
+
+            # Send each configuration command
+            for cmd in config_commands:
+                self._conn.channel.write(f"{cmd}\n")
+                time.sleep(delay)
+
+            # Wait for all commands to be processed
+            time.sleep(1)
+            response = self._conn.channel.read()
+            outputs.append(response.decode('utf-8', errors='ignore'))
+
+            # Exit configuration mode
+            self._conn.channel.write("exit\n")
+            time.sleep(1)
+            response = self._conn.channel.read()
+            outputs.append(response.decode('utf-8', errors='ignore'))
+
+            # Save configuration
+            self._conn.channel.write("write memory\n")
+            time.sleep(2)
+            response = self._conn.channel.read()
+            outputs.append(response.decode('utf-8', errors='ignore'))
+
+            # Commit and apply
+            self._conn.channel.write("commit apply\n")
+            time.sleep(3)
+            response = self._conn.channel.read()
+            outputs.append(response.decode('utf-8', errors='ignore'))
+
+            return "\n".join(outputs)
+
+        except Exception as e:
+            raise RuntimeError(f"Config and apply failed: {e}") from e

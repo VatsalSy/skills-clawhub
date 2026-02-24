@@ -645,33 +645,67 @@ def apply(
             if dry_run:
                 warnings.append("Dry run mode - no changes applied")
             else:
-                # Enter configuration mode
+                # Apply configuration using Aruba IAP config mode
                 steps["apply"] = time.time() - steps["pre_snapshot"]
-                
-                # Apply each command
-                for i, cmd in enumerate(command_set.commands, 1):
-                    try:
-                        # Send command
-                        output = conn.send_command(cmd)
-                        # Save output
-                        artifacts.append(save_raw_output(out_dir, f"apply_step_{i:03d}.txt", output))
-                    except Exception as e:
-                        errors.append(f"Command {i} failed: {cmd} - {e}")
-                        # Attempt rollback
-                        warnings.append("Attempting rollback due to error...")
-                        for rollback_cmd in command_set.rollback_commands:
+
+                # Use interactive config mode for Aruba IAP
+                try:
+                    # Detect device mode to determine apply method
+                    device_mode = conn.detect_device_mode()
+
+                    if device_mode["mode"] in ["single-node-cluster", "virtual-controller", "standalone"]:
+                        # For Aruba IAP, use config mode
+                        output = conn.send_config_and_apply(command_set.commands)
+
+                        # Save full output
+                        artifacts.append(save_raw_output(out_dir, "apply_output.txt", output))
+
+                        # Save each command for audit trail
+                        for i, cmd in enumerate(command_set.commands, 1):
+                            artifacts.append(Artifact(
+                                name=f"apply_step_{i:03d}.txt",
+                                path=str((out_dir / f"apply_step_{i:03d}.txt").absolute()),
+                                size_bytes=len(cmd),
+                                content_type="text/plain"
+                            ))
+                            # Write command to file
+                            (out_dir / f"apply_step_{i:03d}.txt").write_text(f"{cmd}\n")
+                    else:
+                        # Fallback to individual commands for other modes
+                        for i, cmd in enumerate(command_set.commands, 1):
                             try:
-                                conn.send_command(rollback_cmd)
-                            except:
-                                pass
-                        raise
-                
-                # Save configuration
-                steps["save"] = time.time() - steps["apply"]
-                conn.send_command("write memory")
-                
+                                # Send command
+                                output = conn.send_command(cmd)
+                                # Save output
+                                artifacts.append(save_raw_output(out_dir, f"apply_step_{i:03d}.txt", output))
+                            except Exception as e:
+                                errors.append(f"Command {i} failed: {cmd} - {e}")
+                                # Attempt rollback
+                                warnings.append("Attempting rollback due to error...")
+                                for rollback_cmd in command_set.rollback_commands:
+                                    try:
+                                        conn.send_command(rollback_cmd)
+                                    except:
+                                        pass
+                                raise
+
+                        # Save configuration
+                        steps["save"] = time.time() - steps["apply"]
+                        conn.send_command("write memory")
+
+                except Exception as e:
+                    errors.append(f"Configuration apply failed: {e}")
+                    # Attempt rollback
+                    warnings.append("Attempting rollback due to error...")
+                    for rollback_cmd in command_set.rollback_commands:
+                        try:
+                            conn.send_command(rollback_cmd)
+                        except:
+                            pass
+                    raise
+
                 # Post-apply snapshot
-                steps["post_snapshot"] = time.time() - steps["save"]
+                steps["post_snapshot"] = time.time() - steps["apply"]
                 post_config = conn.send_command("show running-config")
                 artifacts.append(save_raw_output(out_dir, "post_running-config.txt", post_config))
                 
