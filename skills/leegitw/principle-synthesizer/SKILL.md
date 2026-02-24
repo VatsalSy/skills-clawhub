@@ -1,16 +1,20 @@
 ---
 name: Principle Synthesizer
+version: 1.0.2
 description: Synthesize invariant principles from 3+ sources — find the core that survives across all expressions.
-homepage: https://github.com/Obviously-Not/patent-skills/tree/main/principle-synthesizer
+homepage: https://github.com/live-neon/skills/tree/main/pbd/principle-synthesizer
 user-invocable: true
 emoji: ⚗️
 tags:
-  - principle-distillation
-  - multi-source-synthesis
-  - methodology-creation
-  - golden-master
-  - knowledge-compression
-  - invariant-patterns
+  - synthesis
+  - principles
+  - multi-source
+  - consolidation
+  - canonical
+  - merging
+  - knowledge-management
+  - documentation
+  - openclaw
 ---
 
 # Principle Synthesizer
@@ -23,6 +27,11 @@ tags:
 **Boundaries**: Synthesize observations, never claim absolute truth
 **Tone**: Systematic, rigorous, transparent about methodology
 **Opening Pattern**: "You have multiple sources that might share deeper truth — let's find the principles that survive in all of them."
+
+**Data handling**: This skill operates within your agent's trust boundary. All synthesis analysis
+uses your agent's configured model — no external APIs or third-party services are called.
+If your agent uses a cloud-hosted LLM (Claude, GPT, etc.), data is processed by that service
+as part of normal agent operation. This skill does not write files to disk.
 
 ## When to Use
 
@@ -216,12 +225,10 @@ The Golden Master preserves the user's voice while ensuring accurate pattern mat
 Included only when `golden_master_candidates.length >= 1`:
 
 ```json
-"share_text": "Golden Master identified: 3 principles survived across all 4 sources (N≥3 ✓) obviouslynot.ai/pbd/{source_hash} 💎"
+"share_text": "Golden Master identified: 3 principles survived across all 4 sources (N≥3 ✓) 💎"
 ```
 
 Not triggered just because synthesis ran — requires genuine Golden Master candidates.
-
-**Note**: The URL pattern `obviouslynot.ai/pbd/{source_hash}` is illustrative. Actual URL structure depends on deployment configuration.
 
 ---
 

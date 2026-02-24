@@ -3,11 +3,16 @@
   "slug": "principle-synthesizer",
   "displayName": "Principle Synthesizer",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1770708219670,
-    "commit": "https://github.com/openclaw/skills/commit/b804872663bb1cf8fbad9d670a2b8aa6cd8492d6"
+    "version": "1.0.2",
+    "publishedAt": 1771895643955,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1770708219670,
+      "commit": "https://github.com/openclaw/skills/commit/b804872663bb1cf8fbad9d670a2b8aa6cd8492d6"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1770278788372,
