@@ -1,11 +1,17 @@
 {
   "owner": "l0c0luke",
   "slug": "millionfinney-homepage",
-  "displayName": "Million Finney Homepage",
+  "displayName": "Millionfinney Homepage",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1771808966029,
-    "commit": "https://github.com/openclaw/skills/commit/3fc33176c85edd24b1c74d86af06ebe4320ffddd"
+    "version": "1.2.0",
+    "publishedAt": 1771817907215,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1771808966029,
+      "commit": "https://github.com/openclaw/skills/commit/3fc33176c85edd24b1c74d86af06ebe4320ffddd"
+    }
+  ]
 }
