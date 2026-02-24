@@ -3,11 +3,16 @@
   "slug": "safety-checks",
   "displayName": "Safety Checks",
   "latest": {
-    "version": "1.4.0",
-    "publishedAt": 1771540398330,
-    "commit": "https://github.com/openclaw/skills/commit/bbdf6539a8dc3b060e2567327758a8c0fc94889a"
+    "version": "1.5.0",
+    "publishedAt": 1771894749738,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.4.0",
+      "publishedAt": 1771540398330,
+      "commit": "https://github.com/openclaw/skills/commit/bbdf6539a8dc3b060e2567327758a8c0fc94889a"
+    },
     {
       "version": "1.2.0",
       "publishedAt": 1771469773620,
