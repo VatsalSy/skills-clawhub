@@ -1,22 +1,14 @@
 # Agent Audit Trail Skill
 
-Tamper-evident, hash-chained audit logging for AI agents.
+Tamper-evident, hash-chained audit logging for AI agents. EU AI Act compliant.
 
 ## Why
 
-Agents act on your behalf. You need to know *what* they did, *when*, and be able to *prove* nothing was altered after the fact.
-
-This skill provides:
-- **Append-only NDJSON logs** — human-readable, grep-friendly
-- **Hash chaining** — each entry includes SHA-256 of previous + current, making tampering detectable
-- **Monotonic ordering** — sequential `ord` tokens for gate-relevant events
-- **Verification** — one command to validate the entire chain
+AI agents act on your behalf. From **2 August 2026**, the EU AI Act requires automatic logging, tamper-evident records, and human oversight capability for AI systems. This skill provides all three with zero dependencies.
 
 ## Quick Start
 
 ### 1. Add to your agent's workspace
-
-Copy `scripts/auditlog.py` to your workspace's `scripts/` directory.
 
 ```bash
 cp scripts/auditlog.py /path/to/your/workspace/scripts/
@@ -37,86 +29,58 @@ chmod +x /path/to/your/workspace/scripts/auditlog.py
 
 ```bash
 ./scripts/auditlog.py verify
-# Output: OK (or error with line number if tampered)
+# Output: OK (N entries verified)
 ```
 
-## Usage
+## Compliance Mapping
 
-### Appending entries
+| EU AI Act Article | Requirement | How This Skill Helps |
+|-------------------|-------------|---------------------|
+| **Art. 12** Record-Keeping | Automatic event logging | Every action logged with timestamp, actor, domain, target |
+| **Art. 12** Integrity | Tamper-evident records | SHA-256 hash chaining — modification breaks the chain |
+| **Art. 14** Human Oversight | Human approval linkage | `--gate` flag links actions to human approval references |
+| **Art. 50** Transparency | Auditable records | Human-readable NDJSON, one-command verification |
+| **Art. 12** Traceability | Chronological ordering | Monotonic `ord` tokens |
 
-```bash
-./scripts/auditlog.py append \
-  --kind <event-type> \
-  --summary <description> \
-  [--domain <domain>] \
-  [--target <identifier>] \
-  [--gate <gate-reference>] \
-  [--provenance '{"source": "...", "channel": "..."}'] \
-  [--details '{"key": "value"}']
-```
+## Event Kinds
 
-**Required:**
-- `--kind`: Event type (e.g., `file-write`, `exec`, `api-call`, `credential-access`)
-- `--summary`: Human-readable description
+Use these standardised event types for consistent audit trails:
 
-**Optional:**
-- `--domain`: Logical domain (default: `unknown`)
-- `--target`: What was acted upon (file path, URL, command)
-- `--gate`: Reference to approval gate (for gated actions)
-- `--provenance`: JSON object with source attribution
-- `--details`: JSON object with additional structured data
+| Kind | When to Use |
+|------|------------|
+| `file-write` | Agent creates or modifies files |
+| `exec` | Agent runs a command |
+| `api-call` | External API interaction |
+| `decision` | AI makes or recommends a decision |
+| `credential-access` | Secrets or credentials accessed |
+| `external-write` | Agent writes to external systems |
+| `human-override` | Human overrides an AI decision |
+| `disclosure` | AI identity disclosed to user |
 
-### Verifying the chain
+## Full Documentation
 
-```bash
-./scripts/auditlog.py verify [--log path/to/audit.ndjson]
-```
-
-Returns exit code 0 and prints `OK` if valid, or prints the failing line number and hash mismatch details.
+See [README.md](README.md) for complete usage, integration examples, security model, and EU AI Act compliance guide.
 
 ## Log Format
 
-Each line is a JSON object:
-
 ```json
 {
-  "ts": "2026-02-05T07:15:00+00:00",
-  "kind": "file-write",
+  "ts": "2026-02-24T07:15:00+00:00",
+  "kind": "exec",
   "actor": "atlas",
-  "domain": "personal",
+  "domain": "ops",
   "plane": "action",
-  "target": "config.yaml",
-  "summary": "Created config.yaml",
+  "target": "pg_dump production",
+  "summary": "Ran database backup",
+  "gate": "approval-123",
   "ord": 42,
-  "chain": {
-    "prev": "abc123...",
-    "hash": "def456...",
-    "algo": "sha256(prev\nline_c14n)"
-  }
+  "chain": {"prev": "abc...", "hash": "def...", "algo": "sha256(prev\\nline_c14n)"}
 }
 ```
 
-### Fields
+## OpenClaw Integration
 
-| Field | Description |
-|-------|-------------|
-| `ts` | ISO-8601 timestamp with timezone offset |
-| `kind` | Event type |
-| `actor` | Who performed the action (default: script name or agent) |
-| `domain` | Logical domain for partitioning |
-| `plane` | Processing plane (usually `action`) |
-| `target` | What was acted upon |
-| `summary` | Human description |
-| `gate` | Gate reference if action required approval |
-| `provenance` | Source attribution object |
-| `ord` | Monotonic ordering token |
-| `chain` | Hash chain data |
-
-## Integration with OpenClaw
-
-### Heartbeat verification
-
-Add to your `HEARTBEAT.md`:
+Add to `HEARTBEAT.md`:
 
 ```markdown
 ## Audit integrity check
@@ -125,59 +89,11 @@ Add to your `HEARTBEAT.md`:
   - If OK: silent
 ```
 
-### Gated actions
-
-For actions requiring human approval, log with a gate reference:
-
-```bash
-./scripts/auditlog.py append \
-  --kind "external-write" \
-  --summary "Posted to Twitter" \
-  --gate "approval-2026-02-05-001" \
-  --target "https://x.com/status/123" \
-  --provenance '{"channel": "telegram", "message_id": "456"}'
-```
-
-## Security Model
-
-1. **Append-only**: The script only appends; it never modifies existing entries
-2. **Hash chaining**: Each entry's hash depends on all previous entries
-3. **Tamper detection**: Any modification breaks the chain from that point forward
-4. **File locking**: Uses `fcntl.LOCK_EX` for safe concurrent access
-
-### What this doesn't protect against
-
-- Root/admin access (they can rewrite everything)
-- Compromised agent (it could lie in its logs)
-- Log deletion (use offsite backup for that)
-
-This is *evidence*, not *prevention*. It makes tampering *detectable*, not impossible.
-
-## Configuration
-
-Default log path: `audit/atlas-actions.ndjson`
-
-Override with `--log`:
-
-```bash
-./scripts/auditlog.py --log path/to/my-audit.ndjson append --kind test --summary "Test entry"
-```
-
 ## Requirements
 
-- Python 3.9+ (for `zoneinfo`)
-- No external dependencies
+- Python 3.9+ (zero external dependencies)
+- MIT License
 
-## Philosophy
+---
 
-> "Trust, but verify." — and make verification trivial.
-
-Agents should be accountable. This skill makes accountability auditable.
-
-## License
-
-MIT — use freely, contribute back if you improve it.
-
-## Contributing
-
-Issues and PRs welcome at: https://github.com/roosch/agent-audit-trail
+Built with 🔐 by [Roosch](https://github.com/roosch269) and [Atlas](https://github.com/roosch269/agent-audit-trail)
