@@ -3,11 +3,16 @@
   "slug": "opencortex",
   "displayName": "OpenCortex",
   "latest": {
-    "version": "1.3.0",
-    "publishedAt": 1771785181851,
-    "commit": "https://github.com/openclaw/skills/commit/3d08fbae717902bd34b93d8815799e2f3bac2dc9"
+    "version": "2.1.0",
+    "publishedAt": 1771820230012,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.3.0",
+      "publishedAt": 1771785181851,
+      "commit": "https://github.com/openclaw/skills/commit/3d08fbae717902bd34b93d8815799e2f3bac2dc9"
+    },
     {
       "version": "1.2.0",
       "publishedAt": 1771784351042,
