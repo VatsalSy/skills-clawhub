@@ -1,0 +1,11 @@
+{
+  "owner": "alanburchill",
+  "slug": "translink-cli",
+  "displayName": "Translink CLI",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1771813879590,
+    "commit": null
+  },
+  "history": []
+}
