@@ -1,13 +1,18 @@
 {
   "owner": "kenoodl-synthesis",
   "slug": "kenoodl-synthesis",
-  "displayName": "kenoodl",
+  "displayName": "Kenoodl Synthesis",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1771777087244,
-    "commit": "https://github.com/openclaw/skills/commit/952ff2e33e65de4b6b19ed84aa929d8749106dc9"
+    "version": "1.0.4",
+    "publishedAt": 1771867339709,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1771777087244,
+      "commit": "https://github.com/openclaw/skills/commit/952ff2e33e65de4b6b19ed84aa929d8749106dc9"
+    },
     {
       "version": "1.0.2",
       "publishedAt": 1771776176747,

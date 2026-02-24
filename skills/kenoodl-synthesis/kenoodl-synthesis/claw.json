@@ -1,6 +1,6 @@
 {
   "name": "kenoodl-synthesis",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "description": "kenoodl is an orthogonal injection engine — it synthesizes patterns from domains outside your agent's training data and maps them onto whatever problem it's working on. When your agent's outputs start circling, going safe, or hedging, kenoodl gives it structure it couldn't generate on its own.",
   "author": "kenoodl",
   "license": "MIT",
