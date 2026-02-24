@@ -1,13 +1,18 @@
 {
   "owner": "adamjurgens",
   "slug": "openclaw-podcast",
-  "displayName": "Superlore Podcast Briefings",
+  "displayName": "Openclaw Podcast",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1771760708925,
-    "commit": "https://github.com/openclaw/skills/commit/06fd81cf3fc3bbd49ada6e5db2f443e57b6b7bde"
+    "version": "1.2.0",
+    "publishedAt": 1771831501862,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1771760708925,
+      "commit": "https://github.com/openclaw/skills/commit/06fd81cf3fc3bbd49ada6e5db2f443e57b6b7bde"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1771760117733,

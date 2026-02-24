@@ -230,7 +230,7 @@ function loadCustomStyles() {
         const name = content.name || file.replace('.json', '');
         styles[name] = {
           voice: content.voice || 'af_heart',
-          speed: content.speed || 0.95,
+          speed: content.speed || 0.90,
           targetMinutes: content.targetMinutes || 6,
           instructions: content.instructions || '',
           description: content.description || '',
@@ -253,7 +253,7 @@ function loadCustomStyles() {
         if (!styles[name]) { // workspace styles take priority
           styles[name] = {
             voice: content.voice || 'af_heart',
-            speed: content.speed || 0.95,
+            speed: content.speed || 0.90,
             targetMinutes: content.targetMinutes || 6,
             instructions: content.instructions || '',
             description: content.description || '',
@@ -642,7 +642,7 @@ function getBuiltInStyles() {
   return {
     'The Briefing': {
       voice: 'af_heart-80_af_sarah-15_af_nicole-5', // Luna — warm, professional narrator
-      speed: 0.95,
+      speed: 0.90,
       targetMinutes: 6,
       instructions: `
 1. Open with a warm, professional greeting and the full date.
@@ -666,7 +666,7 @@ STYLE RULES:
     
     'Opportunities & Tactics': {
       voice: 'am_michael-60_am_eric-40', // Michael — strategic, authoritative
-      speed: 0.95,
+      speed: 0.90,
       targetMinutes: 7,
       instructions: `
 1. Open with a warm greeting and date, positioning this as a strategic opportunities review.
@@ -696,7 +696,7 @@ STYLE RULES:
     
     '10X Thinking': {
       voice: 'am_michael-60_am_eric-40', // Michael — bold, confident
-      speed: 1.0,
+      speed: 0.95,
       targetMinutes: 5,
       instructions: `
 1. Open with energy and the full date, then: "this is your ten-X thinking session. Let's challenge some assumptions."
@@ -751,7 +751,7 @@ STYLE RULES:
     
     'Focus & Priorities': {
       voice: 'af_heart', // Heart — intimate, direct
-      speed: 1.0,
+      speed: 0.95,
       targetMinutes: 5,
       instructions: `
 1. Open decisively with the full date: "Let's cut through the noise and find what matters."
@@ -775,7 +775,7 @@ STYLE RULES:
     
     'Growth & Scale': {
       voice: 'am_michael-60_am_eric-40', // Michael — data-driven authority
-      speed: 0.98,
+      speed: 0.92,
       targetMinutes: 6,
       instructions: `
 1. Open with focus on metrics and the full date: "Let's look at the numbers."
@@ -805,7 +805,7 @@ STYLE RULES:
     
     'Week in Review': {
       voice: 'af_heart-80_af_sarah-15_af_nicole-5', // Luna — reflective storytelling
-      speed: 0.93,
+      speed: 0.88,
       targetMinutes: 10,
       instructions: `
 1. Open reflectively with the full date: "this is your week in review. Let's zoom out."
@@ -1024,6 +1024,12 @@ INSTRUCTIONS FOR THE EPISODE:
 DO NOT include flowery preambles like "The code that ships..." or "This is a story about..." — get straight to the briefing.
 
 ${config.instructions}
+
+WRITING STYLE (applies to ALL styles):
+- Keep sentences SHORT — aim for 10-18 words per sentence. Break up long compound sentences.
+- Use natural pauses: end paragraphs with a clear thought. Let ideas breathe.
+- Vary rhythm: mix short punchy sentences with occasional longer ones. Don't be monotone.
+- Write for the EAR, not the eye. If a sentence needs re-reading, it's too complex for audio.
 `;
 
   // Hard limit: Superlore API returns 500 when JSON body exceeds ~4870 bytes
