@@ -1,0 +1,11 @@
+{
+  "owner": "kirorab",
+  "slug": "12306",
+  "displayName": "12306 Train Query",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1771819585210,
+    "commit": null
+  },
+  "history": []
+}
