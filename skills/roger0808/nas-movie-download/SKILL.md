@@ -1,13 +1,13 @@
 ---
 name: nas-movie-download
-description: Search and download movies via Jackett and qBittorrent. Use when user wants to download movies or videos from torrent sources, search for specific movie titles, or manage movie downloads. Now includes automatic subtitle download support.
+description: Search and download movies via Jackett and qBittorrent. Use when user wants to download movies or videos from torrent sources, search for specific movie titles, or manage movie downloads. Now includes automatic subtitle download support with SMB integration.
 ---
 
 # NAS Movie Download
 
 Automated movie downloading system using Jackett for torrent search and qBittorrent for download management.
 
-**新功能：自动字幕下载支持！** 🎬
+**新功能：SMB 自动字幕下载！** 🎬 下载完成后自动通过 SMB 为视频下载并上传字幕。
 
 ## Configuration
 
@@ -24,15 +24,22 @@ Set these environment variables for the skill to function properly:
 - `QB_USERNAME`: qBittorrent username (default: admin)
 - `QB_PASSWORD`: qBittorrent password (default: adminadmin)
 
+**SMB Configuration (for subtitle download):**
+- `SMB_USERNAME`: SMB username (default: 13917908083)
+- `SMB_PASSWORD`: SMB password (default: Roger0808)
+- `SMB_SERVER`: SMB server IP (default: 192.168.1.246)
+- `SMB_SHARE`: SMB share name (default: super8083)
+- `SMB_PATH`: SMB download path (default: qb/downloads)
+
 **Subtitle Configuration:**
-- `OPENSUBTITLES_API_KEY`: OpenSubtitles API key (optional, can also save to `config/opensubtitles.key`)
-- `SUBTITLE_LANGUAGES`: Default subtitle languages (default: zh-cn,en)
+- `SUBTITLE_LANGUAGES`: Default subtitle languages (default: zh,en)
 
-### OpenSubtitles Setup
+### SMB Setup
 
-1. 注册账号：https://www.opensubtitles.com
-2. 获取 API Key
-3. 保存到配置文件：`echo "your-api-key" > config/opensubtitles.key`
+SMB 配置已保存到 `config/smb.env`：
+```bash
+cat config/smb.env
+```
 
 ### Indexer Setup
 
@@ -55,75 +62,61 @@ scripts/jackett-search.sh -q "The Matrix"
 scripts/jackett-search.sh -q "死期将至"  # Chinese movie names supported
 ```
 
-### Download with Automatic Subtitles 🆕
+### Download Movie Only
 
-One-click download with automatic subtitle fetching:
+Download movie without subtitles:
 
 ```bash
-# Download movie and automatically download subtitles after completion
-scripts/download-movie.sh -q "Young Sheldon" -s -w
-
-# Download with specific languages
-scripts/download-movie.sh -q "Community" -s -l zh-cn,en
-
-# Download movie only (no subtitles)
 scripts/download-movie.sh -q "The Matrix"
 ```
 
+### Download with Automatic Subtitles via SMB 🆕
+
+**完整流程：搜索 → 下载 → 自动下载字幕 → 上传到 SMB**
+
+```bash
+# 下载电影并自动通过 SMB 下载字幕
+scripts/download-movie.sh -q "Young Sheldon" --subtitle
+
+# 指定字幕语言
+scripts/download-movie.sh -q "Community" --subtitle --lang zh,en
+```
+
 **参数说明：**
-- `-s, --with-subtitle`: 启用自动字幕下载
-- `-w, --wait`: 等待下载完成后自动下载字幕
-- `-l, --languages`: 指定字幕语言（默认：zh-cn,en）
+- `--subtitle`: 启用自动字幕下载（通过 SMB）
+- `--lang`: 指定字幕语言（默认：zh,en）
 
-### Manual Download Workflow
+### SMB Subtitle Download (Standalone)
 
-For more control over the download process:
-
-1. Search: `scripts/jackett-search.sh -q "movie name"`
-2. Review results and copy magnet link
-3. Add to qBittorrent: `scripts/qbittorrent-add.sh -m "magnet:?xt=urn:btih:..."`
-4. Download subtitles: `scripts/subtitle-download.sh -d "/path/to/downloaded/files"`
-
-### Subtitle Download Only
-
-Download subtitles for existing video files:
+为 NAS 上已下载的视频通过 SMB 下载字幕：
 
 ```bash
-# Single file
-scripts/subtitle-download.sh -f "/path/to/video.mkv" -l zh-cn,en
+# 为单个视频下载字幕
+python3 scripts/smb-download-subtitle.py -f "movie.mkv"
 
-# Entire directory (recursive)
-scripts/subtitle-download.sh -d "/path/to/tv/show" -r
+# 为整个目录下载字幕
+python3 scripts/smb-download-subtitle.py -d "qb/downloads/Movie Folder"
 
-# Specific languages
-scripts/subtitle-download.sh -d "/media/Young Sheldon" -l zh-cn,en,ja
+# 批量处理所有视频
+python3 scripts/smb-download-subtitle.py --all
 ```
 
-**Language Codes:**
-- `zh-cn`: 中文简体
-- `zh-tw`: 中文繁体
-- `en`: 英文
-- `ja`: 日文
-- `ko`: 韩文
+## Workflow
 
-### Test Configuration
+### 完整下载流程
 
-Verify your Jackett and qBittorrent setup:
+1. **搜索电影**: 使用 Jackett 搜索种子
+2. **添加到 qBittorrent**: 自动添加最高质量的种子
+3. **等待下载完成**: qBittorrent 下载视频到 NAS
+4. **自动下载字幕**: 通过 SMB 连接到 NAS，为视频下载字幕
+5. **上传字幕**: 将字幕文件上传到 NAS 对应位置
 
-```bash
-scripts/test-config.sh
 ```
-
-## Quality Selection
-
-The skill automatically prioritizes quality in this order:
-
-1. **4K/UHD**: Contains "4K", "2160p", "UHD"
-2. **1080P/Full HD**: Contains "1080p", "FHD"
-3. **720P/HD**: Contains "720p", "HD"
-4. **Other**: Other quality levels
-
-When using `download-movie.sh`, the highest quality available torrent will be selected automatically.
+┌─────────────┐    ┌──────────────┐    ┌──────────────┐    ┌──────────────┐
+│  Jackett    │───▶│ qBittorrent  │───▶│    NAS       │───▶│   字幕下载    │
+│   搜索      │    │   下载       │    │  存储视频     │    │  SMB + subliminal│
+└─────────────┘    └──────────────┘    └──────────────┘    └──────────────┘
+```
 
 ## Script Details
 
@@ -136,11 +129,6 @@ Search Jackett for torrents.
 - `-u, --url`: Jackett URL (optional, uses env var)
 - `-k, --api-key`: API key (optional, uses env var)
 
-**Example:**
-```bash
-scripts/jackett-search.sh -q "Inception" -u http://192.168.1.246:9117
-```
-
 ### qbittorrent-add.sh
 
 Add torrent to qBittorrent.
@@ -151,88 +139,68 @@ Add torrent to qBittorrent.
 - `-n, --username`: Username (optional, uses env var)
 - `-p, --password`: Password (optional, uses env var)
 
-**Example:**
-```bash
-scripts/qbittorrent-add.sh -m "magnet:?xt=urn:btih:..."
-```
-
 ### download-movie.sh
 
-One-click search and download with optional subtitle support.
+One-click search, download, and subtitle fetching.
 
 **Parameters:**
 - `-q, --query`: Movie name (required)
-- `-s, --with-subtitle`: Enable automatic subtitle download
-- `-w, --wait`: Wait for download to complete before downloading subtitles
-- `-l, --languages`: Subtitle languages (default: zh-cn,en)
+- `-s, --subtitle`: Enable automatic subtitle download via SMB
+- `-l, --lang`: Subtitle languages (default: zh,en)
+- `--quality`: Quality preference (4k, 1080p, 720p, any)
 
-**Example:**
-```bash
-# Basic download
-scripts/download-movie.sh -q "The Matrix"
+### smb-download-subtitle.py 🆕
 
-# Download with subtitles
-scripts/download-movie.sh -q "Young Sheldon" -s -w -l zh-cn,en
-```
-
-### subtitle-download.sh 🆕
-
-Download subtitles for video files using OpenSubtitles API.
+Download subtitles for videos on NAS via SMB.
 
 **Parameters:**
-- `-f, --file`: Single video file path
-- `-d, --directory`: Process all videos in directory
-- `-l, --languages`: Subtitle languages, comma-separated (default: zh-cn,en)
-- `-k, --api-key`: OpenSubtitles API Key (optional if configured)
-- `-r, --recursive`: Recursively process subdirectories
-- `-h, --help`: Show help
+- `-f, --file`: Single video filename (relative to SMB path)
+- `-d, --directory`: Directory path (relative to SMB path)
+- `-l, --lang`: Subtitle languages (default: zh,en)
+- `--all`: Process all videos in SMB download folder
 
 **Example:**
 ```bash
-# Single file
-scripts/subtitle-download.sh -f "/media/movie.mkv"
+# Single video
+python3 scripts/smb-download-subtitle.py -f "Lilo And Stitch 2025.mkv"
 
-# Batch process directory
-scripts/subtitle-download.sh -d "/media/TV Shows" -r -l zh-cn,en
+# Entire folder
+python3 scripts/smb-download-subtitle.py -d "qb/downloads/Movie Folder"
+
+# All videos
+python3 scripts/smb-download-subtitle.py --all
 ```
 
 **Features:**
-- Automatically parses video filenames (TV episodes, movies)
-- Downloads best-rated subtitles for each language
-- Renames subtitles to match video filenames
+- Connects to NAS via SMB
+- Uses subliminal for subtitle search
+- Downloads Chinese and English subtitles
+- Uploads subtitles to corresponding video folders
 - Skips existing subtitle files
-- Supports batch processing
 
 ## Tips and Best Practices
 
 - **Use English movie names** for better search results
 - **Check Jackett indexer status** if searches return no results
 - **Monitor qBittorrent** to manage download progress
-- **Consider storage space** when downloading 4K content
-- **Test configuration** periodically to ensure services are running
-- **For TV series**: Use `-s -w` flag to auto-download subtitles for all episodes
+- **SMB subtitle download** works best for popular movies and TV shows
+- **Test SMB connection** with `python3 scripts/smb-download-subtitle.py --test`
+- **For TV series**: Use `--subtitle` flag to auto-download subtitles for all episodes
 
 ## Troubleshooting
 
-### No Search Results
+### SMB Connection Failed
 
-1. Verify Jackett is running: `curl http://192.168.1.246:9117`
-2. Check Jackett indexers are enabled in Jackett UI
-3. Try English movie names
-4. Verify API key is correct
-
-### qBittorrent Connection Failed
-
-1. Confirm qBittorrent is running
-2. Check Web UI is enabled in qBittorrent settings
-3. Verify username and password
-4. Ensure network connectivity to qBittorrent server
+1. Verify SMB credentials in `config/smb.env`
+2. Check NAS IP address: `ping 192.168.1.246`
+3. Ensure SMB service is running on NAS
+4. Verify network connectivity
 
 ### Subtitle Download Issues
 
-1. **No API Key**: Save your key to `config/opensubtitles.key` or use `-k` flag
-2. **No subtitles found**: Try different language codes or the video may not have subtitles available
-3. **API limit**: OpenSubtitles free tier has rate limits; wait a few minutes and retry
+1. **No subtitles found**: Try different language codes or the video may not have subtitles available
+2. **subliminal not installed**: `pip3 install subliminal`
+3. **SMB upload failed**: Check folder permissions on NAS
 
 ### Permission Issues
 
@@ -240,11 +208,12 @@ Ensure scripts have execute permissions:
 
 ```bash
 chmod +x scripts/*.sh
+chmod +x scripts/*.py
 ```
 
 ## Security Notes
 
-- Keep API keys secure and don't commit them to version control
+- Keep SMB credentials secure in `config/smb.env`
 - Use HTTPS connections when possible
 - Consider setting up VPN for torrent traffic
 - Monitor qBittorrent for unauthorized downloads
@@ -253,15 +222,23 @@ chmod +x scripts/*.sh
 
 - `curl`: For HTTP requests
 - `jq`: For JSON parsing
-- `bc`: For floating point calculations (subtitle download progress)
-- Bash shell
+- `python3` with `pysmb`: For SMB operations
+- `subliminal`: For subtitle download
 
-Install dependencies if missing:
+Install dependencies:
 ```bash
-apt-get install curl jq bc
+apt-get install curl jq python3 python3-pip
+pip3 install pysmb subliminal
 ```
 
 ## Changelog
+
+### v3.0 - 2025-02-23
+- ✅ Added SMB subtitle download support
+- ✅ New `smb-download-subtitle.py` script
+- ✅ Integrated subtitle download into download workflow
+- ✅ Automatic subtitle upload via SMB
+- ✅ Support for Chinese and English subtitles
 
 ### v2.0 - 2025-02-17
 - ✅ Added automatic subtitle download support
