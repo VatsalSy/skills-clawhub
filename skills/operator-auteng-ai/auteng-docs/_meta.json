@@ -1,0 +1,11 @@
+{
+  "owner": "operator-auteng-ai",
+  "slug": "auteng-docs",
+  "displayName": "auteng-docs",
+  "latest": {
+    "version": "1.0.2",
+    "publishedAt": 1771903681069,
+    "commit": null
+  },
+  "history": []
+}
