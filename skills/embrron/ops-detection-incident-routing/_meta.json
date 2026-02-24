@@ -1,0 +1,11 @@
+{
+  "owner": "embrron",
+  "slug": "ops-detection-incident-routing",
+  "displayName": "AgentOps Guardrails",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1771904020101,
+    "commit": null
+  },
+  "history": []
+}
