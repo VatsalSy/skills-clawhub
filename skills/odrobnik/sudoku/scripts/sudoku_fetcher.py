@@ -26,6 +26,50 @@ DEFAULT_URL = "https://www.sudokuonline.io/kids/numbers-6-6"
 # Repo-local helpers (avoid absolute paths; makes this portable)
 REPO_ROOT = Path(__file__).resolve().parent
 
+def _extract_js_array_contents(html, var_name):
+    marker = f"const {var_name} = ["
+    marker_pos = html.find(marker)
+    if marker_pos < 0:
+        return None
+
+    start = marker_pos + len(marker) - 1  # points to '['
+
+    depth = 0
+    in_string = False
+    string_quote = ""
+    escape = False
+
+    for i in range(start, len(html)):
+        ch = html[i]
+
+        if in_string:
+            if escape:
+                escape = False
+                continue
+            if ch == "\\":
+                escape = True
+                continue
+            if ch == string_quote:
+                in_string = False
+            continue
+
+        if ch in ("'", '"'):
+            in_string = True
+            string_quote = ch
+            continue
+
+        if ch == "[":
+            depth += 1
+            continue
+
+        if ch == "]":
+            depth -= 1
+            if depth == 0:
+                return html[start + 1 : i]
+
+    return None
+
+
 def fetch_puzzles(url):
     """Fetch preloaded puzzles from the given URL."""
     try:
@@ -35,15 +79,12 @@ def fetch_puzzles(url):
     except Exception as e:
         print(f"Error fetching URL: {e}")
         sys.exit(1)
-    
-    # Extract the preloadedPuzzles array
-    match = re.search(r'const preloadedPuzzles = \[(.*?)\];', html, re.DOTALL)
-    if not match:
+
+    puzzles_str = _extract_js_array_contents(html, "preloadedPuzzles")
+    if puzzles_str is None:
         print("Could not find preloadedPuzzles in HTML. Is this a valid sudokuonline.io page?")
         sys.exit(1)
-    
-    puzzles_str = match.group(1).strip()
-    
+
     # Extract individual puzzle objects
     puzzles = []
     for puzzle_match in re.finditer(r"\{[^}]+\}", puzzles_str):
@@ -65,7 +106,7 @@ def fetch_puzzles(url):
                 puzzles.append(puzzle)
         except (json.JSONDecodeError, ValueError):
             continue
-            
+
     return puzzles
 
 def decode_puzzle(data):

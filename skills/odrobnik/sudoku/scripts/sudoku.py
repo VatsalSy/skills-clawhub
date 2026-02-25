@@ -12,8 +12,9 @@ Data source: https://www.sudokuonline.io (pages embed a `preloadedPuzzles` array
 
 Commands:
   - list
-  - get <preset> [--index N|--id ID|--seed S] [--render] [--json]
-  - puzzle [--latest|--id ID] [--json]
+  - get <preset> [--count N] [--id ID] [--render] [--json]
+  - render [--latest|--id ID] [--pdf|--printable] [--json]
+  - html [--latest|--id ID] [--json]
   - reveal [--latest|--id ID] [--full|--box ...|--cell r c] [--image] [--json]
 
 Notes:
@@ -150,12 +151,53 @@ def ensure_dirs() -> None:
     RENDERS_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def parse_preloaded_puzzles(html: str) -> List[Dict[str, Any]]:
-    m = re.search(r"const preloadedPuzzles = \[(.*?)\];", html, re.DOTALL)
-    if not m:
-        raise ValueError("Could not find preloadedPuzzles in HTML")
+def _extract_js_array_contents(html: str, var_name: str) -> str:
+    marker = f"const {var_name} = ["
+    marker_pos = html.find(marker)
+    if marker_pos < 0:
+        raise ValueError(f"Could not find {var_name} in HTML")
 
-    blob = m.group(1)
+    # Position at the opening '['
+    start = marker_pos + len(marker) - 1
+
+    depth = 0
+    in_string = False
+    string_quote = ""
+    escape = False
+
+    for i in range(start, len(html)):
+        ch = html[i]
+
+        if in_string:
+            if escape:
+                escape = False
+                continue
+            if ch == "\\":
+                escape = True
+                continue
+            if ch == string_quote:
+                in_string = False
+            continue
+
+        if ch in ("'", '"'):
+            in_string = True
+            string_quote = ch
+            continue
+
+        if ch == "[":
+            depth += 1
+            continue
+
+        if ch == "]":
+            depth -= 1
+            if depth == 0:
+                return html[start + 1 : i]
+
+    raise ValueError(f"Could not parse {var_name} array from HTML")
+
+
+def parse_preloaded_puzzles(html: str) -> List[Dict[str, Any]]:
+    blob = _extract_js_array_contents(html, "preloadedPuzzles")
     puzzles: List[Dict[str, Any]] = []
 
     # Entries are JS/Python-ish object literals — convert to valid JSON and parse safely.
@@ -208,10 +250,24 @@ def pick_puzzle(
         raise ValueError("No puzzles found")
 
     if puzzle_id is not None:
+        needle = _normalize_id_fragment(puzzle_id).lower()
+        matches: List[Tuple[int, Dict[str, Any]]] = []
         for i, p in enumerate(puzzles):
-            if str(p.get("id")) == puzzle_id:
-                return p, i
-        raise ValueError(f"Puzzle id not found: {puzzle_id}")
+            pid = str(p.get("id", ""))
+            if needle and needle in pid.lower():
+                matches.append((i, p))
+
+        if not matches:
+            raise ValueError(f"Puzzle id fragment not found: {puzzle_id}")
+        if len(matches) > 1:
+            ids = [str(p.get("id")) for _, p in matches[:5]]
+            extra = "" if len(matches) <= 5 else f" (+{len(matches) - 5} more)"
+            raise ValueError(
+                f"Puzzle id fragment is ambiguous ({len(matches)} matches): {', '.join(ids)}{extra}"
+            )
+
+        i, p = matches[0]
+        return p, i
 
     if index is not None:
         # 1-based index by default (friendlier). Allow 0 as explicit first element.
@@ -266,10 +322,20 @@ def latest_puzzle_json() -> Path:
     return files[-1]
 
 
+def _normalize_id_fragment(value: str) -> str:
+    s = str(value or "").strip()
+    if not s:
+        raise ValueError("Puzzle id cannot be empty")
+    if not re.fullmatch(r"[0-9A-Fa-f-]{1,64}", s):
+        raise ValueError("Puzzle id may only contain hex characters and '-'")
+    return s
+
+
 def find_puzzle_json_by_short_id(short_id: str) -> Path:
     """Fast-path lookup by the short ID used in filenames (first UUID segment)."""
     ensure_dirs()
-    matches = sorted(PUZZLES_DIR.glob(f"*_{short_id}.json"), key=lambda p: p.stat().st_mtime)
+    sid = _normalize_id_fragment(short_id).split("-")[0].lower()
+    matches = [p for p in list_puzzle_jsons() if p.name.lower().endswith(f"_{sid}.json")]
     if not matches:
         raise FileNotFoundError(f"No stored puzzle JSON found for short id={short_id}")
     return matches[-1]
@@ -282,33 +348,33 @@ def find_puzzle_json_by_id(puzzle_id: str) -> Path:
     - full UUID (e.g. 324306f5-034d-4089-8723-56a8087fde14)
     - short ID (first segment, e.g. 324306f5) which is embedded in the filename
 
-    Fast path: try filename match first; fallback: scan JSON contents.
+    Fast path: try filename suffix match first; fallback: scan JSON contents.
     """
 
-    sid = puzzle_id.split("-")[0]
+    normalized = _normalize_id_fragment(puzzle_id)
+    sid = normalized.split("-")[0].lower()
 
-    # Fast path: try filename glob using short-id suffix.
-    candidates = sorted(PUZZLES_DIR.glob(f"*_{sid}.json"), key=lambda p: p.stat().st_mtime)
+    # Fast path: suffix match on known puzzle JSON filenames (no glob with user input).
+    candidates = [p for p in list_puzzle_jsons() if p.name.lower().endswith(f"_{sid}.json")]
     if candidates:
         # If user gave only short id, just return latest match.
-        if "-" not in puzzle_id:
+        if "-" not in normalized:
             return candidates[-1]
 
         # If user gave full UUID, verify candidate content before returning.
         for p in reversed(candidates):
             try:
                 d = json.loads(p.read_text(encoding="utf-8"))
-                if str(d.get("picked", {}).get("id")) == puzzle_id:
+                if str(d.get("picked", {}).get("id", "")).lower() == normalized.lower():
                     return p
             except Exception:
                 continue
 
     # Slow path: scan all stored docs.
-    files = list_puzzle_jsons()
-    for p in reversed(files):
+    for p in reversed(list_puzzle_jsons()):
         try:
             d = json.loads(p.read_text(encoding="utf-8"))
-            if str(d.get("picked", {}).get("id")) == puzzle_id:
+            if str(d.get("picked", {}).get("id", "")).lower() == normalized.lower():
                 return p
         except Exception:
             continue
@@ -320,10 +386,13 @@ def load_puzzle_doc(*, puzzle_id: Optional[str] = None, latest: bool = False) ->
     if puzzle_id is not None and latest:
         raise SystemExit("Use only one of --id / --latest")
 
-    if puzzle_id is not None:
-        p = find_puzzle_json_by_id(puzzle_id)
-    else:
-        p = latest_puzzle_json()
+    try:
+        if puzzle_id is not None:
+            p = find_puzzle_json_by_id(puzzle_id)
+        else:
+            p = latest_puzzle_json()
+    except (ValueError, FileNotFoundError) as e:
+        raise SystemExit(str(e))
 
     doc = json.loads(p.read_text(encoding="utf-8"))
     return doc, p
@@ -410,6 +479,105 @@ def render_puzzle_pdf(doc: Dict[str, Any], *, printable: bool = True, dpi: int =
         letters_mode=letters_mode,
         dpi=dpi,
     )
+    return out
+
+
+def render_puzzle_html(doc: Dict[str, Any]) -> Path:
+    out = render_paths(doc, kind="puzzle", ext="html")
+
+    clues = doc["clues"]
+    size = int(doc["size"])
+    letters_mode = bool(doc.get("preset", {}).get("letters", False))
+    bw, bh = get_block_dims(size)
+
+    def cell_text(v: int) -> str:
+        return format_cell_value(int(v), letters_mode)
+
+    rows: List[str] = []
+    for r in range(size):
+        cells: List[str] = []
+        for c in range(size):
+            v = int(clues[r][c])
+            classes: List[str] = []
+            if c == 0:
+                classes.append("edge-left")
+            if r == 0:
+                classes.append("edge-top")
+            if (c + 1) % bw == 0:
+                classes.append("edge-right-thick")
+            else:
+                classes.append("edge-right")
+            if (r + 1) % bh == 0:
+                classes.append("edge-bottom-thick")
+            else:
+                classes.append("edge-bottom")
+
+            classes_s = " ".join(classes)
+            text = cell_text(v)
+            cells.append(f'<td class="{classes_s}"><span class="cell-value">{text}</span></td>')
+        rows.append("<tr>" + "".join(cells) + "</tr>")
+
+    html = f"""<!doctype html>
+<html lang=\"en\">
+<head>
+  <meta charset=\"utf-8\" />
+  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
+  <title>Sudoku</title>
+  <style>
+    :root {{
+      --cell: 56px;
+      --thin: 1px;
+      --thick: 3px;
+      --line: #444;
+      --thick-line: #000;
+    }}
+    body {{
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif;
+    }}
+    table.sudoku {{
+      border-collapse: collapse;
+      border-spacing: 0;
+    }}
+    table.sudoku td {{
+      width: var(--cell);
+      height: var(--cell);
+      min-width: var(--cell);
+      min-height: var(--cell);
+      text-align: center;
+      vertical-align: middle;
+      box-sizing: border-box;
+      padding: 0;
+    }}
+    .cell-value {{
+      width: 100%;
+      height: 100%;
+      display: grid;
+      place-items: center;
+      font-size: calc(var(--cell) * 0.52);
+      line-height: 1;
+      font-weight: 600;
+      color: #111;
+    }}
+    .edge-left {{ border-left: var(--thick) solid var(--thick-line); }}
+    .edge-top {{ border-top: var(--thick) solid var(--thick-line); }}
+    .edge-right {{ border-right: var(--thin) solid var(--line); }}
+    .edge-bottom {{ border-bottom: var(--thin) solid var(--line); }}
+    .edge-right-thick {{ border-right: var(--thick) solid var(--thick-line); }}
+    .edge-bottom-thick {{ border-bottom: var(--thick) solid var(--thick-line); }}
+  </style>
+</head>
+<body>
+  <table class=\"sudoku\" aria-label=\"Sudoku grid\">{''.join(rows)}</table>
+</body>
+</html>
+"""
+
+    out.write_text(html, encoding="utf-8")
     return out
 
 
@@ -549,77 +717,143 @@ def cmd_get(args: argparse.Namespace) -> int:
     if args.preset not in PRESETS:
         raise SystemExit(f"Unknown preset '{args.preset}'. Run: sudoku.py list")
 
-    selector_count = sum(1 for x in (args.index is not None, args.id is not None, args.seed is not None) if x)
-    if selector_count > 1:
-        raise SystemExit("Use only one of --index / --id / --seed")
+    has_id_selector = args.id is not None
+
+    count = int(getattr(args, "count", 1) or 1)
+    if count < 1:
+        raise SystemExit("--count must be >= 1")
+
+    if count > 1 and has_id_selector:
+        raise SystemExit("--count > 1 cannot be combined with --id")
 
     preset = PRESETS[args.preset]
 
-    puzzles = fetch_puzzles(preset.url)
-    puzzle, picked_idx = pick_puzzle(puzzles, index=args.index, puzzle_id=args.id, seed=args.seed)
+    selected: List[Tuple[Dict[str, Any], int, int]] = []  # (puzzle, picked_idx, batch_total)
 
-    size, clues, solution = decode_puzzle(puzzle["data"])
+    if count == 1:
+        puzzles = fetch_puzzles(preset.url)
+        try:
+            puzzle, picked_idx = pick_puzzle(puzzles, puzzle_id=args.id)
+        except ValueError as e:
+            raise SystemExit(str(e))
+        selected.append((puzzle, picked_idx, len(puzzles)))
+    else:
+        used_ids = _previously_used_puzzle_ids()
+        seen_ids: set[str] = set()
+        attempts = 0
+        max_attempts = max(5, count * 4)
 
-    stamp = utc_stamp()
-    puzzle_id = str(puzzle["id"])
+        while len(selected) < count and attempts < max_attempts:
+            attempts += 1
+            puzzles = fetch_puzzles(preset.url)
 
-    # Share link: classic 9x9 only.
-    share_kind = "none"
-    share_link = None
-    if size == 9:
-        short_id = puzzle_id.split("-")[0]
-        # Oliver preference: embedded SudokuPad metadata title format
-        # "Easy Classic [ID]"
-        difficulty = preset.key.replace("9", "").capitalize()  # easy/medium/hard/evil
-        share_title = f"{difficulty} Classic [{short_id}]"
+            fresh = [
+                (p, i, len(puzzles))
+                for i, p in enumerate(puzzles)
+                if str(p.get("id")) not in used_ids and str(p.get("id")) not in seen_ids
+            ]
 
-        # Use SudokuPad /puzzle/ links (required for SudokuPad app).
-        # The payload is generated URL-safe so chat systems don't break it.
-        share_link = generate_native_link(clues, size, title=share_title)
-        if isinstance(share_link, str) and share_link.startswith("http"):
-            share_kind = "native"
+            if not fresh:
+                continue
+
+            random.shuffle(fresh)
+            needed = count - len(selected)
+            for p, i, total in fresh[:needed]:
+                pid = str(p.get("id"))
+                seen_ids.add(pid)
+                selected.append((p, i, total))
+
+        if len(selected) < count:
+            raise SystemExit(
+                f"Could only fetch {len(selected)} unique new puzzle(s) after {attempts} batch fetches (requested {count})."
+            )
+
+    items: List[Dict[str, Any]] = []
+
+    for puzzle, picked_idx, batch_total in selected:
+        size, clues, solution = decode_puzzle(puzzle["data"])
+
+        stamp = utc_stamp()
+        puzzle_id = str(puzzle["id"])
+
+        # Share link: classic 9x9 only.
+        share_kind = "none"
+        share_link = None
+        if size == 9:
+            short_id = puzzle_id.split("-")[0]
+            # Oliver preference: embedded SudokuPad metadata title format
+            # "Easy Classic [ID]"
+            difficulty = preset.key.replace("9", "").capitalize()  # easy/medium/hard/evil
+            share_title = f"{difficulty} Classic [{short_id}]"
+
+            # Use SudokuPad /puzzle/ links (required for SudokuPad app).
+            # The payload is generated URL-safe so chat systems don't break it.
+            share_link = generate_native_link(clues, size, title=share_title)
+            if isinstance(share_link, str) and share_link.startswith("http"):
+                share_kind = "native"
+            else:
+                share_kind = "none"
+                share_link = None
+
+        doc: Dict[str, Any] = {
+            "version": 2,
+            "created_utc": stamp,
+            "preset": {"key": preset.key, "desc": preset.desc, "url": preset.url, "letters": preset.letters},
+            "picked": {"id": puzzle_id, "index": picked_idx, "total": batch_total},
+            "size": size,
+            "block": {"bw": get_block_dims(size)[0], "bh": get_block_dims(size)[1]},
+            "clues": clues,
+            "solution": solution,
+            "share": {"kind": share_kind, "link": share_link},
+        }
+
+        json_path = write_puzzle_json(doc)
+
+        item: Dict[str, Any] = {
+            "preset": preset.key,
+            "desc": preset.desc,
+            "puzzle_id": puzzle_id,
+            "picked_index": picked_idx,
+            "puzzle_count": batch_total,
+            "size": size,
+            "letters_mode": preset.letters,
+            "puzzle_json": str(json_path),
+            "share_kind": share_kind,
+            "share_link": share_link,
+        }
+
+        if args.render:
+            item["puzzle_image"] = str(render_puzzle_image(doc, printable=False))
+
+        items.append(item)
+
+    if count == 1:
+        payload: Dict[str, Any] = items[0]
+        if args.json:
+            print(json.dumps(payload, ensure_ascii=False))
         else:
-            share_kind = "none"
-            share_link = None
+            print(f"Stored: {payload['puzzle_json']}")
+            if payload.get("puzzle_image"):
+                print(f"Puzzle image: {payload['puzzle_image']}")
+            if payload.get("share_kind") != "none":
+                print(f"Share link ({payload['share_kind']}): {payload['share_link']}")
+        return 0
 
-    doc: Dict[str, Any] = {
-        "version": 2,
-        "created_utc": stamp,
-        "preset": {"key": preset.key, "desc": preset.desc, "url": preset.url, "letters": preset.letters},
-        "picked": {"id": puzzle_id, "index": picked_idx, "total": len(puzzles)},
-        "size": size,
-        "block": {"bw": get_block_dims(size)[0], "bh": get_block_dims(size)[1]},
-        "clues": clues,
-        "solution": solution,
-        "share": {"kind": share_kind, "link": share_link},
-    }
-
-    json_path = write_puzzle_json(doc)
-
-    payload: Dict[str, Any] = {
+    payload_multi: Dict[str, Any] = {
         "preset": preset.key,
         "desc": preset.desc,
-        "puzzle_id": puzzle_id,
-        "picked_index": picked_idx,
-        "puzzle_count": len(puzzles),
-        "size": size,
-        "letters_mode": preset.letters,
-        "puzzle_json": str(json_path),
-        "share_kind": share_kind,
-        "share_link": share_link,
+        "count_requested": count,
+        "count_fetched": len(items),
+        "puzzle_ids": [it["puzzle_id"] for it in items],
+        "items": items,
     }
 
-    if args.render:
-        payload["puzzle_image"] = str(render_puzzle_image(doc, printable=False))
-
     if args.json:
-        print(json.dumps(payload, ensure_ascii=False))
+        print(json.dumps(payload_multi, ensure_ascii=False))
     else:
-        print(f"Stored: {json_path}")
-        if payload.get("puzzle_image"):
-            print(f"Puzzle image: {payload['puzzle_image']}")
-        if share_kind != "none":
-            print(f"Share link ({share_kind}): {share_link}")
+        print(f"Stored {len(items)} puzzle(s):")
+        for it in items:
+            print(f"- {it['puzzle_id']} -> {it['puzzle_json']}")
 
     return 0
 
@@ -639,6 +873,18 @@ def cmd_render(args: argparse.Namespace) -> int:
         print(json.dumps(out, ensure_ascii=False))
     else:
         print(str(list(out.values())[-1]))
+    return 0
+
+
+def cmd_html(args: argparse.Namespace) -> int:
+    doc, json_path = load_puzzle_doc(puzzle_id=args.id, latest=args.latest)
+    html = render_puzzle_html(doc)
+    out = {"puzzle_json": str(json_path), "puzzle_html": str(html)}
+
+    if args.json:
+        print(json.dumps(out, ensure_ascii=False))
+    else:
+        print(str(html))
     return 0
 
 
@@ -777,9 +1023,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_get = sub.add_parser("get", help="Fetch a puzzle from a preset and store as JSON")
     p_get.add_argument("preset", help="Preset name (see: list)")
-    p_get.add_argument("--index", type=int, help="Select puzzle by index (1-based; 0 allowed for first)")
-    p_get.add_argument("--id", help="Select puzzle by UUID (full UUID from source)")
-    p_get.add_argument("--seed", help="Deterministic random selection (string)")
+    p_get.add_argument("--count", type=int, default=1, help="Fetch and store N puzzles (default: 1)")
+    p_get.add_argument("--id", help="Select puzzle by unique ID fragment (matches any part of source UUID)")
     p_get.add_argument("--render", action="store_true", help="Also render the puzzle image now")
     p_get.add_argument("--text", dest="json", action="store_false", help="Output text instead of JSON")
     p_get.set_defaults(json=True)
@@ -794,6 +1039,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_ren.add_argument("--text", dest="json", action="store_false", help="Output text instead of JSON")
     p_ren.set_defaults(json=True)
     p_ren.set_defaults(func=cmd_render)
+
+    p_html = sub.add_parser("html", help="Render puzzle as minimal HTML")
+    g_html = p_html.add_mutually_exclusive_group(required=False)
+    g_html.add_argument("--latest", action="store_true", help="Use latest stored puzzle (default)")
+    g_html.add_argument("--id", help="Puzzle ID (full UUID or short 8-char ID from filename)")
+    p_html.add_argument("--text", dest="json", action="store_false", help="Output text instead of JSON")
+    p_html.set_defaults(json=True)
+    p_html.set_defaults(func=cmd_html)
 
     p_share = sub.add_parser("share", help="Generate share link")
     g_share = p_share.add_mutually_exclusive_group(required=False)
