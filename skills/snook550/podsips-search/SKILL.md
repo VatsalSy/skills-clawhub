@@ -1,7 +1,7 @@
 ---
 name: podsips-search
 description: Search podcast transcripts and retrieve episode data via the PodSips API. Use when user asks to "search podcasts", "find podcast clips", "get transcript", "look up episode", "search what was said on", or needs podcast content for research, summarization, or citation. Requires PODSIPS_API_KEY environment variable.
-version: 1.1.0
+version: 1.2.0
 author: PodSips
 homepage: https://developer.podsips.com
 metadata: { "clawdbot": { "requires": { "env": ["PODSIPS_API_KEY"], "bins": ["curl", "jq"] }, "primaryEnv": "PODSIPS_API_KEY" } }
@@ -129,7 +129,40 @@ Each chunk includes the transcript text, timestamps in seconds (`start_time`, `e
 
 **Cost:** 1 credit per request.
 
-### 2. List available podcast series
+### 2. Search for a podcast series
+
+Search for a podcast series by name or description. Use this when the user asks about a specific podcast to check if it exists in the database before falling back to a podcast request.
+
+```bash
+curl -s -H "Authorization: Bearer $PODSIPS_API_KEY" \
+  "https://api.podsips.com/public/v1/series/search?q=Y+Combinator&limit=5" | jq .
+```
+
+**Parameters:**
+- `q` (required) — Search query text (searches series name and description)
+- `genre` (optional) — Filter by genre (case-insensitive)
+- `limit` (optional, default 20, max 100) — Number of results to return
+- `offset` (optional, default 0) — Pagination offset
+
+**Response shape:**
+```json
+[
+  {
+    "id": "uuid",
+    "name": "Y Combinator Startup Podcast",
+    "description": "We help founders make something people want...",
+    "image_url": "https://...",
+    "genre": "technology",
+    "episode_count": 56
+  }
+]
+```
+
+Returns an empty array if no matching series are found.
+
+**Cost:** 1 credit per request.
+
+### 3. List available podcast series
 
 Browse all podcast series in the database with optional genre filtering and pagination.
 
@@ -159,7 +192,7 @@ curl -s -H "Authorization: Bearer $PODSIPS_API_KEY" \
 
 **Cost:** 1 credit per request.
 
-### 3. Get series details with episodes
+### 4. Get series details with episodes
 
 Retrieve a specific series and all its available episodes.
 
@@ -199,7 +232,7 @@ Only episodes with complete transcripts are included.
 
 **Cost:** 1 credit per request.
 
-### 4. Get episode details
+### 5. Get episode details
 
 Retrieve metadata and speaker information for a specific episode.
 
@@ -229,7 +262,7 @@ curl -s -H "Authorization: Bearer $PODSIPS_API_KEY" \
 
 **Cost:** 1 credit per request.
 
-### 5. Get transcript context around a timestamp
+### 6. Get transcript context around a timestamp
 
 Retrieve transcript text around a specific moment in an episode. Useful for expanding context around a search result.
 
@@ -261,7 +294,7 @@ curl -s -H "Authorization: Bearer $PODSIPS_API_KEY" \
 
 **Cost:** 1 credit per request.
 
-### 6. Get full episode transcript
+### 7. Get full episode transcript
 
 Retrieve the complete transcript for an episode. All chunks are returned in chronological order.
 
@@ -291,7 +324,7 @@ curl -s -H "Authorization: Bearer $PODSIPS_API_KEY" \
 
 **Cost:** 5 credits per request (higher cost due to large data volume).
 
-### 7. Request a missing podcast
+### 8. Request a missing podcast
 
 If the user's desired podcast is not in the database, submit a request to add it. This is free and does not consume credits.
 
@@ -310,7 +343,7 @@ curl -s -X POST -H "Authorization: Bearer $PODSIPS_API_KEY" \
 
 **Cost:** Free (0 credits).
 
-### 8. Check podcast request status
+### 9. Check podcast request status
 
 Check whether a previously submitted podcast request has been processed.
 
@@ -347,10 +380,11 @@ When a user asks you to find information from podcasts:
 3. **Get the full transcript when appropriate.** If the user wants a complete transcript or wants to analyze an entire episode, use the transcript endpoint. Note this costs 5 credits.
 
 4. **Handle missing podcasts.** If search returns no results and the user is asking about a specific podcast:
-   a. Check `GET /series` to see if the podcast exists in the database.
-   b. If it does not exist, use `POST /podcast-requests` to submit it.
-   c. Tell the user: "This podcast is not in the PodSips database yet. I have submitted a request to add it. Processing typically takes 24-48 hours. No credits were used for this request."
-   d. If the user asks again later, check the request status with `GET /podcast-requests/{id}`.
+   a. Use `GET /series/search?q=...` to check if the podcast exists in the database by name.
+   b. If found, use the series UUID to filter transcript search results with `series_id`.
+   c. If not found, use `POST /podcast-requests` to submit it.
+   d. Tell the user: "This podcast is not in the PodSips database yet. I have submitted a request to add it. Processing typically takes 24-48 hours. No credits were used for this request."
+   e. If the user asks again later, check the request status with `GET /podcast-requests/{id}`.
 
 5. **Cite your sources.** When presenting information from podcast transcripts, include the episode name, series name, speaker, and timestamp so the user can verify or listen to the original audio.
 
@@ -369,6 +403,7 @@ When a user asks you to find information from podcasts:
 | Endpoint | Credits |
 |----------|---------|
 | Search | 1 |
+| Series search | 1 |
 | List series | 1 |
 | Series detail | 1 |
 | Episode detail | 1 |
