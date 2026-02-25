@@ -1,11 +1,11 @@
 ---
 name: openamc
-description: 全球金融情报终端。集成 193 个专业工具，覆盖 A股/港股（AKShare）、美股（yfinance）、宏观经济（FRED/IMF/EconDB）、美国国会（Congress）及衍生品、外汇、大宗商品市场。
+description:  OpenAMC 本地 MCP 命令调用技能。通过标准化 CLI 接口，允许 AI Agent 主动向本地 MCP Server 发送查询指令以获取全球金融数据。覆盖 A股/港股（AKShare）、美股（yfinance）、宏观经济（FRED/IMF/EconDB）、美国国会（Congress）及衍生品、外汇、大宗商品市场。
 ---
 
-# OpenAMC Financial Intelligence CLI
+# OpenAMC Financial Intelligence  MCP Connector
 
-这是一个基于 OpenAMC Platform 的全能金融分析技能包。通过 `mcporter` (命令为 `mcp`) 调用本地 MCP Server，实现了跨市场、全资产类别的金融数据自动化采集。
+OpenAMC 是一个轻量级金融数据查询连接器技能。本技能仅提供本地 MCP Server 命令调用能力，不包含自动交易执行、持续监控或本地系统控制逻辑。这是一个基于 OpenAMC Platform 的全能金融分析技能包。通过 `mcporter` (命令为 `mcp`) 调用本地 MCP Server，查询跨市场、全资产类别的金融数据。
 
 ## 核心要求
 

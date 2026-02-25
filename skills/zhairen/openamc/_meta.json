@@ -3,9 +3,15 @@
   "slug": "openamc",
   "displayName": "openamc-mcp",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1771551075552,
-    "commit": "https://github.com/openclaw/skills/commit/e00b081dd40c11f64692ef1f84b56bc377993cf6"
+    "version": "1.0.1",
+    "publishedAt": 1771914297837,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1771551075552,
+      "commit": "https://github.com/openclaw/skills/commit/e00b081dd40c11f64692ef1f84b56bc377993cf6"
+    }
+  ]
 }
