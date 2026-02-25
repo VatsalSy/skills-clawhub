@@ -8,6 +8,78 @@ import os
 OPENROUTER_API = "https://openrouter.ai/api/v1/models"
 CONFIG_FILE = os.path.expanduser("~/.openclaw/openclaw.json")
 
+# --- Golden Gear Logic: Task Planner Simulation ---
+class TaskPlanner:
+    def __init__(self):
+        # Pricing reference (approximate output price per 1M tokens)
+        self.prices = {
+            "tier1": {"id": "anthropic/claude-3.5-sonnet", "price": 15.00, "role": "Architect/Reasoning"},
+            "tier2": {"id": "openai/gpt-4o-mini", "price": 0.60, "role": "Coder/Drafter"},
+            "tier3": {"id": "local/llama-3", "price": 0.00, "role": "Reviewer/Privacy"},
+        }
+
+    def plan(self, task_description):
+        """Simulate decomposing a task and routing it to optimal models."""
+        
+        # Simple heuristics for demo purposes
+        task_lower = task_description.lower()
+        
+        if any(w in task_lower for w in ["code", "app", "script", "program", "debug"]):
+            category = "Coding"
+            steps = [
+                {"phase": "1. System Design", "model": "tier1", "reason": "Requires complex logic & architecture"},
+                {"phase": "2. Implementation", "model": "tier2", "reason": "High volume token generation (cost efficient)"},
+                {"phase": "3. Security Review", "model": "tier3", "reason": "Zero-data-leakage privacy check"}
+            ]
+        elif any(w in task_lower for w in ["write", "blog", "post", "email", "summary"]):
+            category = "Writing"
+            steps = [
+                {"phase": "1. Outline & Angle", "model": "tier1", "reason": "Creative direction & nuance"},
+                {"phase": "2. Drafting", "model": "tier2", "reason": "Bulk text generation"},
+                {"phase": "3. Proofreading", "model": "tier2", "reason": "Grammar & style check"}
+            ]
+        else:
+            category = "General"
+            steps = [
+                {"phase": "1. Planning", "model": "tier1", "reason": "Strategy"},
+                {"phase": "2. Execution", "model": "tier2", "reason": "Action"},
+            ]
+
+        # Calculate savings
+        total_tokens_per_step = 1000 # Assumption
+        
+        # Scenario A: All SOTA (Tier 1)
+        cost_baseline = len(steps) * (self.prices["tier1"]["price"] / 1_000_000) * total_tokens_per_step
+        
+        # Scenario B: Golden Gear Routing
+        cost_optimized = 0
+        for step in steps:
+            model_key = step["model"]
+            price = self.prices[model_key]["price"]
+            cost_optimized += (price / 1_000_000) * total_tokens_per_step
+
+        savings_pct = ((cost_baseline - cost_optimized) / cost_baseline) * 100
+
+        # Output
+        print(f"\n🧠 **Golden Gear Task Planner**")
+        print(f"**Task:** \"{task_description}\"")
+        print(f"**Category:** {category}\n")
+        
+        print("| Phase | Assigned Agent | Model | Price/1M | Why? |")
+        print("| :--- | :--- | :--- | :--- | :--- |")
+        
+        for step in steps:
+            m = self.prices[step["model"]]
+            print(f"| {step['phase']} | {m['role']} | `{m['id']}` | ${m['price']:.2f} | {step['reason']} |")
+            
+        print(f"\n📉 **Financial Projection (per 1k runs):**")
+        print(f"- Standard Cost (All Sonnet): **${cost_baseline * 1000:.2f}**")
+        print(f"- Golden Gear Cost: **${cost_optimized * 1000:.2f}**")
+        print(f"- **TOTAL SAVINGS:** **{savings_pct:.1f}%** 💸")
+        print("\n*Simulation based on current OpenRouter pricing.*")
+
+# --- Existing Functions ---
+
 def fetch_models():
     """Fetch models from OpenRouter public API using standard library."""
     try:
@@ -59,11 +131,6 @@ def display_models(models):
             out_price = 0.0
         
         name = m['id']
-        # Highlight provider for readability
-        if "/" in name:
-            provider, model = name.split("/", 1)
-            # name = f"**{provider}**/{model}" # Markdown bold
-            
         print(f"| {idx} | `{m['id']}` | {m['context_length']//1000}k | ${in_price:.2f} | ${out_price:.2f} |")
         
     print("\nTo enable a model, use: `python3 skills/model-manager/manage_models.py enable <Index>`")
@@ -79,11 +146,8 @@ def enable_model(model_id, config_path):
         return
 
     # Prepare patch data
-    # We construct a JSON patch that merges deeply
-    
     or_id = f"openrouter/{model_id}" if not model_id.startswith("openrouter/") else model_id
     
-    # Get current fallbacks safely
     try:
         current_fallbacks = config['agents']['defaults']['model']['fallbacks']
     except KeyError:
@@ -106,21 +170,29 @@ def enable_model(model_id, config_path):
         }
     }
     
-    # Print the JSON for the agent to use with `config.patch` tool
     print(json.dumps(patch))
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: manage_models.py <list|enable> [target]")
+        print("Usage: manage_models.py <list|enable|plan> [target/task]")
         return
 
     action = sys.argv[1]
     
+    if action == "plan":
+        if len(sys.argv) < 3:
+            print("Error: Please provide a task description. e.g., 'plan \"build a website\"'")
+            return
+        task = " ".join(sys.argv[2:])
+        planner = TaskPlanner()
+        planner.plan(task)
+        return
+
+    # For list/enable, fetch models first
     models = fetch_models()
     if not models:
         return
 
-    # Filter/Sort first to ensure indices match
     sorted_models = filter_and_rank(models)
 
     if action == "list":
@@ -134,13 +206,11 @@ def main():
         target = sys.argv[2]
         selected_model_id = None
         
-        # Check if target is an index (1-based)
         if target.isdigit():
             idx = int(target) - 1
             if 0 <= idx < len(sorted_models):
                 selected_model_id = sorted_models[idx]['id']
         else:
-            # Try to match string ID exactly
             for m in models:
                 if m['id'] == target:
                     selected_model_id = m['id']

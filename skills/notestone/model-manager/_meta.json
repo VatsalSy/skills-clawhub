@@ -3,9 +3,15 @@
   "slug": "model-manager",
   "displayName": "OpenClaw Model Manager",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1771872359879,
-    "commit": "https://github.com/openclaw/skills/commit/e960d99123840b5c09c5405802a4804bcdf9a3e7"
+    "version": "1.1.0",
+    "publishedAt": 1771988482317,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1771872359879,
+      "commit": "https://github.com/openclaw/skills/commit/e960d99123840b5c09c5405802a4804bcdf9a3e7"
+    }
+  ]
 }
