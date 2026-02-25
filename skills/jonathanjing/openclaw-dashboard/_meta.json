@@ -3,9 +3,15 @@
   "slug": "openclaw-dashboard",
   "displayName": "OpenClaw Dashboard",
   "latest": {
-    "version": "1.4.0",
-    "publishedAt": 1771886005507,
-    "commit": "https://github.com/openclaw/skills/commit/e704219b358e1ca04850ce33792f223e306caa90"
+    "version": "1.0.9",
+    "publishedAt": 1771967500268,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.4.0",
+      "publishedAt": 1771886005507,
+      "commit": "https://github.com/openclaw/skills/commit/e704219b358e1ca04850ce33792f223e306caa90"
+    }
+  ]
 }

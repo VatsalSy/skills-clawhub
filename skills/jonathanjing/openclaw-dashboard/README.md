@@ -4,12 +4,23 @@ Mobile-first operations dashboard for OpenClaw, focused on sessions, costs, cron
 
 This public repository is sanitized and simplified for sharing.
 
-## Quick Start
+## Install via ClawHub
+
+```bash
+clawhub install openclaw-dashboard
+cd ~/.openclaw/workspace/skills/openclaw-dashboard
+cp env.example .env
+node api-server.js
+```
+
+Then open http://localhost:18791
+
+## Quick Start (from source)
 
 ```bash
 git clone https://github.com/JonathanJing/openclaw-dashboard.git
 cd openclaw-dashboard
-cp .env.example .env
+cp env.example .env
 # edit .env with your own values
 node api-server.js
 ```
@@ -25,7 +36,7 @@ Default install has no hard key requirement.
 - `OPENCLAW_AUTH_TOKEN` is **optional but recommended** for protected/local-auth usage.
 - `gateway.authToken` is treated as optional capability context in skill metadata.
 
-See `.env.example` for optional overrides.
+Use `env.example` (ClawHub package) or `.env.example` (source checkout) for optional overrides.
 
 ## Compliance Defaults (Important)
 
@@ -62,7 +73,7 @@ These defaults reduce accidental secret ingestion and over-broad local file acce
 Run a pre-release hash and upload workflow before publishing:
 
 ```bash
-shasum -a 256 api-server.js agent-dashboard.html SKILL.md README.md .env.example > vt-hashes.txt
+shasum -a 256 api-server.js agent-dashboard.html SKILL.md README.md env.example > vt-hashes.txt
 ```
 
 Then submit these hashes/files to VirusTotal and attach the report IDs to your release notes.  
@@ -76,7 +87,7 @@ This repository is prepared as a ClawHub skill package with root-level `SKILL.md
 clawhub publish . \
   --slug openclaw-dashboard \
   --name "OpenClaw Dashboard" \
-  --version 1.0.5 \
+  --version 1.0.9 \
   --changelog "Risk-surface reduction: localhost bind default, no token-in-query API usage, tighter attachment copy defaults, and integrated /metrics endpoint."
 ```
 

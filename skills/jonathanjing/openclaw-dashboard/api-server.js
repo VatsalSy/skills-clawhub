@@ -3130,7 +3130,7 @@ const server = http.createServer((req, res) => {
     setCors(res, req);
     res.writeHead(200, { 'Content-Type': 'application/manifest+json' });
     return res.end(JSON.stringify({
-      name: "Jony's OpenClaw Dashboard",
+      name: process.env.DASHBOARD_TITLE || "OpenClaw Dashboard",
       short_name: 'Dashboard',
       start_url: '/',
       display: 'standalone',
