@@ -3,9 +3,15 @@
   "slug": "seedance-3x3-optimizer",
   "displayName": "Seedance 3x3 Optimizer",
   "latest": {
-    "version": "0.1.0",
-    "publishedAt": 1771734426014,
-    "commit": "https://github.com/openclaw/skills/commit/ef43c50ad45f652d4a6274d1fa2a5e27adc020e5"
+    "version": "0.1.1",
+    "publishedAt": 1771734602792,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.1.0",
+      "publishedAt": 1771734426014,
+      "commit": "https://github.com/openclaw/skills/commit/ef43c50ad45f652d4a6274d1fa2a5e27adc020e5"
+    }
+  ]
 }

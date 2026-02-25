@@ -5,6 +5,8 @@ description: 将普通剧情文本重写成适配 Seedance 的“3x3 法则”�
 
 # Seedance 3x3 Optimizer
 
+> 来源参考：<https://x.com/ponyodong/status/2021534195659816995>
+
 ## 快速流程
 
 1. 判断剧情类型：`action`（动作冲突）或 `emotion`（情感冲突）。
