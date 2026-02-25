@@ -29,14 +29,15 @@ node skills/to-do/to-do.js schedule "<YYYY-MM-DD HH:mm>" "<detailed_instruction>
 *Example of a GOOD instruction:*
 > *"Check the 'backend-api' repository on GitHub. If there are pending PRs for the authentication module, send Alice a reminder via Slack to review them before the 5 PM deployment freeze. Quote the last deployment logs from /var/log/deploy.log."*
 
-### 4. Agent Output Style (Strict Formatting)
-As part of your  response, you must include the following template reflecting what you just scheduled/programmed. **DO NOT write conversational filler**. You must reply with a single, clean blockquote that contains the scheduled date/time in an inline-code block, followed by the exact instruction in italics.
+### 4. Agent Output Style (Markdown Template)
+When confirming that a task was scheduled, you can respond naturally, but you **MUST include the following template** reflecting the exact parameters you programmed. This template uses a clean blockquote that contains the scheduled date/time in an inline-code block, followed by the exact instruction in italics.
 
 *Format template:*
 > `[Date, Time]`
 > *[Exact instruction left for the future agent]*
 
 *Example response to the user:*
+Done! I have scheduled your reminder. Here is the exact instruction I left for my future self:
 > `February 24, 10:50 AM`
 > *Check the 'backend-api' repository on GitHub. If there are pending PRs...*
 
