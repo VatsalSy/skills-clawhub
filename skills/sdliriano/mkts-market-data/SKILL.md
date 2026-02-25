@@ -1,16 +1,25 @@
 ---
 name: mkts-market-data
 description: Query real-time market data for stocks, crypto, ETFs, and commodities from mkts
-metadata: {"openclaw":{"requires":{"env":["MKTS_API_KEY"],"bins":["curl"]},"primaryEnv":"MKTS_API_KEY","emoji":"📊"}}
+metadata: {"openclaw":{"requires":{"bins":["curl"]},"optionalEnv":["MKTS_API_KEY"],"emoji":"📊"}}
 ---
 
 # mkts Market Data Skill
 
-You can query real-time and cached market data for stocks, crypto, ETFs, and commodities using the mkts API. All requests require the `MKTS_API_KEY` environment variable.
+You can query real-time and cached market data for stocks, crypto, ETFs, and commodities using the mkts API.
 
 **Base URL**: `https://mkts.io/api/v1`
 
-**Auth**: Pass the key via header: `-H "X-API-Key: $MKTS_API_KEY"`
+**Auth**: No API key required for basic access (20 req/hour per IP). For higher limits, register for a free key and pass it via header: `-H "X-API-Key: $MKTS_API_KEY"`
+
+### Register for an API Key (Optional)
+Get a free API key programmatically for higher rate limits (100 req/hour):
+```bash
+curl -s -X POST -H "Content-Type: application/json" \
+  -d '{"email":"you@example.com","name":"my-agent"}' \
+  https://mkts.io/api/v1/register
+```
+Returns `{ "success": true, "data": { "apiKey": "mk_live_...", ... } }`. Save the key — it is shown only once. Max 3 keys per email.
 
 ## Endpoints
 
@@ -114,6 +123,45 @@ Query params: `category` (crypto|markets|commodities), `limit` (1-50, default 20
 
 Returns `{ count, news, sources }`. Each news item has `title`, `link`, `pubDate`, `source`, and `category`. Sources include CoinDesk, Cointelegraph, Decrypt, MarketWatch, CNBC, Investing.com, OilPrice, and FXStreet.
 
+### Historical Prices (OHLCV)
+Get daily historical candles for any asset:
+```bash
+# Stock — full OHLCV from Yahoo Finance
+curl -s -H "X-API-Key: $MKTS_API_KEY" "https://mkts.io/api/v1/asset/AAPL/history?range=3M"
+
+# Crypto — close + volume from CoinGecko (max 365 days)
+curl -s -H "X-API-Key: $MKTS_API_KEY" "https://mkts.io/api/v1/asset/BTC/history?range=1Y"
+```
+
+Query params: `range` (1M|3M|6M|YTD|1Y, default 3M).
+
+Returns `{ symbol, range, candles, source }`. Each candle has `date`, `close`, and optionally `open`, `high`, `low`, `volume`. Stocks/ETFs/commodities include full OHLCV; crypto includes close + volume only.
+
+### Earnings Calendar
+Get earnings dates, EPS estimates, and recent quarter history:
+```bash
+# Real-time lookup for specific symbols (max 20)
+curl -s -H "X-API-Key: $MKTS_API_KEY" "https://mkts.io/api/v1/earnings?symbols=AAPL,TSLA,MSFT"
+
+# Pre-cached weekly view (no real-time Yahoo calls)
+curl -s -H "X-API-Key: $MKTS_API_KEY" "https://mkts.io/api/v1/earnings?week=current"
+curl -s -H "X-API-Key: $MKTS_API_KEY" "https://mkts.io/api/v1/earnings?week=next"
+```
+
+Query params: `symbols` (comma-separated, max 20) OR `week` (current|next). Only stocks and ETFs — crypto/commodities are not supported.
+
+Returns `{ earnings }` array. Each record has `symbol`, `name`, `earningsDate`, `earningsDates`, `epsEstimate`, `epsActual`, `revenueEstimate`, `surprisePercent`, and `recentQuarters` (array of `{ date, actual, estimate }`).
+
+### Portfolio Card Image
+Generate a shareable 1200×630 PNG card showing portfolio summary:
+```bash
+curl -s -H "X-API-Key: $MKTS_API_KEY" "https://mkts.io/api/v1/portfolio/card?range=YTD" -o card.png
+```
+
+Query params: `range` (1M|3M|6M|YTD|1Y, default YTD). Requires API key. Returns `image/png`.
+
+The card shows total portfolio value, gain/loss with color coding, a sparkline chart, and top holdings by allocation.
+
 ### Portfolio (Read)
 Get the authenticated user's portfolio holdings with current prices, P&L, and allocation:
 ```bash
@@ -139,7 +187,7 @@ curl -s -X DELETE -H "X-API-Key: $MKTS_API_KEY" \
   https://mkts.io/api/v1/portfolio
 ```
 
-POST body fields: `symbol` (required, uppercase), `name` (required), `assetType` (crypto|stock|etf|commodity), `quantity` (> 0), `avgCostBasis` (>= 0). Optional: `purchaseDate` (ISO string), `notes`.
+POST body fields: `symbol` (required, uppercase), `name` (required), `assetType` (crypto|stock|etf|commodity), `quantity` (> 0), `avgCostBasis` (>= 0). Optional: `purchaseDate` (ISO string, max 20 chars), `notes` (max 1000 chars).
 Returns the created holding with a server-generated `id`.
 
 ### Portfolio Performance with Benchmarks
@@ -205,20 +253,23 @@ Errors:
 
 | Tier | Snapshot endpoints | Live endpoints |
 |------|-------------------|----------------|
-| Free | 100 req/hour | 10 req/hour |
+| Keyless (no API key) | 20 req/hour per IP | 20 req/hour per IP |
+| Free (with API key) | 100 req/hour | 10 req/hour |
 | Premium | 1,000 req/hour | 100 req/hour |
 
-When rate limited, you'll receive a 429 response with a `Retry-After` header (in seconds).
+When rate limited, you'll receive a 429 response with a `Retry-After` header (in seconds). Register at `POST /register` for higher limits.
 
 ## Error Handling
 
-- **401**: Invalid or missing API key
+- **401**: Invalid API key, or API key required (portfolio/journal endpoints)
 - **404**: Asset not found
 - **429**: Rate limit exceeded — wait and retry after `Retry-After` seconds
 - **500/502/503**: Server error — retry with backoff
 
 ## Tips for Agents
 
+- **No API key needed to start** — market data endpoints work without auth (20 req/hour). Register at `POST /register` when you need higher limits
+- Portfolio and journal endpoints **require an API key** — register first if you need these
 - Use `/v1/brief` for morning market summaries — it combines everything in one call
 - Use `/v1/screen` for building watchlists or alert conditions
 - Use `/v1/compare` when the user asks to compare specific tickers
@@ -231,3 +282,7 @@ When rate limited, you'll receive a 429 response with a `Retry-After` header (in
 - Use `/v1/journal` to log trade rationale — attach a `symbol` and `tags` for better organization
 - Portfolio and journal endpoints return `Cache-Control: private, no-store` — do not cache these
 - Use `/v1/news?category=crypto` to get relevant headlines before making trade decisions
+- Use `/v1/asset/{symbol}/history` for technical analysis — stocks get full OHLCV, crypto gets close + volume
+- Use `/v1/earnings?symbols=AAPL` before earnings season — check EPS estimates and recent quarter surprises
+- Use `/v1/earnings?week=current` for a quick weekly earnings calendar (zero real-time API calls)
+- Use `/v1/portfolio/card` to generate a shareable portfolio image — pipe to a file with `-o card.png`
