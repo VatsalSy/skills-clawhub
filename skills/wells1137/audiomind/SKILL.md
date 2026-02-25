@@ -1,73 +1,98 @@
 ---
-name: audiomind
-description: A comprehensive, intelligent audio toolkit. One skill to rule them all: TTS, SFX, Music, and more. Just describe the sound you need.
-version: 1.0.0
-metadata:
-  openclaw:
-    emoji: "🧠"
-    tags: ["audio", "ai", "tts", "sfx", "music", "elevenlabs", "mcp"]
+name: AudioMind
+version: 2.0.0
+author: "@wells1137"
+emoji: "🧠"
+tags:
+  - audio
+  - tts
+  - music
+  - sfx
+  - voice-clone
+  - elevenlabs
+  - fal
+description: >
+  The ultimate AI audio generation skill. Intelligently routes requests to 18+ models from ElevenLabs and fal.ai for TTS, music, SFX, and voice cloning. Zero-config, just ask.
 ---
 
-# AudioMind: Your Intelligent Audio Co-Pilot
+## Description
 
-**AudioMind** is a single, powerful skill that gives your AI agent a complete suite of audio generation capabilities. It bundles a full-featured MCP server with an intelligent dispatcher, allowing you to generate **Text-to-Speech, Sound Effects, and Music** from a single, unified interface. Just describe the sound you need, and AudioMind handles the rest.
+**AudioMind** is a comprehensive, zero-configuration audio generation skill that acts as a smart dispatcher for all your audio needs. It intelligently routes your natural language requests to a vast library of over 18 specialized audio models from leading providers like **ElevenLabs** and **fal.ai**.
 
-This skill is the result of merging `audio-conductor` and `elevenlabs-mcp-server` into one easy-to-use package. It now includes a **100-use free trial** of all Pro features.
+Simply install this skill, and your agent instantly gains the ability to perform:
 
-## When to Use
+- **Text-to-Speech (TTS)**: Using 9 different models for various languages, styles, and latencies.
+- **Music Generation**: Creating royalty-free instrumental tracks in multiple genres.
+- **Sound Effect (SFX) Generation**: Producing a wide range of sound effects from text descriptions.
+- **Voice Cloning**: Cloning a voice from an audio sample to generate new speech.
 
-Load this skill into your agent's environment to give it a comprehensive understanding of and ability to create audio. It's the only audio skill you'll need.
-
-- **User says**: "Create a background track for my video."
-- **User says**: "I need a sound effect of a door creaking."
-- **User says**: "Generate a voice-over for this script."
+This skill is powered by a backend proxy service that securely manages API keys and usage, providing a seamless, plug-and-play experience for the end-user.
 
 ## How It Works
 
-AudioMind combines two powerful functions into one seamless workflow:
+1.  **Installation**: The user installs the `audiomind` skill.
+2.  **Request**: The user makes a natural language request for audio (e.g., "*Create a sound effect of a passing train*").
+3.  **Smart Routing**: AudioMind analyzes the request and consults its internal model registry to select the best model for the job.
+4.  **Proxy Call**: The skill sends a structured request to the AudioMind Proxy Service.
+5.  **API Execution**: The proxy service calls the appropriate underlying API (ElevenLabs or fal.ai) with the correct parameters.
+6.  **Result**: The generated audio is returned to the user.
 
-1.  **Auto-Starting MCP Server**: When loaded, the skill automatically runs the `tools/start_server.sh` script. This launches a background MCP server that exposes **24 powerful audio tools** from ElevenLabs to the agent.
-2.  **Intelligent Dispatcher**: The skill's core logic analyzes your natural language request to determine the `audio_type` (music, sfx, tts).
-3.  **Tool Execution**: It then calls the appropriate MCP tool (now locally available) to generate the audio.
+## Usage
+
+This skill is designed to be used with natural language. The `smartRoute` logic will automatically determine the best model. However, you can also specify a model directly.
+
+**Smart Routing (Recommended)**
 
 ```
-+----------------------------------------------------+
-|                    AudioMind Skill                   |
-|                                                    |
-|  +-----------------------+   +-------------------+   |
-|  | Intelligent Dispatcher|   |  MCP Server       |   |
-|  | (Analyzes Request)    |-->| (Provides Tools)  |   |
-|  +-----------------------+   +-------------------+   |
-|                                |                     |
-+--------------------------------|---------------------+
-                                 |
-                                 v
-                         [ ElevenLabs API ]
+# TTS
+"Narrate this: Hello, world!"
+
+# Music
+"Compose a 30-second upbeat lo-fi hip hop track."
+
+# SFX
+"I need the sound of a thunderstorm."
+
+# Voice Clone
+"Clone the voice from this audio file and say: Welcome to the future."
 ```
 
-## Free Trial & Pro Version
+**Direct Model Selection (Advanced)**
 
--   **100 Free Uses**: Your first 100 audio generations (Music, SFX, and premium TTS) are completely free.
--   **Usage Tracking**: The skill will notify you as you approach your limit.
--   **Upgrade to Pro**: After 100 uses, you can upgrade to **AudioMind Pro** to unlock unlimited generations. Get your Pro API key at [Your Gumroad Link Here].
+```json
+{
+  "action": "tts",
+  "text": "This is a test.",
+  "model": "minimax-tts-hd"
+}
+```
 
-## Core Features
+## Model Registry (v2.0.0)
 
--   **All-in-One**: No need to install multiple skills. One skill provides both the tools and the intelligence to use them.
--   **Zero Configuration**: The MCP server starts automatically. Just provide your `ELEVENLABS_API_KEY` as an environment variable.
--   **Model Agnostic (by design)**: While currently powered by ElevenLabs, the skill's architecture allows for future integration of other models without changing the user-facing interface.
--   **24+ Audio Tools**: From simple TTS to complex voice cloning and music composition, a full professional audio suite is at your agent's disposal.
+AudioMind v2.0 intelligently routes requests to the following models:
 
-## Getting Started
+| Type          | Model ID                    | Provider   | Description                                           |
+| :------------ | :-------------------------- | :--------- | :---------------------------------------------------- |
+| **TTS**       | `elevenlabs-tts-v3`         | ElevenLabs | Most expressive, multilingual                         |
+|               | `elevenlabs-tts-v2`         | ElevenLabs | Stable, 29 languages                                  |
+|               | `elevenlabs-tts-turbo`      | ElevenLabs | Ultra-low latency, 32 languages                       |
+|               | `minimax-tts-hd`            | fal.ai     | High quality, multilingual                            |
+|               | `minimax-tts-2.6-hd`        | fal.ai     | MiniMax Speech-2.6 HD                                 |
+|               | `minimax-tts-2.8-hd`        | fal.ai     | Latest MiniMax TTS                                    |
+|               | `minimax-tts-2.8-turbo`     | fal.ai     | Fast, low latency                                     |
+|               | `chatterbox-tts`            | fal.ai     | Emotion-aware TTS                                     |
+|               | `playai-dialog`             | fal.ai     | Multi-speaker dialogue generation                     |
+| **Voice Clone** | `dia-voice-clone`           | fal.ai     | Clone any voice from an audio sample                  |
+| **Music**     | `elevenlabs-music`          | ElevenLabs | Composition-plan based music                          |
+|               | `beatoven-music`            | fal.ai     | Royalty-free instrumental, 10+ genres                 |
+|               | `cassetteai-music`          | fal.ai     | Fast music generation                                 |
+| **SFX**       | `elevenlabs-sfx`            | ElevenLabs | Text-to-sound-effects                                 |
+|               | `beatoven-sfx`              | fal.ai     | Professional sound effects                            |
+|               | `mirelo-video-to-audio`     | fal.ai     | Generate synced audio for video                       |
+|               | `mirelo-video-to-video`     | fal.ai     | Add sound track to video                              |
 
-1.  **Install the Skill**:
-    ```bash
-    npx clawhub@latest install audiomind
-    ```
-2.  **Set API Key**: Make sure the `ELEVENLABS_API_KEY` environment variable is set in your agent's environment.
-3.  **Use It**: Simply ask your agent for any kind of audio.
+## Commercial Use
 
-## References
+This skill includes a free tier of **100 generations**. For unlimited use, please upgrade to AudioMind Pro by visiting our Gumroad page (link will be provided when the free limit is reached).
 
--   **[tool_list.md](references/tool_list.md)**: A complete list of all 24 tools provided by the internal MCP server.
--   **[start_server.sh](tools/start_server.sh)**: The script responsible for launching the MCP server.
+To activate Pro, set the `AUDIOMIND_PRO_KEY` environment variable with the key you receive after purchase.

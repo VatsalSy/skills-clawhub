@@ -3,11 +3,16 @@
   "slug": "audiomind",
   "displayName": "AudioMind",
   "latest": {
-    "version": "1.1.0",
-    "publishedAt": 1772012865206,
-    "commit": "https://github.com/openclaw/skills/commit/c040fee108d5e0bb0706426c5721d42c314c9ff1"
+    "version": "2.0.0",
+    "publishedAt": 1772023329904,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.1.0",
+      "publishedAt": 1772012865206,
+      "commit": "https://github.com/openclaw/skills/commit/c040fee108d5e0bb0706426c5721d42c314c9ff1"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1772010913485,
