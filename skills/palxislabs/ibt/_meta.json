@@ -1,13 +1,18 @@
 {
   "owner": "palxislabs",
   "slug": "ibt",
-  "displayName": "Ibt",
+  "displayName": "IBT: Instinct + Behavior + Trust",
   "latest": {
-    "version": "2.1.0",
-    "publishedAt": 1771843261572,
-    "commit": "https://github.com/openclaw/skills/commit/733d2da3fb2189853d707520c64c2eec29bd4646"
+    "version": "2.4.0",
+    "publishedAt": 1771952484116,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.1.0",
+      "publishedAt": 1771843261572,
+      "commit": "https://github.com/openclaw/skills/commit/733d2da3fb2189853d707520c64c2eec29bd4646"
+    },
     {
       "version": "1.0.4",
       "publishedAt": 1771686344889,

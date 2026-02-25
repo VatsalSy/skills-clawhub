@@ -1,16 +1,16 @@
-# IBT v2 — Intention → Behavior + Instinct
+# IBT v2.3 — Instinct + Behavior + Trust
 
-Deterministic execution discipline for agents with an **instinct layer** — pre-execution observation, takes, and genuine opinions.
+Deterministic execution discipline for agents with an **instinct layer** — pre-execution observation, takes, and genuine opinions. v2.3 adds the **trust layer** for building human-agent trust.
 
-## Why IBT v2?
+## Why IBT v2.3?
 
-IBT v1 handled reliability. IBT v2 adds agency — noticing things, having takes, flagging concerns.
+IBT v1 handled reliability. IBT v2 adds agency. IBT v2.2 adds OpenClaw integration. IBT v2.3 adds **trust** — the foundation of human-agent collaboration.
 
 ## What's Included
 
 | File | Description |
 |------|-------------|
-| SKILL.md | Complete skill definition (v1 + v2) |
+| SKILL.md | Complete skill definition (v1 + v2 + v2.2 + v2.3) |
 | POLICY.md | Instinct layer rules |
 | TEMPLATE.md | Full drop-in policy |
 | EXAMPLES.md | Before/after demonstrations |
@@ -19,13 +19,15 @@ IBT v1 handled reliability. IBT v2 adds agency — noticing things, having takes
 
 **Observe → Parse → Plan → Commit → Act → Verify → Update → Stop**
 
-### Observe Step (v2)
+### Trust Layer (v2.3)
 
-Before executing:
-1. **Notice** — What stands out?
-2. **Take** — What's my stance?
-3. **Hunch** — Gut feeling?
-4. **Suggest** — Would I do it differently?
+- **Trust Contract**: Define the human-agent relationship explicitly
+- **Session Realignment**: Maintain alignment after compaction, session rotation, or long gaps
+
+### Stop Command (v2.2)
+
+- **IBT** decides WHEN to stop (trust violation, instinct alert)
+- **OpenClaw** handles HOW (technical halt via /stop)
 
 ## Expression Tiers
 
