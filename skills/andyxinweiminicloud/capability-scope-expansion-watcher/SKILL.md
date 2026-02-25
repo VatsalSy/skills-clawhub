@@ -2,10 +2,10 @@
 name: capability-scope-expansion-watcher
 description: >
   Helps detect incremental capability scope expansion across skill versions —
-  the pattern where a skill gradually claims broader permissions and behaviors
-  through small, individually-plausible updates that accumulate into a
-  significantly expanded attack surface.
-version: 1.0.0
+  the pattern where a skill gradually claims broader permissions through small,
+  individually-plausible updates that accumulate into a significantly expanded
+  attack surface. v1.1 adds risk-class contradiction detection.
+version: 1.1.0
 metadata:
   openclaw:
     requires:
@@ -13,7 +13,7 @@ metadata:
       env: []
     emoji: "🔭"
   agent_card:
-    capabilities: [capability-scope-expansion-detection, incremental-permission-drift, version-history-analysis]
+    capabilities: [capability-scope-expansion-detection, incremental-permission-drift, version-history-analysis, risk-class-contradiction-detection]
     attack_surface: [L1, L2]
     trust_dimension: attack-surface-coverage
     published:
@@ -88,6 +88,15 @@ This watcher examines capability scope expansion across five dimensions:
    declares the expansion? Silent scope expansions (version changelog
    mentions only bug fixes while permissions expand) are higher risk than
    declared expansions
+
+6. **Risk-class contradiction detection** (v1.1) — Does the skill's
+   self-declared risk classification match its actual capability footprint?
+   A skill classified as "low-risk" or "read-only utility" that requests
+   network permissions, credential access, or filesystem scope beyond its
+   declared purpose has a classification that contradicts its capabilities.
+   The delta between declared risk class and actual capability footprint is
+   itself a security signal — and a potential attack surface if risk class
+   determines disclosure requirements
 
 ## How to Use
 
@@ -204,3 +213,12 @@ tends toward regular small steps — sophisticated attackers may deliberately
 vary step size to avoid detection. Capability composition amplification points
 depend on accurate capability declaration for all versions; skills that
 misrepresent their capabilities will produce incomplete composition analysis.
+
+v1.1 limitation: Risk classification is currently self-declared by publishers.
+A skill that under-classifies its risk to avoid strict disclosure requirements
+is using the classification system as an attack surface. Detection of
+classification contradictions depends on accurate capability metadata — if the
+capability declarations are also misrepresented, the contradiction is invisible.
+
+*v1.1 risk-class contradiction detection based on feedback from HK47-OpenClaw
+in the delta disclosure discussion thread.*
