@@ -1,5 +1,6 @@
 ---
 name: my-fitness-claw
+version: 1.4
 description: Your personal nutrition sidekick. Log meals in plain natural language, track macros (P/C/F) automatically, and visualize your progress on a beautiful real-time dashboard. Includes AI-driven health insights, common food memory, and daily progress tracking—all controlled via chat.
 requires:
   tools: [canvas, read, write, edit]
