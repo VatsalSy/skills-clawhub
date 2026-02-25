@@ -15,19 +15,39 @@ metadata:
     domain:
       description: "API host: project.larksuite.com (international) or project.feishu.cn (China)"
       default: project.larksuite.com
+    project_key:
+      description: "Space identifier; in Meegle platform double-click the project icon to get it"
+    user_key:
+      description: "User identifier; in Meegle platform double-click the avatar to get it (or from user_access_token response)"
   optional_credentials:
     authorization_code:
       description: "OAuth code from getAuthCode(); required for user_access_token"
     refresh_token:
       description: "From user_plugin_token response; for refreshing user_access_token"
   context:
-    project_key: "Space identifier; in Meegle Developer Platform double-click the project icon to get it"
-    user_key: "User identifier; in Meegle Developer Platform double-click the avatar to get it (or from user_access_token response)"
+    project_key: "Space identifier; in Meegle platform double-click the project icon to get it"
+    user_key: "User identifier; in Meegle platform double-click the avatar to get it (or from user_access_token response)"
 ---
 
 # Meegle API — Credentials (domain, token, context, headers)
 
 Generate Meegle **domain**, **access token** (plugin or user), **context** (project_key, user_key), and **request headers** for calling OpenAPI. Other Meegle API skills assume you have obtained everything from this skill before calling.
+
+## When required credentials are missing
+
+**Do not only report an error.** When the user has not provided a required credential (e.g. `user_key`, `project_key`, `plugin_id`, `plugin_secret`), you must:
+
+1. **Proactively remind** the user which credential(s) are missing.
+2. **Tell the user where to get each one**:
+
+| Missing credential | Where to obtain |
+|--------------------|-----------------|
+| `plugin_id` | Meegle Developer Platform → Plugin → Basic Information |
+| `plugin_secret` | Meegle Developer Platform → Plugin → Basic Information |
+| `project_key` | Meegle platform: double-click the **project icon** (space name); or from the project URL |
+| `user_key` | Meegle platform: double-click the **avatar**; or from the `user_key` field in the user_access_token API response |
+
+Then ask the user to provide the value(s) and retry after they are supplied.
 
 ## Domain (API base host)
 
@@ -199,7 +219,7 @@ recommended_openclaw_strategy:
 
 ### How to use tokens (when calling other OpenAPIs)
 
-- **plugin_access_token**: Add header `X-Plugin-Token: {{plugin_access_token}}`; optionally `X-User-Key: {{user_key}}`.
+- **plugin_access_token**: Add header `X-Plugin-Token: {{plugin_access_token}}` and **required** header `X-User-Key: {{user_key}}`.
 - **user_access_token**: Add header `X-Plugin-Token: {{user_access_token}}` (use the user token here, not the plugin token).
 
 ### Constraints and recommendations
@@ -210,14 +230,14 @@ recommended_openclaw_strategy:
 
 ---
 
-## Context (project_key, user_key)
+## Context (project_key, user_key) — required
 
-Context used by most OpenAPI calls:
+**project_key** and **user_key** are required. Context used by most OpenAPI calls:
 
 | Context | Description | Where to obtain |
 |---------|-------------|-----------------|
-| **project_key** | Space (project) identifier | Meegle Developer Platform: double-click the **project icon**; or from project URL |
-| **user_key** | User identifier | Meegle Developer Platform: double-click the **avatar**; or from `user_key` in user_access_token response |
+| **project_key** | Space (project) identifier | Meegle platform: double-click the **project icon**; or from project URL |
+| **user_key** | User identifier | Meegle platform: double-click the **avatar**; or from `user_key` in user_access_token response |
 
 Use **project_key** in path or body (e.g. `{project_key}` in URL). Use **user_key** in header `X-User-Key` when calling with plugin_access_token.
 
@@ -227,7 +247,7 @@ Use **project_key** in path or body (e.g. `{project_key}` in URL). Use **user_ke
 
 When calling any Meegle OpenAPI (Space, Work Items, Setting, etc.):
 
-- **With plugin_access_token**: Set `X-Plugin-Token: {{plugin_access_token}}`. Optionally set `X-User-Key: {{user_key}}` when the API requires acting as a user.
+- **With plugin_access_token**: Set `X-Plugin-Token: {{plugin_access_token}}` and **required** `X-User-Key: {{user_key}}`.
 - **With user_access_token**: Set `X-Plugin-Token: {{user_access_token}}` (the user token value here, not the plugin token). Do not use `X-User-Key` when using user token.
 
 All requests use the same **domain** (e.g. `https://project.larksuite.com` or `https://project.feishu.cn`) as the base URL.
@@ -366,7 +386,7 @@ inputs:
     required: false
     description: |
       Space unique identifier.
-      How to get: In Meegle Developer Platform, double-click the project icon; or use project_key from project URL.
+      How to get: In Meegle platform, double-click the project icon; or use project_key from project URL.
 behavior:
   - If default project_key is configured, use it
   - Otherwise ask user to provide
@@ -382,10 +402,10 @@ description: Resolve user_key
 inputs:
   user_key:
     type: string
-    required: false
+    required: true
     description: |
       User unique identifier.
-      How to get: In Meegle Developer Platform, double-click the avatar; or use user_key from user_access_token response.
+      How to get: In Meegle platform, double-click the avatar; or use user_key from user_access_token response.
   user_access_token:
     type: string
     required: false
@@ -416,7 +436,7 @@ inputs:
     required: false
   user_key:
     type: string
-    required: false
+    required: true
 rules:
   - if: operation_type == "write" and user_access_token exists
     headers:

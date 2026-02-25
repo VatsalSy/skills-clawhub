@@ -1,13 +1,18 @@
 {
   "owner": "pkycy",
   "slug": "meegle-api-skill",
-  "displayName": "meegle-api-skill",
+  "displayName": "Meegle API",
   "latest": {
-    "version": "0.2.2",
-    "publishedAt": 1771328610540,
-    "commit": "https://github.com/openclaw/skills/commit/9cfc0a3f80ec1962870291f67f5bb3d9824f5fcd"
+    "version": "1.0.2",
+    "publishedAt": 1771913906367,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.2.2",
+      "publishedAt": 1771328610540,
+      "commit": "https://github.com/openclaw/skills/commit/9cfc0a3f80ec1962870291f67f5bb3d9824f5fcd"
+    },
     {
       "version": "0.2.0",
       "publishedAt": 1771326059544,

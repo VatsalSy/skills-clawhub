@@ -2,6 +2,7 @@
 name: meegle-api
 description: |
   Meegle Open API skills (index). Read the specific skill for your need. Order: Credentials, Users, Space, Work Items, Setting, Comments, Views & Measurement.
+  When required credentials (e.g. user_key, project_key) are missing, remind the user which are needed and where to get them (see meegle-api-credentials); do not only report an error.
 metadata:
   openclaw: {}
 ---
