@@ -3,9 +3,15 @@
   "slug": "parallel-ai-research",
   "displayName": "Research",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1770131694045,
-    "commit": "https://github.com/clawdbot/skills/commit/bf06fb4a6cd22eede45ee8c9aadecd59c013661d"
+    "version": "1.1.0",
+    "publishedAt": 1771978283881,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1770131694045,
+      "commit": "https://github.com/clawdbot/skills/commit/bf06fb4a6cd22eede45ee8c9aadecd59c013661d"
+    }
+  ]
 }
