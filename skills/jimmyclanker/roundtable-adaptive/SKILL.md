@@ -1,12 +1,30 @@
 ---
 name: roundtable
-description: "Adaptive multi-model AI roundtable. A meta-panel of 4 premium models (Claude Opus, GPT-5.2, Gemini 3.1 Pro, Grok 4) first designs the optimal workflow for your task — parallel debate, sequential pipeline, or hybrid — then spawns the right panel to execute it. Features: web-search grounding, self-authored digests (no orchestrator bias), formal consensus scoring, optional validation round, neutral synthesis model. Requires Blockrun for full panel. Use for complex analysis, coding reviews, adversarial stress-testing, and multi-perspective decisions."
+description: "Adaptive multi-model AI roundtable. Spawns 4 premium AI models (Claude Opus, GPT-5.2, Gemini 3.1 Pro, Grok 4) to debate any topic across 2 rounds with cross-critique and formal consensus scoring. A meta-panel first designs the optimal workflow (parallel/sequential/hybrid). Features web-search grounding, self-authored digests, optional validation round, and neutral synthesis model. Full panel requires Blockrun proxy (localhost:8402) and USDC on Base for Grok/Gemini. Works in degraded mode with Claude+GPT only (free via OAuth). Saves results to local filesystem."
 metadata:
   openclaw:
     emoji: "🎯"
     requires:
       recommended: ["blockrun"]
-    tags: ["multi-model", "debate", "orchestration", "reasoning", "blockrun"]
+      providers:
+        - id: "anthropic"
+          label: "Claude Opus 4.6 (panelist)"
+          note: "OAuth or API key. Free via Claude Max subscription."
+        - id: "openai-codex"
+          label: "GPT-5.3 Codex (panelist)"
+          note: "OAuth via ChatGPT Plus. Free with active subscription."
+        - id: "blockrun"
+          label: "Blockrun proxy (Grok 4 + Gemini 3.1 Pro)"
+          note: "Optional but recommended. Runs at localhost:8402. Requires USDC on Base (~$5-10 to start). Install: curl -fsSL https://blockrun.ai/ClawRouter-update | bash"
+      filesystem:
+        write:
+          - path: "~/clawd/memory/roundtables/"
+            purpose: "Saves roundtable results as JSON for future context injection (--context-from flag). Created automatically if missing."
+      services:
+        - name: "Blockrun proxy"
+          url: "http://localhost:8402"
+          purpose: "Local proxy that routes Grok/Gemini calls via x402 micropayments on Base. Not required for Claude+GPT-only mode."
+    tags: ["multi-model", "debate", "orchestration", "reasoning", "blockrun", "grok", "gemini", "claude", "gpt"]
 ---
 
 # Roundtable v2 — Adaptive Multi-Model Orchestrator
@@ -27,23 +45,68 @@ sessions_spawn(
 
 Core principle: the Meta-Panel (4 premium models) designs the optimal WORKFLOW for the task — not just which models to use, but how they collaborate, in what order, and with what division of labor.
 
+### Thread UX Model
+
+Each `roundtable [topic]` invocation:
+1. Creates a **dedicated Discord thread** for that roundtable
+2. Spawns all panel agents as **persistent thread-bound sessions** (`mode="session"`, `thread=true`)
+3. Agents live inside that thread — users can address them directly after the rounds complete
+4. Each thread = independent roundtable with its own fresh panel
+
+This means: every new `roundtable` command gets 4 new agents in a new thread. Agents from thread A are not visible in thread B. The panel is **per-roundtable**, not global.
+
 ---
+
+## Setup
+
+### Option A — Full panel (recommended)
+1. **Install Blockrun** (one-time):
+   ```bash
+   curl -fsSL https://blockrun.ai/ClawRouter-update | bash
+   openclaw gateway restart
+   ```
+2. **Fund the Blockrun wallet** with USDC on Base (~$5-10 to start). Wallet address shown during install.
+3. **Configure providers** in `openclaw.json`:
+   - `anthropic` provider with OAuth or API key (for Claude Opus)
+   - `openai-codex` provider with OAuth (for GPT-5.3 Codex)
+4. **Result**: full 4-model panel — Claude Opus (free) + Gemini 3.1 Pro (~$0.05/run) + Grok 4 (~$0.08/run) + GPT-5.3 (free)
+
+### Option B — Degraded mode (no Blockrun)
+Works with just Claude + GPT, both free via OAuth:
+- Configure `anthropic` provider (Claude Max OAuth)
+- Configure `openai-codex` provider (ChatGPT Plus OAuth)
+- Grok/Gemini slots fall back to Claude Sonnet automatically
+
+### Filesystem
+This skill writes roundtable results to `~/clawd/memory/roundtables/YYYY-MM-DD-slug.json` for future context injection via `--context-from`. The directory is created automatically.
+
+### Cost estimate
+- Full run (4 models × 2 rounds + synthesis): ~$0.20–$0.50
+- `--quick` (4 models × 1 round): ~$0.05–$0.15
+- Claude and GPT-5.3 are free via OAuth (no Blockrun cost)
 
 ## Requirements
 
-**Full panel (recommended):** Blockrun configured at `localhost:8402` — provides Claude Opus 4.6, GPT-5.2, Gemini 3.1 Pro, Grok 4 via a single proxy.
+**Full panel (recommended):** Blockrun configured at `localhost:8402` — provides Gemini 3.1 Pro and Grok 4 via a single x402 proxy.
 Without Blockrun, panels degrade automatically to available fallbacks (see `panels.json` → `fallbacks`).
 
 **Minimum setup (degraded mode):** At least one of these providers configured in `openclaw.json`:
 - `anthropic` (Claude Opus/Sonnet) — for Opus fallback
 - `openai-codex` (GPT-5.3 Codex) — for GPT fallback
 
-**Cost warning:** A full roundtable (meta-panel + 2 rounds + synthesis) spawns 9–12 premium model calls. Use `--quick` for a lightweight single-round run. Cost scale: ~$0.50–$3.00 per full run depending on topic length and providers.
+**Cost:** Full run ~$0.20–$0.50 via Blockrun. Claude and GPT-5.3 Codex are free via OAuth subscriptions.
 
 ---
 
 ## Trigger Patterns
 
+### Auto-trigger (canale #roundtable)
+**Qualsiasi messaggio** ricevuto nel canale `1475526998750396476` (#roundtable) — esclusi i messaggi dentro thread esistenti — viene trattato automaticamente come un topic roundtable. Non serve il prefisso `roundtable`.
+
+- Messaggio in #roundtable → auto-detect mode → crea thread → spawna orchestratore
+- Il titolo del thread = il topic (troncato a 8 parole)
+
+### Trigger espliciti (qualsiasi canale)
 - `roundtable [prompt]` — auto-detect mode, full flow
 - `roundtable --debate [prompt]` — force parallel debate mode
 - `roundtable --build [prompt]` — force build/coding mode
@@ -52,7 +115,6 @@ Without Blockrun, panels degrade automatically to available fallbacks (see `pane
 - `roundtable --quick [prompt]` — skip meta-panel, use default panel for mode, 1 round only
 - `roundtable --panel model1,model2,model3 [prompt]` — manual panel override, skip meta-panel
 - `roundtable --validate [prompt]` — add Round 3 agent validation of synthesis
-- `roundtable --context-from YYYY-MM-DD-slug [prompt]` — inject previous roundtable as context *(planned — not yet implemented in prompts; currently loads the JSON from memory and prepends to CURRENT_CONTEXT manually)*
 - `roundtable --no-search [prompt]` — skip web search (use only for purely theoretical/abstract topics)
 
 ---
@@ -184,26 +246,38 @@ Always surface this in META section of final output with **actionable guidance**
 
 ### parallel_debate (standard)
 
-**Round 1**: Spawn all Stage 1 agents in parallel.
-- Use `prompts/round1.md`
+**Round 1**: Spawn all Stage 1 agents in parallel as **thread-bound persistent sessions**.
+
+```
+sessions_spawn(
+  task = filled prompts/round1.md,
+  model = model_id,
+  mode = "session",        ← persistent, stays alive in the thread
+  label = "rt-[role]",
+  thread = true            ← bound to the thread created in Step -1
+)
+```
+
 - Each agent writes their full response + SELF-DIGEST (last section)
 - Collect all self-digests
+- ⚠️ Agents remain live in the thread after Round 1 — users can address them directly for follow-ups
 
-**Round 2** (if rounds ≥ 2): Cross-critique in parallel.
-- Use `prompts/round2-cross-critique.md`
+**Round 2** (if rounds ≥ 2): Send cross-critique prompt to each existing session via `sessions_send`.
+- Do NOT re-spawn — reuse the same session keys from Round 1
 - `[SELF_DIGEST]` = this agent's own digest from Round 1
 - `[PEER_DIGESTS]` = other agents' digests (labeled with role)
 - Extract AGREEMENT SCORES from each response
 
-**Round 3** (if `--validate`): See Step 5.
+**Round 3** (if `--validate`): See Step 4.
 
 ### sequential
 
-**Stage 1**: Spawn agents in parallel using standard `prompts/round1.md`.
-- Round 2 cross-critique optional based on `rounds` setting.
+**Stage 1**: Spawn agents in parallel using `mode="session"` + `thread=true`.
+- Use standard `prompts/round1.md`.
+- Round 2 cross-critique via `sessions_send` to existing sessions (no re-spawn).
 - Collect full Round 1 outputs (not just digests) for Stage 2.
 
-**Stage 2**: Spawn Stage 2 agents sequentially or in parallel.
+**Stage 2**: Spawn Stage 2 agents as new thread-bound sessions (`mode="session"`, `thread=true`).
 - Build a custom prompt: `prompts/round1.md` base + prepend Stage 1 outputs
 - Label: "STAGE 1 OUTPUT from [Role]: [full output]"
 - Stage 2 agents review/validate/improve Stage 1 work
@@ -211,12 +285,12 @@ Always surface this in META section of final output with **actionable guidance**
 
 ### hybrid
 
-**Stage 1**: Parallel agents, different sub-tasks.
+**Stage 1**: Parallel agents (`mode="session"`, `thread=true`), different sub-tasks.
 - Customize Round 1 prompt to specify each agent's specific sub-task:
   > "Your specific task for this stage: [task from workflow design]"
 - Agents write SELF-DIGESTs
 
-**Stage 2**: 1-2 premium agents receive ALL Stage 1 self-digests + full outputs.
+**Stage 2**: 1-2 premium agents spawned as new thread-bound sessions.
 - Build prompt: `prompts/round1.md` base + "You are integrating and synthesizing the work of multiple agents. Their outputs: [all Stage 1 outputs]"
 - Stage 2 produces the integrated output
 
@@ -273,7 +347,8 @@ sessions_spawn(
   task = filled prompts/final-synthesis.md,
   model = [synthesis model from meta-panel recommendation, or anthropic/claude-opus-4-6 as default],
   label = "rt-synthesis",
-  runTimeoutSeconds = 120
+  mode = "session",     ← stays alive for follow-up questions
+  thread = true         ← bound to the roundtable thread
 )
 ```
 

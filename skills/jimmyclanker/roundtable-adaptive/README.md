@@ -49,15 +49,19 @@ roundtable --vote Redis vs PostgreSQL for session storage
 ## How it works
 
 ```
+Step -1 → Create Discord thread for this roundtable
 Step 0  → Web search: all agents get current context
 Step 0b → Meta-panel (4 premium): designs optimal workflow
 Step 1  → Detect mode (if not flagged)
-Step 2  → Execute: Round 1 (independent) + Round 2 (cross-critique)
+Step 2  → Spawn 4 panel agents as persistent thread-bound sessions
+          Round 1 (independent positions) + Round 2 (cross-critique)
 Step 3  → Consensus scoring (formal 1–5 matrix)
 Step 4  → Round 3 validation (--validate only)
-Step 5  → Synthesis via neutral spawned model
+Step 5  → Synthesis via neutral thread-bound model
 Step 6  → Persist to ~/clawd/memory/roundtables/
 ```
+
+Each roundtable gets its own thread with 4 live agents — you can keep talking to them after the rounds end.
 
 ---
 
