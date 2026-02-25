@@ -3,11 +3,16 @@
   "slug": "origram",
   "displayName": "origram",
   "latest": {
-    "version": "1.0.5",
-    "publishedAt": 1771623960902,
-    "commit": "https://github.com/openclaw/skills/commit/f00a1704bccbaf6352410a49b7f7bcec1cffb529"
+    "version": "1.0.7",
+    "publishedAt": 1772061806197,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.5",
+      "publishedAt": 1771623960902,
+      "commit": "https://github.com/openclaw/skills/commit/f00a1704bccbaf6352410a49b7f7bcec1cffb529"
+    },
     {
       "version": "1.0.4",
       "publishedAt": 1771442798394,
