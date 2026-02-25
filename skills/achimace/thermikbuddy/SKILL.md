@@ -1,62 +1,47 @@
 ---
 name: soaring-weather
-description: Segelflug- und Thermikvorhersage mit Thermik-Score (0–10). Nutze diesen Skill wenn der User nach Segelflugwetter, Thermik, Streckenflugbedingungen, Flugwetter für Segelflieger oder Gleitschirmflieger fragt – auch indirekt wie "lohnt sich Samstag fliegen?", "wie wird die Thermik?", "Segelflugwetter Wochenende?" oder "kann ich am Sonntag einen Streckenflug machen?". Der Skill fragt nach Region/Standort, ruft Open-Meteo (ICON-D2) und DHV-Wetter ab und liefert eine Profi-Einschätzung mit Tagesablauf, Steigwerten, Basishöhe und Warnungen.
-version: 1.0.0
-metadata: {"openclaw":{"emoji":"🪂","requires":{"bins":["python3"],"env":[]},"homepage":"https://github.com/soaring-weather/openclaw-skill"}}
+description: Segelflug- und Thermikvorhersage mit Thermik-Score (0-10). Nutze diesen Skill wenn der User nach Segelflugwetter, Thermik, Streckenflugbedingungen, Flugwetter fuer Segelflieger oder Gleitschirmflieger fragt - auch indirekt wie "lohnt sich Samstag fliegen?", "wie wird die Thermik?", "Segelflugwetter Wochenende?" oder "kann ich am Sonntag einen Streckenflug machen?" oder "Wettercheck Werdenfels". Der Skill ruft Open-Meteo (ICON-D2) ab und liefert eine Profi-Einschaetzung mit Tagesablauf, Steigwerten, Basishöhe, Alpen-Besonderheiten (Foehn, Hangflug) und Warnungen.
+version: 2.0.0
 ---
 
-# Soaring Weather – Thermikvorhersage für Segelflieger
+# Soaring Weather – Thermikvorhersage für Segelflieger v2.0
 
-Dieser Skill liefert eine fundierte Segelflug-Thermikvorhersage mit Score 0–10,
-Tagesablauf in 4 Phasen, Steigwert-Schätzung, Basishöhe und DHV-Wetterintegration.
+Scoring-Engine mit 11 gewichteten Parametern inkl. Windscherung, Höhenfeuchte,
+Föhn-Erkennung, Hangflug-Bonus und Gewittersicherheits-Cap.
 
 ## Schritt 1: Region erfragen
-
-Bevor du die Vorhersage abrufst, frage den User nach der gewünschten Region.
-Zeige die verfügbaren Regionen aus der Konfiguration:
 
 ```bash
 python3 {baseDir}/scripts/run_forecast.py --list-regions
 ```
 
-Das gibt die verfügbaren Regionen als JSON-Liste aus. Stelle dem User die Optionen
-zur Auswahl, z.B.:
+Stelle dem User die Optionen zur Auswahl:
 
 > Für welche Region möchtest du die Thermikvorhersage?
 > 1. 🏔️ Werdenfels / Bayerischer Alpenordrand
 > 2. 🏔️ Inntal / Nordtiroler Alpen
 > 3. ⛰️ Schwäbische Alb
-> 4. 🌄 Schwarzwald
+> 4. 🌲 Schwarzwald
 > 5. 🌾 Norddeutsches Flachland
 > 6. 📍 Eigene Koordinaten eingeben
 
-Falls der User bereits eine Region oder Koordinaten nennt ("Thermik in Innsbruck",
-"Segelflugwetter Wasserkuppe"), überspringe die Frage und wähle die passende Region
-oder verwende die genannten Koordinaten direkt.
+Falls der User bereits eine Region nennt, überspringe die Frage.
 
 ## Schritt 2: Vorhersage abrufen
 
-Starte das Forecast-Script mit der gewählten Region:
-
 ```bash
-python3 {baseDir}/scripts/run_forecast.py --region <region_id>
+python3 {baseDir}/scripts/run_forecast.py --region <region_id> [--days 3]
 ```
 
 Oder mit eigenen Koordinaten:
 
 ```bash
-python3 {baseDir}/scripts/run_forecast.py --lat <lat> --lon <lon> --name "Standortname"
+python3 {baseDir}/scripts/run_forecast.py --lat <lat> --lon <lon> --name "Name"
 ```
 
-Optionale Parameter:
-- `--days 3` (1–7, Standard: 3)
-- `--no-dhv` (DHV-Wetter überspringen)
-
-Das Script gibt JSON auf stdout aus (Logs gehen auf stderr).
+Das Script gibt JSON auf stdout aus, Logs auf stderr.
 
 ## Schritt 3: Ergebnis formatieren
-
-Formatiere die JSON-Ausgabe für den User. Verwende dieses Template:
 
 ### Tagesübersicht (pro Tag)
 
@@ -65,70 +50,71 @@ Formatiere die JSON-Ausgabe für den User. Verwende dieses Template:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 📅 [Wochentag], [Datum]
-🏆 SCORE: [X]/10 — [Bewertungstext]
+🏆 SCORE: [X]/10 — [Label]
 
 🌡️ Thermik-Kern:
-   Steigwerte: ~[X] m/s | Basis: [X]m MSL
-   CAPE: [X] J/kg | BLH: [X]m AGL
+   Steigwerte: ~[X] m/s | Basis: [X]m MSL | BLH: [X]m AGL
+   CAPE max: [X] J/kg
 
-☁️ [Wolken-Beschreibung]
-💨 Wind: [Richtung] [Geschwindigkeit] km/h
+💨 Wind: ⌀[X] km/h | Windscherung: [X] km/h (10m→850hPa)
+💧 Höhenluft (700hPa): [X]% r.F. → [trocken/normal/feucht]
 🌍 Boden: [Feuchte-Bewertung]
-⚠️ [Warnungen falls zutreffend]
+
+[🏔️ Hangflug-Bonus: +X Punkte – Nordwindlage günstig]  ← nur wenn relevant
+[⚠️ Warnungen]
 
 📊 Tagesablauf:
-   09-12: [●-Balken] [Kurzbeschreibung]
-   12-15: [●-Balken] [Kurzbeschreibung]
-   15-18: [●-Balken] [Kurzbeschreibung]
-   18-20: [●-Balken] [Kurzbeschreibung]
+   09-12: [◉◉◉◎◎] ~[X]m/s · BLH [X]m
+   12-15: [◉◉◉◉◎] ~[X]m/s · BLH [X]m
+   15-18: [◉◉◉◉◉] ~[X]m/s · BLH [X]m
+   18-20: [◉◉◎◎◎] ~[X]m/s · BLH [X]m
 ```
 
-### Score-Emoji-Zuordnung
-- 0–2: ❌ Kein Segelflugwetter
-- 3–4: 🌥️ Eingeschränkt
-- 5–6: ⛅ Ordentlicher Tag
-- 7–8: ☀️ Guter Tag
-- 9–10: 🔥 Hammertag!
+### Score-Emoji und Labels
+- 0–2:  ❌ Kein Segelflugwetter
+- 2–4:  🌥️ Eingeschränkt
+- 4–6:  ⛅ Ordentlicher Tag
+- 6–8:  ☀️ Guter Tag
+- 8–10: 🔥 Hammertag!
 
-Verwende ◉ für aktive und ◎ für inaktive Kreise (5 pro Phase).
+### Wichtige Warnungstypen
+- 🔴 FÖHN: Score gecappt, Turbulenz am Alpenrand
+- 🔴 Gewittergefahr (CAPE >2000 oder LI <-6): Score hard cap bei 4.5
+- 🔴 Cb-Gefahr: Feuchte 700hPa >65% + CAPE >800 → Score -2
+- ⚠️ Überentwicklung: Früh starten, 14:00 landen
+- ⚠️ Windscherung >30 km/h: Thermikschläuche destabilisiert
 
-### DHV-Wetter-Block
+### Hangflug-Bonus (nur Alpen)
+Wird angezeigt wenn Score >0 Bonus. Erkläre kurz die Windrichtung.
+Kein Bonus bei Föhn oder Niederschlag.
 
-Wenn DHV-Daten verfügbar sind (Feld `dhv_available: true`), zeige zusätzlich:
+## Schritt 4: Links anbieten
 
-```
-━━━ DHV WETTER – [Region] ━━━
-Stand: [Zeitstempel]
-
-[🔴/🟠/🟡/🟢] [Tag]: [Titel]
-   [Beschreibung]
-   💨 [Wind]
-```
-
-Hinweis: Die DHV-Thermikvorhersage macht von Oktober bis März Winterpause.
-Wind- und Sturmwarnungen bleiben auch im Winter relevant.
-
-### Detail-Links
-
-Am Ende immer anbieten:
+Am Ende immer:
 - DHV Wetter: https://www.dhv.de/wetter/dhv-wetter/
 - SkySight: https://skysight.io
 - TopMeteo: https://europe.topmeteo.eu/de/
 - DWD Segelflug: https://www.dwd.de/DE/fachnutzer/luftfahrt/kg_segel/segel_node.html
-- aufwin.de: https://aufwin.de
 - Soaringmeteo (WRF 2km): https://soaringmeteo.org/v2
+- aufwin.de: https://aufwin.de
 
-## Hinweise zum Score
+## Parameter-Details
 
-Der Score berücksichtigt 9 gewichtete Parameter: CAPE, Grenzschichthöhe (BLH),
-Lifted Index, Bewölkung, Wind, Temperatur-Spread, Einstrahlung, Bodenfeuchte und
-Vortages-Niederschlag. Details siehe `{baseDir}/references/scoring_params.md`.
+→ Siehe `{baseDir}/references/scoring_params.md` für alle Schwellwerte,
+  Gewichte, Formeln und Regionstypen.
 
-Regionsspezifische Anpassungen:
-- **Alpenregionen:** Föhn-Erkennung, Überentwicklungs-Warnung, Cu-Thermik-Bonus
-- **Flachland:** Keine Föhn-Erkennung, andere BLH-Schwellwerte
-- **Mittelgebirge:** Moderate Anpassungen
+## Kurzübersicht Scoring-Parameter
 
-Die DHV-Experten-Einschätzung (2× täglich von Meteorologe Volker Schwaniz) dient als
-Validierung und kann den algorithmischen Score bei starken Abweichungen korrigieren –
-insbesondere bei Wind-/Sturmwarnungen (Sicherheit geht vor).
+| Parameter              | Gewicht | Besonderheit                          |
+|------------------------|---------|---------------------------------------|
+| Grenzschichthöhe BLH   | 18%     | Wichtigster Einzelparameter           |
+| CAPE                   | 12%     | Hard cap bei >2000 J/kg               |
+| Bewölkung low+mid      | 12%     | Cu-Thermik-Bonus bei 15–50%           |
+| Direkte Strahlung      | 10%     | Antrieb der Thermik                   |
+| Lifted Index           | 8%      | Hard cap bei <-6                      |
+| Wind 10m               | 8%      | Zu stark = schlecht                   |
+| Bodenfeuchte           | 8%      | Trockener Boden = bessere Thermik     |
+| **Windscherung →850hPa** | **7%** | **NEU: zerzaust Thermikschläuche**    |
+| **RH 700hPa**          | **7%**  | **NEU: Cb-Früherkennung**             |
+| Vortages-Regen         | 5%      | —                                     |
+| Spread T-Td            | 5%      | Wolkenbasishöhe                       |
