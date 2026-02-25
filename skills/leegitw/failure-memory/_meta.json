@@ -3,11 +3,16 @@
   "slug": "failure-memory",
   "displayName": "Failure Memory",
   "latest": {
-    "version": "1.4.0",
-    "publishedAt": 1771540457726,
-    "commit": "https://github.com/openclaw/skills/commit/b685751bcd7a8f27f108c9f9d2cc6d5a20594e85"
+    "version": "1.5.0",
+    "publishedAt": 1771894024907,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.4.0",
+      "publishedAt": 1771540457726,
+      "commit": "https://github.com/openclaw/skills/commit/b685751bcd7a8f27f108c9f9d2cc6d5a20594e85"
+    },
     {
       "version": "1.2.0",
       "publishedAt": 1771469586862,
