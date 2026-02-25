@@ -1,0 +1,11 @@
+{
+  "owner": "brennerspear",
+  "slug": "caddy-reverse-proxy",
+  "displayName": "Caddy Reverse Proxy",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1771989513357,
+    "commit": null
+  },
+  "history": []
+}
