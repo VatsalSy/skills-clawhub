@@ -1,56 +1,15 @@
 ---
 name: aioz-ui-components
-description: Complete API reference for aioz-ui V2 component library. Use when writing, editing, or reviewing JSX/TSX code that uses Button, Input, Textarea, Checkbox, Switch, Badge, Avatar, Card, Dialog, Tabs, Tooltip, Accordion, Progress, Separator, DropdownMenu, Table, Sidebar, or Pagination from @aioz-ui/core-v2/components. Contains all props, variants, sizes, shapes, and ready-to-use code examples. For colors see colors.md, for typography see typography.md, for icons see icons.md.
+description: Complete API reference for AIOZ UI V3 component library. Use when writing, editing, or reviewing JSX/TSX code that uses Button, Input, Textarea, Checkbox, Switch, Badge, Avatar, Card, Dialog, Tabs, Tooltip, Accordion, Progress, Separator, DropdownMenu, Table, Sidebar, or Pagination from @aioz-ui/core-v3/components. Contains all props, variants, sizes, shapes, and ready-to-use code examples. For colors see colors.md, for typography see typography.md, for icons see icons.md.
 ---
 
-# AIOZ UI V2 – Complete Component Reference
+# AIOZ UI V3 – Complete Component Reference
 
 ## Related Skills
 
 - **colors.md** — All color tokens (text, bg, border, surface) and Figma MCP mappings
 - **typography.md** — All text utility classes (`text-title-03`, `text-body-02`, etc.) and Figma mappings
 - **icons.md** — Icon import guide, full icon list, Figma icon layer → import name rules
-
-## Setup
-
-### tsconfig.json
-
-```json
-{
-  "compilerOptions": {
-    "paths": {
-      "@aioz-ui/core-v2/*": ["../../packages/aioz-ui/packages/core-v2/src/*"],
-      "@aioz-ui/icon-react": [
-        "../../packages/aioz-ui/packages/icon-react/src/lucide-react.suffixed"
-      ]
-    }
-  }
-}
-```
-
-### package.json
-
-```json
-{
-  "dependencies": {
-    "@aioz-ui/core-v2": "workspace:^",
-    "@aioz-ui/icon-react": "workspace:^"
-  }
-}
-```
-
-### globals.css
-
-```css
-@import 'tailwindcss';
-@import '../../packages/aioz-ui/packages/core/src/styles/__index.css';
-@custom-variant dark (&:is(.dark *));
-```
-
-All components import from `@aioz-ui/core-v2/components`.
-Icons import from `@aioz-ui/icon-react`.
-
----
 
 ## 1. Button
 
@@ -75,7 +34,7 @@ Icons import from `@aioz-ui/icon-react`.
 **Import**
 
 ```tsx
-import { Button } from '@aioz-ui/core-v2/components'
+import { Button } from '@aioz-ui/core-v3/components'
 import {
   Search01Icon,
   Plus01Icon,
@@ -141,7 +100,7 @@ import {
 **Import**
 
 ```tsx
-import { Input } from '@aioz-ui/core-v2/components'
+import { Input } from '@aioz-ui/core-v3/components'
 import { Search01Icon } from '@aioz-ui/icon-react'
 ```
 
@@ -198,7 +157,7 @@ import { Search01Icon } from '@aioz-ui/icon-react'
 **Import**
 
 ```tsx
-import { Textarea } from '@aioz-ui/core-v2/components'
+import { Textarea } from '@aioz-ui/core-v3/components'
 ```
 
 **Examples**
@@ -247,10 +206,12 @@ const [val, setVal] = useState('')
 }
 ```
 
+Figma Checkbox Base -> using Checkbox
+
 **Import**
 
 ```tsx
-import { Checkbox } from '@aioz-ui/core-v2/components'
+import { Checkbox } from '@aioz-ui/core-v3/components'
 ```
 
 **Examples**
@@ -300,7 +261,7 @@ const [checked, setChecked] = useState(false)
 **Import**
 
 ```tsx
-import { Switch } from '@aioz-ui/core-v2/components'
+import { Switch } from '@aioz-ui/core-v3/components'
 ```
 
 **Examples**
@@ -354,7 +315,7 @@ const [on, setOn] = useState(false)
 **Import**
 
 ```tsx
-import { Badge } from '@aioz-ui/core-v2/components'
+import { Badge } from '@aioz-ui/core-v3/components'
 import { CircleCheckIcon } from '@aioz-ui/icon-react'
 ```
 
@@ -415,7 +376,7 @@ import {
   AvatarIcon,
   AvatarImage,
   AvatarStatus,
-} from '@aioz-ui/core-v2/components'
+} from '@aioz-ui/core-v3/components'
 import { Pencil01Icon } from '@aioz-ui/icon-react'
 ```
 
@@ -484,7 +445,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@aioz-ui/core-v2/components'
+} from '@aioz-ui/core-v3/components'
 ```
 
 **Examples**
@@ -555,7 +516,7 @@ import {
   DialogTrigger,
   DialogClose,
   Button,
-} from '@aioz-ui/core-v2/components'
+} from '@aioz-ui/core-v3/components'
 ```
 
 **Examples**
@@ -642,7 +603,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-} from '@aioz-ui/core-v2/components'
+} from '@aioz-ui/core-v3/components'
 import { Home01Icon, SettingsIcon } from '@aioz-ui/icon-react'
 ```
 
@@ -719,7 +680,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
   Button,
-} from '@aioz-ui/core-v2/components'
+} from '@aioz-ui/core-v3/components'
 import { CircleIcon } from '@aioz-ui/icon-react'
 ```
 
@@ -788,7 +749,7 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from '@aioz-ui/core-v2/components'
+} from '@aioz-ui/core-v3/components'
 ```
 
 **Examples**
@@ -833,7 +794,7 @@ import {
 **Import**
 
 ```tsx
-import { Progress } from '@aioz-ui/core-v2/components'
+import { Progress } from '@aioz-ui/core-v3/components'
 ```
 
 **Examples**
@@ -884,7 +845,7 @@ useEffect(() => {
 **Import**
 
 ```tsx
-import { Separator } from '@aioz-ui/core-v2/components'
+import { Separator } from '@aioz-ui/core-v3/components'
 ```
 
 **Examples**
@@ -944,7 +905,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Button,
-} from '@aioz-ui/core-v2/components'
+} from '@aioz-ui/core-v3/components'
 import { ChevronDownIcon } from '@aioz-ui/icon-react'
 ```
 
@@ -994,7 +955,7 @@ import {
   Row,
   Cell,
   HeadCell,
-} from '@aioz-ui/core-v2/components'
+} from '@aioz-ui/core-v3/components'
 ```
 
 **Props**
@@ -1071,7 +1032,7 @@ import {
 **Import**
 
 ```tsx
-import { PaginationGroup } from '@aioz-ui/core-v2/components'
+import { PaginationGroup } from '@aioz-ui/core-v3/components'
 // Or individual pieces:
 import {
   Pagination,
@@ -1083,7 +1044,7 @@ import {
   PaginationFirst,
   PaginationLast,
   PaginationEllipsis,
-} from '@aioz-ui/core-v2/components'
+} from '@aioz-ui/core-v3/components'
 ```
 
 **PaginationGroup props**
@@ -1145,7 +1106,7 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   useSidebar,
-} from '@aioz-ui/core-v2/components'
+} from '@aioz-ui/core-v3/components'
 ```
 
 **SidebarProvider props**
@@ -1184,7 +1145,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
-} from '@aioz-ui/core-v2/components'
+} from '@aioz-ui/core-v3/components'
 import {
   BarChart01Icon,
   ComputerIcon,
@@ -1279,7 +1240,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
 ## Global Rules
 
-1. **V2 only**: Always import from `@aioz-ui/core-v2/components`.
+1. **V2 only**: Always import from `@aioz-ui/core-v3/components`.
 2. **Icons**: Import from `@aioz-ui/icon-react`. Pass size via the `size` prop: `<Search01Icon size={16} />`. Color via `className="text-icon-neutral"`.
 3. **Colors**: Use tokens from **colors.md** — never raw Tailwind colors (`text-gray-500`, `bg-white`). Common: `text-title-neutral`, `text-subtitle-neutral`, `bg-sf-screen`, `bg-sf-object`, `border-border-neutral`.
 4. **Typography**: Use utilities from **typography.md** — never `text-sm`/`text-base`/`font-medium` in isolation. Common: `text-title-03`, `text-subheadline-01`, `text-body-02`.
@@ -1290,3 +1251,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 9. **Table typography**: HeadCells use `text-subheadline-02 text-subtitle-neutral`; body Cells default to `text-body-01` from component, override color with `text-title-neutral` (primary) or `text-subtitle-neutral` (secondary).
 10. **Sidebar active item**: `bg-sf-neutral text-title-neutral`; inactive: `text-subtitle-neutral hover:bg-sf-neutral hover:text-title-neutral`.
 11. **Storybook title map**: `UI/Button V2`, `UI/Input V2`, `UI/Badge V2`, `UI/Checkbox V2`, `UI/Switch V2`, `UI/Textarea V2`, `UI/Dialog V2`, `UI/Tabs V2`, `UI/Tooltip V2`, `UI/Avatar V2`, `UI/Card V2`, `UI/Accordion V2`, `UI/Progress V2`, `UI/Separator V2`, `UI/DropdownMenu V2`.
+
+```
+
+```

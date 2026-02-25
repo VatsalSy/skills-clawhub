@@ -1,149 +1,198 @@
 ---
-name: aioz-ui-v2
-description: Build UI components and pages using AIOZ UI V2 design system. Use this skill whenever the user wants to create, edit, or style React components using AIOZ UI tokens, Tailwind classes, color tokens, typography utilities, or icons from @aioz-ui/icon-react. Trigger on any task involving AIOZ UI components, design tokens like --sf-neu-block or --text-neu-bold, brand colors, typography classes (text-title-01, text-body-02), or icon imports. Also use when translating Figma MCP output (fill tokens, typography styles, icon layer names) into production-ready AIOZ UI V2 code.
+name: aioz-ui-v3
+description: Build UI components and pages using AIOZ UI V3 design system. Use this skill whenever the user wants to create, edit, or style React components using AIOZ UI tokens, Tailwind classes, color tokens, typography utilities, icons from @aioz-ui/icon-react, or chart components (LineChart, AreaChart, BarChart, DonutChart). Trigger on any task involving AIOZ UI components, design tokens like --sf-neu-block or --text-neu-bold, brand colors, typography classes (text-title-01, text-body-02), icon imports, data visualization, or translating Figma MCP output into production-ready code.
 ---
 
-# AIOZ UI V2 — Component Development Skill
+# AIOZ UI V3 — Figma MCP → Code Mapping Skill
 
-This skill helps you build production-quality React components using the AIOZ UI V2 design system, including correct color tokens, typography utilities, icon imports, and component patterns.
+This skill defines exactly how to translate **Figma MCP output** into production React code using the AIOZ UI V3 design system.
 
-## Quick Reference Files
-
-Load these reference files from the `references/` folder as needed:
-
-| File                             | When to read it                                                         |
-| -------------------------------- | ----------------------------------------------------------------------- |
-| `references/colors.md`           | Mapping Figma fill/stroke/text tokens → Tailwind bg/text/border classes |
-| `references/typography.md`       | Mapping Figma typography styles → Tailwind text-\* classes              |
-| `references/icons.md`            | Finding icon names, imports from `@aioz-ui/icon-react`                  |
-| `references/using-components.md` | Component API reference: Button, Input, Table, Badge, Modal, etc.       |
-
-**Always read the relevant reference file before writing code.** Token names and class names are design-system-specific and must not be guessed.
+> **Rule #1:** Never guess token names or class names. Always follow the mapping tables below.
 
 ---
 
-## Core Principles
+## How Figma MCP Returns Data
 
-### 1. Token-first, never raw Tailwind
+When the Figma MCP agent inspects a node, it returns values in these formats:
 
-- ❌ `text-sm text-gray-500 bg-white border-gray-200`
-- ✅ `text-body-02 text-subtitle-neutral bg-sf-screen border-border-neutral`
+| Data Type      | Figma MCP Example                                   | Action                                  |
+| -------------- | --------------------------------------------------- | --------------------------------------- |
+| Color / fill   | `Onsf/Error/Default`, `Sf/Pri/Pri`                  | → Look up in `references/colors.md`     |
+| Typography     | `Button/01`, `Body/02`, `Subheadline/01`            | → Look up in `references/typography.md` |
+| Icon layer     | `icon/24px/outline/wallet-01`                       | → Look up in `references/icons.md`      |
+| Component name | `Button/Primary`, `Badge/Success`, `Fields/Default` | → See **Component Map** below           |
+| Variant string | `Type=Primary, Size=Medium, Shape=Square`           | → See **Variant → Prop Map** below      |
+| Variable value | `"Onsf/Bra/Default": "#121212"`                     | Slash-path format, never CSS `--var`    |
+| Setup / config | Project configuration questions                     | → Look up in `references/setup.md`      |
 
-### 2. Typography utilities are all-in-one
-
-Each `text-*` utility from `tw-inline.css` already bakes in font-size, line-height, weight, and font-family. **Never** stack `font-medium`, `text-sm`, etc. on top.
-
-### 3. Use component primitives over custom divs
-
-Prefer `<Button>`, `<Input>`, `<Badge>` from `@aioz-ui/core-v2/components` over hand-rolled elements where applicable.
-
-### 4. Icons always via `@aioz-ui/icon-react`
-
-Never use emoji, SVG literals, or other icon libraries. Color icons via `className="text-icon-neutral"` (currentColor inheritance).
+> ⚠️ Figma MCP always returns token names with **slash separators** like `Onsf/Error/Default`.
+> It does **NOT** return CSS custom property format like `--onsf-error-default`.
 
 ---
 
-## Figma MCP → Code Workflow
-
-When translating Figma MCP output:
-
-1. **Fill/color tokens** → open `references/colors.md` → find token in table → use Tailwind class
-2. **Typography style** (e.g. `Subheadline/02`) → open `references/typography.md` → map to class
-3. **Icon layer name** (e.g. `icon/24px/outline/wallet-01`) → strip prefix → PascalCase → append `Icon` → `Wallet01Icon`
-4. **Component type** → open `references/using-components.md` → use the correct component API
-
----
-
-## File & Import Conventions
+## ⚠️ Two Import Paths — Never Mix Them
 
 ```tsx
-// Design system components
-import { Button, Input, Badge, Table } from '@aioz-ui/core-v2/components'
+// Charts — @aioz-ui/core/components
+import {
+  LineChart,
+  AreaChart,
+  BarChart,
+  DonutChart,
+  CustomLegend,
+  Separator,
+  useSeriesVisibility,
+} from '@aioz-ui/core/components'
 
-// Icons (always named imports, PascalCase + "Icon" suffix)
+// All other UI components — @aioz-ui/core-v3/components
+import {
+  Button,
+  Input,
+  Badge,
+  Table,
+  Header,
+  Body,
+  Row,
+  HeadCell,
+  Cell,
+} from '@aioz-ui/core-v3/components'
+
+// Icons — @aioz-ui/icon-react (always PascalCase + "Icon" suffix)
 import { Search01Icon, Plus01Icon, Wallet01Icon } from '@aioz-ui/icon-react'
-
-// Styles (ensure tw-inline.css is loaded in the project)
-// Classes like text-title-01, bg-sf-neutral, border-border-neutral come from tw-inline.css
 ```
 
 ---
 
-## Common Layout Patterns
+## Component Map
+
+**Input:** Figma MCP `name` field on a symbol/instance node
+**Output:** React component to use
+
+| Figma Node Name Pattern | React Component   | Import                                                                                                                      |
+| ----------------------- | ----------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `Button/*`              | `Button`          | `import { Button } from '@aioz-ui/core-v3/components'`                                                                      |
+| `Fields/*`              | `Input`           | `import { Input } from '@aioz-ui/core-v3/components'`                                                                       |
+| `Badge/*`               | `Badge`           | `import { Badge } from '@aioz-ui/core-v3/components'`                                                                       |
+| `Tag/*`                 | `Tag`             | `import { Tag } from '@aioz-ui/core-v3/components'`                                                                         |
+| `Card/*`                | `Card`            | `import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@aioz-ui/core-v3/components'`                   |
+| `Toggle/*`              | `Switch`          | `import { Switch } from '@aioz-ui/core-v3/components'`                                                                      |
+| `Checkbox/*`            | `Checkbox`        | `import { Checkbox } from '@aioz-ui/core-v3/components'`                                                                    |
+| `Tooltips/*`            | `Tooltip`         | `import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@aioz-ui/core-v3/components'`                    |
+| `Tabs/*`                | `Tabs`            | `import { Tabs, TabsList, TabsTrigger, TabsContent } from '@aioz-ui/core-v3/components'`                                    |
+| `Table/*`               | `Table`           | `import { Table, Header, Body, Row, HeadCell, Cell } from '@aioz-ui/core-v3/components'`                                    |
+| `Separator/*`           | `Separator`       | `import { Separator } from '@aioz-ui/core-v3/components'`                                                                   |
+| `Pagination item/*`     | `PaginationGroup` | `import { PaginationGroup } from '@aioz-ui/core-v3/components'`                                                             |
+| `Progress bar/*`        | `Progress`        | `import { Progress } from '@aioz-ui/core-v3/components'`                                                                    |
+| `Slider/*`              | `Slider`          | `import { Slider } from '@aioz-ui/core-v3/components'`                                                                      |
+| `Upload file/*`         | `UploadFile`      | `import { UploadFile } from '@aioz-ui/core-v3/components'`                                                                  |
+| `Menu item/*`           | `MenuItem`        | `import { MenuItem } from '@aioz-ui/core-v3/components'`                                                                    |
+| `Dropdown item/*`       | `DropdownMenu`    | `import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@aioz-ui/core-v3/components'`    |
+| `Modal/*`               | `Dialog`          | `import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@aioz-ui/core-v3/components'` |
+| `Block/*`               | `Block`           | `import { Block } from '@aioz-ui/core-v3/components'`                                                                       |
+| `IconBadge/*`           | `IconBadge`       | `import { IconBadge } from '@aioz-ui/core-v3/components'`                                                                   |
+| `Message/*`             | `Message`         | `import { Message } from '@aioz-ui/core-v3/components'`                                                                     |
+| `Breadcrumb/*`          | `Breadcrumb`      | `import { Breadcrumb } from '@aioz-ui/core-v3/components'`                                                                  |
+| `Date picker/*`         | `DatePicker`      | `import { DatePicker } from '@aioz-ui/core-v3/components'`                                                                  |
+
+---
+
+## Variant → Prop Map
+
+Figma MCP encodes variants as comma-separated `Key=Value` pairs in the node name:
+
+```
+"Type=Primary, Size=Medium, Icon Only=False, Shape=Square, Danger=False, State=Hover"
+```
+
+| Figma Variant                 | React Prop            | Notes                |
+| ----------------------------- | --------------------- | -------------------- |
+| `Type=Primary`                | `variant="primary"`   |                      |
+| `Type=Secondary`              | `variant="secondary"` |                      |
+| `Type=Neutral`                | `variant="neutral"`   |                      |
+| `Type=Text`                   | `variant="text"`      |                      |
+| `Type=Danger` / `Danger=True` | `variant="danger"`    |                      |
+| `Size=Large`                  | `size="lg"`           |                      |
+| `Size=Medium`                 | `size="md"`           |                      |
+| `Size=Small`                  | `size="sm"`           |                      |
+| `Shape=Circle`                | `shape="circle"`      |                      |
+| `Shape=Square`                | `shape="square"`      |                      |
+| `Shape=Default`               | `shape="default"`     |                      |
+| `State=Default`               | _(no prop)_           | Default render state |
+| `State=Hover`                 | _(no prop)_           | CSS handles it       |
+| `State=Focused`               | _(no prop)_           | CSS handles it       |
+| `State=Pressed`               | _(no prop)_           | CSS handles it       |
+| `State=Disabled`              | `disabled`            |                      |
+| `State=Loading`               | `loading`             |                      |
+| `Icon Only=True`              | `size="icon"`         | Button only          |
+
+---
+
+## Full Translation Example
+
+Given this Figma MCP output:
+
+```json
+{
+  "name": "Type=Primary, Size=Medium, Icon Only=False, Shape=Square, Danger=False, State=Default",
+  "fills": [{ "token": "Sf/Pri/Pri" }],
+  "textColor": "Onsf/Bra/Default",
+  "typography": "Button/01"
+}
+```
+
+Translate to:
 
 ```tsx
-// Page shell
-<div className="min-h-screen bg-sf-screen">
-  <main className="p-6">...</main>
-</div>
-
-// Card / panel
-<div className="bg-sf-object border border-border-neutral rounded-2xl p-6">
-
-// Sidebar / nav block
-<nav className="bg-sf-neutral-block border-r border-border-neutral h-full">
-
-// Active nav item
-<div className="bg-sf-neutral text-onsf-text-neutral rounded-lg px-3 py-2">
-
-// Section heading
-<h2 className="text-title-03 text-title-neutral">Section Title</h2>
-
-// Body description
-<p className="text-body-02 text-subtitle-neutral">Supporting description text.</p>
+import { Button } from '@aioz-ui/core-v3/components'
+;<Button variant="primary" size="md" shape="square">
+  Label
+</Button>
 ```
+
+> Colors and typography are handled by `Button` internally. Apply color/typography classes manually only when building **custom layouts** outside of component primitives.
 
 ---
 
-## Status Badge Patterns
+## Core Rules
 
-```tsx
-// Success
-<span className="bg-sf-success-sec text-onsf-text-success border border-border-success rounded-full px-2 py-0.5 text-body-03">
-  Active
-</span>
+1. **Token-first** — Never use raw Tailwind colors or sizing.
 
-// Error
-<span className="bg-sf-error-sec text-onsf-text-error border border-border-error rounded-full px-2 py-0.5 text-body-03">
-  Rejected
-</span>
+   ```
+   ❌  text-gray-500   bg-white   border-gray-200   text-sm font-medium
+   ✅  text-content-sec   bg-sf-screen   border-border-neutral   text-body-02
+   ```
 
-// Warning
-<span className="bg-sf-warning-sec text-onsf-text-warning border border-border-warning rounded-full px-2 py-0.5 text-body-03">
-  Pending
-</span>
+2. **Component-first** — Use design system primitives over custom divs. See Component Map above.
 
-// Info
-<span className="bg-sf-info-sec text-onsf-text-info border border-border-info rounded-full px-2 py-0.5 text-body-03">
-  Review
-</span>
-```
+3. **Typography is atomic** — Each `text-*` class already encodes font-size, line-height, weight, and font-family. Never stack additional font utilities on top.
 
----
+4. **Icons only from `@aioz-ui/icon-react`** — Never SVG literals, emoji, or other libraries.
 
-## Icon Usage
+   ```tsx
+   import { Search01Icon } from '@aioz-ui/icon-react'
+   ;<Search01Icon size={16} className="text-icon-neutral" />
+   ```
 
-```tsx
-// Standard icon in nav/body
-<Search01Icon size={16} className="text-icon-neutral" />
+5. **On-surface text** — Text on a `bg-sf-*` surface must use the matching `text-onsf-*` class:
 
-// Icon button (view action)
-<button className="w-8 h-8 rounded-lg border border-border-neutral flex items-center justify-center text-icon-neutral hover:bg-sf-neutral hover:text-title-neutral transition-colors">
-  <EyeOpenIcon size={16} />
-</button>
+   ```
+   bg-sf-pri        →  text-onsf-text-pri
+   bg-sf-error-sec  →  text-onsf-text-error
+   bg-sf-neutral    →  text-onsf-text-neutral
+   ```
 
-// Destructive icon button
-<button className="w-8 h-8 rounded-lg border border-border-error flex items-center justify-center text-onsf-text-error hover:bg-sf-error-sec transition-colors">
-  <Trash01Icon size={16} />
-</button>
-```
+6. **Charts** — Always import from `@aioz-ui/core/components` (not `-v3`). Always wrap in the card shell. Always provide both `categories` and `overwriteCategories`. Read `references/charts.md` before writing any chart code.
 
 ---
 
-## Checklist Before Submitting Code
+## Reference Files
 
-- [ ] All colors use design token classes (no raw Tailwind colors)
-- [ ] All typography uses `text-*` token classes (no `text-sm`, `font-medium`, etc.)
-- [ ] All icons imported from `@aioz-ui/icon-react` with `Icon` suffix
-- [ ] Interactive elements have hover/focus/disabled states using token classes
-- [ ] Component primitives used where applicable (Button, Input, Badge, Table)
+Open the relevant file for deep-dive API docs, full token lists, and component examples:
+
+| File                       | Open When                                                                          |
+| -------------------------- | ---------------------------------------------------------------------------------- |
+| `references/colors.md`     | Full token → Tailwind class tables for text, background, and border tokens         |
+| `references/typography.md` | Full `text-*` class list with font-size, weight, and line-height specs             |
+| `references/icons.md`      | Icon name transformation rule, size guide, and common icon import list             |
+| `references/components.md` | Full props, all variants, and ready-to-use code examples for every component       |
+| `references/charts.md`     | LineChart, AreaChart, BarChart, DonutChart — APIs, variants, legend, hidden-series |
