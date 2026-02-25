@@ -1,0 +1,11 @@
+{
+  "owner": "mariusfit",
+  "slug": "clawhub-skill-deploy-pilot",
+  "displayName": "Clawhub Skill Deploy Pilot",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772004989418,
+    "commit": null
+  },
+  "history": []
+}
