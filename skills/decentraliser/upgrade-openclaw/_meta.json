@@ -1,0 +1,11 @@
+{
+  "owner": "decentraliser",
+  "slug": "upgrade-openclaw",
+  "displayName": "Upgrade Openclaw - Stay on the edge when updating openclaw. Update, audit, discover, propose. Latest features, always.",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1772010858521,
+    "commit": null
+  },
+  "history": []
+}
