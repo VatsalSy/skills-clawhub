@@ -59,7 +59,7 @@ The `domain` field applies domain-specific rules. Supported values: `healthcare`
 
 **Response fields:**
 - `trust_score` (0-100): Weighted composite score across all checks
-- `status`: `PASS`, `FLAG`, or `BLOCK`
+- `status`: `PASS` or `FLAG` (severity communicated via `trust_score` and `remediation.severity`)
 - `checks`: Per-check scores, flags, and details
 - `remediation`: Corrections and agent instructions (when status is not `PASS`)
 - `audit_id`: Unique identifier for the audit record
