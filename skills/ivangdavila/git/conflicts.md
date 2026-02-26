@@ -2,42 +2,35 @@
 
 ## Detection
 
-- Conflicto en archivo binario = git no puede mostrar diff — elegir versión completa
-- Conflicto "both modified" vs "both added" — diferente resolución esperada
-- Archivo renombrado + modificado = git puede no detectar rename — conflicto falso
-- Whitespace-only conflicts escondidos si diff ignora whitespace
+- Binary file conflict = git can't show diff — choose complete version
+- "Both modified" vs "both added" conflict — different resolution expected
+- Renamed + modified file = git may not detect rename — false conflict
+- Whitespace-only conflicts hidden if diff ignores whitespace
 
 ## Resolution
 
-- Markers `<<<<<<<` olvidados en código = compila pero código roto
-- Resolver "accept theirs" pero necesitabas "accept ours" = deshacer difícil
-- Merge commit con conflicto mal resuelto = bug introducido silenciosamente
-- `git checkout --ours` durante rebase = semántica invertida vs merge
+- Markers `<<<<<<<` forgotten in code = compiles but code is broken
+- Resolve "accept theirs" but needed "accept ours" = hard to undo
+- Merge commit with badly resolved conflict = bug introduced silently
+- `git checkout --ours` during rebase = inverted semantics vs merge
 
 ## During Rebase
 
-- Cada commit puede tener conflictos diferentes — resolver N veces, no 1
-- Skip commit durante rebase = commit perdido sin warning claro
-- `--continue` sin resolver todo = error, no merge parcial
-- Abort rebase después de varios commits = vuelves al inicio, trabajo perdido
+- Each commit can have different conflicts — resolve N times, not 1
+- Skip commit during rebase = commit lost without clear warning
+- `--continue` without resolving everything = error, no partial merge
+- Abort rebase after several commits = back to start, work lost
 
 ## Tool Issues
 
-- Merge tool externo puede no guardar = git cree que resolviste pero archivo unchanged
-- Merge tool que borra markers pero no combina código = silently wrong
-- `git mergetool` genera `.orig` backups que pueden committearse por error
-- Three-way merge tools: "local/remote/base" confuso durante rebase (invertido)
-
-## Post-Resolution
-
-- `git add` archivo conflictivo sin resolver todos los markers = commit roto
-- Test suite no corre automáticamente después de merge — bugs post-merge
-- Push sin pull de cambios del otro = force push necesario o más conflictos
-- Merge commit sin mensaje descriptivo = arqueología difícil después
+- External merge tool may not save = git thinks you resolved but file unchanged
+- Merge tool that deletes markers but doesn't combine code = silently wrong
+- `git mergetool` generates `.orig` backups that can be committed by mistake
+- Three-way merge tools: "local/remote/base" confusing during rebase (inverted)
 
 ## Prevention
 
-- Pull frecuente reduce pero no elimina conflictos
-- Archivos grandes modificados por muchos = conflicto garantizado
-- Refactors masivos sin coordinar = merge hell
-- Branches muy largas = conflictos acumulados
+- Pull frequently to avoid large divergences
+- Small, focused commits = smaller conflicts
+- Communicate with team about which files you're editing
+- Use `git diff main` before merging to preview conflicts

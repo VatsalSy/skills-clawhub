@@ -1,13 +1,18 @@
 {
   "owner": "ivangdavila",
   "slug": "git",
-  "displayName": "Git",
+  "displayName": "Git (Essentials + Workflows + Advanced)",
   "latest": {
-    "version": "1.0.4",
-    "publishedAt": 1771505706365,
-    "commit": "https://github.com/openclaw/skills/commit/212974d9c4aaec676e727d300c00d58e6ac38a65"
+    "version": "1.0.7",
+    "publishedAt": 1772018112282,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.4",
+      "publishedAt": 1771505706365,
+      "commit": "https://github.com/openclaw/skills/commit/212974d9c4aaec676e727d300c00d58e6ac38a65"
+    },
     {
       "version": "1.0.2",
       "publishedAt": 1771006096858,

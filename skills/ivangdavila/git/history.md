@@ -2,42 +2,42 @@
 
 ## Reset
 
-- `git reset --hard` pierde cambios uncommitted PERMANENTEMENTE — no hay undo
-- `--hard` vs `--soft` vs `--mixed` — cada uno mueve diferentes cosas
-- Reset de commit pushed = historia diverge — necesitas force push
-- Reset con archivos untracked = untracked sobreviven — puede sorprender
+- `git reset --hard` loses uncommitted changes PERMANENTLY — no undo
+- `--hard` vs `--soft` vs `--mixed` — each moves different things
+- Reset of pushed commit = history diverges — you need force push
+- Reset with untracked files = untracked survive — can surprise you
 
 ## Revert
 
-- Revert crea commit NUEVO — no borra el original
-- Revert de merge commit necesita `-m 1` o `-m 2` — sin él, error
-- Revert de revert = re-aplica cambios — historia confusa
-- Revert de commit antiguo puede tener conflictos con commits posteriores
+- Revert creates NEW commit — doesn't delete the original
+- Revert of merge commit needs `-m 1` or `-m 2` — without it, error
+- Revert of revert = re-applies changes — confusing history
+- Revert of old commit can conflict with later commits
 
 ## Amend
 
-- `--amend` cambia SHA — commit enmendado es commit DIFERENTE
-- Amend de commit pushed = mismos problemas que rebase
-- `--amend` sin staging = solo cambia mensaje
-- Amend accidental en commit equivocado = reflog para recuperar
+- `--amend` changes SHA — amended commit is DIFFERENT commit
+- Amend of pushed commit = same problems as rebase
+- `--amend` without staging = only changes message
+- Accidental amend on wrong commit = use reflog to recover
 
 ## Reflog
 
-- Reflog es LOCAL — no se sincroniza con remote
-- Reflog expira (default 90 días) — commits viejos perdidos
-- `git gc` puede limpiar commits unreachable antes de expiración
-- Reflog de branch borrada está en HEAD reflog, no branch reflog
+- Reflog is LOCAL — doesn't sync with remote
+- Reflog expires (default 90 days) — old commits lost
+- `git gc` can clean unreachable commits before expiration
+- Reflog of deleted branch is in HEAD reflog, not branch reflog
 
-## Interactive Rebase
+## Cherry-pick
 
-- `pick` vs `reword` vs `edit` vs `squash` vs `fixup` — cada uno diferente
-- Borrar línea en editor = commit ELIMINADO sin confirmación
-- Reordenar commits que dependen entre sí = conflictos
-- `drop` explícito más claro que borrar línea
+- Cherry-pick creates new commit with different SHA
+- Cherry-picking then merging = duplicate commits in history
+- Cherry-pick of merge commit needs `-m` flag
+- Conflicts in cherry-pick = resolve same as rebase
 
-## Cherry-Pick
+## Blame
 
-- Cherry-pick NO relaciona los commits — son copias independientes
-- Cherry-pick mismo commit dos veces = duplicado
-- Cherry-pick de merge commit complicado — necesita `-m`
-- Conflictos en cherry-pick = resolver manualmente cada uno
+- `git blame` shows last change, not original author
+- Blame ignores whitespace changes with `-w`
+- `git log -p filename` shows full history of changes
+- Blame on moved code: use `git log --follow` for renamed files

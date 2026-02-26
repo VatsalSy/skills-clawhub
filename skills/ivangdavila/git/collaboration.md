@@ -2,42 +2,35 @@
 
 ## Push/Pull
 
-- `git pull` = fetch + merge — puede crear merge commits inesperados
-- `git pull --rebase` evita merge commits pero puede tener conflictos
-- Push rechazado por non-fast-forward ≠ necesitas force — primero pull
-- `--force` sobreescribe historia de otros — `--force-with-lease` más seguro
+- `git pull` = fetch + merge — can create unexpected merge commits
+- `git pull --rebase` avoids merge commits but can have conflicts
+- Push rejected for non-fast-forward ≠ you need force — pull first
+- `--force` overwrites others' history — `--force-with-lease` is safer
 
 ## Force Push
 
-- `--force` ignora cambios de otros — commits de compañeros perdidos
-- `--force-with-lease` falla si remote cambió — más seguro pero no infalible
-- Force push a main/master = CI/CD references rotas, deploys fallidos
-- Protección de branch en GitHub/GitLab evita force push — configurar siempre
+- `--force` ignores others' changes — coworkers' commits lost
+- `--force-with-lease` fails if remote changed — safer but not foolproof
+- Force push to main/master = broken CI/CD references, failed deploys
+- Branch protection on GitHub/GitLab prevents force push — always configure
 
 ## Remote Branches
 
-- `git fetch` no actualiza working directory — solo refs
-- Branch tracking no se actualiza automáticamente si remote renombra
-- `origin` es convención, no requirement — pueden existir otros remotes
-- `git remote prune origin` limpia refs pero no branches locales
+- `git fetch` doesn't update working directory — only refs
+- Branch tracking doesn't update automatically if remote renames
+- `origin` is convention, not requirement — other remotes can exist
+- `git remote prune origin` cleans refs but not local branches
 
 ## Code Review
 
-- Push durante review = commits nuevos no necesariamente revisados
-- Force push durante review = diff cambia, comments pueden quedar obsoletos
-- Approve antes de CI completo = bugs merged
-- Squash merge pierde historia de commits individuales
+- Push during review = new commits not necessarily reviewed
+- Force push during review = diff changes, comments may become obsolete
+- Approve before CI complete = bugs merged
+- Squash merge loses individual commit history
 
-## Hooks
+## Team Coordination
 
-- Hooks locales no se comparten — cada dev debe configurar
-- Hook lento = push/commit lento — developers lo bypasean con `--no-verify`
-- Server-side hooks vs client-side hooks — server es enforceable
-- Hook que falla en un OS pero no otro — CI sorpresas
-
-## Submodules
-
-- Clone sin `--recurse-submodules` = submodules vacíos
-- Submodule actualizado pero commit padre no = versión vieja checked out
-- Cambios en submodule sin commit en padre = cambios perdidos para otros
-- Submodule URL cambiada = otros devs deben `git submodule sync`
+- Multiple people on same branch = constant conflicts
+- No branch naming convention = chaos in long-running projects
+- Forgetting to pull before starting work = divergent history
+- Rebasing shared branch without warning = teammates' work broken
