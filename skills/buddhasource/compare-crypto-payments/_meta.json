@@ -3,11 +3,16 @@
   "slug": "compare-crypto-payments",
   "displayName": "Compare Crypto Payments",
   "latest": {
-    "version": "1.1.0",
-    "publishedAt": 1771435346628,
-    "commit": "https://github.com/openclaw/skills/commit/daa8d8473c63b4f6fb5127cbc82d899e11061955"
+    "version": "2.0.1",
+    "publishedAt": 1772060309193,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.1.0",
+      "publishedAt": 1771435346628,
+      "commit": "https://github.com/openclaw/skills/commit/daa8d8473c63b4f6fb5127cbc82d899e11061955"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1771193266429,
