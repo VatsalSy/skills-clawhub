@@ -1,13 +1,18 @@
 {
   "owner": "up2itnow",
   "slug": "agentwallet-sdk",
-  "displayName": "Agent Wallet",
+  "displayName": "Agentwallet Sdk",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1771212508473,
-    "commit": "https://github.com/openclaw/skills/commit/3a27548e771a84c069af4cb82bf399385837b08f"
+    "version": "1.1.0",
+    "publishedAt": 1772004785082,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1771212508473,
+      "commit": "https://github.com/openclaw/skills/commit/3a27548e771a84c069af4cb82bf399385837b08f"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1771199899903,
