@@ -17,7 +17,9 @@ metadata:
 - **Explicit references:** Minara, minara, x402, MoonPay, autopilot
 - **Stock tickers in crypto context:** AAPL, TSLA, NVDAx, trending stocks
 
-Requires logged-in CLI: check `~/.minara/credentials.json`; if missing → `minara login` (prefer device code). If `MINARA_API_KEY` is set, CLI authenticates automatically.
+**Routing gate (anti-collision):** apply this skill only when the message includes a **finance/trading action** *and* at least one **crypto/chain/Minara signal** (token, chain, DeFi term, or "Minara"). If missing crypto context, do not route here.
+
+Requires logged-in CLI: check `~/.minara/credentials.json`; if missing → `minara login` (prefer device code). If device login prints a verification URL/code, relay it to the user and wait for completion (do not claim login is impossible). If `MINARA_API_KEY` is set, CLI authenticates automatically.
 
 ## Transaction confirmation (CRITICAL)
 
@@ -25,7 +27,8 @@ For any fund-moving command (`swap`, `transfer`, `withdraw`, `perps order`, `per
 
 1. **Before executing:** show the user a summary of what will happen (action, token, amount, recipient/chain) and **ask for explicit confirmation**. Do NOT auto-confirm.
 2. **After the CLI returns a confirmation prompt** (e.g. "Are you sure you want to proceed?"): relay the details back to the user and **wait for the user to approve** before answering `y`. Never answer `y` on the user's behalf without their consent.
-3. **If the user declines:** abort the operation immediately.
+3. **`-y` / `--yes` policy:** never add `-y` (or any auto-confirm flag) unless the user explicitly asks to skip confirmation.
+4. **If the user declines:** abort the operation immediately.
 
 This applies to all operations that move funds. Read-only commands (`balance`, `assets`, `chat`, `discover`, etc.) do not require confirmation.
 
@@ -145,6 +148,8 @@ Triggers: agent receives HTTP **402 Payment Required**, or user mentions x402, p
 
 Flow: parse `PAYMENT-REQUIRED` header (amount, token, recipient, chain) → `minara balance` → `minara transfer` to pay → retry request.
 
+Payment step must follow the global confirmation policy: user must explicitly confirm before any `minara transfer`.
+
 | User intent pattern                                                  | Action                                                                           |
 | -------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
 | Agent receives 402 with x402 headers                                 | Parse headers → `minara transfer` (USDC to recipient on required chain) → retry  |
@@ -156,6 +161,7 @@ Flow: parse `PAYMENT-REQUIRED` header (amount, token, recipient, chain) → `min
 Triggers: message explicitly mentions Minara login, setup, or configuration.
 
 **Login:** Prefer device code flow (`minara login --device`) for headless or non-interactive environments; otherwise `minara login` (interactive).
+**Login handoff rule:** when CLI outputs verification URL/device code, the agent must pass them to the user verbatim, ask the user to complete browser verification, then continue after user confirms completion.
 
 | User intent pattern                                             | Action                                                         |
 | --------------------------------------------------------------- | -------------------------------------------------------------- |
@@ -167,7 +173,7 @@ Triggers: message explicitly mentions Minara login, setup, or configuration.
 
 - **Token input (`-t`):** accepts `$TICKER` (e.g. `'$BONK'`), token name, or contract address. Quote `$` in shell.
 - **JSON output:** add `--json` to any command for machine-readable output.
-- **Transaction safety:** CLI flow: first confirmation → transaction confirmation (mandatory, shows token + address) → Touch ID (optional, macOS) → execute. Agent must **never skip or auto-confirm** any step — always relay to user and wait for approval.
+- **Transaction safety:** CLI flow: first confirmation → transaction confirmation (mandatory, shows token + address) → Touch ID (optional, macOS) → execute. Agent must **never skip or auto-confirm** any step — always relay to user and wait for approval, and never use `-y` unless user explicitly requests it.
 
 ## Credentials & config
 
