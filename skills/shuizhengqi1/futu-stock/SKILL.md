@@ -2,319 +2,301 @@
 name: futu-stock
 description: Access Futu stock market data via MCP server - real-time quotes, K-lines, options, account info for HK/US/CN markets
 metadata: {"openclaw": {"emoji": "📈", "requires": {"bins": ["python3", "futu-mcp-server"], "env": ["FUTU_HOST", "FUTU_PORT"]}, "primaryEnv": "FUTU_HOST"}}
-version: 1.0.0
+version: 1.1.0
 ---
 
 # futu-stock Skill
 
-This skill provides dynamic access to the Futu stock market data MCP server, supporting real-time quotes, historical K-lines, options data, and account information for Hong Kong, US, and China stock markets.
+基于富途 OpenAPI 的股票行情 Skill，通过 MCP 协议访问港股、美股、A 股实时行情、K 线、期权及账户信息。
 
-## Prerequisites
+**MCP 源码**: https://github.com/shuizhengqi1/futu-stock-mcp-server
 
-Before using this skill, you need to set up two components:
+---
 
-### 1. Install futu-stock-mcp-server
+## 一、整体流程
 
-Install the MCP server package:
-
-```bash
-pip install futu-stock-mcp-server
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  1. 环境检测                                                              │
+│     ├─ 检测 python3、futu-mcp-server、mcp 包、OpenD 状态                    │
+│     └─ 输出检测结果                                                        │
+├─────────────────────────────────────────────────────────────────────────┤
+│  2. 依赖处理                                                              │
+│     ├─ 若缺少 futu-mcp-server → 执行 pipx install futu-stock-mcp-server   │
+│     ├─ 若缺少 mcp 包 → 执行 pip install mcp                                │
+│     └─ 若 OpenD 已安装但未启动 → 调用时尝试启动（需配置 OPEND_PATH）          │
+├─────────────────────────────────────────────────────────────────────────┤
+│  3. 查询逻辑                                                              │
+│     ├─ 有明确股票代码（如 HK.00700、US.AAPL）→ 直接调用 get_stock_quote /    │
+│     │   get_market_snapshot / get_history_kline 等                         │
+│     └─ 无股票代码（如「港股 10–50 元的股票」）→ 使用 get_stock_filter 筛选     │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Repository**: https://github.com/shuizhengqi1/futu-stock-mcp-server
+---
 
-After installation, verify the command is available:
+## 二、环境检测与依赖处理
+
+### 2.1 执行环境检测
 
 ```bash
-which futu-mcp-server
-# or
-futu-mcp-server --help
+cd {baseDir}
+python3 executor.py --check-env
 ```
 
-### 2. Install and Configure Futu OpenD
+输出示例：
+- `python3`: OK / 缺失
+- `futu-mcp-server`: OK / 缺失
+- `mcp 包`: OK / 缺失
+- `OpenD (FUTU_HOST:FUTU_PORT)`: 监听中 / 未监听
 
-Futu OpenD is the gateway service that connects to Futu's trading platform. You must install and run it before using this skill.
+### 2.2 依赖缺失时的安装
 
-**Installation Guide**: https://openapi.futunn.com/futu-api-doc/opend/opend-cmd.html
+| 依赖 | 检测方式 | 安装命令 |
+|------|----------|----------|
+| futu-mcp-server | `which futu-mcp-server` | `pipx install futu-stock-mcp-server` 或 `pip install futu-stock-mcp-server` |
+| mcp 包 | `python3 -c "import mcp"` | `pip install mcp` |
+| Futu OpenD | `netstat -an \| grep 11111` 或 `lsof -i :11111` | 见下方 OpenD 安装 |
 
-**Quick Setup Steps**:
+### 2.3 OpenD 安装与启动
 
-1. **Download OpenD** for your platform (Windows/MacOS/CentOS/Ubuntu)
-2. **Extract** the package and locate:
-   - `FutuOpenD.xml` (or `OpenD.xml`) - Configuration file
-   - `Appdata.dat` - Required data file
-3. **Configure** `FutuOpenD.xml`:
-   - Set `login_account`: Your Futu account (platform ID, email, or phone)
-   - Set `login_pwd`: Your login password (or use `login_pwd_md5` for MD5 hash)
-   - Set `api_port`: API port (default: 11111)
-   - Set `ip`: Listen address (default: 127.0.0.1)
-4. **Test Run**: Start OpenD once to verify configuration:
-   ```bash
-   # Windows
-   FutuOpenD.exe
-   
-   # Linux
-   ./FutuOpenD
-   
-   # MacOS
-   ./FutuOpenD.app/Contents/MacOS/FutuOpenD
-   ```
-5. **Background Start**: Once verified, start OpenD in background using `nohup`:
-   ```bash
-   # Linux/MacOS
-   nohup ./FutuOpenD > opend.log 2>&1 &
-   
-   # Or with specific config file
-   nohup ./FutuOpenD -cfg_file=/path/to/FutuOpenD.xml > opend.log 2>&1 &
-   ```
+**下载**: https://openapi.futunn.com/futu-api-doc/opend/opend-cmd.html
 
-**Important Notes**:
-- OpenD must be running before using this skill
-- Default API port is `11111` (configure in `FutuOpenD.xml`)
-- Ensure OpenD is accessible at the configured `FUTU_HOST` and `FUTU_PORT`
-- For production use, consider using a process manager (systemd, supervisor, etc.) instead of `nohup`
+**配置** `FutuOpenD.xml`：
+- `login_account`: 富途账号
+- `login_pwd`: 登录密码
+- `api_port`: 默认 11111
+- `ip`: 默认 127.0.0.1
 
-### 3. Verify Setup
+**启动**：
+```bash
+# Linux/macOS
+nohup ./FutuOpenD > opend.log 2>&1 &
 
-After both components are installed:
+# Windows
+FutuOpenD.exe
+```
 
-1. **Check OpenD is running**:
-   ```bash
-   # Check if port is listening
-   netstat -an | grep 11111
-   # or
-   lsof -i :11111
-   ```
+### 2.4 调用时自动启动 OpenD
 
-2. **Test MCP server connection**:
-   ```bash
-   # Set environment variables
-   export FUTU_HOST=127.0.0.1
-   export FUTU_PORT=11111
-   
-   # Test MCP server
-   futu-mcp-server
-   ```
+若已安装 OpenD 但未启动，可设置 `OPEND_PATH` 环境变量，executor 在检测到端口未监听时会尝试启动：
 
-If everything is configured correctly, you can now use this skill.
+```bash
+export OPEND_PATH=/path/to/opend/directory  # 含 FutuOpenD 可执行文件的目录
+```
 
-## Complete Setup Workflow
+---
 
-**Summary of the complete setup process**:
+## 三、查询逻辑（核心规则）
 
-1. **Install futu-stock-mcp-server**:
-   ```bash
-   pip install futu-stock-mcp-server
-   ```
+### 3.1 有明确股票代码
 
-2. **Install and configure Futu OpenD**:
-   - Download OpenD from Futu's official site
-   - Extract and configure `FutuOpenD.xml` with your account credentials
-   - Test run OpenD once to ensure configuration is correct
-   - Start OpenD in background using `nohup`:
-     ```bash
-     nohup ./FutuOpenD > opend.log 2>&1 &
-     ```
+用户给出具体代码（如 `HK.00700`、`00700`、`腾讯` 且能映射到代码）时，直接按代码查询：
 
-3. **Configure environment variables**:
-   - Set `FUTU_HOST` (default: `127.0.0.1`)
-   - Set `FUTU_PORT` (default: `11111`)
+| 需求类型 | 推荐工具 | 示例 |
+|----------|----------|------|
+| 实时报价 | `get_stock_quote` 或 `get_market_snapshot` | `{"tool": "get_market_snapshot", "arguments": {"symbols": ["HK.00700"]}}` |
+| 历史 K 线 | `get_history_kline` | `{"tool": "get_history_kline", "arguments": {"symbol": "HK.00700", "ktype": "K_DAY", "start": "2026-01-01", "end": "2026-02-25"}}` |
+| 期权链 | `get_option_chain` | `{"tool": "get_option_chain", "arguments": {"symbol": "HK.00700", "start": "2026-04-01", "end": "2026-06-30"}}` |
+| 需订阅的数据 | 先 `subscribe` 再查 | 见下方「需订阅的工具」 |
 
-4. **Use the skill**: Once OpenD is running and environment variables are set, you can use this skill to access Futu stock market data.
+**股票代码格式**: `{市场}.{代码}`  
+- 港股: `HK.00700`  
+- 美股: `US.AAPL`  
+- 沪市: `SH.600519`  
+- 深市: `SZ.000001`  
 
-**Important**: OpenD must be running before using this skill. If OpenD stops, the skill will not be able to connect to Futu's services.
+### 3.2 无股票代码（条件筛选）
 
-## Context Efficiency
-
-Traditional MCP approach:
-- All 20+ tools loaded at startup
-- Estimated context: 500+ tokens
-
-This skill approach:
-- Metadata only: ~100 tokens
-- Full instructions (when used): ~5k tokens
-- Tool execution: 0 tokens (runs externally)
-
-## How This Works
-
-Instead of loading all MCP tool definitions upfront, this skill:
-1. Tells you what tools are available (just names and brief descriptions)
-2. You decide which tool to call based on the user's request
-3. Generate a JSON command to invoke the tool
-4. The executor handles the actual MCP communication
-
-## Available Tools
-
-### Market Data Query
-- `get_stock_quote`: Get stock quote data for given symbols (price, volume, turnover, etc.)
-- `get_market_snapshot`: Get market snapshot with bid/ask data for given symbols
-- `get_cur_kline`: Get current K-line data (requires subscription first)
-- `get_history_kline`: Get historical K-line data (limited to 30 stocks per 30 days)
-- `get_rt_data`: Get real-time data (requires RT_DATA subscription)
-- `get_ticker`: Get ticker data (requires TICKER subscription)
-- `get_order_book`: Get order book data (requires ORDER_BOOK subscription)
-- `get_broker_queue`: Get broker queue data (requires BROKER subscription)
-
-### Subscription Management
-- `subscribe`: Subscribe to real-time data (QUOTE, ORDER_BOOK, TICKER, RT_DATA, BROKER, K-lines)
-- `unsubscribe`: Unsubscribe from real-time data
-
-### Options Data
-- `get_option_chain`: Get option chain data with Greeks
-- `get_option_expiration_date`: Get option expiration dates
-- `get_option_condor`: Get option condor strategy data
-- `get_option_butterfly`: Get option butterfly strategy data
-
-### Account Information
-- `get_account_list`: Get account list
-- `get_funds`: Get account funds information
-- `get_positions`: Get account positions
-- `get_max_power`: Get maximum trading power
-- `get_margin_ratio`: Get margin ratio for a security
-
-### Market Status
-- `get_market_state`: Get market state
-
-**Supported Markets:**
-- HK: Hong Kong stocks (e.g., `HK.00700`)
-- US: US stocks (e.g., `US.AAPL`)
-- SH: Shanghai stocks (e.g., `SH.600519`)
-- SZ: Shenzhen stocks (e.g., `SZ.000001`)
-
-## Usage Pattern
-
-When the user's request matches this skill's capabilities:
-
-**Step 1: Identify the right tool** from the list above
-
-**Step 2: Generate a tool call** in this JSON format:
+用户只给条件（如「港股 10–50 元的股票」「纳斯达克涨幅前 20」）时，使用 `get_stock_filter`：
 
 ```json
 {
-  "tool": "tool_name",
+  "tool": "get_stock_filter",
   "arguments": {
-    "param1": "value1",
-    "param2": "value2"
+    "market": "HK.Motherboard",
+    "base_filters": [{
+      "field_name": 5,
+      "filter_min": 10.0,
+      "filter_max": 50.0,
+      "sort_dir": 1
+    }],
+    "page": 1,
+    "page_size": 50
   }
 }
 ```
 
-**Step 3: Execute via bash:**
+**常用 market 值**:
+- `HK.Motherboard` 港股主板
+- `HK.GEM` 港股创业板
+- `US.NASDAQ` 纳斯达克
+- `US.NYSE` 纽交所
+- `SH.3000000` 沪市主板
+- `SZ.3000004` 深市创业板
+
+**base_filters 常用 field_name**（参考富途 StockField）:
+- 5: 当前价
+- 6: 涨跌幅
+- 7: 成交量
+- 8: 成交额
+- 1: 排序
+
+---
+
+## 四、可用工具
+
+### 行情
+- `get_stock_quote`: 报价
+- `get_market_snapshot`: 快照（含买卖盘）
+- `get_cur_kline`: 当前 K 线（需先 subscribe）
+- `get_history_kline`: 历史 K 线
+- `get_rt_data`: 实时数据（需 subscribe RT_DATA）
+- `get_ticker`: 逐笔（需 subscribe TICKER）
+- `get_order_book`: 买卖盘（需 subscribe ORDER_BOOK）
+- `get_broker_queue`: 经纪队列（需 subscribe BROKER）
+
+### 订阅
+- `subscribe`: 订阅 QUOTE / ORDER_BOOK / TICKER / RT_DATA / BROKER / K_1M / K_DAY 等
+- `unsubscribe`: 取消订阅
+
+### 期权
+- `get_option_chain`: 期权链
+- `get_option_expiration_date`: 到期日
+- `get_option_condor`: 鹰式策略
+- `get_option_butterfly`: 蝶式策略
+
+### 账户
+- `get_account_list`: 账户列表
+- `get_funds`: 资金
+- `get_positions`: 持仓
+- `get_max_power`: 最大交易力
+- `get_margin_ratio`: 保证金比例
+
+### 市场
+- `get_market_state`: 市场状态
+- `get_security_info`: 证券信息
+- `get_security_list`: 证券列表
+- **`get_stock_filter`**: 条件筛选（无代码时使用）
+
+---
+
+## 五、调用方式
+
+### 执行工具
 
 ```bash
 cd {baseDir}
-python3 executor.py --call 'YOUR_JSON_HERE'
+python3 executor.py --call '{"tool": "get_market_snapshot", "arguments": {"symbols": ["HK.00700"]}}'
 ```
 
-IMPORTANT: Use `{baseDir}` to reference the skill folder path.
-
-## Getting Tool Details
-
-If you need detailed information about a specific tool's parameters:
+### 查看工具参数
 
 ```bash
 cd {baseDir}
-python3 executor.py --describe tool_name
+python3 executor.py --describe get_stock_filter
 ```
 
-This loads ONLY that tool's schema, not all tools.
-
-## Examples
-
-### Example 1: Get stock quote
-
-User: "查询 HK.03690 的最新价"
-
-Your workflow:
-1. Identify tool: `get_stock_quote` or `get_market_snapshot`
-2. Generate call JSON
-3. Execute:
+### 列出所有工具
 
 ```bash
 cd {baseDir}
-python3 executor.py --call '{"tool": "get_market_snapshot", "arguments": {"symbols": ["HK.03690"]}}'
+python3 executor.py --list
 ```
 
-### Example 2: Subscribe and get real-time data
+---
 
-For tools requiring subscription (like `get_cur_kline`, `get_rt_data`):
+## 六、常见问题
 
-1. First subscribe:
-```bash
-cd {baseDir}
-python3 executor.py --call '{"tool": "subscribe", "arguments": {"symbols": ["HK.03690"], "sub_types": ["QUOTE", "K_DAY"]}}'
-```
-
-2. Then query:
-```bash
-cd {baseDir}
-python3 executor.py --call '{"tool": "get_cur_kline", "arguments": {"symbol": "HK.03690", "ktype": "K_DAY", "count": 100}}'
-```
-
-### Example 3: Get historical K-line data
+### Q1: `futu-mcp-server` 找不到
 
 ```bash
-cd {baseDir}
-python3 executor.py --call '{"tool": "get_history_kline", "arguments": {"symbol": "HK.03690", "ktype": "K_DAY", "start": "2026-01-01", "end": "2026-02-13", "count": 100}}'
+pipx install futu-stock-mcp-server
+# 或
+pip install futu-stock-mcp-server
+which futu-mcp-server
 ```
 
-## Error Handling
+### Q2: 连接 OpenD 失败 / 端口未监听
 
-If the executor returns an error:
-- Check the tool name is correct
-- Verify required arguments are provided
-- Ensure the MCP server is accessible
+```bash
+# 检查端口
+lsof -i :11111
+# 或
+netstat -an | grep 11111
 
-## Performance Notes
+# 未监听则启动 OpenD（见 2.3）
+# 或配置 OPEND_PATH 让 executor 自动启动（见 2.4）
+```
 
-Context usage comparison for this skill:
+### Q3: `mcp` 包未安装
 
-| Scenario | MCP (preload) | Skill (dynamic) |
-|----------|---------------|-----------------|
-| Idle | 500+ tokens | ~100 tokens |
-| Active | 500+ tokens | ~5k tokens |
-| Executing | 500+ tokens | 0 tokens |
+```bash
+pip install mcp
+```
 
-Savings: Significant reduction in context usage for typical workflows.
+### Q4: 股票代码格式错误
 
-## Configuration
+必须使用 `{市场}.{代码}`，例如：
+- 港股: `HK.00700`（不是 `00700`）
+- 美股: `US.AAPL`（不是 `AAPL`）
 
-This skill requires:
-- **Python 3** (`python3` must be available on PATH)
-- **futu-stock-mcp-server**: Installed via `pip install futu-stock-mcp-server`
-- **Futu OpenD**: Installed and running (see Prerequisites above)
-- **Environment variables**:
-  - `FUTU_HOST`: Futu OpenD host address (default: `127.0.0.1`)
-  - `FUTU_PORT`: Futu OpenD API port (default: `11111`)
+### Q5: 需要订阅才能用的工具
 
-### OpenClaw Configuration
+`get_cur_kline`、`get_rt_data`、`get_ticker`、`get_order_book`、`get_broker_queue` 需先 `subscribe`：
 
-Configure in `~/.openclaw/openclaw.json`:
+```bash
+# 1. 先订阅
+python3 executor.py --call '{"tool": "subscribe", "arguments": {"symbols": ["HK.00700"], "sub_types": ["QUOTE", "K_DAY"]}}'
+
+# 2. 再查询
+python3 executor.py --call '{"tool": "get_cur_kline", "arguments": {"symbol": "HK.00700", "ktype": "K_DAY", "count": 100}}'
+```
+
+### Q6: get_stock_filter 限频
+
+- 每 30 秒最多 10 次
+- 每页最多 200 条
+- 建议不超过 250 个筛选条件
+
+### Q7: 历史 K 线限制
+
+- 30 天内最多 30 只股票
+- 需合理控制 `start` 和 `end` 范围
+
+---
+
+## 七、配置
 
 ```json5
+// ~/.openclaw/openclaw.json
 {
   skills: {
     entries: {
       "futu-stock": {
         enabled: true,
         env: {
-          FUTU_HOST: "your-futu-host",
-          FUTU_PORT: "your-futu-port",
-        },
-      },
-    },
-  },
+          FUTU_HOST: "127.0.0.1",
+          FUTU_PORT: "11111",
+          OPEND_PATH: "/path/to/opend"  // 可选，用于自动启动 OpenD
+        }
+      }
+    }
+  }
 }
 ```
 
-## Notes
+---
 
-- Stock code format: `{market}.{code}` (e.g., `HK.00700`, `US.AAPL`, `SH.600519`)
-- Some tools require subscription before querying (see tool descriptions)
-- Historical K-line data is limited to 30 stocks per 30 days
-- Maximum 100 symbols per subscription request
-- Maximum 500 symbols per socket connection
+## 八、决策流程速查
+
+1. **先做环境检测**：`python3 executor.py --check-env`
+2. **有缺失**：按 2.2 安装缺失依赖
+3. **有股票代码**：用 `get_stock_quote` / `get_market_snapshot` / `get_history_kline` 等
+4. **无股票代码**：用 `get_stock_filter` 按条件筛选
+5. **需订阅**：先 `subscribe` 再查
+6. **出错**：按第六节常见问题排查
 
 ---
 
-*This skill provides dynamic access to Futu stock market data via MCP server.*
+*本 Skill 通过 MCP 协议访问富途 OpenAPI，数据来自 https://github.com/shuizhengqi1/futu-stock-mcp-server*
