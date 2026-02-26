@@ -13,7 +13,9 @@ An [OpenClaw](https://openclaw.ai/) skill for managing credentials in a [Bitward
 ## Requirements
 
 - [`bw` CLI](https://bitwarden.com/help/cli/) installed and in PATH
+- [`jq`](https://jqlang.github.io/jq/) for editing vault items
 - An active Bitwarden session (`BW_SESSION` environment variable)
+- `curl` and `unzip` (needed only if using the built-in install script)
 
 ## Installation
 
@@ -29,7 +31,7 @@ clawhub install bitclawden
 
 ## Security
 
-This skill is **owner-only**. It will refuse to execute in group chats or for non-owner users. Passwords are never shown unless explicitly requested in a private context.
+This skill accesses your Bitwarden vault. Passwords are never shown unless explicitly requested. Treat `BW_SESSION` as a secret — do not commit it or expose it in logs.
 
 ## License
 

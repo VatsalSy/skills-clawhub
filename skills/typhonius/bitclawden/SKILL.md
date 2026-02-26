@@ -7,7 +7,7 @@ metadata:
     "openclaw":
       {
         "emoji": "🔐",
-        "requires": { "bins": ["bw"], "env": ["BW_SESSION"] },
+        "requires": { "bins": ["bw", "jq"], "env": ["BW_SESSION"] },
         "primaryEnv": "BW_SESSION",
         "install":
           [
@@ -16,6 +16,7 @@ metadata:
               "kind": "script",
               "script": "PLATFORM=$(uname -s | tr '[:upper:]' '[:lower:]'); [ \"$PLATFORM\" = 'darwin' ] && PLATFORM='macos'; curl -sL \"https://vault.bitwarden.com/download/?app=cli&platform=${PLATFORM}\" -o /tmp/bw.zip && unzip -o /tmp/bw.zip -d ~/.local/bin/ && chmod +x ~/.local/bin/bw && rm /tmp/bw.zip",
               "bins": ["bw"],
+              "requires": ["curl", "unzip"],
               "label": "Install Bitwarden CLI to ~/.local/bin",
             },
           ],
