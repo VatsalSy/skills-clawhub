@@ -5,16 +5,32 @@
 set -e
 
 # Configuration - customize these for your environment
+# Detect OS and set temp directory (cross-platform: Linux/macOS/Windows)
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "mingw"* || -n "$MSYSTEM" ]]; then
+    # Windows (Git Bash / MSYS)
+    TEMP_DIR="${TEMP:-${TMP:-/tmp}}"
+elif [[ -n "$TMPDIR" ]]; then
+    # macOS
+    TEMP_DIR="$TMPDIR"
+else
+    # Linux
+    TEMP_DIR="/tmp"
+fi
+
 TS=$(date +%Y%m%d-%H%M%S)
-BACKUP_DIR="/tmp/safe-backup-$TS"
+BACKUP_DIR="$TEMP_DIR/safe-backup-$TS"
 STATE_DIR="${OPENCLAW_STATE_DIR:-$HOME/.openclaw}"
 WORKSPACE_DIR="${OPENCLAW_WORKSPACE_DIR:-$HOME/.openclaw/workspace}"
 
 # Sensitive files to exclude (add more as needed)
 EXCLUDE_PATTERNS=(
+    # Logs & Sessions
     "*.log"
     "*.log.*"
     "sessions.json"
+    "logs/"
+    
+    # Credentials & Keys
     "*.key"
     "*.pem"
     ".env"
@@ -26,6 +42,32 @@ EXCLUDE_PATTERNS=(
     "auth-profiles.json"
     "credentials.json"
     "api-keys.json"
+    
+    # Runtime generated (not needed for migration)
+    "*.sock"
+    "*.pid"
+    "*.lock"
+    "node_modules/"
+    "dist/"
+    ".cache/"
+    "temp/"
+    "tmp/"
+    
+    # OpenClaw runtime directories (not needed for migration)
+    "sessions/"
+    "browser/"
+    "canvas/"
+    "media/"
+    "backups/"
+    "delivery-queue/"
+    "devices/"
+    "subagents/"
+    "completions/"
+    
+    # Backup files
+    "*.bak"
+    "*.save"
+    "update-check.json"
 )
 
 echo "=== Safe Backup ==="
@@ -64,7 +106,7 @@ fi
 
 # 4. Package
 echo "[4/4] Packaging backup..."
-cd /tmp
+cd "$TEMP_DIR"
 tar -czf "safe-backup-$TS.tar.gz" "safe-backup-$TS"
 
 # Cleanup temp directory
@@ -74,7 +116,7 @@ BACKUP_FILE="safe-backup-$TS.tar.gz"
 
 echo ""
 echo "=== Backup Complete ==="
-echo "Backup file: /tmp/$BACKUP_FILE"
+echo "Backup file: $TEMP_DIR/$BACKUP_FILE"
 echo ""
 echo "⚠️  Security Notes:"
 echo "1. This backup may contain sensitive files - review before sharing"
@@ -84,7 +126,7 @@ echo ""
 echo "Next steps (manual):"
 echo "1. Create a private GitHub repository (recommended)"
 echo "2. git clone repository locally"
-echo "3. Extract: tar -xzf /tmp/$BACKUP_FILE"
+echo "3. Extract: tar -xzf $TEMP_DIR/$BACKUP_FILE"
 echo "4. Commit and push: cd <backup-dir> && git add . && git commit -m 'Backup $TS' && git push"
 echo ""
-echo "⚠️  Remember to delete unencrypted backup from /tmp!"
+echo "⚠️  Remember to delete unencrypted backup from $TEMP_DIR!"

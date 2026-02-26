@@ -3,11 +3,16 @@
   "slug": "safe-backup",
   "displayName": "safe-backup",
   "latest": {
-    "version": "1.0.4",
-    "publishedAt": 1771846994723,
-    "commit": "https://github.com/openclaw/skills/commit/5ab9269fd6ca1f19f1811be23b89da668d9a59d2"
+    "version": "1.0.5",
+    "publishedAt": 1772082320004,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.4",
+      "publishedAt": 1771846994723,
+      "commit": "https://github.com/openclaw/skills/commit/5ab9269fd6ca1f19f1811be23b89da668d9a59d2"
+    },
     {
       "version": "1.0.2",
       "publishedAt": 1771815538319,
