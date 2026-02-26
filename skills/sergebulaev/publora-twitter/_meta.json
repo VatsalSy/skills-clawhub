@@ -1,11 +1,17 @@
 {
   "owner": "sergebulaev",
   "slug": "publora-twitter",
-  "displayName": "Publora — Twitter",
+  "displayName": "Publora — X / Twitter",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1771618258341,
-    "commit": "https://github.com/openclaw/skills/commit/5d421c6875b3efcdb20e713fb328e68593a20566"
+    "version": "1.1.0",
+    "publishedAt": 1772064199801,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1771618258341,
+      "commit": "https://github.com/openclaw/skills/commit/5d421c6875b3efcdb20e713fb328e68593a20566"
+    }
+  ]
 }
