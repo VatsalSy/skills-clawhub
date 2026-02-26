@@ -1,6 +1,6 @@
 ---
 name: photo-captions
-description: Generate platform-tuned social media captions for photography. Use when a user shares a photo and wants captions for posting. Triggers on sharing photos with context like location, camera, lens, film stock, subject, or asking for captions/posts. Supports Instagram, Flickr, X/Twitter, Glass, Tumblr, Threads, Bluesky, 500px, Reddit, Facebook, VSCO, and Pinterest.
+description: Generate platform-tuned social media captions for photography. Use when a user shares a photo and wants captions for posting. Triggers on sharing photos with context like location, camera, lens, film stock, subject, or asking for captions/posts. Supports Instagram, Flickr, X/Twitter, Glass, Tumblr, Threads, Bluesky, 500px, Reddit, Facebook, VSCO, Pinterest, and Substack.
 ---
 
 # Photo Captions
@@ -66,6 +66,13 @@ If the user specifies gear (camera body, lens, film stock, digital settings), in
 - **Format**: 1 line max. Sometimes just a single word or short phrase. No hashtags.
 - **Vibe**: Think whispered, not announced. VSCO captions are closer to titles than descriptions. The less you say, the better.
 - **No gear talk** unless it's film stock and even then, keep it subtle.
+
+### 📝 Substack
+- **Tone**: Narrative, essayistic, author-voiced. Substack readers expect prose — this is a photo caption inside a long-form piece, not a social post.
+- **Format**: 2-4 sentences that work as in-line caption text below a photo in a newsletter. Rich with context — where you were, what you noticed, why it stuck. Reads like a magazine photo caption crossed with a personal essay fragment.
+- **Include**: Gear if it adds texture to the story. Location and conditions. The feeling behind the frame, not just the description of it.
+- **Vibe**: New Yorker caption meets travel journal. Specific, unhurried, earned. The reader should feel like they're getting the real story, not a caption.
+- **No hashtags**, no engagement bait, no calls to action.
 
 ### 📌 Pinterest
 - **Tone**: Descriptive and searchable. Pinterest is a discovery engine — think SEO meets aesthetics.
