@@ -10,6 +10,8 @@
  *   npx tsx scripts/run-tool.ts pay_and_call '{"url":"http://localhost:3001/api/chat","method":"POST","body":{"prompt":"hello"}}'
  *   npx tsx scripts/run-tool.ts smart_call '{"task":"Generate a cat image","category":"Image"}'
  *   npx tsx scripts/run-tool.ts manage_wallet '{"action":"create","dailyLimit":"0.5"}'
+ *   npx tsx scripts/run-tool.ts manage_wallet '{"action":"authorize_agent","walletAddress":"0x...","agentAddress":"0x..."}'
+ *   npx tsx scripts/run-tool.ts manage_wallet '{"action":"pay","walletAddress":"0x...","serviceId":1,"amount":"0.01"}'
  *   npx tsx scripts/run-tool.ts get_agent_info
  */
 
@@ -39,7 +41,7 @@ Available tools:
   discover_services   — Discover AI services on-chain
   pay_and_call        — x402 auto-payment call to AI service
   smart_call          — Discover + select + pay + call in one step
-  manage_wallet       — Create/fund/query/limit Agent wallet
+  manage_wallet       — Create/fund/query/limit/authorize/revoke/pay Agent wallet
   subscribe           — Subscribe to a service plan
   create_escrow       — Create escrow for custom job
   get_agent_info      — Get agent address/balance/network

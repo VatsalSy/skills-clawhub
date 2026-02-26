@@ -190,7 +190,7 @@ Available tools:
 - agentxpay_discover_services: Find AI services registered on-chain (filter by category/price)
 - agentxpay_pay_and_call: Call an AI service with automatic x402 payment (HTTP 402 → auto-pay → retry)
 - agentxpay_smart_call: One-step intelligent service discovery + payment + call
-- agentxpay_manage_wallet: Create/manage Agent smart contract wallets with daily spending limits
+- agentxpay_manage_wallet: Create/manage Agent smart contract wallets with daily spending limits, authorize/revoke agents, and pay for services using wallet balance
 - agentxpay_subscribe: Subscribe to recurring AI service plans
 - agentxpay_create_escrow: Lock funds in escrow for custom AI jobs
 - agentxpay_get_agent_info: Check agent wallet address and balance
@@ -199,6 +199,12 @@ When a user asks to use an external AI service (image generation, code assistant
 1. Use agentxpay_discover_services to find available services and prices
 2. Confirm with the user before making payment
 3. Use agentxpay_pay_and_call or agentxpay_smart_call to execute
+
+Agent Wallet payment flow (for authorized agents):
+1. Create a wallet: manage_wallet action="create" dailyLimit="1.0"
+2. Fund the wallet: manage_wallet action="fund" walletAddress="0x..." amount="10.0"
+3. Authorize an agent: manage_wallet action="authorize_agent" walletAddress="0x..." agentAddress="0x..."
+4. Pay via wallet: manage_wallet action="pay" walletAddress="0x..." serviceId=1 amount="0.01"
 
 All payments are transparent on-chain and verifiable via transaction hash.
 `.trim();

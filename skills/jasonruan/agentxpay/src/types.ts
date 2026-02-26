@@ -35,13 +35,17 @@ export interface PayAndCallParams {
 
 export interface ManageWalletParams {
   /** Action to perform */
-  action: "create" | "fund" | "get_info" | "set_limit";
+  action: "create" | "fund" | "get_info" | "set_limit" | "authorize_agent" | "revoke_agent" | "pay";
   /** Daily spending limit in MON (for create / set_limit) */
   dailyLimit?: string;
-  /** Amount in MON (for fund) */
+  /** Amount in MON (for fund / pay) */
   amount?: string;
-  /** Wallet address (required for fund / get_info / set_limit) */
+  /** Wallet address (required for fund / get_info / set_limit / authorize_agent / revoke_agent / pay) */
   walletAddress?: string;
+  /** Agent address to authorize or revoke */
+  agentAddress?: string;
+  /** On-chain service ID (for pay) */
+  serviceId?: number;
 }
 
 export interface SubscribeServiceParams {
@@ -109,6 +113,13 @@ export interface WalletInfo {
   dailySpent: string;  // MON
   remainingAllowance: string; // MON
   txHash?: string;
+  /** Authorized agent address (for authorize_agent / revoke_agent) */
+  agentAddress?: string;
+  /** Whether the agent is currently authorized */
+  isAuthorized?: boolean;
+  /** Payment details (for pay action) */
+  paymentServiceId?: string;
+  paymentAmount?: string;
 }
 
 export interface SubscribeResult {

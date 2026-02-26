@@ -47,7 +47,7 @@ command-tool: agentxpay_smart_call
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | category | string | 否 | 服务类别过滤，如 "LLM"、"Image"、"Code" |
-| maxPrice | string | 否 | 最大单价（ETH），如 "0.05" |
+| maxPrice | string | 否 | 最大单价（MON），如 "0.05" |
 
 **返回**：`{ services: [...], totalCount: number }`
 
@@ -93,7 +93,7 @@ command-tool: agentxpay_smart_call
 |------|------|------|------|
 | task | string | **是** | 任务描述，如 "生成一张赛博朋克猫图片" |
 | category | string | 否 | 偏好的服务类别 |
-| maxBudget | string | 否 | 最大预算（ETH） |
+| maxBudget | string | 否 | 最大预算（MON） |
 | preferCheapest | boolean | 否 | 是否优先选最便宜的 |
 
 **返回**：`{ selectedService: {...}, response, payment, latencyMs }`
@@ -106,19 +106,30 @@ command-tool: agentxpay_smart_call
 
 ### Tool 4: `agentxpay_manage_wallet`
 
-**用途**：创建和管理 Agent 智能合约钱包。
+**用途**：创建和管理 Agent 智能合约钱包，包括授权/撤销 Agent 地址和通过钱包余额支付服务。
 
 **参数**：
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| action | string | **是** | "create" / "fund" / "get_info" / "set_limit" |
-| dailyLimit | string | 条件 | 每日限额（ETH），create/set_limit 时需要 |
-| amount | string | 条件 | 金额（ETH），fund 时需要 |
-| walletAddress | string | 条件 | 钱包地址，fund/get_info/set_limit 时需要 |
+| action | string | **是** | "create" / "fund" / "get_info" / "set_limit" / "authorize_agent" / "revoke_agent" / "pay" |
+| dailyLimit | string | 条件 | 每日限额（MON），create/set_limit 时需要 |
+| amount | string | 条件 | 金额（MON），fund/pay 时需要 |
+| walletAddress | string | 条件 | 钱包地址，fund/get_info/set_limit/authorize_agent/revoke_agent/pay 时需要 |
+| agentAddress | string | 条件 | Agent 地址，authorize_agent/revoke_agent 时需要 |
+| serviceId | number | 条件 | 链上服务 ID，pay 时需要 |
 
-**返回**：`{ walletAddress, balance, dailyLimit, dailySpent, remainingAllowance, txHash }`
+**返回**：`{ walletAddress, balance, dailyLimit, dailySpent, remainingAllowance, txHash, agentAddress?, isAuthorized?, paymentServiceId?, paymentAmount? }`
 
-**使用场景**：用户说"创建一个 Agent 钱包"、"查看钱包余额"、"设置每日限额"时调用。
+**Action 说明**：
+- `create`：创建新的 Agent 智能钱包，设置每日支出限额
+- `fund`：向钱包充值 MON
+- `get_info`：查询钱包余额、每日限额、今日已花、剩余额度
+- `set_limit`：调整每日支出限额
+- `authorize_agent`：授权一个地址（Agent）从该钱包支出
+- `revoke_agent`：撤销一个地址的钱包支出权限
+- `pay`：通过钱包余额调用 PaymentManager.payPerUse 支付服务（需先授权）
+
+**使用场景**：用户说"创建一个 Agent 钱包"、"授权某个地址使用钱包"、"用钱包余额支付服务"时调用。
 
 ---
 
@@ -146,7 +157,7 @@ command-tool: agentxpay_smart_call
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | serviceId | number | **是** | 链上服务 ID |
-| amount | string | **是** | 托管金额（ETH） |
+| amount | string | **是** | 托管金额（MON） |
 | deadlineDays | number | **是** | 截止天数 |
 | description | string | **是** | 任务描述 |
 
@@ -194,7 +205,16 @@ command-tool: agentxpay_smart_call
 步骤 2: 根据需要执行 create/fund/set_limit
 ```
 
-### 场景 D：用户要订阅服务
+### 场景 D：用户要用 Agent 钱包支付服务
+
+```
+步骤 1: 创建钱包 — manage_wallet action="create" dailyLimit="1.0"
+步骤 2: 充值 — manage_wallet action="fund" walletAddress="0x..." amount="10.0"
+步骤 3: 授权 Agent — manage_wallet action="authorize_agent" walletAddress="0x..." agentAddress="0x..."
+步骤 4: 通过钱包支付 — manage_wallet action="pay" walletAddress="0x..." serviceId=1 amount="0.01"
+```
+
+### 场景 E：用户要订阅服务
 
 ```
 步骤 1: 调用 agentxpay_discover_services 找到目标服务
@@ -212,6 +232,9 @@ command-tool: agentxpay_smart_call
 | "insufficient funds" | Agent 余额不足 | 提示用户充值或使用 agentxpay_manage_wallet fund |
 | HTTP 402 retry 失败 | 支付验证未通过 | 检查合约地址和网络配置 |
 | "daily limit exceeded" | 超出每日限额 | 提示用户调整限额或等待次日重置 |
+| "Agent ... is not authorized" | Agent 未被授权使用钱包 | 用 authorize_agent 授权该 Agent |
+| "Insufficient daily allowance" | 钱包每日额度不足 | 用 set_limit 调高限额或等待次日重置 |
+| "Insufficient wallet balance" | 钱包余额不足 | 用 fund 向钱包充值 |
 
 ---
 

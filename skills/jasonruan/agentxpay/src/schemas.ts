@@ -57,14 +57,15 @@ export const TOOL_PAY_AND_CALL: ToolDefinition = {
 export const TOOL_MANAGE_WALLET: ToolDefinition = {
   name: "agentxpay_manage_wallet",
   description:
-    "Create and manage an Agent smart contract wallet on Monad. Supports creating wallets with daily spending limits, funding, querying info, and updating limits.",
+    "Create and manage an Agent smart contract wallet on Monad. Supports creating wallets with daily spending limits, funding, querying info, updating limits, authorizing/revoking agent addresses, and paying for services using the wallet balance.",
   parameters: {
     type: "object",
     properties: {
       action: {
         type: "string",
-        enum: ["create", "fund", "get_info", "set_limit"],
-        description: "Wallet management action",
+        enum: ["create", "fund", "get_info", "set_limit", "authorize_agent", "revoke_agent", "pay"],
+        description:
+          "Wallet management action. 'authorize_agent' grants an address permission to spend from this wallet. 'revoke_agent' removes that permission. 'pay' executes a payment to a service using the wallet balance via PaymentManager.",
       },
       dailyLimit: {
         type: "string",
@@ -73,12 +74,21 @@ export const TOOL_MANAGE_WALLET: ToolDefinition = {
       },
       amount: {
         type: "string",
-        description: 'Amount in MON (for fund), e.g., "1.0"',
+        description: 'Amount in MON (for fund/pay), e.g., "1.0"',
       },
       walletAddress: {
         type: "string",
         description:
-          "Wallet contract address (required for fund/get_info/set_limit)",
+          "Wallet contract address (required for fund/get_info/set_limit/authorize_agent/revoke_agent/pay)",
+      },
+      agentAddress: {
+        type: "string",
+        description:
+          "Agent address to authorize or revoke (required for authorize_agent/revoke_agent)",
+      },
+      serviceId: {
+        type: "number",
+        description: "On-chain service ID (required for pay action)",
       },
     },
     required: ["action"],

@@ -213,6 +213,167 @@ export class AgentXPaySkill {
         };
       }
 
+      case "authorize_agent": {
+        if (!params.walletAddress) {
+          throw new Error("walletAddress is required for authorize_agent action");
+        }
+        if (!params.agentAddress) {
+          throw new Error("agentAddress is required for authorize_agent action");
+        }
+
+        const authWalletClient = this.client.wallet.getWalletInstance(
+          params.walletAddress
+        );
+
+        // Pre-check: only wallet owner can authorize agents
+        const authCallerAddress = await this.wallet.getAddress();
+        const authWalletOwner = await authWalletClient.getOwner();
+        if (authWalletOwner.toLowerCase() !== authCallerAddress.toLowerCase()) {
+          throw new Error(
+            `Only the wallet owner (${authWalletOwner}) can authorize agents. ` +
+            `Current caller: ${authCallerAddress}`
+          );
+        }
+
+        const authTxHash = await authWalletClient.authorizeAgent(params.agentAddress);
+
+        // Verify authorization status
+        const isAuthorized = await authWalletClient.isAuthorizedAgent(params.agentAddress);
+
+        return {
+          walletAddress: params.walletAddress,
+          balance: "",
+          dailyLimit: "",
+          dailySpent: "",
+          remainingAllowance: "",
+          txHash: authTxHash,
+          agentAddress: params.agentAddress,
+          isAuthorized,
+        };
+      }
+
+      case "revoke_agent": {
+        if (!params.walletAddress) {
+          throw new Error("walletAddress is required for revoke_agent action");
+        }
+        if (!params.agentAddress) {
+          throw new Error("agentAddress is required for revoke_agent action");
+        }
+
+        const revokeWalletClient = this.client.wallet.getWalletInstance(
+          params.walletAddress
+        );
+
+        // Pre-check: only wallet owner can revoke agents
+        const revokeCallerAddress = await this.wallet.getAddress();
+        const revokeWalletOwner = await revokeWalletClient.getOwner();
+        if (revokeWalletOwner.toLowerCase() !== revokeCallerAddress.toLowerCase()) {
+          throw new Error(
+            `Only the wallet owner (${revokeWalletOwner}) can revoke agents. ` +
+            `Current caller: ${revokeCallerAddress}`
+          );
+        }
+
+        const revokeTxHash = await revokeWalletClient.revokeAgent(params.agentAddress);
+
+        // Verify revocation
+        const stillAuthorized = await revokeWalletClient.isAuthorizedAgent(params.agentAddress);
+
+        return {
+          walletAddress: params.walletAddress,
+          balance: "",
+          dailyLimit: "",
+          dailySpent: "",
+          remainingAllowance: "",
+          txHash: revokeTxHash,
+          agentAddress: params.agentAddress,
+          isAuthorized: stillAuthorized,
+        };
+      }
+
+      case "pay": {
+        if (!params.walletAddress) {
+          throw new Error("walletAddress is required for pay action");
+        }
+        if (params.serviceId === undefined) {
+          throw new Error("serviceId is required for pay action");
+        }
+        if (!params.amount) {
+          throw new Error("amount is required for pay action");
+        }
+
+        const payWalletClient = this.client.wallet.getWalletInstance(
+          params.walletAddress
+        );
+
+        // Verify the caller is authorized to use this wallet
+        const callerAddress = await this.wallet.getAddress();
+        const callerIsAuthorized = await payWalletClient.isAuthorizedAgent(callerAddress);
+        const walletOwner = await payWalletClient.getOwner();
+        const isOwner = walletOwner.toLowerCase() === callerAddress.toLowerCase();
+
+        if (!callerIsAuthorized && !isOwner) {
+          throw new Error(
+            `Agent ${callerAddress} is not authorized to use wallet ${params.walletAddress}. ` +
+            `Please authorize this agent first using the 'authorize_agent' action.`
+          );
+        }
+
+        // Check remaining daily allowance
+        const remainingAllowance = await payWalletClient.getRemainingDailyAllowance();
+        const payAmount = ethers.parseEther(params.amount);
+
+        if (remainingAllowance < payAmount) {
+          throw new Error(
+            `Insufficient daily allowance. Remaining: ${ethers.formatEther(remainingAllowance)} MON, ` +
+            `Requested: ${params.amount} MON. Adjust daily limit or wait for reset.`
+          );
+        }
+
+        // Check wallet balance
+        const walletBalance = await this.provider.getBalance(params.walletAddress);
+        if (walletBalance < payAmount) {
+          throw new Error(
+            `Insufficient wallet balance. Balance: ${ethers.formatEther(walletBalance)} MON, ` +
+            `Requested: ${params.amount} MON. Fund the wallet first.`
+          );
+        }
+
+        // Encode PaymentManager.payPerUse(serviceId) call data
+        const paymentManagerAddress = this.client.payments.getContractAddress();
+        const paymentManagerIface = new ethers.Interface([
+          "function payPerUse(uint256 serviceId) external payable",
+        ]);
+        const callData = paymentManagerIface.encodeFunctionData("payPerUse", [
+          BigInt(params.serviceId),
+        ]);
+
+        // Execute payment through the Agent Wallet
+        const payTxHash = await payWalletClient.execute(
+          paymentManagerAddress,
+          payAmount,
+          callData
+        );
+
+        // Fetch updated wallet info
+        const [updatedBalance, updatedDailySpent, updatedRemaining] = await Promise.all([
+          this.provider.getBalance(params.walletAddress),
+          payWalletClient.getDailySpent(),
+          payWalletClient.getRemainingDailyAllowance(),
+        ]);
+
+        return {
+          walletAddress: params.walletAddress,
+          balance: ethers.formatEther(updatedBalance),
+          dailyLimit: "",
+          dailySpent: ethers.formatEther(updatedDailySpent),
+          remainingAllowance: ethers.formatEther(updatedRemaining),
+          txHash: payTxHash,
+          paymentServiceId: params.serviceId.toString(),
+          paymentAmount: params.amount,
+        };
+      }
+
       default:
         throw new Error(`Unknown wallet action: ${params.action}`);
     }
