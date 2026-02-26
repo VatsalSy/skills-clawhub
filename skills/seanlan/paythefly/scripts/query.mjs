@@ -5,7 +5,7 @@
  * Query payment/withdrawal order status from blockchain
  */
 
-import { Contract, JsonRpcProvider, keccak256, toUtf8Bytes } from 'ethers';
+import { Contract, JsonRpcProvider } from 'ethers';
 
 // =============================================================================
 // Configuration
@@ -38,8 +38,8 @@ const CHAIN_CONFIG = {
 
 // Minimal ABI for status query
 const CONTRACT_ABI = [
-  'function paySerialNos(bytes32) view returns (bool)',
-  'function withdrawSerialNos(bytes32) view returns (bool)',
+  'function isPaymentSerialNoUsed(string) view returns (bool)',
+  'function isWithdrawalSerialNoUsed(string) view returns (bool)',
 ];
 
 // =============================================================================
@@ -112,15 +112,12 @@ async function queryEvmContract(contractAddress, rpcUrls, customRpc, type, seria
       const provider = new JsonRpcProvider(rpcUrl, undefined, { staticNetwork: true });
       const contract = new Contract(contractAddress, CONTRACT_ABI, provider);
 
-      // Hash the serial number
-      const serialNoHash = keccak256(toUtf8Bytes(serialNo));
-
-      // Query based on type
+      // Query based on type (pass serialNo as string directly)
       let used;
       if (type === 'payment') {
-        used = await contract.paySerialNos(serialNoHash);
+        used = await contract.isPaymentSerialNoUsed(serialNo);
       } else {
-        used = await contract.withdrawSerialNos(serialNoHash);
+        used = await contract.isWithdrawalSerialNoUsed(serialNo);
       }
 
       return { used, rpcUrl };
@@ -145,15 +142,12 @@ async function queryTronContract(contractAddress, rpcUrls, customRpc, type, seri
 
       const contract = await tronWeb.contract().at(contractAddress);
 
-      // Hash the serial number (same as EVM)
-      const serialNoHash = keccak256(toUtf8Bytes(serialNo));
-
-      // Query based on type
+      // Query based on type (pass serialNo as string directly)
       let used;
       if (type === 'payment') {
-        used = await contract.paySerialNos(serialNoHash).call();
+        used = await contract.isPaymentSerialNoUsed(serialNo).call();
       } else {
-        used = await contract.withdrawSerialNos(serialNoHash).call();
+        used = await contract.isWithdrawalSerialNoUsed(serialNo).call();
       }
 
       return { used, rpcUrl };
