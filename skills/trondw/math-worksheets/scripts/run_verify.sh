@@ -1,58 +1,58 @@
 #!/usr/bin/env bash
-# run_verify.sh — Run a worksheet verification script
-# Usage: run_verify.sh <verify_TOPIC_DATE.py>
+# run_verify.sh — Run worksheet answer verification
+# Usage: run_verify.sh <verify_TOPIC_DATE.json>
 #
-# Finds a Python with sympy available, runs the verification, and
-# gates on exit code (0=pass, 1=fail, 2=manual review needed).
+# Passes the JSON verification file to the bundled verify.py script.
+# No code is generated or executed from user input — only structured
+# data (the JSON file) is evaluated by the fixed verify.py.
+#
+# Requires: python3 with sympy installed
+#   pip3 install sympy
+#
+# Exit codes:
+#   0 — all automated checks passed — safe to compile
+#   1 — one or more checks FAILED — fix answer key before compiling
+#   2 — manual review needed — no automated failures, safe to compile
 
-set -euo pipefail
+set -uo pipefail
 
-VERIFY_SCRIPT="${1:-}"
+JSON_FILE="${1:-}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VERIFY_PY="${SCRIPT_DIR}/verify.py"
 
-if [[ -z "$VERIFY_SCRIPT" ]]; then
-  echo "Usage: run_verify.sh <verify_TOPIC_DATE.py>" >&2
+if [[ -z "$JSON_FILE" ]]; then
+  echo "Usage: run_verify.sh <verify_TOPIC_DATE.json>" >&2
   exit 1
 fi
 
-if [[ ! -f "$VERIFY_SCRIPT" ]]; then
-  echo "Error: verify script not found: $VERIFY_SCRIPT" >&2
+if [[ ! -f "$JSON_FILE" ]]; then
+  echo "Error: verification file not found: $JSON_FILE" >&2
   exit 1
 fi
 
-# ── Find Python with sympy ────────────────────────────────────────────────────
+# ── Find Python 3 ─────────────────────────────────────────────────────────────
 PYTHON=""
-CANDIDATES=(
-  "/tmp/skill-venv/bin/python3"
-  "/tmp/mlx-audio-venv/bin/python3"
-  "$(command -v python3 2>/dev/null || true)"
-  "/opt/homebrew/bin/python3"
-)
-
-for candidate in "${CANDIDATES[@]}"; do
-  if [[ -x "$candidate" ]] && "$candidate" -c "import sympy" 2>/dev/null; then
+for candidate in "/opt/homebrew/bin/python3" "/usr/local/bin/python3" "$(command -v python3 2>/dev/null || true)"; do
+  if [[ -x "$candidate" ]]; then
     PYTHON="$candidate"
     break
   fi
 done
 
 if [[ -z "$PYTHON" ]]; then
-  echo "⚠️  sympy not found. Installing in a temp venv..."
-  python3 -m venv /tmp/worksheet-verify-venv
-  /tmp/worksheet-verify-venv/bin/pip install sympy -q
-  PYTHON="/tmp/worksheet-verify-venv/bin/python3"
+  echo "Error: python3 not found. Install Python 3 to use verification." >&2
+  exit 1
 fi
 
-echo "Verifying with: $PYTHON"
-echo ""
+# ── Check sympy is available ──────────────────────────────────────────────────
+if ! "$PYTHON" -c "import sympy" 2>/dev/null; then
+  echo "Error: sympy is not installed." >&2
+  echo "Run: pip3 install sympy" >&2
+  exit 1
+fi
 
-# ── Run verification ──────────────────────────────────────────────────────────
-"$PYTHON" "$VERIFY_SCRIPT"
+# ── Run the fixed verification script ────────────────────────────────────────
+"$PYTHON" "$VERIFY_PY" "$JSON_FILE"
 EXIT_CODE=$?
-
-case $EXIT_CODE in
-  0) echo "✅ Verification passed — proceed to compile." ;;
-  1) echo "❌ Verification FAILED — fix errors before compiling." ;;
-  2) echo "👁  Manual review needed — no automated failures." ;;
-esac
 
 exit $EXIT_CODE
