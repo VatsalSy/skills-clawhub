@@ -1,32 +1,43 @@
----
-name: naver-blog-writer
-description: Publish Naver Blog posts through the ACP marketplace flow (buyer-local thin-runner + sealed payload + offering execute). Use when a user asks to write/publish a Naver post, recover RUNNER_NOT_READY onboarding, run one-time thin-runner setup/login, or submit a publish job that should route through your ACP offering (`naver-blog-writer`) for paid service execution.
----
+# Naver Blog Writer Skill Pack (MVP)
 
-# Naver Blog Writer (ACP Marketplace-connected)
+이 skill pack은 OpenClaw/Virtual ACP 환경에서 아래 흐름을 표준화합니다.
 
-Use this skill for the **real ACP commerce path**:
+- `preflight(local daemon)`
+- 실패 시 `RUNNER_NOT_READY + setup_url`
+- `setup_runner` 실행
+- 사람 1회 로그인
+- `publish`
 
-1. preflight local daemon
-2. recover with setup_url when runner is not ready
-3. one-time thin-runner setup/login
-4. publish via ACP offering execute (paid path)
+## Config
 
-## Required runtime assumptions
+- `OPENCLAW_OFFERING_ID`: 기본 `naver-blog-writer`
+- `X_LOCAL_TOKEN`: local daemon 인증 토큰 (`preflight`, `publish` 필수)
+- setup_url 자동 발급 모드: `PROOF_TOKEN` + `SETUP_ISSUE_URL` 필요
+- setup_url 사전 발급 모드: `SETUP_URL` 사용 시 proof 단계 생략 가능
+- `LOCAL_DAEMON_PORT`: 기본 `19090`
+- `DEVICE_FINGERPRINT`: 미지정 시 `hostname-platform-arch` 자동 생성
 
-- Buyer machine: macOS + `@y80163442/naver-thin-runner`
-- Local daemon available on `127.0.0.1:${LOCAL_DAEMON_PORT:-19090}`
-- For paid marketplace path: `OPENCLAW_OFFERING_EXECUTE_URL` is configured
+`publish` 실행 경로는 아래 둘 중 하나가 반드시 필요:
 
-## Core commands
+1. offering execute 경로  
+   `OPENCLAW_OFFERING_EXECUTE_URL` (+ 필요 시 `OPENCLAW_CORE_API_KEY`)
+2. direct dispatch fallback 경로  
+   `CONTROL_PLANE_URL` + `ACP_ADMIN_API_KEY`
 
-## 1) Preflight
+## Tools
+
+### 1) preflight
 
 ```bash
-scripts/preflight.sh
+tools/preflight \
+  --proof-token "$PROOF_TOKEN" \
+  --setup-issue-url "$SETUP_ISSUE_URL" \
+  --local-daemon-port 19090 \
+  --x-local-token "$X_LOCAL_TOKEN"
 ```
 
-If runner is not ready, it returns:
+성공 시 local identity JSON을 반환합니다.
+실패 시 반드시 아래 표준 에러를 반환합니다.
 
 ```json
 {
@@ -36,51 +47,42 @@ If runner is not ready, it returns:
 }
 ```
 
-## 2) Setup runner (one-time)
+### 2) setup_runner
 
 ```bash
-scripts/setup_runner.sh --setup-url "<setup_url>"
-# then user login once:
+tools/setup_runner \
+  --proof-token "$PROOF_TOKEN" \
+  --setup-issue-url "$SETUP_ISSUE_URL" \
+  --auto-service both
+```
+
+실행 후 로그인 1회 필요:
+
+```bash
 npx @y80163442/naver-thin-runner login
 ```
 
-Or proof-based mode:
+실행 모드:
+
+- 상주(worker): `npx @y80163442/naver-thin-runner start`
+- 요청당 종료(run-per-request): `npx @y80163442/naver-thin-runner start --once`
+
+### 3) publish
 
 ```bash
-scripts/setup_runner.sh --proof-token "<proof_token>" --setup-issue-url "https://<control-plane>/v3/onboarding/setup-url/issue"
+tools/publish --title "제목" --body "본문" --tags "tag1,tag2"
 ```
 
-## 3) Publish
+동작:
 
-```bash
-scripts/publish.sh --title "제목" --body "본문" --tags "tag1,tag2"
-```
+1. preflight
+2. `/v1/local/identity`
+3. `/v1/local/seal-job`
+4. offering execute 호출(또는 direct dispatch fallback)
 
-Publish flow:
+## Notes
 
-- preflight
-- `GET /v1/local/identity`
-- `POST /v1/local/seal-job`
-- submit to `OPENCLAW_OFFERING_EXECUTE_URL` (preferred, paid path)
-- fallback: direct `/v2/jobs/dispatch-and-wait` (admin/internal only)
-
-## Environment variables
-
-See `references/setup.md`. Key variables:
-
-- `X_LOCAL_TOKEN`
-- `LOCAL_DAEMON_PORT` (default `19090`)
-- `OPENCLAW_OFFERING_ID` (default `naver-blog-writer`)
-- `OPENCLAW_OFFERING_EXECUTE_URL` (required for paid path)
-- `PROOF_TOKEN`, `SETUP_ISSUE_URL` (for auto setup_url issue)
-
-## Safety notes
-
-- Never commit real tokens/keys.
-- Keep `ACP_ADMIN_API_KEY` for internal debugging only.
-- For real commerce metrics/billing, use offering execute path (not direct dispatch fallback).
-
-## References
-
-- `references/setup.md`
-- `references/ops-checklist.md`
+- 1차 지원 OS: macOS
+- local daemon 접근 가능한 로컬 호스트 실행을 전제로 합니다.
+- `start`가 종료되지 않는 것은 정상 동작입니다.
+- OpenClaw/ACP 에이전트의 요청당 실행이 필요하면 `start --once`를 사용하세요.
