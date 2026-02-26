@@ -1,6 +1,6 @@
 ---
 name: apple-developer-toolkit
-description: "All-in-one Apple developer skill with three integrated tools shipped as a single unified binary. (1) Documentation search across Apple frameworks, symbols, and 1,267 WWDC sessions from 2014-2025. No credentials needed. (2) App Store Connect CLI with 120+ commands covering builds, TestFlight, submissions, signing, subscriptions, IAP, analytics, Xcode Cloud, metadata workflows, release pipeline dashboard, insights, win-back offers, promoted purchases, product pages, nominations, accessibility declarations, pre-orders, pricing, diff, webhooks with local receiver, workflow automation, and more. Requires App Store Connect API key. (3) iOS app builder that generates complete Swift/SwiftUI apps from natural language descriptions with auto-fix and simulator launch. Requires an LLM API key and Xcode. Includes 38 iOS development rules and 12 SwiftUI best practice guides for Liquid Glass, navigation, state management, and modern APIs. All three tools ship as one binary (appledev) with multi-call symlinks for backward compatibility (appstore, swiftship). USE WHEN: Apple API docs, App Store Connect management, WWDC lookup, or building iOS apps from scratch. DON'T USE WHEN: non-Apple platforms or general coding."
+description: "All-in-one Apple developer skill with three integrated tools shipped as a single unified binary. (1) Documentation search across Apple frameworks, symbols, and 1,267 WWDC sessions from 2014-2025. No credentials needed. (2) App Store Connect CLI with 120+ commands covering builds (find/wait/upload), TestFlight, pre-submission validate, submissions, signing, subscriptions (family-sharable), IAP, analytics, Xcode Cloud, metadata workflows, release pipeline dashboard, insights, win-back offers, promoted purchases, product pages, nominations, accessibility declarations, pre-orders, pricing filters, localizations update, diff, webhooks with local receiver, workflow automation, and more. Requires App Store Connect API key. (3) Multi-platform app builder (iOS/watchOS/tvOS/iPad/macOS/visionOS) that generates complete Swift/SwiftUI apps from natural language with auto-fix, simulator launch, interactive chat mode, and open-in-Xcode. Requires an LLM API key and Xcode. Includes 38 iOS development rules and 12 SwiftUI best practice guides for Liquid Glass, navigation, state management, and modern APIs. All three tools ship as one binary (appledev). USE WHEN: Apple API docs, App Store Connect management, WWDC lookup, or building iOS/watchOS/tvOS/macOS/visionOS apps from scratch. DON'T USE WHEN: non-Apple platforms or general coding."
 metadata:
   {
     "openclaw":
@@ -9,7 +9,7 @@ metadata:
         "requires":
           {
             "bins": ["node"],
-            "anyBins": ["appledev", "appstore", "swiftship"],
+            "anyBins": ["appledev"],
           },
         "install":
           [
@@ -18,7 +18,7 @@ metadata:
               "kind": "brew",
               "tap": "Abdullah4AI/tap",
               "formula": "appledev",
-              "bins": ["appledev", "appstore", "swiftship"],
+              "bins": ["appledev"],
               "label": "Apple Developer Toolkit - unified binary (Homebrew)",
             },
           ],
@@ -40,7 +40,7 @@ metadata:
                 },
                 {
                   "name": "LLM_API_KEY",
-                  "description": "LLM API key for code generation. Required only for iOS App Builder. swiftship supports multiple AI backends.",
+                  "description": "LLM API key for code generation. Required only for iOS App Builder. Supports multiple AI backends.",
                 },
               ],
           },
@@ -63,7 +63,7 @@ appledev b ...        # Short alias
 appledev s ...        # Short alias
 ```
 
-Symlinks `appstore` and `swiftship` provide backward compatibility. Same binary, zero duplication.
+One binary, three tools, zero duplication.
 
 ## Credential Requirements by Feature
 
@@ -88,7 +88,7 @@ node cli.js search "NavigationStack"
 Install via Homebrew:
 
 ```bash
-brew tap Abdullah4AI/tap && brew install appledev
+brew install Abdullah4AI/tap/appledev
 ```
 
 Authenticate with your App Store Connect API key:
@@ -142,20 +142,26 @@ Full reference: [references/app-store-connect.md](references/app-store-connect.m
 |------|---------|
 | List apps | `appledev store apps` |
 | Upload build | `appledev store builds upload --app "APP_ID" --ipa "app.ipa" --wait` |
+| Find build by number | `appledev store builds find --app "APP_ID" --build-number "42"` |
+| Wait for build processing | `appledev store builds wait --build "BUILD_ID"` |
 | Publish TestFlight | `appledev store publish testflight --app "APP_ID" --ipa "app.ipa" --group "Beta" --wait` |
 | Submit App Store | `appledev store publish appstore --app "APP_ID" --ipa "app.ipa" --submit --confirm --wait` |
+| Pre-submission validation | `appledev store validate --app "APP_ID" --version-id "VERSION_ID"` |
 | List certificates | `appledev store certificates list` |
 | Reviews | `appledev store reviews --app "APP_ID" --output table` |
+| Update localizations | `appledev store localizations update --app "APP_ID" --locale "en-US" --name "My App"` |
 | Sales report | `appledev store analytics sales --vendor "VENDOR" --type SALES --subtype SUMMARY --frequency DAILY --date "2024-01-20"` |
 | Xcode Cloud | `appledev store xcode-cloud run --app "APP_ID" --workflow "CI" --branch "main" --wait` |
 | Notarize | `appledev store notarization submit --file ./MyApp.zip --wait` |
-| Validate | `appledev store validate --app "APP_ID" --version-id "VERSION_ID" --strict` |
 | Status dashboard | `appledev store status --app "APP_ID" --output table` |
 | Weekly insights | `appledev store insights weekly --app "APP_ID" --source analytics` |
 | Metadata pull | `appledev store metadata pull --app "APP_ID" --version "1.2.3" --dir ./metadata` |
 | Release notes | `appledev store release-notes generate --since-tag "v1.2.2"` |
 | Diff localizations | `appledev store diff localizations --app "APP_ID" --path ./metadata` |
 | Nominations | `appledev store nominations create --app "APP_ID" --name "Launch"` |
+| Price point filter | `appledev store pricing price-points --app "APP_ID" --price 0.99` |
+| IAP (family sharable) | `appledev store iap create --app "APP_ID" --family-sharable` |
+| Subscription (family sharable) | `appledev store subscriptions create --app "APP_ID" --family-sharable` |
 
 ### Environment Variables
 
@@ -174,16 +180,31 @@ All environment variables are optional. They override flags when set.
 | `APPSTORE_TIMEOUT` | Request timeout |
 | `APPSTORE_BYPASS_KEYCHAIN` | Skip system keychain |
 
-## Part 3: iOS App Builder
+## Part 3: Multi-Platform App Builder
+
+Supports iOS, watchOS, tvOS, and iPad. Generates complete Swift/SwiftUI apps from natural language with AI-powered code generation.
 
 ```bash
 appledev build                     # Interactive mode
-appledev build setup               # Install prerequisites
+appledev build setup               # Install prerequisites (Xcode, XcodeGen, AI backend)
 appledev build fix                 # Auto-fix build errors
 appledev build run                 # Build and launch in simulator
+appledev build open                # Open project in Xcode
+appledev build chat                # Interactive chat mode (edit/ask questions)
 appledev build info                # Show project status
 appledev build usage               # Token usage and cost
 ```
+
+### Supported Platforms
+
+| Platform | Status |
+|----------|--------|
+| iOS | Full support |
+| iPad | Full support |
+| macOS | Supported |
+| watchOS | Supported |
+| tvOS | Supported |
+| visionOS | Supported |
 
 ### How it works
 
@@ -191,11 +212,11 @@ appledev build usage               # Token usage and cost
 describe > analyze > plan > build > fix > run
 ```
 
-1. **Analyze** - Extracts app name, features, core flow from description
+1. **Analyze** - Extracts app name, features, core flow, target platform from description
 2. **Plan** - Produces file-level build plan: data models, navigation, design
 3. **Build** - Generates Swift source files, project.yml, asset catalog
 4. **Fix** - Compiles and auto-repairs until build succeeds
-5. **Run** - Boots iOS Simulator and launches the app
+5. **Run** - Boots Simulator and launches the app
 
 ### Interactive commands
 
@@ -204,6 +225,7 @@ describe > analyze > plan > build > fix > run
 | `/run` | Build and launch in simulator |
 | `/fix` | Auto-fix compilation errors |
 | `/open` | Open project in Xcode |
+| `/ask [question]` | Ask a question about the project |
 | `/model [name]` | Switch model (sonnet, opus, haiku) |
 | `/info` | Show project info |
 | `/usage` | Token usage and cost |
