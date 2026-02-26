@@ -1,6 +1,6 @@
 ---
 name: veryfi-documents-ai
-description: Real-time OCR and data extraction API by Veryfi. Extract structured data from receipts, invoices, bank statements, W-9s, purchase orders, bills of lading, and any other document. Use when you need to OCR documents, extract fields, parse receipts/invoices, bank statements, classify documents, detect fraud, or simply convert documents to markdown.
+description: Real-time OCR and data extraction API by Veryfi (https://veryfi.com). Extract structured data from receipts, invoices, bank statements, W-9s, purchase orders, bills of lading, and any other document. Use when you need to OCR documents, extract fields, parse receipts/invoices, bank statements, classify documents, detect fraud, or get raw OCR text from any document.
 metadata:
   openclaw:
     requires:
@@ -13,9 +13,10 @@ metadata:
 
 # Documents AI by Veryfi
 
-Real-time OCR and data extraction API — extract structured data from receipts, invoices, bank statements, W-9s, purchase orders, and more, with document classification, fraud detection, and markdown conversion.
+Real-time OCR and data extraction API — extract structured data from receipts, invoices, bank statements, W-9s, purchase orders, and more, with document classification, fraud detection, and raw OCR text output.
 
 > **Get your API key:** https://app.veryfi.com/api/settings/keys/
+> **Learn more:** https://veryfi.com
 
 ## Quick Start
 
@@ -60,6 +61,7 @@ Response:
     "type": "visa",
     "card_number": "1234"
   },
+  "ocr_text": "STARBUCKS\n123 Main St...",
   "img_url": "https://scdn.veryfi.com/documents/...",
   "pdf_url": "https://scdn.veryfi.com/documents/..."
 }
@@ -196,7 +198,47 @@ export VERYFI_API_KEY="your_api_key_here"
 
 ## Common Tasks
 
-### Extract data from Passport
+### Extract data from a Receipt or Invoice (file upload)
+
+```bash
+curl -X POST "https://api.veryfi.com/api/v8/partner/documents/" \
+  -H "Content-Type: multipart/form-data" \
+  -H "Client-Id: $VERYFI_CLIENT_ID" \
+  -H "Authorization: apikey $VERYFI_USERNAME:$VERYFI_API_KEY" \
+  -F "file=@invoice.pdf"
+```
+
+### Extract data from a Receipt or Invoice (base64)
+
+When your agent already has the document as base64-encoded content (e.g., received via API, email attachment, or tool output), use `file_data` instead of uploading a file:
+
+```bash
+# Encode the file first
+BASE64_DATA=$(base64 -i invoice.pdf)
+
+curl -X POST "https://api.veryfi.com/api/v8/partner/documents/" \
+  -H "Content-Type: application/json" \
+  -H "Client-Id: $VERYFI_CLIENT_ID" \
+  -H "Authorization: apikey $VERYFI_USERNAME:$VERYFI_API_KEY" \
+  -d "{
+    \"file_name\": \"invoice.pdf\",
+    \"file_data\": \"$BASE64_DATA\"
+  }"
+```
+
+### Extract data from a URL
+
+```bash
+curl -X POST "https://api.veryfi.com/api/v8/partner/documents/" \
+  -H "Content-Type: application/json" \
+  -H "Client-Id: $VERYFI_CLIENT_ID" \
+  -H "Authorization: apikey $VERYFI_USERNAME:$VERYFI_API_KEY" \
+  -d '{
+    "file_url": "https://example.com/invoice.pdf"
+  }'
+```
+
+### Extract data from a Passport
 
 ```bash
 curl -X POST "https://api.veryfi.com/api/v8/partner/any-documents/" \
@@ -226,6 +268,46 @@ curl -X POST "https://api.veryfi.com/api/v8/partner/w9s/" \
   -H "Authorization: apikey $VERYFI_USERNAME:$VERYFI_API_KEY" \
   -F "file=@w9.pdf"
 ```
+
+### Extract data from W-2s and W-8s
+
+W-2 and W-8 forms do not have dedicated endpoints. Use the `any-documents` endpoint with the appropriate blueprint:
+
+```bash
+# W-2
+curl -X POST "https://api.veryfi.com/api/v8/partner/any-documents/" \
+  -H "Content-Type: multipart/form-data" \
+  -H "Client-Id: $VERYFI_CLIENT_ID" \
+  -H "Authorization: apikey $VERYFI_USERNAME:$VERYFI_API_KEY" \
+  -F "file=@w2.pdf" \
+  -F "blueprint_name=w2"
+
+# W-8
+curl -X POST "https://api.veryfi.com/api/v8/partner/any-documents/" \
+  -H "Content-Type: multipart/form-data" \
+  -H "Client-Id: $VERYFI_CLIENT_ID" \
+  -H "Authorization: apikey $VERYFI_USERNAME:$VERYFI_API_KEY" \
+  -F "file=@w8.pdf" \
+  -F "blueprint_name=w8"
+```
+
+> **Note:** W-2 and W-8 appear as classification types (via `/classify/`) but their extraction is handled through the Any Document endpoint. Do **not** POST to `/api/v8/partner/w2s/` or `/api/v8/partner/w8s/` — those endpoints do not exist.
+
+### Get Raw OCR Text from a Document
+
+All extraction endpoints return an `ocr_text` field in the response containing the raw text content of the document as a plain string. This is useful when you want to process the text yourself or pass it to an LLM.
+
+```bash
+# Extract and pull ocr_text with jq
+curl -X POST "https://api.veryfi.com/api/v8/partner/documents/" \
+  -H "Content-Type: multipart/form-data" \
+  -H "Client-Id: $VERYFI_CLIENT_ID" \
+  -H "Authorization: apikey $VERYFI_USERNAME:$VERYFI_API_KEY" \
+  -F "file=@document.pdf" \
+  | jq '.ocr_text'
+```
+
+> **Note:** `ocr_text` is plain text, not markdown. If you need markdown-formatted output, pass `ocr_text` to an LLM for reformatting after extraction.
 
 ### Classify a Document
 
@@ -282,10 +364,14 @@ Get element coordinates for layout analysis:
 - Extracting data from Checks
 - Document classification and routing
 - Extracting data from any other document
-
+- Getting raw OCR text from a document
 
 ### Don't Use For:
-- Video/audio transcription
+- Video or audio transcription
+- Web search or real-time data lookup
+- Image generation or editing
+- Non-document binary files (spreadsheets, code, executables)
+- Documents you haven't confirmed are cleared for third-party processing (see Security section)
 
 ## Best Practices
 
@@ -295,7 +381,8 @@ Get element coordinates for layout analysis:
 | Bank Statements | `/api/v8/partner/bank-statements/` | use for Bank statements |
 | Checks | `/api/v8/partner/checks/` | use for bank checks (cheques in Canada) |
 | W-9s | `/api/v8/partner/w9s/` | W9 forms |
-| Any Document | `/api/v8/partner/any-documents/` | Use to extract data from any document list of blueprints provided below |
+| W-2s / W-8s | `/api/v8/partner/any-documents/` | Use blueprint_name=w2 or blueprint_name=w8 |
+| Any Document | `/api/v8/partner/any-documents/` | Use to extract data from any document; list of blueprints provided below |
 | Classify | `/api/v8/partner/classify/` | Identify document type without full extraction |
 
 
@@ -337,6 +424,8 @@ List of available blueprints:
 | annual_mortgage_statement | Annual Mortgage Statement |
 | investment_account_statement | Investment Account Statement |
 | certificate_of_good_standing | Certificate of Good Standing |
+| w2 | IRS W-2 Wage and Tax Statement |
+| w8 | IRS W-8 Certificate of Foreign Status |
 
 **Missing document type?**
 If document type (blueprint) you need to extract data from is missing, create one here: 
@@ -349,7 +438,7 @@ If document type (blueprint) you need to extract data from is missing, create on
 **Supported Inputs:**
 - `file` — multipart file upload
 - `file_url` — publicly accessible URL
-- `file_data` — base64-encoded content
+- `file_data` — base64-encoded content (send as JSON body with `file_name` + `file_data` fields)
 
 ## Response Schemas
 
@@ -600,16 +689,51 @@ If document type (blueprint) you need to extract data from is missing, create on
 - Set appropriate file permissions on configuration files (600 for JSON configs)
 - Enable API key rotation and monitor usage through the dashboard
 
+## Rate Limits
+
+Veryfi enforces per-account rate limits. Exact limits depend on your plan tier.
+
+**General guidance:**
+- **Free/Starter plans:** lower concurrency limits; avoid parallel bursts
+- **Business/Enterprise plans:** higher throughput; contact support for specifics
+- If you hit a rate limit, the API returns **HTTP 429 Too Many Requests**
+- Implement exponential backoff: wait 1s → 2s → 4s → 8s before retrying
+- For high-volume workloads, contact support@veryfi.com or visit https://veryfi.com to discuss an enterprise plan
+
 ## Troubleshooting
 
 **400 Bad Request:**
 - Provide exactly one input: `file`, `file_url`, or `file_data` (for base64)
+- When using `file_data`, send as a JSON body (not multipart) with `file_name` and `file_data` fields
 - Verify Username, API Key and Client ID are valid
 - Check the `message` field in the JSON response for the specific error detail
+
+**401 Unauthorized:**
+- Your `Client-Id`, `VERYFI_USERNAME`, or `VERYFI_API_KEY` is incorrect or expired
+- Verify credentials at https://app.veryfi.com/api/settings/keys/
+- Check that the `Authorization` header format is exactly `apikey USERNAME:API_KEY` (no extra spaces)
+- Rotate your key if you suspect it was compromised
+
+**413 Payload Too Large:**
+- File exceeds the 20 MB limit
+- Compress the file or reduce image resolution before uploading
+- Split multi-page PDFs if the page count exceeds the plan limit (15 pages for invoices, 50 for bank statements)
+
+**429 Too Many Requests:**
+- You've exceeded your plan's rate limit
+- Implement exponential backoff and retry
+- For sustained high volume, contact support@veryfi.com to upgrade your plan
+
+**500 / 5xx Server Error:**
+- Transient server-side issue — retry after a short delay
+- If the error persists, check the Veryfi status page or contact support@veryfi.com
 
 **Missing Confidence Scores:**
 - Add `confidence_details=true` to the request to include `score` and `ocr_score` fields in the response
 - Add `bounding_boxes=true` to also get `bounding_box` and `bounding_region` coordinates
+
+**W-2 / W-8 endpoint 404:**
+- There are no `/w2s/` or `/w8s/` endpoints — use `/any-documents/` with `blueprint_name=w2` or `blueprint_name=w8`
 
 ## Tips
 
@@ -619,10 +743,14 @@ If document type (blueprint) you need to extract data from is missing, create on
 - Keep file sizes under 20 MB and stay within page limits (15 for invoices, 50 for bank statements)
 - Test with sample documents before processing sensitive data in production
 - If a blueprint you need is missing, create a custom one at `https://app.veryfi.com/inboxes/anydocs?tab=blueprints`
+- `ocr_text` in the response gives you raw extracted text — pass it to an LLM if you need markdown or further processing
+- For base64 input, always include `file_name` so Veryfi can infer the file type correctly
 
 ## References
 
 - **API Docs:** https://docs.veryfi.com/
+- **Veryfi:** https://veryfi.com
 - **Veryfi SDKs:** https://github.com/veryfi
 - **Get API Key:** https://app.veryfi.com/api/settings/keys/
 - **Privacy Policy:** https://www.veryfi.com/terms/
+- **Support:** support@veryfi.com
