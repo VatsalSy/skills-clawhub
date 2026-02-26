@@ -10,6 +10,7 @@ REPO_NAME_CLOUD="xint-cloud"
 GITHUB_ORG="0xNyk"
 
 PUBLISH_CLAWDHUB=true
+PUBLISH_CLAWDHUB_CLOUD=false
 PUBLISH_SKILLSH=false
 PUBLISH_HOMEBREW=true
 UPDATE_DOCS=false
@@ -50,6 +51,7 @@ Options:
   --dry-run        Preview release actions without mutating repos
   --ai-skill       Enable both ClawdHub and skills.sh publishing
   --no-clawdhub    Disable ClawdHub publishing for this run
+  --clawdhub-cloud Enable ClawdHub publishing for xint-cloud (disabled by default)
   --skillsh        Enable skills.sh publishing
   --no-homebrew    Disable Homebrew tap formula update/publish
   --docs           Update README/changelog files when present
@@ -673,6 +675,27 @@ update_homebrew_formula_file() {
   mv "$tmp_file" "$formula_file"
 }
 
+url_exists() {
+  local url="$1"
+  curl -fsSI "$url" >/dev/null 2>&1
+}
+
+verify_homebrew_release_assets() {
+  local binary_url="$1"
+  local source_url="$2"
+  local release_page="https://github.com/$GITHUB_ORG/$REPO_NAME_ALT/releases/tag/$VERSION"
+
+  if ! url_exists "$binary_url"; then
+    die "Missing Homebrew binary artifact: $binary_url
+Upload xint-rs-macos-arm64-$VERSION.tar.gz to $release_page before running Homebrew publish."
+  fi
+
+  if ! url_exists "$source_url"; then
+    die "Missing Homebrew source artifact: $source_url
+Ensure tag $VERSION exists and the source archive is available before Homebrew publish."
+  fi
+}
+
 publish_homebrew_tap() {
   local tap_path formula_xint formula_xint_rs
   local binary_url source_url binary_sha source_sha
@@ -715,6 +738,8 @@ publish_homebrew_tap() {
     binary_sha="<dry-run-binary-sha256>"
     source_sha="<dry-run-source-sha256>"
   else
+    log "Verifying required Homebrew release assets exist"
+    verify_homebrew_release_assets "$binary_url" "$source_url"
     log "Computing Homebrew SHA256 for release artifacts"
     binary_sha="$(sha256_for_url "$binary_url")" || die "Failed to download/hash binary artifact: $binary_url"
     source_sha="$(sha256_for_url "$source_url")" || die "Failed to download/hash source artifact: $source_url"
@@ -773,6 +798,26 @@ create_github_release() {
       --target "$branch" \
       --repo "$GITHUB_ORG/$repo"
   fi
+}
+
+verify_github_release_exists() {
+  local repo="$1"
+
+  if [[ "$DRY_RUN" == "true" ]]; then
+    log "Would verify GitHub release $VERSION exists for $repo"
+    return
+  fi
+
+  if ! command -v gh >/dev/null 2>&1; then
+    warn "gh not found; skipping release verification for $repo"
+    return
+  fi
+
+  if ! gh release view "$VERSION" --repo "$GITHUB_ORG/$repo" --json tagName --jq '.tagName' >/dev/null 2>&1; then
+    die "GitHub release $VERSION was not created for $repo — tag may already exist or creation failed silently."
+  fi
+
+  log "Verified GitHub release $VERSION exists for $repo"
 }
 
 upload_release_report_asset() {
@@ -987,6 +1032,9 @@ while [[ $# -gt 0 ]]; do
     --no-clawdhub)
       PUBLISH_CLAWDHUB=false
       ;;
+    --clawdhub-cloud)
+      PUBLISH_CLAWDHUB_CLOUD=true
+      ;;
     --skillsh)
       PUBLISH_SKILLSH=true
       ;;
@@ -1056,6 +1104,48 @@ fi
 
 log "Preparing release version: $VERSION"
 
+# ── Preflight: verify required tooling and authentication ──
+preflight_errors=()
+
+if [[ "$DRY_RUN" != "true" ]]; then
+  if ! command -v gh >/dev/null 2>&1; then
+    preflight_errors+=("gh CLI is not installed (required for GitHub releases)")
+  elif ! gh auth status >/dev/null 2>&1; then
+    preflight_errors+=("gh is not authenticated (run 'gh auth login' first)")
+  fi
+else
+  # In dry-run, gh is optional but warn if missing
+  if ! command -v gh >/dev/null 2>&1; then
+    warn "gh CLI not found; dry-run will skip GitHub release steps"
+  fi
+fi
+
+if [[ "$PUBLISH_CLAWDHUB" == "true" ]]; then
+  if ! command -v clawdhub >/dev/null 2>&1; then
+    preflight_errors+=("clawdhub CLI not found (required when PUBLISH_CLAWDHUB=true; use --no-clawdhub to skip)")
+  fi
+fi
+
+if [[ "$PUBLISH_HOMEBREW" == "true" ]]; then
+  if ! homebrew_repo_exists; then
+    preflight_errors+=("Homebrew tap repo '$HOMEBREW_TAP_REPO' not found (required when PUBLISH_HOMEBREW=true; use --no-homebrew to skip)")
+  fi
+fi
+
+if [[ "$PUBLISH_SKILLSH" == "true" ]]; then
+  if ! command -v npx >/dev/null 2>&1; then
+    preflight_errors+=("npx not found (required when PUBLISH_SKILLSH=true)")
+  fi
+fi
+
+if [[ ${#preflight_errors[@]} -gt 0 ]]; then
+  printf '[release][error] Preflight failed — missing prerequisites:\n' >&2
+  for err in "${preflight_errors[@]}"; do
+    printf '  • %s\n' "$err" >&2
+  done
+  die "Fix the above issues before running the release pipeline."
+fi
+
 PREVIOUS_TAG_PRIMARY="$(find_previous_release_tag "$REPO_NAME" "$VERSION")"
 PREVIOUS_TAG_ALT=""
 PREVIOUS_TAG_CLOUD=""
@@ -1111,7 +1201,7 @@ if [[ "$PUBLISH_CLAWDHUB" == "true" ]]; then
   if [[ -n "$REPO_NAME_ALT" ]]; then
     publish_clawdhub "$REPO_NAME_ALT"
   fi
-  if [[ -n "$REPO_NAME_CLOUD" ]]; then
+  if [[ -n "$REPO_NAME_CLOUD" && "$PUBLISH_CLAWDHUB_CLOUD" == "true" ]]; then
     publish_clawdhub "$REPO_NAME_CLOUD"
   fi
 fi
@@ -1159,11 +1249,22 @@ fi
 
 log "Creating GitHub releases"
 create_github_release "$REPO_NAME" "$RELEASE_NOTES" "$USE_AUTO_NOTES"
+verify_github_release_exists "$REPO_NAME"
 if [[ -n "$REPO_NAME_ALT" ]]; then
   create_github_release "$REPO_NAME_ALT" "$RELEASE_NOTES" "$USE_AUTO_NOTES"
+  verify_github_release_exists "$REPO_NAME_ALT"
 fi
 if [[ -n "$REPO_NAME_CLOUD" ]]; then
   create_github_release "$REPO_NAME_CLOUD" "$RELEASE_NOTES" "$USE_AUTO_NOTES"
+  verify_github_release_exists "$REPO_NAME_CLOUD"
+fi
+
+# ── Early Homebrew asset gate: fail before touching the tap repo ──
+if [[ "$PUBLISH_HOMEBREW" == "true" && "$DRY_RUN" != "true" ]]; then
+  _hb_binary_url="https://github.com/$GITHUB_ORG/$REPO_NAME_ALT/releases/download/$VERSION/xint-rs-macos-arm64-$VERSION.tar.gz"
+  _hb_source_url="https://github.com/$GITHUB_ORG/$REPO_NAME_ALT/archive/refs/tags/$VERSION.tar.gz"
+  log "Verifying Homebrew release assets exist before tap update"
+  verify_homebrew_release_assets "$_hb_binary_url" "$_hb_source_url"
 fi
 
 log "Publishing Homebrew tap formulas"

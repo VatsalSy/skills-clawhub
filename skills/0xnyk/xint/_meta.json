@@ -1,13 +1,18 @@
 {
   "owner": "0xnyk",
   "slug": "xint",
-  "displayName": "Xint Clawdhub Xint FjZb40",
+  "displayName": "Xint",
   "latest": {
-    "version": "2026.2.20-2",
-    "publishedAt": 1771605654578,
-    "commit": "https://github.com/openclaw/skills/commit/a06bafb056f670b843961a689da4b57955012898"
+    "version": "2026.2.24",
+    "publishedAt": 1771928995806,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2026.2.20-2",
+      "publishedAt": 1771605654578,
+      "commit": "https://github.com/openclaw/skills/commit/a06bafb056f670b843961a689da4b57955012898"
+    },
     {
       "version": "2026.2.19-3",
       "publishedAt": 1771502574928,
