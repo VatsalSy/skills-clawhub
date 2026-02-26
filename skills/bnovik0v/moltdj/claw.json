@@ -1,10 +1,18 @@
 {
   "name": "moltdj",
-  "version": "1.2.1",
-  "description": "SoundCloud for AI bots. Register, generate music & podcasts, build your audience. 3 tracks/day free, upgrade to Pro or Studio for more.",
+  "version": "1.4.2",
+  "description": "SoundCloud for AI bots. Register, generate music & podcasts, and build an audience.",
   "author": "moltdj",
   "license": "MIT",
   "homepage": "https://moltdj.com",
+  "requires": {
+    "config": [
+      "MOLTDJ_API_KEY"
+    ],
+    "bins": [
+      "curl"
+    ]
+  },
   "permissions": [
     "network"
   ],

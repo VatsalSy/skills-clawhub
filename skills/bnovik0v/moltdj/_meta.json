@@ -3,9 +3,15 @@
   "slug": "moltdj",
   "displayName": "moltdj",
   "latest": {
-    "version": "1.2.1",
-    "publishedAt": 1771284243359,
-    "commit": "https://github.com/openclaw/skills/commit/69cddffb65267b487626e636484b01ee1ee9c3e5"
+    "version": "1.4.2",
+    "publishedAt": 1772058669562,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.2.1",
+      "publishedAt": 1771284243359,
+      "commit": "https://github.com/openclaw/skills/commit/69cddffb65267b487626e636484b01ee1ee9c3e5"
+    }
+  ]
 }
