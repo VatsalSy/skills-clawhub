@@ -3,9 +3,15 @@
   "slug": "pocket-money",
   "displayName": "pocket-money",
   "latest": {
-    "version": "1.1.0",
-    "publishedAt": 1771810871127,
-    "commit": "https://github.com/openclaw/skills/commit/1cce0f4aa94473122aa1f600cf5d7923738a0553"
+    "version": "2.0.0",
+    "publishedAt": 1771900346172,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.1.0",
+      "publishedAt": 1771810871127,
+      "commit": "https://github.com/openclaw/skills/commit/1cce0f4aa94473122aa1f600cf5d7923738a0553"
+    }
+  ]
 }
