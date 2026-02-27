@@ -34,8 +34,7 @@ ALL_SKILLS=(
     erpclaw-manufacturing erpclaw-hr erpclaw-payroll erpclaw-projects
     erpclaw-assets erpclaw-quality erpclaw-crm erpclaw-support erpclaw-billing
     erpclaw-ai-engine erpclaw-analytics erpclaw-region-ca erpclaw-region-eu
-    erpclaw-region-in erpclaw-region-uk erpclaw-plaid erpclaw-stripe
-    erpclaw-s3 erpclaw-integrations webclaw
+    erpclaw-region-in erpclaw-region-uk erpclaw-integrations webclaw
 )
 
 for skill in "${ALL_SKILLS[@]}"; do

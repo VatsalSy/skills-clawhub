@@ -50,9 +50,6 @@ ALL_SKILLS = [
     "erpclaw-region-eu",
     "erpclaw-region-in",
     "erpclaw-region-uk",
-    "erpclaw-plaid",
-    "erpclaw-stripe",
-    "erpclaw-s3",
     "erpclaw-integrations",
     "webclaw",
 ]
@@ -96,8 +93,8 @@ TIERS = [
     },
     {
         "name": "Tier 7 — Integrations",
-        "skills": ["erpclaw-plaid", "erpclaw-stripe", "erpclaw-s3", "erpclaw-integrations"],
-        "install_cmd": "clawhub install erpclaw-plaid erpclaw-stripe erpclaw-s3 erpclaw-integrations",
+        "skills": ["erpclaw-integrations"],
+        "install_cmd": "clawhub install erpclaw-integrations",
     },
     {
         "name": "Web Dashboard",
@@ -133,10 +130,7 @@ SKILL_TABLES = {
     "erpclaw-region-eu": [],
     "erpclaw-region-in": [],
     "erpclaw-region-uk": [],
-    "erpclaw-plaid": [],
-    "erpclaw-stripe": [],
-    "erpclaw-s3": [],
-    "erpclaw-integrations": [],
+    "erpclaw-integrations": ["plaid_config", "stripe_config", "s3_config"],
     "webclaw": [],
 }
 

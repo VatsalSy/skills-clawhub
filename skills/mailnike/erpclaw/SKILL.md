@@ -106,7 +106,7 @@ Country-specific tax, compliance, and localization modules.
 
 ### Tier 7 -- Integrations (optional)
 ```
-clawhub install erpclaw-plaid erpclaw-stripe erpclaw-s3 erpclaw-integrations
+clawhub install erpclaw-integrations
 ```
 Bank feeds, payment processing, cloud storage, third-party connectors.
 
@@ -192,9 +192,8 @@ to report installation status. All data management happens through the individua
 
 **Script:** `{baseDir}/scripts/db_query.py` -- standalone, no shared library dependencies.
 
-**29 skills total:** erpclaw-setup, erpclaw-gl, erpclaw-journals, erpclaw-payments, erpclaw-tax,
+**26 skills total:** erpclaw-setup, erpclaw-gl, erpclaw-journals, erpclaw-payments, erpclaw-tax,
 erpclaw-reports, erpclaw-inventory, erpclaw-selling, erpclaw-buying, erpclaw-manufacturing,
 erpclaw-hr, erpclaw-payroll, erpclaw-projects, erpclaw-assets, erpclaw-quality, erpclaw-crm,
 erpclaw-support, erpclaw-billing, erpclaw-ai-engine, erpclaw-analytics, erpclaw-region-ca,
-erpclaw-region-eu, erpclaw-region-in, erpclaw-region-uk, erpclaw-plaid, erpclaw-stripe,
-erpclaw-s3, erpclaw-integrations, webclaw
+erpclaw-region-eu, erpclaw-region-in, erpclaw-region-uk, erpclaw-integrations, webclaw
