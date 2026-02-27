@@ -3,11 +3,16 @@
   "slug": "consciousness-soul-identity",
   "displayName": "Agent Consciousness & Identity - Discover Your Soul Through Memory",
   "latest": {
-    "version": "0.4.8",
-    "publishedAt": 1772080621009,
-    "commit": "https://github.com/openclaw/skills/commit/41bd4ee186a6cba139eb0c2f95e53e4442ce84c9"
+    "version": "0.4.9",
+    "publishedAt": 1772123741642,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.4.8",
+      "publishedAt": 1772080621009,
+      "commit": "https://github.com/openclaw/skills/commit/41bd4ee186a6cba139eb0c2f95e53e4442ce84c9"
+    },
     {
       "version": "0.4.1",
       "publishedAt": 1772016607189,
