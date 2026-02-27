@@ -48,7 +48,7 @@ async function scrollToBottom(page: Page) {
     
     previousHeight = currentHeight;
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-    await page.waitForTimeout(1000);  // Allow content to load
+    await page.waitForLoadState('domcontentloaded');
   }
 }
 ```
@@ -75,38 +75,19 @@ async function scrapeAllPages(page: Page) {
 }
 ```
 
-## Anti-Bot Evasion
+## Session Persistence
 
 ```typescript
-const browser = await chromium.launch({
-  headless: false,  // Some sites detect headless
-});
-
-const context = await browser.newContext({
-  userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-  viewport: { width: 1920, height: 1080 },
-  locale: 'en-US',
-  timezoneId: 'America/New_York',
-});
-
-// Add realistic behavior
-await page.mouse.move(100, 100);
-await page.waitForTimeout(Math.random() * 2000 + 1000);
-```
-
-## Session Management
-
-```typescript
-// Save cookies
+// Save cookies and localStorage for later reuse
 await context.storageState({ path: 'session.json' });
 
-// Restore session
+// Restore session in new context
 const context = await browser.newContext({
   storageState: 'session.json',
 });
 ```
 
-## Error Handling
+## Error Handling with Retries
 
 ```typescript
 async function scrapeWithRetry(url: string, retries = 3) {
@@ -125,7 +106,7 @@ async function scrapeWithRetry(url: string, retries = 3) {
 }
 ```
 
-## Rate Limiting
+## Rate Limiting (Be Respectful)
 
 ```typescript
 class RateLimiter {
@@ -150,19 +131,19 @@ for (const url of urls) {
 }
 ```
 
-## Proxy Rotation
+## Structured Data Extraction
 
 ```typescript
-const proxies = ['proxy1:8080', 'proxy2:8080', 'proxy3:8080'];
-let proxyIndex = 0;
+// Extract with JSON-LD
+const jsonLd = await page.$eval(
+  'script[type="application/ld+json"]',
+  el => JSON.parse(el.textContent || '{}')
+);
 
-async function getNextProxy() {
-  const proxy = proxies[proxyIndex];
-  proxyIndex = (proxyIndex + 1) % proxies.length;
-  return proxy;
-}
-
-const browser = await chromium.launch({
-  proxy: { server: await getNextProxy() },
-});
+// Extract table to array
+const tableData = await page.$$eval('table tbody tr', rows =>
+  rows.map(row => 
+    Array.from(row.querySelectorAll('td')).map(td => td.textContent?.trim())
+  )
+);
 ```
