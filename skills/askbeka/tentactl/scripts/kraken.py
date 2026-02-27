@@ -6,6 +6,12 @@ import subprocess, json, sys, os, time, select
 tool = sys.argv[1]
 args = json.loads(sys.argv[2]) if len(sys.argv) > 2 else {}
 binary = os.environ.get("KRAKEN_MCP_BINARY") or "tentactl"
+if not os.path.isabs(binary):
+    import shutil
+    if not shutil.which(binary):
+        cargo_bin = os.path.expanduser("~/.cargo/bin/tentactl")
+        if os.path.isfile(cargo_bin) and os.access(cargo_bin, os.X_OK):
+            binary = cargo_bin
 
 init = json.dumps({"jsonrpc":"2.0","id":0,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"openclaw","version":"0.1"}}})
 notif = json.dumps({"jsonrpc":"2.0","method":"notifications/initialized"})

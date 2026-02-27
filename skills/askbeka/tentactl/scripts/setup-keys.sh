@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Setup Kraken API keys from 1Password or manual input.
-# Stores them in ~/.kraken-mcp.env (chmod 600).
+# Stores them in ~/.tentactl.env (chmod 600).
 
 set -euo pipefail
 
-ENV_FILE="$HOME/.kraken-mcp.env"
+ENV_FILE="$HOME/.tentactl.env"
 
 echo "🐙 Kraken API Key Setup"
 echo ""

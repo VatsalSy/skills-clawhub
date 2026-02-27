@@ -3,9 +3,15 @@
   "slug": "tentactl",
   "displayName": "Kraken Exchange",
   "latest": {
-    "version": "0.1.1",
-    "publishedAt": 1772020715666,
-    "commit": "https://github.com/openclaw/skills/commit/2b46e9fd851846fc17d2df34675fbac5a08ffa94"
+    "version": "0.3.2",
+    "publishedAt": 1772115552594,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.1.1",
+      "publishedAt": 1772020715666,
+      "commit": "https://github.com/openclaw/skills/commit/2b46e9fd851846fc17d2df34675fbac5a08ffa94"
+    }
+  ]
 }
