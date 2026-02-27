@@ -1,6 +1,6 @@
 ---
 name: todokan-review-loop
-version: 1.0.1
+version: 1.3.0
 description: Process Todokan task and thought boards with a review-loop workflow. Use when a task enters doing and the agent should pick it up, read latest comments, respond to the newest comment with a high-quality context-aware reply, add an execution update comment, and move the task back to done (Review). Use for recurring polling/cron automation with Todokan MCP.
 homepage: https://todokan.com
 metadata: {"category":"productivity","tags":["tasks","kanban","mcp","review-loop","automation"],"requires":{"env":["TODOKAN_API_KEY","TODOKAN_MCP_URL"],"mcp":true},"openclaw":{"homepage":"https://todokan.com","requires":{"env":["TODOKAN_API_KEY","TODOKAN_MCP_URL"]}}}
@@ -9,6 +9,8 @@ metadata: {"category":"productivity","tags":["tasks","kanban","mcp","review-loop
 # Todokan Review Loop
 
 Use this workflow for autonomous handling of `doing` items.
+
+**Note:** The MCP server only returns tasks where `aiEnabled: true` by default. Users send tasks to AI via a "Send to AI" button, which sets `aiEnabled: true`, `assignee: 'ai'`, and `status: 'doing'`. This skill will only see tasks that users have explicitly sent to AI.
 
 ## Role Model
 
@@ -65,7 +67,7 @@ Use this workflow for autonomous handling of `doing` items.
 
 ### Anti-template rule
 
-- Do not post generic placeholders like "Verstanden... Ziel... Aktion... Ergebnis..." without substantive content.
+- Do not post generic placeholders like "Understood... Goal... Action... Result..." without substantive content.
 - If a factual question is asked (e.g., name/place), include the factual answer explicitly.
 
 ## Conversation-aware reply policy (mandatory)
@@ -155,7 +157,7 @@ Use this decision rule per task update:
    - Create a task document with the full content (`add_document_to_task`).
    - Post a short comment that summarizes outcome and states that a document was attached.
 
-### Suggested Thresholds for document usage
+### Suggested thresholds for document usage
 
 Attach a document when at least one is true:
 - response would exceed ~600 characters,
@@ -165,7 +167,7 @@ Attach a document when at least one is true:
 ### Required short comment after document attach
 
 Comment template:
-- `Kurzupdate: <1-2 line summary>. Ich habe ein Dokument mit den Details angehaengt.`
+- `Quick update: <1-2 line summary>. I've attached a document with the full details.`
 
 ## Safety Rules
 
@@ -204,7 +206,7 @@ If the latest user message explicitly requests research/deep-dive/analysis (e.g.
 
 1. Spawn exactly one internal Research Subagent for that task cycle.
 2. Do not post a final factual answer before the research result returns.
-3. Optional interim comment allowed once: "Research laeuft, ich komme mit den Ergebnissen zurueck."
+3. Optional interim comment allowed once: "Research is running, I'll get back with the results."
 4. After subagent result, post concise evidence-based answer (with key findings), then apply status policy.
 
 Hard guard:
@@ -243,17 +245,17 @@ Otherwise keep `doing` and post a short progress comment.
 ## Regression Examples (must pass)
 
 Example A (follow-up question):
-- Title: `Was ist die beste CRM-Strategie fuer KAM?`
-- User comment #1: `Danke. Und wie starte ich morgen konkret?`
+- Title: `What is the best CRM strategy for KAM?`
+- User comment #1: `Thanks. And how do I concretely start tomorrow?`
 - MCP previously answered title question.
 - Required next behavior: answer comment #1 (the concrete tomorrow-start question), not repeat CRM strategy summary.
 
 Example B (ack only):
-- User latest comment: `Perfekt, danke!`
+- User latest comment: `Perfect, thanks!`
 - Required next behavior: brief acknowledgment or no-op; do not restate previous answer.
 
 Example C (correction):
-- User latest comment: `Nein, ich meinte B2B SaaS, nicht E-Commerce.`
+- User latest comment: `No, I meant B2B SaaS, not E-Commerce.`
 - Required next behavior: adapt answer to corrected scope; do not re-send old generic answer.
 
 ## Subagent Execution Notes
