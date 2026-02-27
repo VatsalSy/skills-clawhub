@@ -3,11 +3,16 @@
   "slug": "hs58",
   "displayName": "Handshake — AI Payments",
   "latest": {
-    "version": "1.9.1",
-    "publishedAt": 1772031902073,
-    "commit": "https://github.com/openclaw/skills/commit/2844bd4ec999b71de84d1ed7defc220e2ce808ef"
+    "version": "3.0.0",
+    "publishedAt": 1772137191313,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.9.1",
+      "publishedAt": 1772031902073,
+      "commit": "https://github.com/openclaw/skills/commit/2844bd4ec999b71de84d1ed7defc220e2ce808ef"
+    },
     {
       "version": "1.9.0",
       "publishedAt": 1771923181311,
