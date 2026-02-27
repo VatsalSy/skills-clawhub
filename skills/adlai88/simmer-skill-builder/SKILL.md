@@ -5,7 +5,8 @@ description: Generate complete, installable OpenClaw trading skills from natural
 metadata: {"clawdbot":{"emoji":"🛠️","requires":{"env":["SIMMER_API_KEY"],"pip":["simmer-sdk"]},"cron":null,"autostart":false,"automaton":{"managed":false,"entrypoint":null}}}
 authors:
   - Simmer (@simmer_markets)
-version: "1.0.2"
+version: "1.0.5"
+difficulty: beginner
 published: true
 ---
 
@@ -78,7 +79,7 @@ Create a complete folder on disk:
 #### Python Script Requirements
 
 Copy these verbatim from `references/skill-template.md`:
-- Config system (`_load_config`, `_get_config_path`, `_update_config`)
+- Config system (`from simmer_sdk.skill import load_config, update_config, get_config_path`)
 - `get_client()` singleton
 - `check_context_safeguards()`
 - `execute_trade()`
@@ -88,6 +89,7 @@ Copy these verbatim from `references/skill-template.md`:
 Customize:
 - `CONFIG_SCHEMA` — skill-specific params with `SIMMER_<SKILLNAME>_<PARAM>` env vars
 - `TRADE_SOURCE` — unique tag like `"sdk:<skillname>"`
+- `SKILL_SLUG` — must match the ClawHub slug exactly (e.g., `"polymarket-weather-trader"`)
 - Signal logic — your human's strategy
 - Market fetching/filtering — how to find relevant markets
 - Main strategy function — the core loop
@@ -102,11 +104,26 @@ python /path/to/simmer-skill-builder/scripts/validate_skill.py /path/to/generate
 
 Fix any FAIL results before delivering to your human.
 
+### Step 6: Publish to ClawHub
+
+Once validated, publish the skill so it appears in the Simmer registry automatically:
+
+```bash
+npx clawhub@latest publish /path/to/generated-skill/ --slug <skill-slug> --version 1.0.0
+```
+
+After publishing, the Simmer sync job picks it up within 6 hours and lists it at [simmer.markets/skills](https://simmer.markets/skills). No submission or approval needed — publishing to ClawHub with `simmer-sdk` as a dependency is all it takes.
+
+Tell your human:
+> ✅ Skill published to ClawHub. It will appear in the Simmer Skills Registry within 6 hours at simmer.markets/skills.
+
+For full publishing details: [simmer.markets/skillregistry.md](https://simmer.markets/skillregistry.md)
+
 ## Hard Rules
 
 1. **Always use `SimmerClient` for trades.** Never import `py_clob_client`, `polymarket`, or call the CLOB API directly for order placement. Simmer handles wallet signing, safety rails, and trade tracking.
 2. **Always default to dry-run.** The `--live` flag must be explicitly passed for real trades.
-3. **Always tag trades** with `source=TRADE_SOURCE` (e.g. `"sdk:synth-volatility"`).
+3. **Always tag trades** with `source=TRADE_SOURCE` and `skill_slug=SKILL_SLUG`. `SKILL_SLUG` must match the ClawHub slug exactly — Simmer uses it to track per-skill volume.
 4. **Always include safeguards** — the `check_context_safeguards()` function, skippable with `--no-safeguards`.
 5. **Always include reasoning** in `execute_trade()` — it's displayed publicly and builds your reputation.
 6. **Use stdlib only** for HTTP (urllib). Don't add `requests`, `httpx`, or `aiohttp` as dependencies unless your human specifically needs them. The only pip dependency should be `simmer-sdk`.
@@ -118,7 +135,8 @@ Fix any FAIL results before delivering to your human.
 ## Naming Convention
 
 - Skill slug: `polymarket-<strategy>` for Polymarket-specific, `simmer-<strategy>` for platform-agnostic
-- Trade source: `sdk:<shortname>` (e.g. `sdk:synthvol`, `sdk:rssniper`, `sdk:momentum`)
+- Trade source: `sdk:<shortname>` (e.g. `sdk:synthvol`, `sdk:rssniper`, `sdk:momentum`) — used for rebuy/conflict detection
+- Skill slug: must match the ClawHub slug exactly (e.g. `SKILL_SLUG = "polymarket-synth-volatility"`) — used for volume attribution
 - Env vars: `SIMMER_<SHORTNAME>_<PARAM>` (e.g. `SIMMER_SYNTHVOL_ENTRY`)
 - Script name: `<descriptive_name>.py` (e.g. `synth_volatility.py`, `rss_sniper.py`)
 
@@ -138,3 +156,4 @@ You would:
    - `synth_volatility.py` (fetch Synth forecast, compare to market price, Kelly size, trade)
    - `scripts/status.py` (copied)
 7. Validate with `scripts/validate_skill.py`.
+8. Publish: `npx clawhub@latest publish polymarket-synth-volatility/ --slug polymarket-synth-volatility --version 1.0.0`
