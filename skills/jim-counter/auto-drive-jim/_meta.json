@@ -1,0 +1,11 @@
+{
+  "owner": "jim-counter",
+  "slug": "auto-drive-jim",
+  "displayName": "Auto Drive",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772107393150,
+    "commit": null
+  },
+  "history": []
+}
