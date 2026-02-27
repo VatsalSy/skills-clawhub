@@ -1,11 +1,13 @@
----
-name: pdf-ocr-tool
-description: Intelligent PDF and image to Markdown converter using Ollama GLM-OCR with smart content detection (text/table/figure)
-metadata: {"openclaw":{"emoji":"📄","requires":{"bins":["uv","ollama","pdftoppm"],"anyBins":[],"env":[],"config":[]},"install":[{"id":"uv-env","kind":"uv","path":".","bins":["ocr_tool.py"]}]}}
----
-# PDF OCR Tool - Intelligent PDF to Markdown Converter
+# PDF OCR Tool
 
-Uses the Ollama GLM-OCR model to intelligently recognize text, tables, and figures in PDF pages, applying the most appropriate prompts for OCR processing and outputting structured Markdown documents.
+**Intelligent PDF and Image to Markdown Converter using Ollama GLM-OCR**
+
+[![ClawHub](https://clawhub.ai/badge/pdf-ocr-tool)](https://clawhub.ai/skills/pdf-ocr-tool)
+[![GitHub](https://img.shields.io/github/license/nala0222/pdf-ocr-tool)](https://github.com/nala0222/pdf-ocr-tool)
+
+## Overview
+
+PDF OCR Tool is an intelligent document conversion tool that uses the Ollama GLM-OCR model to convert PDFs and images into structured Markdown format. It automatically detects content types (text, tables, figures) and applies the most appropriate prompts for optimal OCR results.
 
 ## Features
 
@@ -20,7 +22,7 @@ Uses the Ollama GLM-OCR model to intelligently recognize text, tables, and figur
 
 ## Installation
 
-### 1. Prerequisites
+### Prerequisites
 
 ```bash
 # Install Ollama
@@ -35,32 +37,22 @@ brew install poppler            # macOS
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-### 2. Install with uv (Recommended)
-
-```bash
-cd skills/pdf-ocr-tool
-uv venv
-source .venv/bin/activate
-uv add requests Pillow
-```
-
-### 3. Install via ClawHub
+### Install via ClawHub (Recommended)
 
 ```bash
 npx clawhub install pdf-ocr-tool
 ```
 
-### 4. Manual Installation
+### Manual Installation
 
 ```bash
-# Clone or download skill
-git clone <repo> ~/.openclaw/workspace/skills/pdf-ocr-tool
+# Clone or download the skill
+cd ~/.openclaw/workspace/skills/pdf-ocr-tool
 
 # Create virtual environment and install dependencies
-cd ~/.openclaw/workspace/skills/pdf-ocr-tool
 uv venv
 source .venv/bin/activate
-uv add requests Pillow
+uv sync
 
 # Run post-install script
 bash hooks/post-install.sh
@@ -80,10 +72,10 @@ python ocr_tool.py --input document.pdf --output result.md --mode table
 python ocr_tool.py --input document.pdf --output result.md --mode figure
 
 # Mixed mode: split page into regions
-python ocr_tool.py --input document.pdf --output result.md --granularity region
+python ocr_tool.py --input document.pdf --output result.md --mode auto --granularity region
 
 # Process a single image
-python ocr_tool.py --input image.png --output result.md --mode mixed
+python ocr_tool.py --input image.png --output result.md
 ```
 
 ### Advanced Configuration
@@ -105,7 +97,7 @@ python ocr_tool.py --input image.png --output result.md \
 python ocr_tool.py --input document.pdf --output result.md --save-images
 ```
 
-### Environment Configuration
+### Environment Variables
 
 ```bash
 # Set default configuration
@@ -167,134 +159,119 @@ When using `--granularity region`:
 ---
 ```
 
-### Image Output Example
-
-```markdown
-# image.png OCR Result
-Model: glm-ocr:q8_0
-Mode: table
-
----
-
-[OCR recognized result]
-```
-
 ## Prompt Templates
 
 The tool includes four built-in prompt templates in the `prompts/` directory:
 
-### Text Mode (`prompts/text.md`)
-```
-Convert the text in this region to Markdown format.
-- Preserve paragraph structure and heading levels
-- Handle lists correctly
-- Preserve mathematical formulas
-- Maintain citations and references
-```
+- **text.md**: Text recognition prompts
+- **table.md**: Table recognition prompts
+- **figure.md**: Figure/chart analysis prompts
+- **mixed.md**: Mixed content prompts
 
-### Table Mode (`prompts/table.md`)
-```
-Convert the table in this region to Markdown table format.
-- Maintain row and column alignment
-- Preserve all data and values
-- Handle merged cells
-- Preserve headers and units
-```
-
-### Figure Mode (`prompts/figure.md`)
-```
-Analyze the chart or image in this region:
-1. Chart type (bar, line, pie, flowchart, etc.)
-2. Titles and axis labels
-3. Data trends and key observations
-4. Important values and anomalies
-Describe in Markdown format.
-```
-
-## Using in OpenClaw
-
-```python
-import subprocess
-from pathlib import Path
-
-# Process PDF (auto mode)
-subprocess.run([
-    "python", "skills/pdf-ocr-tool/ocr_tool.py",
-    "--input", "/path/to/document.pdf",
-    "--output", "/tmp/result.md",
-    "--mode", "auto"
-])
-
-# Read result
-with open("/tmp/result.md", "r") as f:
-    markdown_content = f.read()
-
-# Process single image (table mode)
-subprocess.run([
-    "python", "skills/pdf-ocr-tool/ocr_tool.py",
-    "--input", "/path/to/table.png",
-    "--output", "/tmp/table.md",
-    "--mode", "table"
-])
-
-# Mixed mode for complex PDF
-subprocess.run([
-    "python", "skills/pdf-ocr-tool/ocr_tool.py",
-    "--input", "/path/to/mixed.pdf",
-    "--output", "/tmp/mixed.md",
-    "--granularity", "region",  # Split into regions
-    "--save-images"  # Save figure images
-])
-```
+All prompts are in English for consistency and can be customized based on your needs.
 
 ## Troubleshooting
 
 ### Model Not Installed
+
 ```bash
 ollama pull glm-ocr:q8_0
 ```
 
 ### Service Not Running
+
 ```bash
 ollama serve
 ```
 
 ### Missing pdftoppm
+
 ```bash
 sudo apt install poppler-utils  # Debian/Ubuntu
 brew install poppler            # macOS
 ```
 
 ### Poor OCR Results
+
 - Try different modes: `--mode text` or `--mode mixed`
 - Use custom prompts: `--prompt "your prompt here"`
 - Check image quality (resolution, clarity)
 - Try mixed mode: `--granularity region`
 
 ### Dependency Issues
+
 ```bash
-cd skills/pdf-ocr-tool
+cd ~/.openclaw/workspace/skills/pdf-ocr-tool
 source .venv/bin/activate
 uv sync  # Reinstall all dependencies
 ```
 
-## Related Resources
+## Project Structure
 
-- [Ollama API Documentation](https://docs.ollama.com/api/generate)
-- [GLM-OCR Model Page](https://ollama.com/library/glm-ocr)
-- [poppler-utils](https://poppler.freedesktop.org/)
-- [uv Package Manager](https://github.com/astral-sh/uv)
+```
+pdf-ocr-tool/
+├── SKILL.md              # Skill definition
+├── README.md             # This file
+├── _meta.json            # ClawHub metadata
+├── .clawhubignore        # Files to exclude from ClawHub
+├── .gitignore            # Git ignore rules
+├── pyproject.toml        # Python project config
+├── uv.lock              # Dependency lock file
+├── ocr_tool.py          # Main CLI entry point
+├── analyzer.py          # Page analysis module
+├── processor.py         # Region processing module
+├── integrator.py        # Markdown integration module
+├── prompts.py           # Prompt loader
+├── prompts/             # Prompt templates
+│   ├── text.md
+│   ├── table.md
+│   ├── figure.md
+│   └── mixed.md
+├── utils/               # Utility modules
+│   ├── ollama_client.py
+│   ├── image_utils.py
+│   └── pdf_utils.py
+├── hooks/               # Installation hooks
+│   ├── post-install.sh
+│   └── install-deps.sh
+└── tests/               # Test suite
+```
 
-## Version History
+## Development
 
-- **v1.2.0** - English prompts, install-deps.sh, fixed .gitignore
-- **v1.1.0** - Added mixed mode, region splitting, pyproject.toml
-- **v1.0.0** - Initial version with basic OCR functionality
+### Running Tests
 
-## Credits
+```bash
+cd ~/.openclaw/workspace/skills/pdf-ocr-tool
+source .venv/bin/activate
+pytest tests/ -v
+```
 
-This tool is developed and maintained by the OpenClaw community.
+### Building from Source
+
+```bash
+# Clone repository
+git clone https://github.com/nala0222/pdf-ocr-tool.git
+cd pdf-ocr-tool
+
+# Install dependencies
+uv venv
+source .venv/bin/activate
+uv sync
+```
 
 ## License
 
-MIT License
+MIT License - See LICENSE file for details.
+
+## Credits
+
+- **Ollama**: For the GLM-OCR model
+- **OpenClaw**: For the skill framework
+- **ClawHub**: For skill distribution
+
+## Support
+
+For issues and feature requests, please visit:
+- GitHub: https://github.com/nala0222/pdf-ocr-tool
+- ClawHub: https://clawhub.ai/skills/pdf-ocr-tool
