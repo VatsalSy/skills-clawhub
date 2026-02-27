@@ -1,30 +1,55 @@
-# Interview Evaluation Report
+# 面试评价表-{{Name}}-{{Position}}
 
-## Candidate Information
-- **Name**: {{name}}
-- **Position**: {{position}}
-- **Interview Date**: {{date}}
-- **Overall Score**: {{score}}/10
+## 简历
+{{ResumeFileAttachment}}
 
----
+## 人事面试评价：
 
-## 1. Technical Depth
-{{technical_notes}}
+## 综合评级
+- [ ] A-超出预期 薪资110%~130%
+- [ ] B-完全匹配 薪资100%~120%
+- [ ] C-基本匹配 薪资90%~110%
+- [ ] D-勉强接受 薪资80%~100%
 
-## 2. Communication Skills
-{{communication_notes}}
+::: callout { "emoji": "man-swimming", "background": "blue" }
+学历：{{Education}}                 通勤时间：
+最快到岗时间：           期望薪酬：{{ExpectedSalary}}
+亮点：{{Highlights}}
+风险关注项：{{Risks}}
 
-## 3. Culture Fit & Growth
-{{soft_skills_notes}}
+沟通谈吐：
+### 工作一
+汇报上级：            
+离职原因：                 
+薪酬：
 
-## 4. Pros & Cons
-- **Pros**: 
-  - {{pro1}}
-- **Cons**:
-  - {{con1}}
+### 工作二
+汇报上级：            
+离职原因：  
+薪酬：
+:::
 
----
+# 业务面试评价：
+## 优劣势分析
 
-## Conclusion & Recommendation
-**Result**: {{status}} (Hire / Strong Hire / No Hire)
-**Reasoning**: {{final_reasoning}}
+::: callout { "emoji": "office", "background": "grey" }
+业务能力及案例：
+团队定位：
+职级定位：
+建议薪资：
+优势：{{Pros}}
+劣势：{{Cons}}
+风险关注项：{{Risks}}
+:::
+
+## 复试面试结论
+| 维度 | ABCD匹配度 | 详情 |
+| --- | --- | --- |
+| 专业能力 | | |
+| 沟通能力 | | |
+| 团队匹配度 | | |
+| 综合性价比 | | |
+
+**录用薪酬建议**：
+
+# 终面评价：
