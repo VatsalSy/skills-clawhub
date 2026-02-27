@@ -1,0 +1,11 @@
+{
+  "owner": "qiaotucodes",
+  "slug": "openclaw-skill-whisper-stt",
+  "displayName": "Whisper Stt",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1772109434375,
+    "commit": null
+  },
+  "history": []
+}
