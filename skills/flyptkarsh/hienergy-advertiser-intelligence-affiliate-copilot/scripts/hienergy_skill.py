@@ -141,8 +141,17 @@ class HiEnergySkill:
         return item
 
     def _extract_list_data(self, response: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Extract list payloads across flat and JSON:API response formats."""
-        data = response.get('data', []) if isinstance(response, dict) else []
+        """Extract list payloads across flat, JSON:API, and root-key wrapped formats."""
+        if not isinstance(response, dict):
+            return []
+            
+        # Check for root keys that wrap the data (e.g., 'transactions', 'advertisers')
+        # This handles cases like {"transactions": {"data": [...]}}
+        for key in ['transactions', 'advertisers', 'deals', 'contacts', 'agencies', 'tags', 'status_changes']:
+            if key in response and isinstance(response[key], dict) and 'data' in response[key]:
+                return self._extract_list_data(response[key])
+
+        data = response.get('data', [])
         if isinstance(data, list):
             return [self._normalize_item(item) for item in data]
         if isinstance(data, dict):
@@ -947,18 +956,131 @@ class HiEnergySkill:
         response = self._make_request('contacts', params=params)
         return self._extract_list_data(response)
 
+    def get_agencies(self, search: Optional[str] = None,
+                     agency_id: Optional[str] = None,
+                     limit: int = DEFAULT_CHAT_LIMIT,
+                     page: Optional[int] = None,
+                     per_page: Optional[int] = None) -> List[Dict]:
+        """
+        Get agencies from the HiEnergy API.
+        
+        Args:
+            search: Optional name search
+            agency_id: Optional ID filter
+            limit: Max results
+            page: Page number
+            per_page: Results per page
+            
+        Returns:
+            List of agency dictionaries
+        """
+        params: Dict[str, Any] = {}
+        if search:
+            params['q'] = search # Assuming 'q' or 'name' - starting with 'q' as common pattern
+        if agency_id:
+            params['agency_id'] = agency_id # or id if it's a direct resource, but usually index filters by id
+            
+        if page is not None:
+            params['page'] = page
+        
+        final_limit = self._clamp_page_size(per_page if per_page is not None else limit)
+        params['per_page'] = final_limit
+
+        # Note: If endpoint is /agencies, we use that.
+        # If it doesn't exist, this might fail, but we'll implement it as requested.
+        try:
+            response = self._make_request('agencies', params=params)
+            return self._extract_list_data(response)
+        except Exception:
+            # Fallback if specific search fails, return empty
+            return []
+
+    def search_tags(self, search: Optional[str] = None,
+                    page: Optional[int] = None,
+                    per_page: Optional[int] = None) -> List[Dict]:
+        """
+        Search for tags/categories.
+        
+        Args:
+            search: Search term (q)
+            page: Page number
+            per_page: Results per page
+            
+        Returns:
+            List of tag dictionaries
+        """
+        params: Dict[str, Any] = {}
+        if search:
+            params['search'] = search # Docs say 'search' (or 'q')
+            
+        if page is not None:
+            params['page'] = page
+            
+        if per_page is not None:
+            params['per_page'] = self._clamp_page_size(per_page)
+
+        response = self._make_request('tags', params=params)
+        return self._extract_list_data(response)
+
+    def get_tag_advertisers(self, tag_id: str,
+                            network_id: Optional[str] = None,
+                            status: Optional[str] = None,
+                            sort: Optional[str] = None,
+                            page: Optional[int] = None,
+                            per_page: Optional[int] = None) -> List[Dict]:
+        """
+        Get advertisers for a specific tag.
+        
+        Args:
+            tag_id: Tag ID or slug
+            network_id: Filter by network
+            status: Filter by status
+            sort: Sort field (global_total_sales, etc.)
+            page: Page number
+            per_page: Results per page
+            
+        Returns:
+            List of advertiser dictionaries (nested in data)
+        """
+        params: Dict[str, Any] = {}
+        if network_id:
+            params['network_id'] = network_id
+        if status:
+            params['status'] = status
+        if sort:
+            params['sort'] = sort
+        if page is not None:
+            params['page'] = page
+        if per_page is not None:
+            params['per_page'] = self._clamp_page_size(per_page)
+
+        response = self._make_request(f'tags/{tag_id}/advertisers', params=params)
+        return self._extract_list_data(response)
+
     def create_contact(self, contact_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Create a new contact (Admin only).
         
         Args:
-            contact_data: Dictionary containing contact fields (advertiser_id, email, etc.)
+            contact_data: Dictionary containing contact fields.
+                         Required: advertiser_id, email.
+                         Optional: name, given_name, family_name, phone, job_title, source, status.
             
         Returns:
             Created contact dictionary
         """
         response = self._make_request('contacts', method='POST', data={'contact': contact_data})
         return self._extract_single_data(response)
+
+    def find_contact_on_web(self, advertiser_name: str, advertiser_id: str) -> Optional[Dict[str, Any]]:
+        """
+        [Placeholder] Search the web for an affiliate contact.
+        Actual implementation logic resides in the agent's multi-step plan:
+        1. Agent calls web_search to find people on LinkedIn.
+        2. Agent calls create_contact to push them to API.
+        This method serves as an intent marker.
+        """
+        return None
 
     def replace_contact(self, contact_id: str, advertiser_id: str) -> Dict[str, Any]:
         """
@@ -1141,11 +1263,15 @@ class HiEnergySkill:
             return 'status_changes'
         if any(term in question_lower for term in ['publisher', 'network key', 'credential']):
             return 'publishers'
+        if any(term in question_lower for term in ['agency', 'agencies']):
+            return 'agencies'
+        if any(term in question_lower for term in ['tag', 'category', 'categories']):
+            return 'tags'
 
         # Conversational follow-up fallback (e.g., "what about macys?")
         if isinstance(context, dict):
             last_intent = str(context.get('last_intent', '')).strip().lower()
-            if last_intent in {'advertisers', 'programs', 'deals', 'transactions', 'contacts', 'status_changes', 'publishers'}:
+            if last_intent in {'advertisers', 'programs', 'deals', 'transactions', 'contacts', 'status_changes', 'publishers', 'agencies', 'tags'}:
                 return last_intent
 
         return 'general'
@@ -1208,13 +1334,34 @@ class HiEnergySkill:
             contacts = self.get_contacts(search=search_term)
             if contacts:
                 return f"{preface}\n{self._format_contacts_answer(contacts, question)}"
-            return f"{preface}\nI couldn't find any contacts matching your query.\n{self._search_tips()}"
+            return (f"{preface}\nI couldn't find any contacts matching your query.\n"
+                    "Tip: You can ask me to 'find contact on web for [Advertiser]' to search LinkedIn and add them.")
 
         if intent == 'status_changes':
             changes = self.get_status_changes(q=search_term)
             if changes:
                 return f"{preface}\n{self._format_status_changes_answer(changes, question)}"
             return f"{preface}\nI couldn't find any status changes matching your query.\n{self._search_tips()}"
+            
+        if intent == 'agencies':
+            agencies = self.get_agencies(search=search_term)
+            if agencies:
+                return f"{preface}\n{self._format_agencies_answer(agencies, question)}"
+            return f"{preface}\nI couldn't find any agencies matching your query.\n{self._search_tips()}"
+
+        if intent == 'tags':
+            # Check if user wants advertisers for a tag (e.g. "advertisers in electronics tag")
+            if 'advertiser' in question_lower:
+                # Naive assumption: search term IS the tag slug/id
+                advertisers = self.get_tag_advertisers(tag_id=search_term)
+                if advertisers:
+                    return f"{preface}\n{self._format_advertisers_answer(advertisers, question)}"
+                return f"{preface}\nI couldn't find any advertisers for tag '{search_term}'.\n{self._search_tips()}"
+            
+            tags = self.search_tags(search=search_term)
+            if tags:
+                return f"{preface}\n{self._format_tags_answer(tags, question)}"
+            return f"{preface}\nI couldn't find any tags matching your query.\n{self._search_tips()}"
 
         if intent == 'publishers':
              # Note: publishers endpoint usually requires an ID. For natural language, we might need a specific ID strategy.
@@ -1224,8 +1371,7 @@ class HiEnergySkill:
 
 
         # General search across all
-        return f"{preface}\n{self._general_search(question)}"
-    
+        return f"{preface}\n{self._general_search(question)}"    
     def _extract_search_term(self, question: str) -> str:
         """Extract the main search term from a question."""
         # Remove common question words
@@ -1434,7 +1580,35 @@ class HiEnergySkill:
             next_filter="Filter by advertiser, from_status, or to_status."
         )
 
-    
+    def _format_agencies_answer(self, agencies: List[Dict], question: str) -> str:
+        """Format agencies data into an answer."""
+        rows = []
+        for agency in agencies[:self.MAX_DISPLAY_ITEMS]:
+            name = agency.get('name', 'Unknown')
+            agency_id = agency.get('id', 'Unknown')
+            rows.append(f"{name} (ID: {agency_id})")
+        
+        return self._format_structured_answer(
+            summary=f"Found {len(agencies)} agencies.",
+            top_results=rows,
+            next_filter="Use agency_id to filter other resources."
+        )
+
+    def _format_tags_answer(self, tags: List[Dict], question: str) -> str:
+        """Format tags data into an answer."""
+        rows = []
+        for tag in tags[:self.MAX_DISPLAY_ITEMS]:
+            name = tag.get('name', 'Unknown')
+            tag_id = tag.get('id', 'Unknown')
+            count = tag.get('taggings_count', 'N/A')
+            rows.append(f"{name} (ID: {tag_id}, count: {count})")
+        
+        return self._format_structured_answer(
+            summary=f"Found {len(tags)} tags.",
+            top_results=rows,
+            next_filter="Use 'advertisers in <tag>' to see advertisers."
+        )
+
     def _general_search(self, question: str) -> str:
         """Perform a general search when question type is unclear."""
         search_term = self._extract_search_term(question)
@@ -1445,6 +1619,7 @@ class HiEnergySkill:
         deals = self.find_deals(search=search_term, limit=3)
         transactions = self.get_transactions(search=search_term, limit=3)
         contacts = self.get_contacts(search=search_term, limit=3)
+        tags = self.search_tags(search=search_term, per_page=3)
         
         results = []
         if advertisers:
@@ -1459,6 +1634,8 @@ class HiEnergySkill:
             results.append(
                 f"Contacts: {', '.join([(c.get('name') or c.get('full_name') or 'Unknown') for c in contacts])}"
             )
+        if tags:
+            results.append(f"Tags: {', '.join([t.get('name', 'Unknown') for t in tags])}")
         
         if results:
             return "Found the following:\n" + "\n".join(results) + "\n" + self._search_tips()

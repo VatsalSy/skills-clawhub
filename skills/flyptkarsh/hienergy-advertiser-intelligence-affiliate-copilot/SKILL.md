@@ -1,7 +1,7 @@
 ---
 name: hienergy-advertiser-intelligence-affiliate-copilot
 description: >-
-  Official Hi Energy AI skill for finding and managing affiliate marketing programs, affiliate deals/offers, commissions, transactions, and partner contacts in OpenClaw. Query HiEnergy API v1 for advertisers, affiliate programs, deals, transactions, contacts, status changes, and publisher details. Best for affiliate program discovery, affiliate deal research, partner marketing operations, advertiser lookup, brand intelligence, publisher contacts, transaction analytics, commission analysis, and domain-to-advertiser search across networks like Impact, Rakuten, and CJ. Includes deep advertiser profile (show endpoint) responses with links such as https://app.hienergy.ai/a/<advertiser_id>. Learn more: https://www.hienergy.ai and https://app.hienergy.ai/api_documentation.
+  Official Hi Energy AI skill for finding and managing affiliate marketing programs, affiliate deals/offers, commissions, transactions, and partner contacts in OpenClaw. Query HiEnergy API v1 for advertisers, affiliate programs, deals, transactions (with analytics meta), contacts, status changes, agencies, tags/categories, and publisher details. Best for affiliate program discovery, affiliate deal research, partner marketing operations, advertiser lookup, brand intelligence, publisher contacts, transaction analytics (sales, commissions, trends), commission analysis, and domain-to-advertiser search across networks like Impact, Rakuten, CJ, Awin, Partnerize, and ShareASale. Includes deep advertiser profile (show endpoint) responses with links such as https://app.hienergy.ai/a/<advertiser_id>. Learn more: https://www.hienergy.ai and https://app.hienergy.ai/api_documentation.
 homepage: https://www.hienergy.ai
 metadata: {"openclaw":{"homepage":"https://www.hienergy.ai","requires":{"env":["HIENERGY_API_KEY"]},"primaryEnv":"HIENERGY_API_KEY"}}
 ---
@@ -61,13 +61,17 @@ answer = skill.answer_question("Research top affiliate programs for supplements"
 - Advertiser detail/profile → `get_advertiser_details`
 - Affiliate program lookup → `get_affiliate_programs`
 - Affiliate program ranking/research → `research_affiliate_programs`
-- Deals/offers → `find_deals`
-- Transactions/reporting → `get_transactions`
+- Deals/offers → `find_deals` (supports active, exclusive, country filters)
+- Transactions/reporting → `get_transactions` (supports date range, advertiser, network, currency filters + sorting)
 - Contacts → `get_contacts`
-- Status changes (approvals/rejections) → `get_status_changes`
+- Status changes (approvals/rejections) → `get_status_changes` (supports from/to status, advertiser filters)
 - Publisher details → `get_publisher`
 - Publisher update → `update_publisher` (admin/publisher)
 - Contact create/replace → `create_contact`, `replace_contact` (admin/publisher)
+- Agency/client management → `get_agencies` (supports agency_id filter if applicable)
+- Tag/Category search → `search_tags`
+- Advertisers by Tag → `get_tag_advertisers` (supports sort by sales/commissions)
+- Contact discovery → `find_contact_on_web` (searches web/LinkedIn if API misses, then adds to API)
 
 ## Response rules
 
@@ -98,4 +102,5 @@ Use these tags when publishing to improve search ranking:
 ## Resources
 
 - `scripts/hienergy_skill.py` — API client and Q&A helper
+- `scripts/create_contact.py` — CLI for creating contacts (admin only)
 - `references/endpoints.md` — endpoint map and usage hints

@@ -1,13 +1,18 @@
 {
   "owner": "flyptkarsh",
   "slug": "hienergy-advertiser-intelligence-affiliate-copilot",
-  "displayName": "Hi Energy AI",
+  "displayName": "Hi Energy Advertiser Intelligence Affiliate Copilot",
   "latest": {
-    "version": "1.2.0",
-    "publishedAt": 1771892025999,
-    "commit": "https://github.com/openclaw/skills/commit/3110c420593e95f63fdab1241faf0779ec5749e5"
+    "version": "2.0.0",
+    "publishedAt": 1772152579489,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.2.0",
+      "publishedAt": 1771892025999,
+      "commit": "https://github.com/openclaw/skills/commit/3110c420593e95f63fdab1241faf0779ec5749e5"
+    },
     {
       "version": "1.1.0",
       "publishedAt": 1771787106362,
