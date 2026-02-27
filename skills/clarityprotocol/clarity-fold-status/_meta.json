@@ -1,0 +1,11 @@
+{
+  "owner": "clarityprotocol",
+  "slug": "clarity-fold-status",
+  "displayName": "Clarity Fold Status",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772051520171,
+    "commit": null
+  },
+  "history": []
+}
