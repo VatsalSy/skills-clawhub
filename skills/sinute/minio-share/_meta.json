@@ -1,0 +1,11 @@
+{
+  "owner": "sinute",
+  "slug": "minio-share",
+  "displayName": "Minio Share",
+  "latest": {
+    "version": "0.1.3",
+    "publishedAt": 1772043140906,
+    "commit": null
+  },
+  "history": []
+}
