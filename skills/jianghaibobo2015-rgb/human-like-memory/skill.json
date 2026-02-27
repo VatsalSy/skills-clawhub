@@ -1,8 +1,8 @@
 {
   "name": "human-like-memory",
   "displayName": "Human-Like Memory",
-  "description": "Long-term memory capabilities for conversations - recall past discussions, save important information, and search memories across sessions.",
-  "version": "0.1.2",
+  "description": "This skill provides long-term memory capabilities for conversations. Use this skill when the user wants to recall past conversations, save important information to memory, search memories, or when context from previous interactions would be helpful.",
+  "version": "0.3.2",
   "author": {
     "name": "hanlaomo",
     "url": "https://multiego.me"

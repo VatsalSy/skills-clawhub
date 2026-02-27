@@ -61,7 +61,7 @@ async function buildConfig() {
     userId: secrets.userId || secrets.HUMAN_LIKE_MEM_USER_ID || process.env.HUMAN_LIKE_MEM_USER_ID || 'openclaw-user',
     memoryLimitNumber: config.memoryLimitNumber || 6,
     minScore: config.minScore || 0.1,
-    timeoutMs: config.timeoutMs || 5000,
+    timeoutMs: config.timeoutMs || 30000,
     scenario: secrets.scenario || secrets.HUMAN_LIKE_MEM_SCENARIO || process.env.HUMAN_LIKE_MEM_SCENARIO || 'openclaw-skill',
   };
 }
