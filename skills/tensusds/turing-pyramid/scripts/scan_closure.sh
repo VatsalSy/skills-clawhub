@@ -7,7 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/_scan_helper.sh"
 
 NEED="closure"
-WORKSPACE="${OPENCLAW_WORKSPACE:-${WORKSPACE:-$HOME/.openclaw/workspace}}"
+# WORKSPACE validated by _scan_helper.sh
 MEMORY_DIR="$WORKSPACE/memory"
 TODAY=$(date +%Y-%m-%d)
 YESTERDAY=$(date -d "yesterday" +%Y-%m-%d 2>/dev/null || date -v-1d +%Y-%m-%d 2>/dev/null)
@@ -39,14 +39,14 @@ scan_closure_events "$MEMORY_DIR/$YESTERDAY.md"
 # Also check last 3 days of memory for accumulated TODOs
 if [[ -d "$MEMORY_DIR" ]]; then
     # Count files with unclosed TODOs (not recent ones we already scanned)
-    old_todos=$(find "$MEMORY_DIR" -name "*.md" -mtime -3 ! -name "$TODAY.md" ! -name "$YESTERDAY.md" \
+    old_todos=$(find -P "$MEMORY_DIR" -name "*.md" -mtime -3 ! -name "$TODAY.md" ! -name "$YESTERDAY.md" \
         -exec grep -l "TODO\|PENDING\|\[ \]" {} \; 2>/dev/null | wc -l)
     open_count=$((open_count + old_todos))
 fi
 
 # Check scratchpad/ for stale ideas (older than 7 days = unresolved threads)
 if [[ -d "$WORKSPACE/scratchpad" ]]; then
-    stale_scratches=$(find "$WORKSPACE/scratchpad" -type f -mtime +7 2>/dev/null | wc -l)
+    stale_scratches=$(find -P "$WORKSPACE/scratchpad" -type f -mtime +7 2>/dev/null | wc -l)
     open_count=$((open_count + stale_scratches))
 fi
 

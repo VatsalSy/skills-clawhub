@@ -1,5 +1,11 @@
 #!/bin/bash
 # _scan_helper.sh - Common functions for scan scripts
+# WORKSPACE is REQUIRED - no silent fallback
+if [[ -z "$WORKSPACE" ]]; then
+    echo "❌ ERROR: WORKSPACE not set" >&2
+    exit 1
+fi
+
 # Source this at the top of each scan script
 
 SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -17,7 +23,7 @@ hours_since_satisfied() {
         return
     fi
     
-    local last_sat=$(jq -r ".needs.\"$need\".last_satisfied // empty" "$STATE_FILE")
+    local last_sat=$(jq -r --arg n "$need" '.[$n].last_satisfied // empty' "$STATE_FILE")
     if [[ -z "$last_sat" ]]; then
         echo 999
         return
@@ -74,7 +80,7 @@ check_grace_period() {
         return 1
     fi
     
-    local last_sat=$(jq -r ".needs.\"$need\".last_satisfied // empty" "$STATE_FILE")
+    local last_sat=$(jq -r --arg n "$need" '.[$n].last_satisfied // empty' "$STATE_FILE")
     if [[ -z "$last_sat" ]]; then
         return 1
     fi

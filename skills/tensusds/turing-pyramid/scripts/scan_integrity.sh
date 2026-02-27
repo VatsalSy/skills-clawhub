@@ -6,7 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/_scan_helper.sh"
 
 NEED="integrity"
-WORKSPACE="${WORKSPACE:-$HOME/.openclaw/workspace}"
+# WORKSPACE validated by _scan_helper.sh
 
 # Get time-based satisfaction
 time_sat=$(calc_time_satisfaction "$NEED")

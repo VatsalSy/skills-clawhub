@@ -1,6 +1,6 @@
 # Turing Pyramid
 
-**Decision framework for agent psychological health.** 10 needs with automatic decay, tension-based prioritization, cross-need cascades. Outputs action SUGGESTIONS — the agent decides whether to execute.
+**Psychological needs for AI agents.** 10-need hierarchy with decay and tension-based priority. Outputs action suggestions — you decide what to execute.
 
 > ⚠️ **Security Note**: This skill is a local-only decision framework. It reads workspace files and outputs text suggestions. It does NOT execute actions, make network requests, or access credentials. Actions like "web search" or "post to Moltbook" are prompts for the agent to handle with its own tools and permissions.
 
@@ -186,11 +186,11 @@ zero network access     →   uses its own web_search, APIs, etc
 
 ### Environment Variables
 
-Scripts use `WORKSPACE` with fallback to `$HOME/.openclaw/workspace`:
+**WORKSPACE is REQUIRED** — scripts exit with error if unset:
 ```bash
-WORKSPACE="${WORKSPACE:-$HOME/.openclaw/workspace}"
+export WORKSPACE="/path/to/your/workspace"
+# No fallback. Scripts will not run without explicit WORKSPACE.
 ```
-⚠️ Set `WORKSPACE` explicitly to control which directory is scanned.
 
 ### Files That May Contain Secrets
 

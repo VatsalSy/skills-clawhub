@@ -7,7 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/_scan_helper.sh"
 
 NEED="security"
-WORKSPACE="${WORKSPACE:-$HOME/.openclaw/workspace}"
+# WORKSPACE validated by _scan_helper.sh
 MEMORY_DIR="$WORKSPACE/memory"
 TODAY=$(date +%Y-%m-%d)
 YESTERDAY=$(date -d "yesterday" +%Y-%m-%d 2>/dev/null || date -v-1d +%Y-%m-%d 2>/dev/null)
@@ -28,7 +28,7 @@ positive_signals=0
 BACKUP_DIR="${BACKUP_DIR:-}"
 if [[ -n "$BACKUP_DIR" && -d "$BACKUP_DIR" ]]; then
     # Check if backup is recent (within 48h)
-    recent_backup=$(find "$BACKUP_DIR" -type f -mmin -2880 2>/dev/null | head -1)
+    recent_backup=$(find -P "$BACKUP_DIR" -type f -mmin -2880 2>/dev/null | head -1)
     [[ -z "$recent_backup" ]] && issues=$((issues + 1))
 fi
 

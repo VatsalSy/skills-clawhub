@@ -7,7 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/_scan_helper.sh"
 
 NEED="expression"
-WORKSPACE="${WORKSPACE:-$HOME/.openclaw/workspace}"
+# WORKSPACE validated by _scan_helper.sh
 MEMORY_DIR="$WORKSPACE/memory"
 TODAY=$(date +%Y-%m-%d)
 YESTERDAY=$(date -d "yesterday" +%Y-%m-%d 2>/dev/null || date -v-1d +%Y-%m-%d 2>/dev/null)
@@ -39,7 +39,7 @@ scan_expression_events "$MEMORY_DIR/$YESTERDAY.md"
 
 # Check scratchpad/ for recent creative activity (last 24h)
 if [[ -d "$WORKSPACE/scratchpad" ]]; then
-    recent_scratches=$(find "$WORKSPACE/scratchpad" -type f -mmin -1440 2>/dev/null | wc -l)
+    recent_scratches=$(find -P "$WORKSPACE/scratchpad" -type f -mmin -1440 2>/dev/null | wc -l)
     expression_signals=$((expression_signals + recent_scratches))
 fi
 

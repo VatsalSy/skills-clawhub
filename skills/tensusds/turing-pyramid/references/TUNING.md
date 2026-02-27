@@ -90,8 +90,8 @@ Each need has a scan that checks workspace for events. Scans return 0-3:
 
 **File paths** — If your workspace structure differs:
 ```bash
-# Default
-MEMORY_DIR="${WORKSPACE:-$HOME/.openclaw/workspace}/memory"
+# WORKSPACE must be set (required, no fallback)
+MEMORY_DIR="$WORKSPACE/memory"
 
 # Custom
 MEMORY_DIR="$HOME/my-agent/logs"

@@ -6,7 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/_scan_helper.sh"
 
 NEED="understanding"
-WORKSPACE="${WORKSPACE:-$HOME/.openclaw/workspace}"
+# WORKSPACE validated by _scan_helper.sh
 MEMORY_DIR="$WORKSPACE/memory"
 
 # Get time-based satisfaction first
@@ -42,7 +42,7 @@ scan_memory_file "$MEMORY_DIR/$YESTERDAY.md"
 
 # Check research directory activity (last 12 hours)
 if [ -d "$WORKSPACE/research" ]; then
-    recent_research=$(find "$WORKSPACE/research" -type f -mmin -720 2>/dev/null | wc -l)
+    recent_research=$(find -P "$WORKSPACE/research" -type f -mmin -720 2>/dev/null | wc -l)
     if [ "$recent_research" -gt 0 ]; then
         research_activity=$((research_activity + recent_research))
     fi

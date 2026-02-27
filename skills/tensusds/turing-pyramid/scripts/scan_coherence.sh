@@ -7,7 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/_scan_helper.sh"
 
 NEED="coherence"
-WORKSPACE="${WORKSPACE:-$HOME/.openclaw/workspace}"
+# WORKSPACE validated by _scan_helper.sh
 MEMORY_DIR="$WORKSPACE/memory"
 TODAY=$(date +%Y-%m-%d)
 YESTERDAY=$(date -d "yesterday" +%Y-%m-%d 2>/dev/null || date -v-1d +%Y-%m-%d 2>/dev/null)
@@ -31,7 +31,7 @@ fi
 
 # Check for orphaned temp files
 if [[ -d "$MEMORY_DIR" ]]; then
-    orphans=$(find "$MEMORY_DIR" -name "*.tmp" -o -name "*~" 2>/dev/null | wc -l)
+    orphans=$(find -P "$MEMORY_DIR" -name "*.tmp" -o -name "*~" 2>/dev/null | wc -l)
     issues=$((issues + orphans))
 fi
 
@@ -61,7 +61,7 @@ if [[ -f "$DASHBOARD" ]]; then
     # Check for stale items (files not modified in 7+ days)
     stale_count=0
     if [[ -d "$WORKSPACE/memory/autonomous" ]]; then
-        stale_count=$(find "$WORKSPACE/memory/autonomous" -name "*.md" -mtime +7 2>/dev/null | wc -l)
+        stale_count=$(find -P "$WORKSPACE/memory/autonomous" -name "*.md" -mtime +7 2>/dev/null | wc -l)
     fi
     
     # Stale items = coherence issue (unfinished self-directed work)
@@ -72,7 +72,7 @@ if [[ -f "$DASHBOARD" ]]; then
     fi
     
     # Recent dashboard activity = positive signal
-    if [[ -n "$(find "$DASHBOARD" -mtime -1 2>/dev/null)" ]]; then
+    if [[ -n "$(find -P "$DASHBOARD" -mtime -1 2>/dev/null)" ]]; then
         positive_signals=$((positive_signals + 1))
     fi
 fi

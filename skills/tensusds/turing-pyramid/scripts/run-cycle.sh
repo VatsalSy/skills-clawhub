@@ -1,5 +1,12 @@
 #!/bin/bash
 # Turing Pyramid — Main Cycle Runner
+# WORKSPACE is REQUIRED - no silent fallback
+if [[ -z "$WORKSPACE" ]]; then
+    echo "❌ ERROR: WORKSPACE environment variable not set" >&2
+    echo "   Set it explicitly: export WORKSPACE=/path/to/workspace" >&2
+    exit 1
+fi
+
 # Called on each heartbeat to evaluate and act on needs
 
 SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -11,7 +18,7 @@ MAX_IMPORTANCE=$(jq '[.needs[].importance] | max' "$CONFIG_FILE")
 MAX_TENSION=$((MAX_IMPORTANCE * 3))
 STATE_FILE="$SKILL_DIR/assets/needs-state.json"
 SCRIPTS_DIR="$SKILL_DIR/scripts"
-WORKSPACE="${WORKSPACE:-$HOME/.openclaw/workspace}"
+WORKSPACE="$WORKSPACE"
 MEMORY_DIR="$WORKSPACE/memory"
 
 # Check initialization
@@ -52,10 +59,10 @@ calculate_tensions() {
         local decay_rate=$(jq -r ".needs.\"$need\".decay_rate_hours" "$CONFIG_FILE")
         
         # Read current satisfaction from state (float, default 2.0)
-        local current_sat=$(jq -r ".needs.\"$need\".satisfaction // 2.0" "$STATE_FILE")
+        local current_sat=$(jq -r --arg n "$need" '.[$n].satisfaction // 2.0' "$STATE_FILE")
         
         # Read last decay check time (when we last applied decay)
-        local last_decay=$(jq -r ".needs.\"$need\".last_decay_check // \"1970-01-01T00:00:00Z\"" "$STATE_FILE")
+        local last_decay=$(jq -r --arg n "$need" '.[$n].last_decay_check // "1970-01-01T00:00:00Z"' "$STATE_FILE")
         local last_decay_epoch=$(date -d "$last_decay" +%s 2>/dev/null || echo 0)
         
         # Calculate hours since last decay check
@@ -102,8 +109,8 @@ calculate_tensions() {
         
         # Update state with decayed satisfaction and decay check time
         jq --arg need "$need" --argjson sat "$satisfaction" --arg now "$NOW_ISO" '
-            .needs[$need].satisfaction = $sat |
-            .needs[$need].last_decay_check = $now
+            .[$need].satisfaction = $sat |
+            .[$need].last_decay_check = $now
         ' "$STATE_FILE" > "$STATE_FILE.tmp" && mv "$STATE_FILE.tmp" "$STATE_FILE"
     done
 }

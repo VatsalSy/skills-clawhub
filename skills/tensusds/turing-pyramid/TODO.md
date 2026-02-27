@@ -1,5 +1,49 @@
 # Turing Pyramid — Future Development
 
+## 🔴 PRIORITY: Test Infrastructure
+
+**Status:** Not started
+**Why now:** Complexity growing fast. Need regression protection before we can't hold it in one brain.
+
+### Structure Needed:
+```
+tests/
+├── unit/
+│   ├── test_decay.sh           # decay calculations
+│   ├── test_tension.sh         # tension formula  
+│   ├── test_cross_impact.sh    # cascade logic
+│   └── test_floor_ceiling.sh   # boundary enforcement
+├── integration/
+│   ├── test_full_cycle.sh      # run-cycle.sh end-to-end
+│   ├── test_scan_*.sh          # each scan script
+│   └── test_mark_satisfied.sh  # state updates + cascades
+├── regression/
+│   ├── test_socrat_effect.sh   # connection→understanding floor bug
+│   └── test_cascade_loops.sh   # expression↔recognition spiral
+├── fixtures/
+│   ├── needs-state-crisis.json
+│   ├── needs-state-healthy.json
+│   └── needs-state-edge.json
+└── run-tests.sh                # runner for all suites
+```
+
+### TEST_PROTOCOL.md (pre-release checklist):
+1. Unit tests pass
+2. Integration tests pass
+3. Regression tests pass
+4. Manual review by steward
+5. Stress test (accelerated decay, 10+ cycles)
+6. ClawHub security scan — address warnings
+
+### First Tests to Write:
+- [ ] test_decay.sh — verify decay formula matches spec
+- [ ] test_tension.sh — tension = importance × (3 - sat)
+- [ ] test_floor_ceiling.sh — sat never < 0.5 or > 3.0
+- [ ] test_socrat_effect.sh — regression for the bug we found
+- [ ] test_full_cycle.sh — cycle produces valid output
+
+---
+
 ## ✅ COMPLETED
 
 ### ~~2. Cross-Need Impact~~ — DONE in v1.7.1
