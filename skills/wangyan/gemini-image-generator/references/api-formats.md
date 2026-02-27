@@ -312,5 +312,6 @@ for part in response.parts:
 | `gemini-3-pro-image-preview` | 默认模型，最新一代图片生成能力 |
 | `gemini-2.5-flash-image` | 上一代（Nano Banana），速度快、质量好 |
 | `gemini-2.0-flash-exp` | 早期实验版本 |
+| `gemini-3.1-flash-image-preview` | Flash 系列最新图片生成模型，速度快 |
 
 模型名称通过 `--model` / `-m` / `GEMINI_MODEL` 配置，具体可用模型取决于 API 提供商。

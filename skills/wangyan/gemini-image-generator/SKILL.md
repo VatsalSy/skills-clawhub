@@ -1,7 +1,8 @@
 ---
 name: gemini-image-generator
-description: >
-  通过 Gemini 模型实现文生图、图片编辑与多图合成，支持 OpenAI 兼容和 Google 原生两种 API 格式，可自定义端点和密钥。
+description: >-
+  Generate, edit, and compose images using Gemini models. Activate when user asks to generate images, draw, create logos, edit photos, combine images, or any image creation task.
+
 metadata:
   openclaw:
     emoji: "🎨"
@@ -12,6 +13,7 @@ metadata:
         - python3
         - uv
       env:
+        - GEMINI_API_KEY
         - GEMINI_BASE_URL
     primaryEnv: GEMINI_API_KEY
     tags:
@@ -89,6 +91,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
         "enabled": true,
         "apiKey": "your-api-key",                  // 必填：Gemini API 密钥
         "env": {
+          "GEMINI_API_KEY": "your-api-key",                 // 选填：直接运行脚本时需要
           "GEMINI_BASE_URL": "https://your-provider.com/v1", // 必填：API 端点
           "GEMINI_MODEL": "gemini-3-pro-preview",             // 可选：模型名称
           "GEMINI_API_FORMAT": "openai",           // 可选：openai（默认）或 google
@@ -161,6 +164,7 @@ uv run {baseDir}/scripts/generate_image.py --prompt "描述" --filename "output.
 - `--input-image` / `-i`：输入图片路径（可重复，最多 14 张）
 - `--quality`：`standard`（默认）或 `hd`
 - `--style`：`natural`（默认）或 `vivid`
+- `--aspect-ratio` / `-a`：宽高比（如 `1:1`、`16:9`、`9:16`、`4:3`、`3:4`）
 - `--verbose` / `-v`：输出详细调试信息
 
 ## 注意事项
