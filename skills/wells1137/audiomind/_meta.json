@@ -1,13 +1,18 @@
 {
   "owner": "wells1137",
   "slug": "audiomind",
-  "displayName": "AudioMind",
+  "displayName": "Audiomind",
   "latest": {
-    "version": "2.0.0",
-    "publishedAt": 1772023329904,
-    "commit": "https://github.com/openclaw/skills/commit/c7cd02041a028b3c74c83bc12363e02802cf3019"
+    "version": "2.1.7",
+    "publishedAt": 1772107795986,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.0.0",
+      "publishedAt": 1772023329904,
+      "commit": "https://github.com/openclaw/skills/commit/c7cd02041a028b3c74c83bc12363e02802cf3019"
+    },
     {
       "version": "1.1.0",
       "publishedAt": 1772012865206,
