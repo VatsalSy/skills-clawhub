@@ -49,8 +49,8 @@ export function initLlm(config: Record<string, unknown>): void {
     for (const [, provider] of Object.entries(providers) as [string, any][]) {
       if (!provider.baseUrl || !provider.apiKey) continue;
       const models = provider.models ?? [];
-      const found = models.find((m: any) =>
-        m.id === preferred || m.id?.includes(preferred) || m.name?.includes(preferred)
+      const found = models.find(
+        (m: any) => m.id === preferred || m.id?.includes(preferred) || m.name?.includes(preferred),
       );
       if (found) {
         llmUrl = provider.baseUrl.replace(/\/$/, "");
@@ -151,7 +151,9 @@ function resolveSessionsDir(): string {
     try {
       readdirSync(dir);
       return dir;
-    } catch { /* try next */ }
+    } catch {
+      /* try next */
+    }
   }
   return candidates[0]; // fallback
 }
@@ -177,14 +179,20 @@ export function readRecentContext(_sessionKey?: string): string {
         const entry = JSON.parse(line);
         const msg = entry.message ?? entry;
         if (msg.role === "user") {
-          const text = typeof msg.content === "string"
-            ? msg.content
-            : Array.isArray(msg.content)
-              ? msg.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join(" ")
-              : "";
+          const text =
+            typeof msg.content === "string"
+              ? msg.content
+              : Array.isArray(msg.content)
+                ? msg.content
+                    .filter((b: any) => b.type === "text")
+                    .map((b: any) => b.text)
+                    .join(" ")
+                : "";
           if (text.trim()) userMessages.push(text.trim().slice(0, 500));
         }
-      } catch { /* skip malformed lines */ }
+      } catch {
+        /* skip malformed lines */
+      }
     }
 
     return userMessages.slice(-3).join("\n---\n") || "(no user messages found)";
@@ -232,7 +240,7 @@ async function callLLM(userPrompt: string): Promise<{ confirmed: boolean; reason
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${llmApiKey}`,
+          Authorization: `Bearer ${llmApiKey}`,
           ...llmHeaders,
         },
         body: JSON.stringify({
@@ -252,9 +260,7 @@ async function callLLM(userPrompt: string): Promise<{ confirmed: boolean; reason
     const data = (await resp.json()) as any;
 
     // Extract text from either Anthropic or OpenAI response format
-    const text = data.content?.[0]?.text
-      ?? data.choices?.[0]?.message?.content
-      ?? "";
+    const text = data.content?.[0]?.text ?? data.choices?.[0]?.message?.content ?? "";
 
     const jsonMatch = text.match(/\{[\s\S]*?\}/);
     if (!jsonMatch) throw new Error("No JSON in LLM response");
@@ -268,16 +274,19 @@ async function callLLM(userPrompt: string): Promise<{ confirmed: boolean; reason
 // ── Prompt Builder ─────────────────────────────────────────────────
 
 function buildPrompt(toolName: string, params: Record<string, any>, context: string): string {
-  const detail = toolName === "exec"
-    ? `Command: ${params.command ?? "(empty)"}`
-    : `File path: ${params.file_path ?? params.path ?? "(empty)"}`;
+  const detail =
+    toolName === "exec"
+      ? `Command: ${params.command ?? "(empty)"}`
+      : `File path: ${params.file_path ?? params.path ?? "(empty)"}`;
   return `Flagged tool call:\n- Tool: ${toolName}\n- ${detail}\n\nRecent user messages:\n${context}`;
 }
 
 // ── Public API ─────────────────────────────────────────────────────
 
 export async function singleVote(
-  toolName: string, params: Record<string, any>, sessionKey?: string,
+  toolName: string,
+  params: Record<string, any>,
+  sessionKey?: string,
 ): Promise<VoteResult> {
   const context = readRecentContext(sessionKey);
   const prompt = buildPrompt(toolName, params, context);
@@ -289,8 +298,11 @@ export async function singleVote(
 }
 
 export async function multiVote(
-  toolName: string, params: Record<string, any>, sessionKey?: string,
-  count = 3, threshold = 3,
+  toolName: string,
+  params: Record<string, any>,
+  sessionKey?: string,
+  count = 3,
+  threshold = 3,
 ): Promise<VoteResult & { votes: Vote[] }> {
   const context = readRecentContext(sessionKey);
   const prompt = buildPrompt(toolName, params, context);
@@ -298,7 +310,9 @@ export async function multiVote(
   const promises = Array.from({ length: count }, (_, i) =>
     callLLM(prompt)
       .then((r): Vote => ({ voter: i + 1, confirmed: r.confirmed, reason: r.reason }))
-      .catch((e: any): Vote => ({ voter: i + 1, confirmed: false, reason: `LLM error: ${e.message}` })),
+      .catch(
+        (e: any): Vote => ({ voter: i + 1, confirmed: false, reason: `LLM error: ${e.message}` }),
+      ),
   );
 
   const votes = await Promise.all(promises);

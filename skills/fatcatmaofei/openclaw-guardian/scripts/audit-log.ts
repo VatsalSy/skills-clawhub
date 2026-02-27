@@ -5,8 +5,8 @@
 
 import { createHash } from "node:crypto";
 import { appendFileSync, readFileSync, mkdirSync, existsSync } from "node:fs";
-import { dirname, join } from "node:path";
 import { homedir } from "node:os";
+import { dirname, join } from "node:path";
 import type { BlacklistMatch } from "./blacklist.js";
 
 export type AuditEntry = {

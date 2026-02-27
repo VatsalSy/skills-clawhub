@@ -9,10 +9,10 @@
  *     → LLM down → critical: block, warning: ask user
  */
 
-import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
 import { readFileSync } from "node:fs";
 import { join, dirname, resolve, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
 
 function canonicalizePath(raw: string): string {
   if (!raw) return raw;
@@ -21,9 +21,9 @@ function canonicalizePath(raw: string): string {
   // Resolve to absolute + normalize (removes ../ etc)
   return normalize(resolve(raw));
 }
+import { initAuditLog, writeAuditEntry } from "./src/audit-log.js";
 import { checkExecBlacklist, checkPathBlacklist } from "./src/blacklist.js";
 import { initLlm, singleVote, multiVote } from "./src/llm-voter.js";
-import { initAuditLog, writeAuditEntry } from "./src/audit-log.js";
 
 function loadEnabled(): boolean {
   try {
@@ -62,11 +62,14 @@ export default function setup(api: OpenClawPluginApi): void {
 
     if (!match) return; // 99% of calls end here
 
-    const detail = toolName === "exec"
-      ? (params?.command ?? "").toString().slice(0, 120)
-      : (params?.file_path ?? params?.path ?? "").toString().slice(0, 120);
+    const detail =
+      toolName === "exec"
+        ? (params?.command ?? "").toString().slice(0, 120)
+        : (params?.file_path ?? params?.path ?? "").toString().slice(0, 120);
 
-    log.warn(`[guardian] ⚠️ Blacklist hit: ${match.level.toUpperCase()} | tool=${toolName} | ${detail} | rule=${match.reason}`);
+    log.warn(
+      `[guardian] ⚠️ Blacklist hit: ${match.level.toUpperCase()} | tool=${toolName} | ${detail} | rule=${match.reason}`,
+    );
 
     // Blacklist hit — verify user intent via LLM
     const sessionKey = ctx?.sessionKey as string | undefined;
@@ -76,7 +79,9 @@ export default function setup(api: OpenClawPluginApi): void {
       writeAuditEntry(toolName, params ?? {}, match, result.confirmed, result.reason);
 
       if (!result.confirmed) {
-        log.error(`[guardian] 🛑 BLOCKED CRITICAL | tool=${toolName} | ${detail} | votes=${result.reason}`);
+        log.error(
+          `[guardian] 🛑 BLOCKED CRITICAL | tool=${toolName} | ${detail} | votes=${result.reason}`,
+        );
         return {
           block: true,
           blockReason: `🛡️ Guardian: 危险操作被拦截 — ${match.reason}。${result.reason}`,
@@ -91,7 +96,9 @@ export default function setup(api: OpenClawPluginApi): void {
     writeAuditEntry(toolName, params ?? {}, match, result.confirmed, result.reason);
 
     if (!result.confirmed) {
-      log.warn(`[guardian] 🚫 BLOCKED WARNING | tool=${toolName} | ${detail} | reason=${result.reason}`);
+      log.warn(
+        `[guardian] 🚫 BLOCKED WARNING | tool=${toolName} | ${detail} | reason=${result.reason}`,
+      );
       return {
         block: true,
         blockReason: `🛡️ Guardian: 此操作需要用户确认 — ${match.reason}。请先询问用户是否要执行此操作。`,
