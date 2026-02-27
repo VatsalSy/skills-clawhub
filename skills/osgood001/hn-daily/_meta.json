@@ -1,0 +1,11 @@
+{
+  "owner": "osgood001",
+  "slug": "hn-daily",
+  "displayName": "Hacker News Daily",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1772076331895,
+    "commit": null
+  },
+  "history": []
+}
