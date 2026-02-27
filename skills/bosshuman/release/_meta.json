@@ -1,0 +1,11 @@
+{
+  "owner": "bosshuman",
+  "slug": "release",
+  "displayName": "Openclaw X",
+  "latest": {
+    "version": "0.1.1",
+    "publishedAt": 1772120737788,
+    "commit": null
+  },
+  "history": []
+}
