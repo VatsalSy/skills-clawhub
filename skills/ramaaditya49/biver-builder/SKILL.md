@@ -1,97 +1,184 @@
-# 🚀 Biver Public API Documentation (v1.0.1)
+---
+name: biver-builder
+description: |
+  Integration skill for Biver Landing Page Builder API. Use when:
+  (1) Creating, updating, or deleting landing pages
+  (2) Managing subdomains (.lp.biver.id) or custom domains
+  (3) Generating pages/sections with AI
+  (4) Managing products, forms, or gallery assets
+  (5) Configuring workspace settings and branding
+metadata:
+  version: 1.0.4
+  primaryEnv: BIVER_API_KEY
+  requiredEnvVars:
+    - BIVER_API_KEY
+  optionalEnvVars:
+    - BIVER_API_BASE_URL
+  author: RamaAditya49
+  repository: https://github.com/RamaAditya49/biver-builder
+---
 
-Welcome to the **Biver API** — the public REST API for the Biver landing page builder platform.
-This documentation is designed for **developers and AI agents** who want to integrate
-Biver's services into their applications.
+# Biver Builder API Skill
+
+## Before You Install
+
+> **Security Checklist**
+>
+> Before installing or supplying credentials, please review:
+>
+> 1. **Credential Required**: This skill requires `BIVER_API_KEY` to operate
+> 2. **Start with Test Keys**: Use `bvr_test_` prefix keys for initial testing — never use `bvr_live_` keys until you trust the skill
+> 3. **Verify Scopes**: Check required API key scopes below and use least-privilege principle
+> 4. **Rotate Keys**: Periodically rotate your API keys for security
+> 5. **Inspect Source**: If using manual installation, inspect the GitHub repository code before cloning
 
 ---
 
-## 📚 Table of Contents
+## Installation
 
-1. [Getting Started](#-getting-started)
-2. [Authentication](#-authentication)
-3. [Base URL & Endpoints](#-base-url--endpoints)
-4. [Rate Limits](#-rate-limits)
-5. [API Endpoints Reference](#-api-endpoints-reference)
-6. [Error Handling](#-error-handling)
-7. [Examples](#-examples)
+### Via ClawdHub (Recommended)
+```bash
+clawdhub install biver-builder
+```
+
+### Manual
+
+> **Warning**: Cloning external repositories can introduce arbitrary code. **Inspect the repository first** before running:
+>
+> ```bash
+> # Step 1: Review the source code
+> git clone https://github.com/RamaAditya49/biver-builder.git /tmp/biver-builder-review
+> # Review files in /tmp/biver-builder-review before proceeding
+>
+> # Step 2: Only after review, install to your skills directory
+> git clone https://github.com/RamaAditya49/biver-builder.git ~/.openclaw/skills/biver-builder
+> ```
 
 ---
 
-## 🚀 Getting Started
+## Credential Configuration
 
-### Don't Have an Account Yet?
+### Required Environment Variables
 
-If you do not have a Biver account, follow these steps:
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `BIVER_API_KEY` | Your Biver API key | `bvr_live_xxxxx` or `bvr_test_xxxxx` |
 
-1. Go to [https://biver.id](https://biver.id) and click **Sign Up**
-2. Register using your email or Google account
-3. After logging in, you will be prompted to create a **Workspace** (this represents your business/project)
-4. Once your workspace is created, you are ready to generate an API Key
+### Optional Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `BIVER_API_BASE_URL` | Custom API base URL | `https://api.biver.id` |
+
+### Setting Up Credentials
+
+**Via OpenClaw Dashboard:**
+1. Navigate to Settings > Environment Variables
+2. Add `BIVER_API_KEY` with your API key value
+3. (Optional) Add `BIVER_API_BASE_URL` for custom endpoints
+
+**Security Best Practices:**
+- Use `bvr_test_` prefix keys for development/testing
+- Use `bvr_live_` prefix keys only in production **after you trust the skill**
+- **Verify required scopes** before creating your API key — only grant minimum permissions needed
+- Never commit API keys to version control
+- Rotate keys periodically
+- **Do not supply credentials** until you have reviewed the skill or confirmed it from a verified source
 
 ### How to Get Your API Key
 
-1. Log in to the Biver dashboard at [https://biver.id](https://biver.id)
-2. Open the **Settings** page from the sidebar
-3. Navigate to the **API Keys** tab
-4. Click **Generate New Key**
-5. Give it a descriptive name (e.g. "My AI Integration")
-6. Select the scopes (permissions) you need
-7. Click **Create** — your API key will be shown **once only**. Copy and store it securely!
+1. Log in to [Biver Dashboard](https://biver.id)
+2. Go to **Settings** > **API Keys**
+3. Click **Generate New Key**
+4. **Select required scopes** (see Required Scopes section below — grant only what you need)
+5. Choose key type: `bvr_test_` for testing, `bvr_live_` for production
+6. Copy and store securely (shown only once)
 
-> ⚠️ **Important:** The full API key is only displayed at creation time. If you lose it, you must generate a new one.
-
-### Make Your First Request
-
-```bash
-curl -X GET \
-  'https://api.biver.id/v1/pages' \
-  -H 'X-API-Key: bvr_live_xxxxx'
-```
-
-Or using a Bearer token:
-
-```bash
-curl -X GET \
-  'https://api.biver.id/v1/pages' \
-  -H 'Authorization: Bearer bvr_live_xxxxx'
-```
+> **Scope Recommendation**: Start with read-only scopes (`*:read`) for testing. Add write scopes only when needed.
 
 ---
 
-## 🔐 Authentication
+## Quick Reference
 
-The Biver API uses **API Key** authentication. Every request must include your API key.
+### Base URL
+```
+https://api.biver.id
+```
 
-### Header Options
+### Authentication Headers
+```typescript
+// Use environment variables for security
+const apiKey = process.env.BIVER_API_KEY;
 
-You can use either of the following headers:
-
-| Header | Format | Example |
-|--------|--------|---------|
-| `X-API-Key` | `{prefix}_{key}` | `bvr_live_a1b2c3d4...` |
-| `Authorization` | `Bearer {prefix}_{key}` | `Bearer bvr_live_a1b2c3d4...` |
+// Headers configuration
+{
+  'X-API-Key': apiKey,
+  'Authorization': `Bearer ${apiKey}`
+}
+```
 
 ### API Key Prefixes
+| Prefix | Environment | Usage |
+|--------|-------------|-------|
+| `bvr_live_` | Production | Real data operations |
+| `bvr_test_` | Sandbox | Testing without affecting real data |
 
-| Prefix | Environment | Description |
-|--------|-------------|-------------|
-| `bvr_live_` | Production | For real/production data |
-| `bvr_test_` | Sandbox | For testing (does not affect real data) |
+### Endpoint Lookup
 
-### Scopes (Permissions)
+| Task | Endpoint | Method | Auth | Scope |
+|------|----------|--------|------|-------|
+| List pages | `/v1/pages` | GET | Yes | pages:read |
+| Create page | `/v1/pages` | POST | Yes | pages:write |
+| Get page | `/v1/pages/:id` | GET | Yes | pages:read |
+| Update page | `/v1/pages/:id` | PATCH | Yes | pages:write |
+| Delete page | `/v1/pages/:id` | DELETE | Yes | pages:write |
+| Deploy page | `/v1/pages/:id/deploy` | POST | Yes | pages:write |
+| List subdomains | `/v1/subdomains` | GET | Yes | pages:read |
+| Create subdomain | `/v1/subdomains` | POST | Yes | pages:write |
+| Update subdomain | `/v1/subdomains/:id` | PATCH | Yes | pages:write |
+| Delete subdomain | `/v1/subdomains/:id` | DELETE | Yes | pages:write |
+| List domains | `/v1/domains` | GET | Yes | domains:read |
+| Add custom domain | `/v1/domains` | POST | Yes | domains:write |
+| Set primary domain | `/v1/domains/:id/primary` | POST | Yes | domains:write |
+| Delete domain | `/v1/domains/:id` | DELETE | Yes | domains:write |
+| List sections | `/v1/sections` | GET | Yes | sections:read |
+| Create section | `/v1/sections` | POST | Yes | sections:write |
+| Update section | `/v1/sections/:id` | PATCH | Yes | sections:write |
+| Delete section | `/v1/sections/:id` | DELETE | Yes | sections:write |
+| List products | `/v1/products` | GET | Yes | products:read |
+| Create product | `/v1/products` | POST | Yes | products:write |
+| Update product | `/v1/products/:id` | PATCH | Yes | products:write |
+| Delete product | `/v1/products/:id` | DELETE | Yes | products:write |
+| List forms | `/v1/forms` | GET | Yes | forms:read |
+| Create form | `/v1/forms` | POST | Yes | forms:write |
+| Get submissions | `/v1/forms/:id/submissions` | GET | Yes | forms:read |
+| Submit form | `/v1/forms/:id/submit` | POST | **No** | - |
+| List gallery | `/v1/gallery` | GET | Yes | gallery:read |
+| Upload asset | `/v1/gallery` | POST | Yes | gallery:read |
+| Delete asset | `/v1/gallery/:id` | DELETE | Yes | gallery:read |
+| Get workspace | `/v1/workspace/settings` | GET | Yes | workspace:read |
+| Update workspace | `/v1/workspace/settings` | PUT | Yes | workspace:write |
+| Update branding | `/v1/workspace/branding` | PUT | Yes | workspace:write |
+| Update SEO | `/v1/workspace/seo` | PUT | Yes | workspace:write |
+| AI generate page | `/v1/ai/pages` | POST | Yes | ai:generate |
+| AI generate section | `/v1/ai/sections` | POST | Yes | ai:generate |
+| Health check | `/health` | GET | **No** | - |
 
-Each API key has scopes that restrict its access:
+---
+
+## Authentication
+
+### Required Scopes
 
 | Scope | Description |
 |-------|-------------|
-| `pages:read` | Read-only access to pages |
+| `pages:read` | Read pages |
 | `pages:write` | Create, update, delete pages |
-| `sections:read` | Read-only access to sections |
+| `sections:read` | Read sections |
 | `sections:write` | Create, update, delete sections |
-| `products:read` | Read-only access to products |
+| `products:read` | Read products |
 | `products:write` | Manage product catalog |
-| `forms:read` | Read form submissions |
+| `forms:read` | Read forms and submissions |
 | `forms:write` | Create/update forms |
 | `gallery:read` | Access gallery assets |
 | `domains:read` | View custom domains |
@@ -104,305 +191,241 @@ Each API key has scopes that restrict its access:
 
 ---
 
-## 🌐 Base URL & Endpoints
+## Common Workflows
 
-### Base URL
+### Workflow 1: Create Landing Page with Subdomain
 
-```
-https://api.biver.id
-```
+```typescript
+const API_KEY = process.env.BIVER_API_KEY;
+const BASE_URL = process.env.BIVER_API_BASE_URL || 'https://api.biver.id';
 
-### Available Endpoints
+// Step 1: Create subdomain
+const subdomain = await fetch(`${BASE_URL}/v1/subdomains`, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-API-Key': API_KEY
+  },
+  body: JSON.stringify({
+    subdomain: 'my-store',
+    title: 'Summer Sale 2026',
+    description: 'Our biggest sale event',
+    pathSlug: 'summer-sale'
+  })
+});
+// Result: my-store.lp.biver.id/summer-sale
 
-#### Health Check (No Auth Required)
-```
-GET /health
-```
+// Step 2: Create sections for the page
+const section = await fetch(`${BASE_URL}/v1/sections?pageId=PAGE_ID`, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-API-Key': API_KEY
+  },
+  body: JSON.stringify({
+    type: 'hero',
+    name: 'Hero Section',
+    htmlContent: '<div class="hero">...</div>',
+    cssContent: '.hero { ... }',
+    visible: true,
+    order: 0
+  })
+});
 
-#### Pages API
-```
-GET    /v1/pages              # List all pages
-POST   /v1/pages              # Create a new page
-GET    /v1/pages/:id          # Get page details
-PATCH  /v1/pages/:id          # Update a page
-DELETE /v1/pages/:id          # Delete a page
-POST   /v1/pages/:id/deploy   # Deploy (publish) a page
-```
-
-#### Sections API
-```
-GET    /v1/sections           # List sections
-POST   /v1/sections           # Create a section
-GET    /v1/sections/:id       # Get section details
-PATCH  /v1/sections/:id       # Update a section
-DELETE /v1/sections/:id       # Delete a section
-```
-
-#### Products API
-```
-GET    /v1/products           # List products
-POST   /v1/products           # Create a product
-GET    /v1/products/:id       # Get product details
-PATCH  /v1/products/:id       # Update a product
-DELETE /v1/products/:id       # Delete a product
-```
-
-#### Forms API
-```
-GET    /v1/forms              # List forms
-POST   /v1/forms              # Create a form
-GET    /v1/forms/:id          # Get form details
-PATCH  /v1/forms/:id          # Update a form
-DELETE /v1/forms/:id          # Delete a form
-POST   /v1/forms/:id/submit   # Submit a form (public, no auth)
-GET    /v1/forms/:id/submissions  # Get form submissions
-```
-
-#### Gallery API
-```
-GET    /v1/gallery            # List gallery items
-POST   /v1/gallery            # Upload an asset
-GET    /v1/gallery/:id        # Get asset details
-DELETE /v1/gallery/:id        # Delete an asset
+// Step 3: Update subdomain status to publish
+await fetch(`${BASE_URL}/v1/subdomains/${subdomainId}`, {
+  method: 'PATCH',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-API-Key': API_KEY
+  },
+  body: JSON.stringify({
+    status: 'published'
+  })
+});
 ```
 
-#### Domains API (Custom Domains)
-```
-GET    /v1/domains            # List custom domains
-POST   /v1/domains            # Add a custom domain
-GET    /v1/domains/:id        # Get domain details
-PATCH  /v1/domains/:id        # Update domain settings
-DELETE /v1/domains/:id        # Remove a custom domain
-POST   /v1/domains/:id/primary  # Set as primary domain
+### Workflow 2: Setup Custom Domain
+
+```typescript
+const API_KEY = process.env.BIVER_API_KEY;
+const BASE_URL = process.env.BIVER_API_BASE_URL || 'https://api.biver.id';
+
+// Step 1: Add custom domain
+const domain = await fetch(`${BASE_URL}/v1/domains`, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-API-Key': API_KEY
+  },
+  body: JSON.stringify({
+    domain: 'example.com',
+    isPrimary: true,
+    landingPageId: 'page_123'
+  })
+});
+
+// Step 2: Configure DNS (outside API)
+// Add verification token to DNS records
+// Token provided in response: verificationToken
+
+// Step 3: Set as primary (optional)
+await fetch(`${BASE_URL}/v1/domains/${domainId}/primary`, {
+  method: 'POST',
+  headers: { 'X-API-Key': API_KEY }
+});
 ```
 
-#### Subdomains API
-```
-GET    /v1/subdomains         # List subdomains
-POST   /v1/subdomains         # Create a subdomain
-GET    /v1/subdomains/:id     # Get subdomain details
-PATCH  /v1/subdomains/:id     # Update a subdomain
-DELETE /v1/subdomains/:id     # Delete a subdomain
+### Workflow 3: Generate Page with AI
+
+```typescript
+const API_KEY = process.env.BIVER_API_KEY;
+const BASE_URL = process.env.BIVER_API_BASE_URL || 'https://api.biver.id';
+
+const aiPage = await fetch(`${BASE_URL}/v1/ai/pages`, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-API-Key': API_KEY
+  },
+  body: JSON.stringify({
+    prompt: 'Create a landing page for a coffee shop called Morning Brew',
+    style: 'modern',
+    industry: 'fnb',
+    language: 'en'
+  })
+});
+// Returns: title, content.sections[], suggestedSlug
 ```
 
-> **Subdomain format:** All subdomains use the format `{name}.lp.biver.id`.
-> For example, if you create a subdomain called `my-store`, it will be accessible at `my-store.lp.biver.id`.
-> You can also set a **path slug** (e.g. `promo-sale`) so the page is accessible at `my-store.lp.biver.id/promo-sale`.
+### Workflow 4: Upload Asset and Create Page
 
-#### Workspace API
-```
-GET    /v1/workspace/settings   # Get workspace settings
-PUT    /v1/workspace/settings   # Update workspace settings
-PUT    /v1/workspace/branding   # Update branding settings
-PUT    /v1/workspace/seo        # Update SEO settings
-GET    /v1/workspace/public     # Get public workspace info
-```
+```typescript
+const API_KEY = process.env.BIVER_API_KEY;
+const BASE_URL = process.env.BIVER_API_BASE_URL || 'https://api.biver.id';
 
-#### AI Generation API
-```
-POST   /v1/ai/pages           # Generate a page with AI
-POST   /v1/ai/sections        # Generate a section with AI
-GET    /v1/ai/context          # Get AI context/templates
+// Step 1: Upload image to gallery
+const formData = new FormData();
+formData.append('file', imageFile);
+
+const asset = await fetch(`${BASE_URL}/v1/gallery`, {
+  method: 'POST',
+  headers: { 'X-API-Key': API_KEY },
+  body: formData
+});
+
+// Step 2: Use asset URL in page content
+const page = await fetch(`${BASE_URL}/v1/pages`, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-API-Key': API_KEY
+  },
+  body: JSON.stringify({
+    title: 'Product Catalog',
+    slug: 'catalog',
+    content: {
+      sections: [{
+        type: 'image',
+        imageUrl: asset.data.url
+      }]
+    }
+  })
+});
 ```
 
 ---
 
-## ⏱️ Rate Limits
-
-Request limits per minute based on your subscription plan:
-
-| Plan | Requests/Minute | Description |
-|------|-----------------|-------------|
-| SCOUT | 30 | Free-tier users |
-| CRAFTSMAN | 60 | Small businesses |
-| ARCHITECT | 120 | Growing businesses |
-| ENGINEER | 300 | Medium businesses |
-| FOUNDER | 600 | Agencies |
-| CHIEF | 2000 | Enterprise |
-
-### Rate Limit Headers
-
-Every response includes rate limit information headers:
-
-```http
-X-RateLimit-Limit: 60
-X-RateLimit-Remaining: 45
-X-RateLimit-Reset: 1708704000000
-X-RateLimit-Plan: CRAFTSMAN
-```
-
----
-
-## 📖 API Endpoints Reference
+## API Reference
 
 ### Pages API
 
-#### List Pages
-```http
-GET /v1/pages?page=1&limit=10&status=published
-```
+**Base:** `/v1/pages` | **Scope:** `pages:read` / `pages:write`
 
-**Query Parameters:**
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `page` | number | 1 | Page number for pagination |
-| `limit` | number | 10 | Items per page (max 100) |
-| `status` | string | - | Filter: `draft`, `published`, `archived` |
-| `search` | string | - | Search by page title |
+| Endpoint | Method | Description | Query Params / Body |
+|----------|--------|-------------|---------------------|
+| `/v1/pages` | GET | List pages | `page`, `limit`, `status`, `search` |
+| `/v1/pages` | POST | Create page | `title`, `slug`, `content`, `meta`, `status` |
+| `/v1/pages/:id` | GET | Get page detail | - |
+| `/v1/pages/:id` | PATCH | Update page | Partial body |
+| `/v1/pages/:id` | DELETE | Delete page | - |
+| `/v1/pages/:id/deploy` | POST | Publish page | - |
 
-**Response:**
+**Page Object:**
 ```json
 {
-  "success": true,
-  "data": {
-    "items": [
-      {
-        "id": "page_123",
-        "title": "Summer Sale Landing Page",
-        "slug": "summer-sale",
-        "status": "published",
-        "publishedAt_ms": 1708704000000,
-        "createdAt_ms": 1708617600000
-      }
-    ],
-    "pagination": {
-      "page": 1,
-      "limit": 10,
-      "total": 25,
-      "totalPages": 3
-    }
-  }
+  "id": "page_123",
+  "title": "Summer Sale",
+  "slug": "summer-sale",
+  "status": "published",
+  "publishedAt_ms": 1708704000000,
+  "createdAt_ms": 1708617600000
 }
 ```
 
-#### Create Page
-```http
-POST /v1/pages
-```
-
-**Request Body:**
+**Create Page Body:**
 ```json
 {
-  "title": "New Landing Page",
-  "slug": "new-landing",
-  "content": {
-    "sections": []
-  },
+  "title": "Page Title",
+  "slug": "page-slug",
+  "content": { "sections": [] },
   "meta": {
-    "description": "SEO description for the page",
+    "description": "SEO description",
     "keywords": "keyword1, keyword2"
   },
   "status": "draft"
 }
 ```
 
-#### Get Page Detail
-```http
-GET /v1/pages/:id
-```
-
-#### Update Page
-```http
-PATCH /v1/pages/:id
-```
-
-#### Delete Page
-```http
-DELETE /v1/pages/:id
-```
-
-#### Deploy (Publish) Page
-```http
-POST /v1/pages/:id/deploy
-```
-
-Changes the page status from `draft` to `published` and sets the `publishedAt_ms` timestamp.
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "id": "page_123",
-    "title": "Summer Sale Landing Page",
-    "slug": "summer-sale",
-    "status": "published",
-    "publishedAt_ms": 1708704000000,
-    "updatedAt_ms": 1708704000000,
-    "createdAt_ms": 1708617600000
-  }
-}
-```
-
-**Error Responses:**
-| Code | Description |
-|------|-------------|
-| `NOT_FOUND` | Page not found |
-| `DEPLOY_FAILED` | Failed to deploy |
-
 ---
 
 ### Sections API
 
-#### List Sections
-```http
-GET /v1/sections?page=1&limit=20&type=hero
-```
+**Base:** `/v1/sections` | **Scope:** `sections:read` / `sections:write`
 
-**Query Parameters:**
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `type` | string | Filter: `hero`, `features`, `pricing`, etc. |
-| `pageId` | string | Filter sections by page ID |
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/v1/sections` | GET | List sections (`?type=`, `?pageId=`) |
+| `/v1/sections` | POST | Create section |
+| `/v1/sections/:id` | GET | Get section detail |
+| `/v1/sections/:id` | PATCH | Update section |
+| `/v1/sections/:id` | DELETE | Delete section |
 
-#### Create Section
-```http
-POST /v1/sections?pageId=page_123
-```
+**Section Types:** `hero`, `text`, `image`, `image_slider`, `faq`, `features`, `pricing`, `cta`, `testimonials`, `contact`
 
-**Request Body:**
+**Create Section Body:**
 ```json
 {
   "type": "hero",
   "name": "Hero Section",
-  "htmlContent": "<div class="hero"><h1>Welcome to Our Store</h1><p>Discover amazing products</p><a href="#products" class="btn">Shop Now</a></div>",
-  "cssContent": ".hero { text-align: center; padding: 4rem 2rem; } .btn { background: #3B82F6; color: white; padding: 0.75rem 1.5rem; }",
+  "htmlContent": "<div>...</div>",
+  "cssContent": ".class { ... }",
   "visible": true,
-  "order": 0
+  "order": 0,
+  "customClass": "my-custom",
+  "anchorId": "hero"
 }
 ```
-
-**Section Fields:**
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `type` | string | Yes | Section type: `hero`, `text`, `image`, `image_slider`, `faq`, etc. |
-| `name` | string | Yes | Section name for identification |
-| `htmlContent` | string | No | HTML content of the section |
-| `cssContent` | string | No | CSS styles for the section |
-| `visible` | boolean | No | Whether section is visible (default: true) |
-| `order` | number | No | Display order (default: 0) |
-| `customClass` | string | No | Custom CSS class |
-| `anchorId` | string | No | ID for anchor links (e.g., #hero) |
 
 ---
 
 ### Products API
 
-#### List Products
-```http
-GET /v1/products?page=1&limit=10&category=electronics
-```
+**Base:** `/v1/products` | **Scope:** `products:read` / `products:write`
 
-#### Create Product
-```http
-POST /v1/products
-```
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/v1/products` | GET | List products (`?page`, `?limit`, `?category`) |
+| `/v1/products` | POST | Create product |
+| `/v1/products/:id` | GET | Get product detail |
+| `/v1/products/:id` | PATCH | Update product |
+| `/v1/products/:id` | DELETE | Delete product |
 
-**Request Body:**
+**Create Product Body:**
 ```json
 {
-  "name": "Sample Product",
-  "description": "Full product description",
+  "name": "Product Name",
+  "description": "Full description",
   "price": 99000,
   "compareAtPrice": 149000,
   "sku": "PROD-001",
@@ -417,28 +440,25 @@ POST /v1/products
 
 ### Forms API
 
-#### List Forms
-```http
-GET /v1/forms
-```
+**Base:** `/v1/forms` | **Scope:** `forms:read` / `forms:write`
 
-#### Get Form Submissions
-```http
-GET /v1/forms/:id/submissions?page=1&limit=50
-```
+| Endpoint | Method | Description | Auth |
+|----------|--------|-------------|------|
+| `/v1/forms` | GET | List forms | Yes |
+| `/v1/forms` | POST | Create form | Yes |
+| `/v1/forms/:id` | GET | Get form detail | Yes |
+| `/v1/forms/:id` | PATCH | Update form | Yes |
+| `/v1/forms/:id` | DELETE | Delete form | Yes |
+| `/v1/forms/:id/submit` | POST | Submit form | **No** |
+| `/v1/forms/:id/submissions` | GET | Get submissions | Yes |
 
-#### Submit Form (Public — No Auth Required)
-```http
-POST /v1/forms/:id/submit
-```
-
-**Request Body:**
+**Submit Form Body (Public - No Auth):**
 ```json
 {
   "data": {
     "name": "John Doe",
     "email": "john@example.com",
-    "message": "Hello, I'm interested in your services..."
+    "message": "Hello!"
   }
 }
 ```
@@ -447,78 +467,90 @@ POST /v1/forms/:id/submit
 
 ### Gallery API
 
-#### List Gallery Items
-```http
-GET /v1/gallery?page=1&limit=20&type=image
-```
+**Base:** `/v1/gallery` | **Scope:** `gallery:read`
 
-**Query Parameters:**
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `type` | string | `image`, `video`, `document` |
-| `search` | string | Search by filename |
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/v1/gallery` | GET | List items (`?type=image|video|document`, `?search`) |
+| `/v1/gallery` | POST | Upload asset (multipart/form-data) |
+| `/v1/gallery/:id` | GET | Get asset detail |
+| `/v1/gallery/:id` | DELETE | Delete asset |
 
-#### Get Gallery Item
-```http
-GET /v1/gallery/:id
-```
-
-**Response:**
+**Gallery Item Response:**
 ```json
 {
-  "success": true,
-  "data": {
-    "id": "gallery_123",
-    "filename": "hero-image.png",
-    "url": "https://cdn.biver.id/assets/xxx.png",
-    "type": "image",
-    "mimeType": "image/png",
-    "size": 102400,
-    "width": 1920,
-    "height": 1080,
-    "createdAt_ms": 1708704000000
-  }
+  "id": "gallery_123",
+  "filename": "hero-image.png",
+  "url": "https://cdn.biver.id/assets/xxx.png",
+  "type": "image",
+  "mimeType": "image/png",
+  "size": 102400,
+  "width": 1920,
+  "height": 1080
 }
 ```
 
 ---
 
-### Domains API (Custom Domains)
+### Subdomains API
 
-Custom domains allow you to serve your landing pages from your own domain name (e.g. `example.com`).
+**Base:** `/v1/subdomains` | **Scope:** `pages:read` / `pages:write`
 
-#### List Custom Domains
-```http
-GET /v1/domains
-```
+Subdomains create landing pages at `{name}.lp.biver.id`.
 
-**Response:**
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/v1/subdomains` | GET | List subdomains (`?page`, `?limit`, `?status`) |
+| `/v1/subdomains` | POST | Create subdomain |
+| `/v1/subdomains/:id` | GET | Get subdomain detail |
+| `/v1/subdomains/:id` | PATCH | Update subdomain |
+| `/v1/subdomains/:id` | DELETE | Delete subdomain |
+
+**Create Subdomain Body:**
 ```json
 {
-  "success": true,
-  "data": {
-    "items": [
-      {
-        "id": "domain_123",
-        "domain": "example.com",
-        "isPrimary": true,
-        "isVerified": true,
-        "sslStatus": "active",
-        "verificationStatus": "verified",
-        "landingPageId": "page_123",
-        "createdAt_ms": 1708704000000
-      }
-    ]
-  }
+  "subdomain": "my-store",
+  "title": "My Store",
+  "description": "Store description",
+  "pathSlug": "promo"
 }
 ```
 
-#### Add a Custom Domain
-```http
-POST /v1/domains
-```
+**Subdomain Rules:**
+- `subdomain`: 3-63 chars, lowercase a-z, 0-9, hyphens
+- `pathSlug`: Optional, creates additional URL at `{subdomain}.lp.biver.id/{pathSlug}`
+- `status`: `draft`, `published`, `archived`
 
-**Request Body:**
+**Update Subdomain Fields:**
+| Field | Type | Description |
+|-------|------|-------------|
+| `title` | string | Page title |
+| `description` | string | Page description |
+| `pathSlug` | string \| null | URL path (null to remove) |
+| `status` | string | `draft`, `published`, `archived` |
+| `metaTitle` | string | SEO title |
+| `metaDescription` | string | SEO description |
+| `favicon` | string (URL) | Favicon URL |
+| `ogImage` | string (URL) | Open Graph image |
+| `noIndex` | boolean | Prevent indexing |
+| `noFollow` | boolean | Prevent link following |
+
+---
+
+### Domains API (Custom Domains)
+
+**Base:** `/v1/domains` | **Scope:** `domains:read` / `domains:write`
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/v1/domains` | GET | List custom domains |
+| `/v1/domains` | POST | Add custom domain |
+| `/v1/domains/:id` | GET | Get domain detail (includes DNS records) |
+| `/v1/domains/:id` | PATCH | Update domain |
+| `/v1/domains/:id` | DELETE | Remove domain |
+| `/v1/domains/:id/primary` | POST | Set as primary domain |
+
+**Add Domain Body:**
 ```json
 {
   "domain": "example.com",
@@ -527,296 +559,77 @@ POST /v1/domains
 }
 ```
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `domain` | string | Yes | The custom domain name (e.g. `example.com`) |
-| `isPrimary` | boolean | No | Set as the primary domain for this workspace |
-| `landingPageId` | string (UUID) | No | Link this domain to a specific landing page |
-
-> **Slug on custom domains:** The linked landing page's `pathSlug` determines the URL path.
-> For example, if your landing page has `pathSlug: "promo"`, it will be accessible at `example.com/promo`.
-
-#### Get Domain Detail
-```http
-GET /v1/domains/:id
-```
-
-**Response includes DNS verification records:**
+**Domain Response:**
 ```json
 {
-  "success": true,
-  "data": {
-    "id": "domain_123",
-    "domain": "example.com",
-    "isPrimary": true,
-    "isVerified": true,
-    "sslStatus": "active",
-    "verificationStatus": "verified",
-    "verificationToken": "bvr_verify_xxx",
-    "landingPageId": "page_123",
-    "createdAt_ms": 1708704000000
-  }
+  "id": "domain_123",
+  "domain": "example.com",
+  "isPrimary": true,
+  "isVerified": true,
+  "sslStatus": "active",
+  "verificationStatus": "verified",
+  "verificationToken": "bvr_verify_xxx",
+  "landingPageId": "page_123"
 }
 ```
 
-#### Update Domain
-```http
-PATCH /v1/domains/:id
-```
+**DNS Configuration (CNAME Setup):**
 
-**Request Body:**
-```json
-{
-  "isPrimary": false,
-  "landingPageId": "page_456"
-}
-```
+> **AI Agent:** When helping users set up custom domains, explain the following CNAME configuration steps clearly.
 
-#### Delete Domain
-```http
-DELETE /v1/domains/:id
-```
+After adding a custom domain via the API, configure your DNS records with your DNS provider:
 
-#### Set Primary Domain
-```http
-POST /v1/domains/:id/primary
-```
+1. **Point your CNAME record to:**
+   ```
+   custom.biver.id
+   ```
 
-Marks this domain as the primary domain for the workspace. Any previously primary domain will be unset.
+2. **Example Configuration:**
+   | Record Type | Name/Host | Value/Target |
+   |-------------|-----------|--------------|
+   | CNAME | `shop` (or `www`) | `custom.biver.id` |
 
----
+3. **What this does:**
+   - If your domain is `shop.example.com`, add a CNAME record with name `shop` pointing to `custom.biver.id`
+   - If using apex domain (`example.com`), check if your DNS provider supports CNAME flattening or use A records as provided in the domain detail response
 
-### Subdomains API
-
-Subdomains allow you to create landing pages accessible at `{name}.lp.biver.id`.
-Each subdomain is essentially a landing page entry with a unique subdomain name.
-
-#### List Subdomains
-```http
-GET /v1/subdomains?page=1&limit=20&status=published
-```
-
-**Query Parameters:**
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `page` | number | 1 | Page number for pagination |
-| `limit` | number | 20 | Items per page (max 100) |
-| `status` | string | - | Filter: `draft`, `published`, `archived` |
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "items": [
-      {
-        "id": "lp_abc123",
-        "subdomain": "my-store",
-        "fullDomain": "my-store.lp.biver.id",
-        "title": "My Store Landing Page",
-        "slug": "my-store-landing-page",
-        "pathSlug": "promo",
-        "status": "published",
-        "createdAt_ms": 1708704000000
-      }
-    ],
-    "pagination": {
-      "page": 1,
-      "limit": 20,
-      "total": 5,
-      "totalPages": 1
-    }
-  }
-}
-```
-
-> In the above example, the page is accessible at both:
-> - `my-store.lp.biver.id` (root)
-> - `my-store.lp.biver.id/promo` (with path slug)
-
-#### Create Subdomain
-```http
-POST /v1/subdomains
-```
-
-**Request Body:**
-```json
-{
-  "subdomain": "my-store",
-  "title": "My Store Landing Page",
-  "description": "Official landing page for my store",
-  "pathSlug": "summer-sale"
-}
-```
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `subdomain` | string | Yes | Subdomain name (3-63 chars, lowercase a-z, 0-9, hyphens). The full URL will be `{subdomain}.lp.biver.id` |
-| `title` | string | Yes | Page title (max 255 chars) |
-| `description` | string | No | Page description (max 2000 chars) |
-| `pathSlug` | string | No | URL path segment (2-100 chars, lowercase, hyphens allowed). If set, the page is also accessible at `{subdomain}.lp.biver.id/{pathSlug}` |
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "id": "lp_abc123",
-    "subdomain": "my-store",
-    "fullDomain": "my-store.lp.biver.id",
-    "title": "My Store Landing Page",
-    "slug": "my-store-landing-page",
-    "pathSlug": "summer-sale",
-    "description": "Official landing page for my store",
-    "status": "draft",
-    "createdAt_ms": 1708704000000,
-    "updatedAt_ms": 1708704000000
-  }
-}
-```
-
-#### Get Subdomain Detail
-```http
-GET /v1/subdomains/:id
-```
-
-#### Update Subdomain
-```http
-PATCH /v1/subdomains/:id
-```
-
-**Request Body:**
-```json
-{
-  "title": "Updated Page Title",
-  "pathSlug": "new-promo",
-  "status": "published",
-  "metaTitle": "SEO Title for My Page",
-  "metaDescription": "SEO description for search engines",
-  "noIndex": false,
-  "noFollow": false
-}
-```
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `title` | string | Update page title |
-| `description` | string | Update page description |
-| `pathSlug` | string or null | Set or clear the URL path slug. Set to `null` to remove it |
-| `status` | string | `draft`, `published`, or `archived` |
-| `metaTitle` | string | SEO meta title |
-| `metaDescription` | string | SEO meta description |
-| `favicon` | string (URL) | Favicon URL |
-| `ogImage` | string (URL) | Open Graph image URL |
-| `noIndex` | boolean | Prevent search engine indexing |
-| `noFollow` | boolean | Prevent search engine link following |
-
-#### Delete Subdomain
-```http
-DELETE /v1/subdomains/:id
-```
+4. **Propagation:** DNS changes may take 5-60 minutes to propagate globally.
 
 ---
 
 ### Workspace API
 
-#### Get Workspace Settings
-```http
-GET /v1/workspace/settings
-```
+**Base:** `/v1/workspace` | **Scope:** `workspace:read` / `workspace:write`
 
-**Response:**
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/v1/workspace/settings` | GET | Get workspace settings |
+| `/v1/workspace/settings` | PUT | Update settings |
+| `/v1/workspace/branding` | PUT | Update branding |
+| `/v1/workspace/seo` | PUT | Update SEO settings |
+| `/v1/workspace/public` | GET | Public workspace info (no auth) |
+
+**Workspace Settings:**
 ```json
 {
-  "success": true,
-  "data": {
-    "id": "workspace_123",
-    "name": "My Workspace",
-    "slug": "my-workspace",
-    "plan": "ARCHITECT",
-    "settings": {
-      "timezone": "Asia/Jakarta",
-      "language": "en",
-      "currency": "USD"
-    },
-    "branding": {
-      "logo": "https://cdn.biver.id/logos/xxx.png",
-      "primaryColor": "#3B82F6",
-      "fontFamily": "Inter"
-    },
-    "seo": {
-      "title": "My Business",
-      "description": "We build great landing pages",
-      "keywords": "landing page, builder",
-      "ogImage": "https://cdn.biver.id/og/xxx.png"
-    },
-    "createdAt_ms": 1708704000000
-  }
-}
-```
-
-#### Update Workspace Settings
-```http
-PUT /v1/workspace/settings
-```
-
-**Request Body:**
-```json
-{
-  "name": "My Updated Workspace",
+  "id": "workspace_123",
+  "name": "My Workspace",
+  "slug": "my-workspace",
+  "plan": "ARCHITECT",
   "settings": {
     "timezone": "Asia/Jakarta",
     "language": "en",
     "currency": "USD"
-  }
-}
-```
-
-#### Update Branding Settings
-```http
-PUT /v1/workspace/branding
-```
-
-**Request Body:**
-```json
-{
-  "logo": "https://cdn.biver.id/logos/new.png",
-  "primaryColor": "#10B981",
-  "fontFamily": "Poppins"
-}
-```
-
-#### Update SEO Settings
-```http
-PUT /v1/workspace/seo
-```
-
-**Request Body:**
-```json
-{
-  "title": "My Business - Landing Page Builder",
-  "description": "Create beautiful landing pages in minutes",
-  "keywords": "landing page, builder, no-code",
-  "ogImage": "https://cdn.biver.id/og/new.png"
-}
-```
-
-#### Get Public Workspace Info
-```http
-GET /v1/workspace/public
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "name": "My Workspace",
-    "slug": "my-workspace",
-    "branding": {
-      "logo": "https://cdn.biver.id/logos/xxx.png",
-      "primaryColor": "#3B82F6"
-    }
+  },
+  "branding": {
+    "logo": "https://cdn.biver.id/logos/xxx.png",
+    "primaryColor": "#3B82F6",
+    "fontFamily": "Inter"
+  },
+  "seo": {
+    "title": "My Business",
+    "description": "We build great landing pages",
+    "keywords": "landing page, builder"
   }
 }
 ```
@@ -825,95 +638,45 @@ GET /v1/workspace/public
 
 ### AI Generation API
 
-#### Generate Page with AI
-```http
-POST /v1/ai/pages
-```
+**Base:** `/v1/ai` | **Scope:** `ai:generate`
 
-**Request Body:**
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/v1/ai/pages` | POST | Generate page with AI |
+| `/v1/ai/sections` | POST | Generate section with AI |
+| `/v1/ai/context` | GET | Get AI templates/context |
+
+**Generate Page Body:**
 ```json
 {
-  "prompt": "Create a landing page for a modern coffee shop called 'Morning Brew' with a warm and cozy theme",
+  "prompt": "Create a landing page for a coffee shop",
   "style": "modern",
   "industry": "fnb",
   "language": "en"
 }
 ```
 
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "title": "Morning Brew - Premium Coffee Experience",
-    "content": {
-      "sections": [...]
-    },
-    "suggestedSlug": "morning-brew"
-  }
-}
-```
-
-#### Generate Section with AI
-```http
-POST /v1/ai/sections
-```
-
-**Request Body:**
-```json
-{
-  "pageId": "page_123",
-  "type": "features",
-  "prompt": "Create a features section for a coffee shop highlighting: premium beans, cozy atmosphere, free wifi",
-  "language": "en"
-}
-```
-
-#### Get AI Context
-```http
-GET /v1/ai/context
-```
-
-Returns available templates and context for AI generation.
+**Style Options:** `modern`, `minimal`, `bold`, `elegant`, `playful`
+**Industry Options:** `saas`, `fnb`, `ecommerce`, `agency`, `healthcare`, `education`, `finance`, `realestate`
 
 ---
 
-## ⚠️ Error Handling
+## Error Codes
 
-### Error Response Format
+| Code | HTTP | Description | Solution |
+|------|------|-------------|----------|
+| `UNAUTHORIZED` | 401 | Invalid or missing API key | Check authentication header |
+| `KEY_EXPIRED` | 401 | API key has expired | Generate new key from dashboard |
+| `KEY_REVOKED` | 401 | API key was revoked | Generate new key from dashboard |
+| `FORBIDDEN` | 403 | Insufficient scope permission | Check API key scopes |
+| `NOT_FOUND` | 404 | Resource not found | Verify resource ID |
+| `DUPLICATE_SUBDOMAIN` | 409 | Subdomain already taken | Choose different subdomain |
+| `DUPLICATE_DOMAIN` | 409 | Domain already exists | Use different domain |
+| `VALIDATION_ERROR` | 422 | Request validation failed | Check request body format |
+| `RATE_LIMIT_EXCEEDED` | 429 | Too many requests | Wait for reset or upgrade plan |
+| `INTERNAL_ERROR` | 500 | Server error | Retry or contact support |
 
-All error responses follow a consistent format:
-
-```json
-{
-  "success": false,
-  "error": {
-    "code": "ERROR_CODE",
-    "message": "Human-readable error message",
-    "details": {
-      // Additional error details (optional)
-    }
-  }
-}
-```
-
-### Common Error Codes
-
-| Code | HTTP Status | Description | How to Fix |
-|------|-------------|-------------|------------|
-| `UNAUTHORIZED` | 401 | API key is invalid or missing | Check your authentication header |
-| `KEY_EXPIRED` | 401 | API key has expired | Generate a new API key from the dashboard |
-| `KEY_REVOKED` | 401 | API key has been revoked | Generate a new API key from the dashboard |
-| `FORBIDDEN` | 403 | API key does not have the required permission | Check the scopes on your API key |
-| `NOT_FOUND` | 404 | The requested resource was not found | Verify the resource ID |
-| `DUPLICATE_SUBDOMAIN` | 409 | The subdomain name is already taken | Choose a different subdomain name |
-| `DUPLICATE_DOMAIN` | 409 | The domain already exists in the workspace | Use a different domain |
-| `VALIDATION_ERROR` | 422 | The request body failed validation | Check the request body format and required fields |
-| `RATE_LIMIT_EXCEEDED` | 429 | Too many requests | Wait for the reset window or upgrade your plan |
-| `INTERNAL_ERROR` | 500 | Internal server error | Try again later or contact support |
-
-### Validation Error Example
-
+**Error Response Format:**
 ```json
 {
   "success": false,
@@ -922,16 +685,7 @@ All error responses follow a consistent format:
     "message": "Request validation failed",
     "details": {
       "fields": [
-        {
-          "field": "title",
-          "message": "Title is required",
-          "code": "required"
-        },
-        {
-          "field": "price",
-          "message": "Price must be a positive number",
-          "code": "min"
-        }
+        { "field": "title", "message": "Title is required", "code": "required" }
       ]
     }
   }
@@ -940,149 +694,79 @@ All error responses follow a consistent format:
 
 ---
 
-## 💡 Examples
+## Rate Limits
 
-### Example 1: Create a Landing Page with a Subdomain
+| Plan | Requests/Minute | Target User |
+|------|-----------------|-------------|
+| SCOUT | 30 | Free tier |
+| CRAFTSMAN | 60 | Small businesses |
+| ARCHITECT | 120 | Growing businesses |
+| ENGINEER | 300 | Medium businesses |
+| FOUNDER | 600 | Agencies |
+| CHIEF | 2000 | Enterprise |
 
-```typescript
-// Step 1: Create a subdomain with a path slug
-const createSubdomain = async () => {
-  const response = await fetch('https://api.biver.id/v1/subdomains', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-API-Key': 'bvr_live_xxxxx'
-    },
-    body: JSON.stringify({
-      subdomain: 'my-store',
-      title: 'Summer Sale 2026',
-      description: 'Our biggest sale of the year',
-      pathSlug: 'summer-sale'
-    })
-  });
-
-  const data = await response.json();
-  console.log('Created:', data.data.fullDomain);
-  // Output: "Created: my-store.lp.biver.id"
-  // Accessible at: my-store.lp.biver.id/summer-sale
-};
+**Rate Limit Headers:**
+```http
+X-RateLimit-Limit: 60
+X-RateLimit-Remaining: 45
+X-RateLimit-Reset: 1708704000000
+X-RateLimit-Plan: CRAFTSMAN
 ```
 
-### Example 2: Add a Custom Domain
+---
 
-```typescript
-const addDomain = async () => {
-  // Step 1: Add the custom domain
-  const response = await fetch('https://api.biver.id/v1/domains', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-API-Key': 'bvr_live_xxxxx'
-    },
-    body: JSON.stringify({
-      domain: 'my-store.com',
-      isPrimary: true,
-      landingPageId: 'page_123'  // Link to an existing landing page
-    })
-  });
+## Response Format
 
-  const data = await response.json();
-  console.log('Domain added:', data.data.domain);
-  console.log('Verification token:', data.data.verificationToken);
-  // Configure your DNS with the verification token
-};
+All responses follow this structure:
+
+**Success:**
+```json
+{
+  "success": true,
+  "data": { ... }
+}
 ```
 
-### Example 3: Generate a Page with AI
-
-```typescript
-const generatePage = async () => {
-  const response = await fetch('https://api.biver.id/v1/ai/pages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-API-Key': 'bvr_live_xxxxx'
-    },
-    body: JSON.stringify({
-      prompt: 'Create a landing page for a SaaS product management tool called TaskFlow',
-      style: 'modern',
-      industry: 'saas',
-      language: 'en'
-    })
-  });
-
-  const data = await response.json();
-
-  if (data.success) {
-    console.log('Generated page:', data.data.title);
-    console.log('Sections:', data.data.sections?.length || 0);
-  }
-};
-```
-
-### Example 4: Paginated Listing
-
-```typescript
-const getAllPages = async () => {
-  let page = 1;
-  const limit = 50;
-  const allPages = [];
-
-  while (true) {
-    const response = await fetch(
-      `https://api.biver.id/v1/pages?page=${page}&limit=${limit}`,
-      {
-        headers: {
-          'X-API-Key': 'bvr_live_xxxxx'
-        }
-      }
-    );
-
-    const data = await response.json();
-
-    if (!data.success) break;
-
-    allPages.push(...data.data.items);
-
-    if (page >= data.data.pagination.totalPages) break;
-    page++;
-  }
-
-  return allPages;
-};
-```
-
-### Example 5: Submit a Public Form (No Auth Required)
-
-```typescript
-const submitForm = async (formId: string, formData: object) => {
-  const response = await fetch(
-    `https://api.biver.id/v1/forms/${formId}/submit`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-        // No API key needed for public form submissions!
-      },
-      body: JSON.stringify({ data: formData })
+**Paginated:**
+```json
+{
+  "success": true,
+  "data": {
+    "items": [...],
+    "pagination": {
+      "page": 1,
+      "limit": 10,
+      "total": 25,
+      "totalPages": 3
     }
-  );
-
-  return response.json();
-};
+  }
+}
 ```
 
 ---
 
-## 📞 Support
+## Security Considerations
 
-If you need help:
+### API Key Safety
+- **Never** hardcode API keys in source code
+- **Always** use environment variables or secure secret stores
+- **Use test keys** (`bvr_test_`) for development
+- **Limit scopes** to minimum required for your use case
 
-1. **Documentation**: Visit this page at `GET /docs` or `GET /SKILL.md`
-2. **Dashboard**: [https://biver.id/dashboard](https://biver.id/dashboard)
-3. **Email**: support@biver.id
+### DNS Configuration
+- Custom domain setup requires DNS changes outside this API
+- Always verify domain ownership before making DNS changes
+- Keep DNS verification tokens secure
+
+### Rate Limiting
+- Respect rate limits based on your plan
+- Implement retry logic with exponential backoff
+- Monitor `X-RateLimit-Remaining` header
 
 ---
 
-*This documentation is auto-generated and always up-to-date.*
-*Last updated: 2026-02-24*
+## Support
+
+- **Dashboard:** https://biver.id/dashboard
+- **Email:** support@biver.id
+- **Health Check:** `GET /health` (no auth required)
