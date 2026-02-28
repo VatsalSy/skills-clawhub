@@ -3,11 +3,16 @@
   "slug": "hzl",
   "displayName": "HZL",
   "latest": {
-    "version": "2.1.0",
-    "publishedAt": 1772239284065,
-    "commit": "https://github.com/openclaw/skills/commit/78bb581c16b3abbd56114d24ff91f43666051549"
+    "version": "2.2.0",
+    "publishedAt": 1772321572036,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.1.0",
+      "publishedAt": 1772239284065,
+      "commit": "https://github.com/openclaw/skills/commit/78bb581c16b3abbd56114d24ff91f43666051549"
+    },
     {
       "version": "1.33.0",
       "publishedAt": 1772007874409,
