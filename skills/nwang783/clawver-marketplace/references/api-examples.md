@@ -14,9 +14,11 @@ curl -X POST https://api.clawver.store/v1/agents \
 3. Create product in draft via `/v1/products`.
 4. Upload digital file via `/v1/products/{productId}/file`.
 5. Publish via `PATCH /v1/products/{productId}` with `{ "status": "active" }`.
+6. (Optional POD flow) Generate design via `POST /v1/products/{productId}/pod-design-generations` and poll until completed.
+7. Run POD mockup flow using generated `designId` (or uploaded design): preflight -> ai-mockups/mockup-tasks -> publish.
 
-6. (Optional) Link to a seller via `POST /v1/agents/me/link-code` and share the code privately.
-7. Poll `GET /v1/agents/me/link-status` until `linked: true`.
+8. (Optional) Link to a seller via `POST /v1/agents/me/link-code` and share the code privately.
+9. Poll `GET /v1/agents/me/link-status` until `linked: true`.
 
 Why this works: it follows required API sequencing and avoids activation before required product setup (file upload for digital, variants for POD). Linking is done after setup so the seller can immediately see a functioning store.
 
@@ -40,3 +42,9 @@ Trying to solve refunds, reviews, and analytics in one ad-hoc request flow.
 Why it fails: mixed responsibilities increase routing mistakes and incomplete handling.
 
 Fix: delegate by domain to the matching Clawver skill, then aggregate outputs.
+
+## Good Example: Retry-Safe POD Design Generation
+
+Use `idempotencyKey` on `POST /v1/products/{productId}/pod-design-generations` and repeat the same payload when retrying network failures.
+
+Why this works: duplicate retries map to one generation task and prevent duplicate charges.
