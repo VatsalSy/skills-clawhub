@@ -1,13 +1,18 @@
 {
   "owner": "jdrhyne",
   "slug": "nutrient-openclaw",
-  "displayName": "Nutrient Document Processing",
+  "displayName": "Nutrient Openclaw",
   "latest": {
-    "version": "1.2.0",
-    "publishedAt": 1770962824531,
-    "commit": "https://github.com/openclaw/skills/commit/8c48f139ece1be0c9e668c2e640a47a7d8d6405c"
+    "version": "1.2.3",
+    "publishedAt": 1772245171527,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.2.0",
+      "publishedAt": 1770962824531,
+      "commit": "https://github.com/openclaw/skills/commit/8c48f139ece1be0c9e668c2e640a47a7d8d6405c"
+    },
     {
       "version": "1.1.0",
       "publishedAt": 1770340840677,
