@@ -1,12 +1,13 @@
 {
   "name": "@elvatis_com/openclaw-inwx",
-  "version": "0.1.2",
-  "description": "OpenClaw plugin for INWX domain registrar — domain registration, DNS management, nameservers, DNSSEC, pricing",
+  "version": "0.2.0",
+  "description": "OpenClaw plugin for INWX domain registrar - domain registration, DNS management, nameservers, DNSSEC, pricing",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
     "test": "jest",
+    "test:ote": "jest --config jest.config.ote.cjs",
     "prepublishOnly": "npm run build"
   },
   "files": ["dist", "openclaw.plugin.json", "README.md"],
@@ -15,7 +16,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/homeofe/openclaw-inwx.git"
+    "url": "https://github.com/elvatis/openclaw-inwx.git"
   },
   "dependencies": {
     "domrobot-client": "^3.3.0"

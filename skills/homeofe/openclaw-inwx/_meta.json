@@ -1,13 +1,18 @@
 {
   "owner": "homeofe",
   "slug": "openclaw-inwx",
-  "displayName": "OpenClaw INWX",
+  "displayName": "INWX",
   "latest": {
-    "version": "0.1.2",
-    "publishedAt": 1771953500601,
-    "commit": "https://github.com/openclaw/skills/commit/694e696f497ff5d6adbc58e77e3fc0ed012e324a"
+    "version": "0.2.0",
+    "publishedAt": 1772280766169,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.1.2",
+      "publishedAt": 1771953500601,
+      "commit": "https://github.com/openclaw/skills/commit/694e696f497ff5d6adbc58e77e3fc0ed012e324a"
+    },
     {
       "version": "0.1.1",
       "publishedAt": 1771857324661,
