@@ -1,0 +1,11 @@
+{
+  "owner": "brorlandi",
+  "slug": "youtube-upload",
+  "displayName": "YouTube Upload Videos Skill",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772303968384,
+    "commit": null
+  },
+  "history": []
+}
