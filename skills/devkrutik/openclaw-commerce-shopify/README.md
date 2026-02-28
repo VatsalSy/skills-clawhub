@@ -30,7 +30,7 @@ X-OpenClaw-Commerce-Token: $OPENCLAW_COMMERCE_API_KEY
 
 ### API Reference
 
-**Base URL**: `https://shopify.openclawcommerce.com/api/v1`
+**Base URL**: `https://app.openclawcommerce.com/api/v1`
 
 ## Structure
 

@@ -77,7 +77,7 @@ Only after those checks succeed should the agent call the API.
 
 ## API Reference
 
-**Base URL**: `https://shopify.openclawcommerce.com/api/v1`
+**Base URL**: `https://app.openclawcommerce.com/api/v1`
 
 In examples below, `$API_BASE` refers to the URL above.
 
