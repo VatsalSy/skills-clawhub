@@ -1,56 +1,39 @@
 # Setup — API
 
-First-time setup guide for API integrations.
+## How to Use This Skill
 
-## Initial Configuration
+This skill provides API documentation for 147 services. When a user asks about an API:
 
-On first use, create the preferences directory:
+1. **Find the category** — Check the API Categories table in SKILL.md
+2. **Read the index** — Each category file starts with an index
+3. **Jump to the API** — Use line numbers to read only the relevant section
+4. **Provide the information** — Auth pattern, endpoints, gotchas
 
-```bash
-mkdir -p ~/api
-```
+## User Preferences
 
-## Integration Preferences
-
-Ask the user about their preferences:
-
-1. **Code language** — "Do you prefer curl examples or a specific language (Python, JS, etc.)?"
-2. **Naming convention** — "How do you name your API keys (e.g., STRIPE_PROD_API_KEY)?"
-
-Save responses to `~/api/preferences.md`:
+Optionally track user preferences in `~/api/preferences.md`:
 
 ```markdown
 # API Preferences
 
-## Defaults
-- Language: curl
-- Naming: {SERVICE}_{ACCOUNT}_{TYPE}
+## Code Examples
+- Language: curl (or python, javascript)
+
+## Common APIs
+- stripe
+- openai
+- notion
 ```
 
-## Credential Storage
+## What This Skill Does
 
-This skill uses environment variables for credentials:
+- Provides API endpoint documentation
+- Shows authentication patterns
+- Lists common mistakes and gotchas
+- Gives curl examples for reference
 
-```bash
-# Set for current session
-export STRIPE_PROD_API_KEY="sk_live_xxx"
-```
+## What This Skill Does Not Do
 
-See `credentials.md` for the full naming convention and multi-account workflows.
-
-## Quick Start
-
-When user asks about an API:
-
-1. Check if docs exist: `ls apis/{service}.md`
-2. If yes: provide auth setup, endpoints, and examples
-3. If no: help using official documentation
-
-## Files Created
-
-This skill creates and uses these files:
-
-- `~/api/preferences.md` — User preferences (language, conventions)
-- `~/api/accounts.md` — Registry of configured account names (not secrets)
-
-All files are created with user awareness and contain only metadata, not credentials.
+- Store or manage API keys
+- Make API calls automatically
+- Access external services
