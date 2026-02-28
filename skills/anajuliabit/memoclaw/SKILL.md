@@ -1,6 +1,6 @@
 ---
 name: memoclaw
-version: 1.15.0
+version: 1.16.3
 description: |
   Memory-as-a-Service for AI agents. Store and recall memories with semantic
   vector search. 100 free calls per wallet, then x402 micropayments.
@@ -34,6 +34,25 @@ Before using any MemoClaw command, ensure setup is complete:
 3. **Free tier remaining?** → `memoclaw status` — if 0: fund wallet with USDC on Base
 
 If `memoclaw init` has never been run, **all commands will fail**. Run it first — it's interactive and takes 30 seconds.
+
+---
+
+## Quick reference
+
+**Essential commands:**
+```bash
+memoclaw store "fact" --importance 0.8 --tags t1,t2 --memory-type preference   # save
+memoclaw recall "query"                    # semantic search ($0.005)
+memoclaw search "keyword"                  # text search (free)
+memoclaw context "what I need" --max-memories 10   # LLM-ready block ($0.01)
+memoclaw core-memories --limit 5           # top memories (free)
+```
+
+**Importance cheat sheet:** `0.9+` corrections/critical · `0.7–0.8` preferences · `0.5–0.6` context · `≤0.4` ephemeral
+
+**Memory types:** `correction` (180d) · `preference` (180d) · `decision` (90d) · `project` (30d) · `observation` (14d) · `general` (60d)
+
+**Free commands:** list, get, delete, search, core-memories, suggested, relations, history, export, namespaces, stats, count
 
 ---
 
@@ -159,7 +178,7 @@ When a session ends or a significant conversation wraps up:
 1. **Summarize key takeaways** and store as a session summary:
    ```bash
    memoclaw store "Session 2026-02-13: Discussed migration to PostgreSQL 16, decided to use pgvector for embeddings, user wants completion by March" \
-     --importance 0.7 --tags session-summary,project-alpha --namespace project-alpha
+     --importance 0.7 --tags session-summary,project-alpha --namespace project-alpha --memory-type project
    ```
 2. **Run consolidation** if many memories were created:
    ```bash
@@ -185,7 +204,7 @@ Session {date}: {brief description}
 ```bash
 # Single command to store a quick session summary
 memoclaw store "Session $(date +%Y-%m-%d): {1-sentence summary}" \
-  --importance 0.6 --tags session-summary
+  --importance 0.6 --tags session-summary --memory-type observation
 ```
 
 #### Conversation digest (via ingest)
@@ -209,7 +228,7 @@ When a new fact contradicts an existing memory:
 2. **Store the new fact** with a `supersedes` relation:
    ```bash
    memoclaw store "User now prefers spaces over tabs (changed 2026-02)" \
-     --importance 0.85 --tags preferences,code-style
+     --importance 0.85 --tags preferences,code-style --memory-type preference
    memoclaw relations create <new-id> <old-id> supersedes
    ```
 3. **Optionally update** the old memory's importance downward or add an expiration
@@ -253,7 +272,7 @@ Agent action:
 → memoclaw recall "tabs spaces indentation preference"
 → No matches found
 → memoclaw store "User prefers tabs over spaces for indentation" \
-    --importance 0.8 --tags preferences,code-style
+    --importance 0.8 --tags preferences,code-style --memory-type preference
 
 Agent response: "Got it — tabs over spaces. I'll remember that."
 ```
@@ -1141,7 +1160,7 @@ memoclaw recall "database decision" --namespace project-alpha
 
 # Session end — summarize
 memoclaw store "Session 2026-02-16: Discussed editor migration to Neovim, reviewed DB schema" \
-  --importance 0.6 --tags session-summary
+  --importance 0.6 --tags session-summary --memory-type observation
 
 # Periodic maintenance
 memoclaw consolidate --namespace default --dry-run
@@ -1240,7 +1259,7 @@ When multiple agents share the same wallet but need isolation:
 ```bash
 # Agent 1 stores in its own scope
 memoclaw store "User prefers concise answers" \
-  --agent-id agent-main --session-id session-abc
+  --importance 0.8 --memory-type preference --agent-id agent-main --session-id session-abc
 
 # Agent 2 can query across all agents or filter
 memoclaw recall "user communication style" --agent-id agent-main

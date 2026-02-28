@@ -1,13 +1,18 @@
 {
   "owner": "anajuliabit",
   "slug": "memoclaw",
-  "displayName": "MemoClaw",
+  "displayName": "Memoclaw Skill",
   "latest": {
-    "version": "1.15.0",
-    "publishedAt": 1772141361831,
-    "commit": "https://github.com/openclaw/skills/commit/3eec0801d01cff6a4f79e358e20994388d838a25"
+    "version": "1.16.3",
+    "publishedAt": 1772295024975,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.15.0",
+      "publishedAt": 1772141361831,
+      "commit": "https://github.com/openclaw/skills/commit/3eec0801d01cff6a4f79e358e20994388d838a25"
+    },
     {
       "version": "1.14.1",
       "publishedAt": 1772033045533,
