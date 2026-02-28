@@ -1,0 +1,11 @@
+{
+  "owner": "zero2ai-hub",
+  "slug": "skill-spapi",
+  "displayName": "SP-API Skill",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1772250324831,
+    "commit": null
+  },
+  "history": []
+}
