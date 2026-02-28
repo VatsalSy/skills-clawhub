@@ -534,6 +534,98 @@ Same shape as the MCP tool response.
 - Each call returns a different random wallet from the curated pool of 250+ elite traders.
 - The returned wallet is ready to be passed to `analyze_wallet`, `get_score`, or the corresponding REST endpoints.
 
+## `get_portfolio` Response
+
+### MCP Tool Response
+
+```json
+{
+  "total_count": 2,
+  "page": 0,
+  "limit": 10,
+  "wallets": [
+    {
+      "wallet_address": "0x1234...abcd",
+      "nickname": "Top Trader",
+      "score": 8.5,
+      "last_analyzed": "2026-02-14 12:00:00",
+      "notifications_enabled": false
+    }
+  ]
+}
+```
+
+### REST API Response (`GET /v1/portfolio`)
+
+Same shape as the MCP tool response.
+
+### Field Notes
+
+- `score` is the cached copy trading score (1-10) from the last analysis, or `null` if never analyzed.
+- `last_analyzed` is an ISO-ish datetime string or `null`.
+- `notifications_enabled` indicates whether trade alerts are active for this wallet.
+- Portfolio limits: free users can track 3 wallets, premium users can track 20.
+
+## `add_to_portfolio` Response
+
+### MCP Tool Response (success)
+
+```json
+{
+  "wallet_address": "0x1234...abcd",
+  "nickname": "Top Trader",
+  "message": "Wallet added to portfolio"
+}
+```
+
+### MCP Tool Response (error)
+
+```json
+{
+  "error": "Wallet already in portfolio"
+}
+```
+
+Possible error values: `"Wallet already in portfolio"`, `"Portfolio limit reached (3). Upgrade to premium for more slots."`, `"Failed to add wallet to portfolio"`.
+
+### REST API Response (`POST /v1/portfolio`)
+
+Success returns same shape as MCP. Errors return HTTP status codes: `409` (duplicate), `400` (limit reached or invalid nickname), `500` (internal error).
+
+### REST API Request Body
+
+```json
+{
+  "wallet_address": "0x1234...abcd",
+  "nickname": "Top Trader"
+}
+```
+
+`nickname` is optional — defaults to first 10 characters of the wallet address.
+
+## `remove_from_portfolio` Response
+
+### MCP Tool Response (success)
+
+```json
+{
+  "wallet_address": "0x1234...abcd",
+  "message": "Wallet removed from portfolio"
+}
+```
+
+### MCP Tool Response (error)
+
+```json
+{
+  "error": "Wallet not found in portfolio"
+}
+```
+
+### REST API Response (`DELETE /v1/portfolio/{wallet_address}`)
+
+Success returns same shape as MCP. Errors return HTTP status codes: `404` (not found), `400` (invalid address).
+
 ## Error Response
 
 All error responses follow this shape:

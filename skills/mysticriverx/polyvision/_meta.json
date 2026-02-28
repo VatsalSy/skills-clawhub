@@ -3,11 +3,16 @@
   "slug": "polyvision",
   "displayName": "Polyvision",
   "latest": {
-    "version": "1.0.11",
-    "publishedAt": 1772075022891,
-    "commit": "https://github.com/openclaw/skills/commit/83a4a456beb6fdecc8044afbc36aa578205b45c6"
+    "version": "1.0.12",
+    "publishedAt": 1772158874107,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.11",
+      "publishedAt": 1772075022891,
+      "commit": "https://github.com/openclaw/skills/commit/83a4a456beb6fdecc8044afbc36aa578205b45c6"
+    },
     {
       "version": "1.0.9",
       "publishedAt": 1771294915720,

@@ -149,6 +149,40 @@ Check your usage statistics. Does not consume quota.
 
 API/MCP access has no daily limits — usage is tracked for analytics only.
 
+### `get_portfolio`
+
+Get the user's tracked wallet portfolio with scores and nicknames.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `page` | integer | No | `0` | Page number (0-indexed) |
+| `limit` | integer | No | `10` | Results per page (1-50) |
+
+**Returns:** Dict with `total_count`, `page`, `limit`, and `wallets` list — each with wallet address, nickname, score, last analyzed date, and notifications status. See `references/response-schemas.md` for the complete field reference.
+
+### `add_to_portfolio`
+
+Add a wallet to the user's portfolio for tracking.
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `wallet_address` | string | Yes | — | Ethereum address (42 chars, starts with `0x`) |
+| `nickname` | string | No | — | Display name (defaults to first 10 chars of address) |
+
+**Returns:** Dict with `wallet_address`, `nickname`, and `message` on success, or dict with `error` key on failure (duplicate, limit reached).
+
+**Limits:** Free users: 3 wallets. Premium users: 20 wallets.
+
+### `remove_from_portfolio`
+
+Remove a wallet from the user's portfolio.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `wallet_address` | string | Yes | Ethereum address to remove |
+
+**Returns:** Dict with `wallet_address` and `message` on success, or dict with `error` key if wallet not found.
+
 ### `health`
 
 Check system health.
@@ -184,6 +218,9 @@ Check system health.
 | "What strategy should I use for copy trading?" | `get_strategy` | — | 3 risk profiles with backtested parameters |
 | "What's the safest way to copy trade?" | `get_strategy` | — | Conservative profile with low drawdown |
 | "Discover new traders" | `discover_wallet` x3 | — | Multiple random picks to explore |
+| "Show my tracked wallets" | `get_portfolio` | — | View portfolio with scores and nicknames |
+| "Add this wallet to my portfolio" | `add_to_portfolio` | — | Track a wallet with optional nickname |
+| "Remove wallet from portfolio" | `remove_from_portfolio` | — | Stop tracking a wallet |
 | "Is the system up?" | `health` | — | System status check |
 | "How many analyses have I run?" | `check_quota` | — | Usage stats (no limits enforced) |
 
@@ -222,6 +259,9 @@ Interactive docs and the OpenAPI spec are available at:
 | `GET /v1/strategy` | GET | Pre-computed copy trading strategy profiles (3 risk levels) |
 | `GET /v1/trades/{wallet_address}?since=&limit=50` | GET | Recent trades for a wallet |
 | `GET /v1/discover` | GET | Discover a random elite trader |
+| `GET /v1/portfolio?page=0&limit=10` | GET | Get your tracked wallet portfolio |
+| `POST /v1/portfolio` | POST | Add a wallet to your portfolio (JSON body: `wallet_address`, `nickname`) |
+| `DELETE /v1/portfolio/{wallet_address}` | DELETE | Remove a wallet from your portfolio |
 | `GET /health` | GET | Health check (no auth required) |
 
 ### Example: Analyze a wallet
