@@ -125,6 +125,34 @@ node scripts/chart.mjs --type line \
 
 ![Reference line chart](readme-assets/framed-hline.png)
 
+### 🎨 Conditional Colors
+
+Color bars/points based on a threshold — great for KPI dashboards.
+
+```bash
+node scripts/chart.mjs --type bar \
+  --data '[{"month":"Jan","score":72},{"month":"Feb","score":45},{"month":"Mar","score":38},{"month":"Apr","score":61},{"month":"May","score":29},{"month":"Jun","score":55},{"month":"Jul","score":82},{"month":"Aug","score":47},{"month":"Sep","score":68},{"month":"Oct","score":34},{"month":"Nov","score":76},{"month":"Dec","score":91}]' \
+  --x-field month --y-field score --x-sort none \
+  --conditional-color "50,#e63946,#2a9d8f" --hline "50,#888,Target" \
+  --title "Monthly Performance Score" --subtitle "Target: 50" --dark
+```
+
+![Conditional color chart](readme-assets/framed-conditional.png)
+
+### ↔️ Horizontal Bar Charts
+
+Flip axes for leaderboards, rankings, or long category names.
+
+```bash
+node scripts/chart.mjs --type bar \
+  --data '[{"lang":"Python","stars":95},{"lang":"JavaScript","stars":82},{"lang":"TypeScript","stars":78},{"lang":"Rust","stars":71},{"lang":"Go","stars":63},{"lang":"Java","stars":58},{"lang":"C++","stars":45},{"lang":"Swift","stars":38}]' \
+  --x-field lang --y-field stars --horizontal --sort desc \
+  --conditional-color "60,#e63946,#2a9d8f" --bar-labels \
+  --title "GitHub Stars by Language" --dark
+```
+
+![Horizontal bar chart](readme-assets/framed-horizontal-bar.png)
+
 ### More Chart Types
 
 - **`point`** — Scatter plot
@@ -283,5 +311,5 @@ MIT
 ---
 
 <p align="center">
-  <sub>Built by <a href="https://clawhub.ai/u/Cluka-399">@Cluka-399</a> · Published on <a href="https://clawhub.ai">ClawHub</a></sub>
+  <sub>Built by <a href="https://clawhub.ai/u/Cluka-399">@Cluka-399</a> · Published on <a href="https://clawhub.ai">ClawHub</a> · <a href="https://github.com/Cluka-399/chart-image">GitHub</a></sub>
 </p>
