@@ -59,7 +59,7 @@ Add to the `## Active Words` section, at the END (before `---` separator for Lon
 
 Run all 3 steps in one conversation flow (not spread across hours):
 
-- **Step 1:** Show the plain word → ask "Do you know the pronunciation?" → user types word to confirm
+- **Step 1:** Show the plain word + review count (e.g. "reviewed 0 times" or "reviewed 3 times") → ask "Do you know the pronunciation?" → user types word to confirm
 - **Step 2:** Ask "What does it mean?" → check if correct/close enough
 - **Step 3:** Ask user to write a sentence using the word
 
@@ -88,8 +88,13 @@ Words move through three sections in the tracker:
 
 ### Random Word Selection
 
-Count unpracticed words (N), take current Unix timestamp, calculate:
-`(timestamp % N) + 1` = position. Pick that word.
+1. Count each word's total practice history entries (all steps and reviews combined)
+2. Sort all words by review count ascending (least reviewed first)
+3. Take the group with the minimum review count
+4. Within that group, randomize: count words (N), use `(current_timestamp_ms % N) + 1` to pick position
+5. **Never pick the same word twice in a row.** Check Quiz State for the last quizzed word and skip it.
+
+**Always show review count** when quizzing: e.g. "(reviewed 0 times)" or "(reviewed 3 times)".
 
 ### On-Demand Quizzes
 
