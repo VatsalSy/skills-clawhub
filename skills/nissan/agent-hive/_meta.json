@@ -1,0 +1,11 @@
+{
+  "owner": "nissan",
+  "slug": "agent-hive",
+  "displayName": "Agent Hive",
+  "latest": {
+    "version": "1.1.0",
+    "publishedAt": 1772222495816,
+    "commit": null
+  },
+  "history": []
+}
