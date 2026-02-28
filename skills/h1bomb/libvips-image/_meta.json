@@ -1,0 +1,11 @@
+{
+  "owner": "h1bomb",
+  "slug": "libvips-image",
+  "displayName": "Libvips Image",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1772242806060,
+    "commit": null
+  },
+  "history": []
+}
