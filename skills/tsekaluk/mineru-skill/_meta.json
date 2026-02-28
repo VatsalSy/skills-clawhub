@@ -1,0 +1,11 @@
+{
+  "owner": "tsekaluk",
+  "slug": "mineru-skill",
+  "displayName": "MinerU PDF Parser",
+  "latest": {
+    "version": "2.1.0",
+    "publishedAt": 1772247589333,
+    "commit": null
+  },
+  "history": []
+}
