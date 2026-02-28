@@ -18,7 +18,7 @@
 1. Deploy   → sigil.codes/onboarding (connect owner wallet, pick chain & strategy)
 2. Fund     → Send tokens to your SIGIL ACCOUNT (holds value). Send small gas to AGENT KEY (for tx submission).
 3. API Key  → sigil.codes/dashboard/agent-access → generate key (starts with sgil_)
-4. Config   → Give your agent: SIGIL_API_KEY + SIGIL_ACCOUNT_ADDRESS + SIGIL_AGENT_PRIVATE_KEY
+4. Config   → Give your agent: SIGIL_API_KEY + SIGIL_ACCOUNT_ADDRESS + SIGIL_AGENT_SIGNER
 5. Go       → Agent signs UserOps locally, submits via API. Guardian evaluates + co-signs.
 ```
 
@@ -52,9 +52,9 @@ POST /v1/evaluate  (with Bearer token from API key auth)
 | Mistake | Why It's Wrong |
 |---------|---------------|
 | ❌ Funding the agent key address | Agent key is for auth only — funds sent there are stuck/wasted |
-| ❌ Giving the agent your owner private key | Owner key controls freeze/withdraw/policy — agent should NEVER have it |
+| ❌ Giving the agent your owner wallet credentials | Owner key controls freeze/withdraw/policy — agent should NEVER have it |
 | ❌ Agent sending from its own wallet | Transactions must go through Guardian API, not direct on-chain sends |
-| ❌ Using agent key private key as a wallet | It's a signing key for API auth, not an EOA to hold funds |
+| ❌ Using agent signer credential as a wallet | It's a signing key for API auth, not an EOA to hold funds |
 
 ---
 

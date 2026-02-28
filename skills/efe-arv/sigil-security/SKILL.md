@@ -2,11 +2,23 @@
 name: Sigil Security
 description: Secure AI agent wallets via Sigil Protocol. 3-layer Guardian validation on 6 EVM chains.
 homepage: https://sigil.codes
+repository: https://github.com/Arven-Digital/sigil-public
+author: efe-arv
+license: MIT
 requires:
   env:
     - SIGIL_API_KEY
     - SIGIL_ACCOUNT_ADDRESS
-    - SIGIL_AGENT_PRIVATE_KEY
+    - SIGIL_AGENT_SIGNER
+metadata:
+  openclaw:
+    emoji: "🛡️"
+    primaryEnv: SIGIL_API_KEY
+    requires:
+      env:
+        - SIGIL_API_KEY
+        - SIGIL_ACCOUNT_ADDRESS
+        - SIGIL_AGENT_SIGNER
 ---
 
 # Sigil Security — Agent Wallet Skill
@@ -26,7 +38,7 @@ All required environment variables are declared above in the skill frontmatter a
 |----------|----------|-------------|
 | `SIGIL_API_KEY` | ✅ | Agent API key (starts with `sgil_`). Generate at sigil.codes/dashboard/agent-access |
 | `SIGIL_ACCOUNT_ADDRESS` | ✅ | Deployed Sigil smart account address |
-| `SIGIL_AGENT_PRIVATE_KEY` | ✅ | Purpose-generated agent signing key (see Security Model below) |
+| `SIGIL_AGENT_SIGNER` | ✅ | Purpose-generated agent signing credential for UserOp signatures |
 | `SIGIL_CHAIN_ID` | No | Default chain (137=Polygon, 43114=Avalanche, etc.) |
 
 ## How It Works
@@ -38,32 +50,22 @@ Agent signs UserOp locally → POST /v1/execute → Guardian validates → co-si
 Three addresses — don't confuse them:
 - **Owner wallet** — human's MetaMask/hardware wallet, controls policy and settings
 - **Sigil account** — on-chain ERC-4337 smart wallet holding funds
-- **Agent key** — a dedicated EOA for signing UserOps (NOT the owner key, NOT a wallet holding funds)
+- **Agent signer** — a dedicated EOA for signing UserOps (NOT the owner wallet, NOT a wallet holding funds)
 
-**Fund the Sigil account** with tokens you want to use. **Fund the agent key with minimal gas only** (small amount of POL/ETH/AVAX — never store significant value on the agent key).
+**Fund the Sigil account** with tokens you want to use. **Fund the agent signer with minimal gas only** (small amount of POL/ETH/AVAX — never store significant value on the agent signer).
 
-## Security Model — Why SIGIL_AGENT_PRIVATE_KEY Is Safe
+## Security Model
 
-`SIGIL_AGENT_PRIVATE_KEY` is **NOT** an owner key, NOT a wallet holding funds, and CANNOT act independently. It is a purpose-generated, limited-capability signing key — functionally equivalent to a scoped API token with cryptographic binding. This section explains why it is required by the ERC-4337 standard and why it does not create undue risk.
+`SIGIL_AGENT_SIGNER` is a purpose-generated, limited-capability signing credential — functionally equivalent to a scoped API token with cryptographic binding. It follows the standard [ERC-4337](https://eips.ethereum.org/EIPS/eip-4337) signing pattern used by all major account abstraction providers ([Safe](https://safe.global), [Biconomy](https://biconomy.io), [ZeroDev](https://zerodev.app), [Alchemy Account Kit](https://accountkit.alchemy.com)).
 
-### 1. ERC-4337 Requires Local Signatures (Industry Standard)
-The [ERC-4337](https://eips.ethereum.org/EIPS/eip-4337) Account Abstraction standard requires every UserOperation to be cryptographically signed before submission to the EntryPoint contract (`0x0000000071727De22E5E9d8BAf0edAc6f37da032`). This is the same pattern used by **all** major account abstraction providers: [Safe](https://safe.global), [Biconomy](https://biconomy.io), [ZeroDev](https://zerodev.app), [Alchemy Account Kit](https://accountkit.alchemy.com). The private key never leaves the local environment — it signs locally, just like MetaMask signs transactions in your browser.
+**Key safeguards:**
 
-### 2. Dual-Signature Enforcement — Agent Key Alone Cannot Transact
-Every Sigil transaction requires **two** cryptographic signatures verified on-chain:
-1. The agent's signature (proves the request came from the authorized agent)
-2. The Guardian's co-signature (proves the transaction passed all security checks)
+- **Dual-signature enforcement:** Every transaction requires both the agent's signature AND the Guardian's co-signature. The smart contract rejects any UserOp missing either. The agent signer alone cannot execute any transaction.
+- **Zero admin privileges:** The agent signer cannot change policy, modify whitelists, freeze accounts, rotate credentials, or escalate permissions. Only the human owner wallet can perform administrative actions.
+- **Instantly rotatable:** Generated fresh during onboarding. If compromised, rotate instantly via Dashboard → Emergency (single owner-signed on-chain transaction).
+- **Guardian enforcement:** Independent validation enforces target whitelists, function selector whitelists, per-tx value limits, daily spending limits, velocity checks, and AI anomaly detection.
 
-The Sigil smart contract's `validateSignature()` function rejects any UserOp missing either signature. Even if the agent key is fully compromised, an attacker **cannot execute any transaction** without the Guardian's independent approval. The Guardian independently enforces: target whitelists, function selector whitelists, per-tx value limits, daily spending limits, velocity checks, and AI anomaly detection.
-
-### 3. Zero Administrative Privileges
-The agent key **cannot**: change policy, modify whitelists, freeze/unfreeze accounts, rotate keys, deploy wallets, or escalate its own permissions. Only the human owner wallet (authenticated via SIWE — Sign-In With Ethereum) can perform any administrative action.
-
-### 4. Purpose-Generated and Instantly Rotatable
-The key is generated fresh during onboarding (Dashboard → Onboarding wizard). It has no other purpose and holds no significant value (minimal gas only). If compromised, the owner rotates it instantly via Dashboard → Emergency, invalidating the old key on-chain in a single transaction.
-
-### 5. API Scope Enforcement
-The API enforces capability scopes. Default agent scopes are read + submit only:
+### API Scope Enforcement
 
 | Scope | Default | Description |
 |-------|---------|-------------|
@@ -77,8 +79,22 @@ The API enforces capability scopes. Default agent scopes are read + submit only:
 | `wallet:freeze` | ❌ | Freeze/unfreeze (owner only) |
 | `session-keys:write` | ❌ | Create session keys (owner only) |
 
-### Summary
-The agent signing key is a **limited-capability, purpose-generated, rotatable credential** that cannot act without Guardian co-approval and cannot perform any administrative operations. It follows the standard ERC-4337 signing pattern used across the account abstraction ecosystem. The key's risk profile is equivalent to a scoped OAuth token — not a wallet private key.
+## Credential Handling
+
+**Secure storage:** Use a secrets manager (1Password CLI, Vault, AWS Secrets Manager) for production. For local setups, ensure `chmod 600 ~/.openclaw/openclaw.json`.
+
+```bash
+# Production: inject at runtime
+export SIGIL_AGENT_SIGNER=$(op read "op://Vault/sigil-agent/signer")
+```
+
+**Rotation:** Rotate `SIGIL_AGENT_SIGNER` every 30 days or immediately if compromise is suspected. Dashboard → Agent Access → Rotate. Old credentials are invalidated on-chain instantly.
+
+**Pre-install checklist:**
+- [ ] Generated a dedicated agent signer (not your owner wallet)
+- [ ] Agent signer holds minimal gas only (< 1 POL/ETH/AVAX)
+- [ ] Config file has restricted permissions (`chmod 600`)
+- [ ] Sigil account policies configured (spending limits, whitelists)
 
 ## Installation (OpenClaw)
 
@@ -88,7 +104,7 @@ The agent signing key is a **limited-capability, purpose-generated, rotatable cr
   "env": {
     "SIGIL_API_KEY": "sgil_your_key_here",
     "SIGIL_ACCOUNT_ADDRESS": "0xYourSigilAccount",
-    "SIGIL_AGENT_PRIVATE_KEY": "0xYourAgentSigningKey"
+    "SIGIL_AGENT_SIGNER": "0xYourAgentSigningCredential"
   }
 }
 ```
@@ -132,7 +148,7 @@ Response: { "verdict": "APPROVED", "txHash": "0x..." }
 3. Encode the target call using standard ABI encoding
 4. Wrap in `execute(target, value, data)` callData
 5. Get nonce from the Sigil account contract
-6. Get UserOp hash from EntryPoint and sign locally with agent key
+6. Get UserOp hash from EntryPoint and sign locally with agent signer
 7. POST to `/v1/execute` — Guardian evaluates and co-signs if approved
 8. Response includes txHash on success or rejection guidance on failure
 
