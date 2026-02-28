@@ -1,6 +1,8 @@
 # Token Launcher — Direct Mode Reference
 
-Direct Mode means integrating with Clanker, Flaunch, or Pump.fun directly from your agent's code. You keep 100% of creator fees — no interface cut, no platform overhead.
+> **This file is developer documentation only.** It contains code examples and integration patterns for developers to implement in their own codebase. This skill does not execute any code, does not access environment variables, and does not handle private keys at runtime. All code samples below are reference material — they run in your infrastructure, not in this skill.
+
+Direct Mode means integrating with Clanker, Flaunch, or Pump.fun directly from your own application code. You keep 100% of creator fees — no interface cut, no platform overhead.
 
 **Source:** https://github.com/Quick-Intel/openclaw-skills/tree/main/token-launcher
 **Publisher:** Quick Intel / Web3 Collective — https://quickintel.io
@@ -9,7 +11,9 @@ Direct Mode means integrating with Clanker, Flaunch, or Pump.fun directly from y
 
 ## ⚠️ Security First
 
-Direct Mode requires private key access for transaction signing. Before implementing:
+The code examples in this reference show how to sign transactions in your own infrastructure. This skill itself never signs transactions, never accesses your private key, and never executes blockchain operations. Your application code does — and you control that code.
+
+Before implementing in your own codebase:
 
 1. **Create a dedicated launch wallet** — never reuse your main wallet or a wallet holding significant funds
 2. **Use a secrets manager** — load private keys from AWS Secrets Manager, GCP Secret Manager, HashiCorp Vault, or equivalent. Never hardcode keys or store them in plaintext `.env` files in production

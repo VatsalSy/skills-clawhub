@@ -1,5 +1,7 @@
 # Flaunch — Direct Mode Reference
 
+> **This file is developer documentation only.** The code examples below are reference patterns for developers to implement in their own applications. This skill does not execute code or access private keys at runtime.
+
 Launch tokens on Base with bonding curves, fair launch periods, and custom fee split managers. Fine-grained control over fee distribution through deployed manager contracts.
 
 **Publisher:** Quick Intel / Web3 Collective — https://quickintel.io
@@ -26,8 +28,8 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 import { base } from "viem/chains";
 
-// Load securely from secrets manager — never hardcode
-const account = privateKeyToAccount(process.env.LAUNCH_WALLET_PRIVATE_KEY as `0x${string}`);
+// Replace with your key-loading logic — see Security section
+const account = privateKeyToAccount("0x_YOUR_LAUNCH_WALLET_PRIVATE_KEY");
 ```
 
 > **Security:** Use a dedicated launch wallet funded with minimal ETH for gas. The private key should be loaded from a secrets manager, not from plaintext config. See the [Security section in REFERENCE.md](../REFERENCE.md) for details.

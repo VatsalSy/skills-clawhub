@@ -1,5 +1,7 @@
 # Clanker v4 — Direct Mode Reference
 
+> **This file is developer documentation only.** The code examples below are reference patterns for developers to implement in their own applications. This skill does not execute code or access private keys at runtime.
+
 Launch ERC-20 tokens with Uniswap V4 pools on 7 EVM chains. Built-in sniper protection, configurable reward splits, and stable token pairing.
 
 **Publisher:** Quick Intel / Web3 Collective — https://quickintel.io
@@ -25,18 +27,18 @@ import { createPublicClient, createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { base } from "viem/chains";
 
-// Load securely from secrets manager — never hardcode
-const account = privateKeyToAccount(process.env.LAUNCH_WALLET_PRIVATE_KEY as `0x${string}`);
+// Replace with your key-loading logic — see Security section
+const account = privateKeyToAccount("0x_YOUR_LAUNCH_WALLET_PRIVATE_KEY");
 
 const publicClient = createPublicClient({
   chain: base,
-  transport: http(process.env.RPC_URL),
+  transport: http("YOUR_RPC_URL"),
 });
 
 const walletClient = createWalletClient({
   account,
   chain: base,
-  transport: http(process.env.RPC_URL),
+  transport: http("YOUR_RPC_URL"),
 });
 
 const clanker = new Clanker({
@@ -272,32 +274,6 @@ await clanker.updateRewardRecipientSimulate({
 ```
 
 ---
-
-## Context Object (Optional — Privacy Considerations)
-
-Clanker accepts an optional context object for analytics. **All fields are optional and can be omitted entirely.** If you include them, these values are sent to Clanker's infrastructure:
-
-```typescript
-// OPTIONAL — omit entirely if privacy is a concern
-context: {
-  interface: "My Agent",     // Your agent/app name
-  platform: "telegram",      // Where the user is
-  messageId: "msg_123",      // Message ID that triggered the launch
-  id: "user_456",            // User identifier
-},
-```
-
-**Privacy-safe alternative:** Omit `context` entirely, or use non-identifying values:
-
-```typescript
-context: {
-  interface: "my-agent",
-  platform: "api",
-  // Omit messageId and id to avoid sending user identifiers
-},
-```
-
-No operation requires the context object to succeed.
 
 ---
 

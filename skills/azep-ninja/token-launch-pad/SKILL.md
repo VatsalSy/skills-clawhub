@@ -48,33 +48,162 @@ The difference compounds. At $5M volume, Direct Mode keeps you an extra $15,000-
 
 ---
 
-## Two Paths
+## Two Paths — Always Present Both
+
+**When a user wants to launch a token, always present both options and let them choose:**
 
 ### Easy Mode — Tator API
 
 One API call, natural language, Tator handles everything.
 
-- Send a prompt like `"launch a token called GATOR on base"`
+- Send a trading instruction to the Tator API at `x402.quickintel.io`
 - Tator selects the platform, uploads metadata to IPFS, deploys the contract, configures fees
-- Returns unsigned transactions — your wallet signs and broadcasts
+- Tator deploys the token for you — no deploy transaction to sign
 - **Fee split: 90% to you, 10% to Tator as interface fee**
 - $0.20 per API call via x402 USDC payment
 - Supports launch, claim fees, update fee recipient, check unclaimed — all via natural language
 
-**Best for:** Agents and developers who want token launches without writing blockchain code.
+**Best for:** Quick launches without writing blockchain code. Trade-off: 10% of creator fees go to Tator.
 
 ### Direct Mode — Full SDK Integration
 
-Call Clanker, Flaunch, or Pump.fun directly from your agent's code.
+Implement token launches directly in your own application code using platform SDKs.
 
-- Integrate the platform SDK or build instructions manually
+- The reference files provide code examples and integration patterns for your own codebase
+- This skill does not execute Direct Mode code — you implement it in your own infrastructure
 - You control every parameter: rewards, sniper protection, pairing token, fee recipients
-- **100% of creator fees — no interface cut, no middleman**
+- **100% of creator fees — no interface cut, no platform overhead**
 - Requires: your own RPC endpoint, wallet signing capability, SDK dependencies
+- Supported platforms: Clanker (Base, Arbitrum, Mainnet, Unichain, Abstract, Monad, BSC), Flaunch (Base), Pump.fun (Solana)
 
-**Best for:** Agents and developers who want maximum control and zero fee overhead.
+**Best for:** Developers who want maximum control and keep all fees. Trade-off: requires SDK integration work.
+
+### How to Present This Choice
+
+When the user expresses interest in launching a token, summarize both options clearly:
+
+- **Easy Mode:** I'll send your token details to the Tator API, and Tator deploys the token for you. You just pay $0.20 via x402 — no deploy transaction to sign. Your wallet address gets set as the fee recipient automatically. Tator takes 10% of ongoing creator fees as an interface fee. Fastest path — we can launch in a few minutes. Requires an x402-compatible wallet for the payment.
+- **Direct Mode:** I'll build the deployment transaction calldata myself using the platform SDK patterns, and give you the unsigned transaction to sign and broadcast with your wallet. You keep 100% of creator fees with zero ongoing fees. Takes a bit more back-and-forth as I walk you through it, but you own everything.
+
+Both paths need the same info from you: your wallet address, token name, ticker, and which chain. The difference is Easy Mode has Tator deploy for you (simpler, 90% fees) while Direct Mode has you deploy yourself (more steps, 100% fees).
+
+Let the user decide which path to take before proceeding. If they're unsure, ask whether they want to launch quickly today (Easy Mode) or keep full ownership of all fees (Direct Mode).
 
 See [REFERENCE.md](./REFERENCE.md) for Direct Mode overview and the [references/](./references/) folder for per-platform implementation guides.
+
+---
+
+## Direct Mode — Full Walkthrough
+
+When the user chooses Direct Mode, actively help them build their implementation. The agent's role in Direct Mode is to write code with the user, explain each step, pull the correct patterns from the reference files, and guide them through setup, deployment, and testing. The agent does not sign transactions or access private keys — but it absolutely helps write, debug, and explain the code the user will run.
+
+### Step 1: Choose a Platform
+
+Help the user pick the right platform based on their target chain:
+
+| Target Chain | Platform | Reference File |
+|-------------|----------|---------------|
+| Base | Clanker (recommended) or Flaunch | [references/clanker.md](./references/clanker.md) or [references/flaunch.md](./references/flaunch.md) |
+| Arbitrum, Mainnet, Unichain, Abstract, Monad, BSC | Clanker | [references/clanker.md](./references/clanker.md) |
+| Solana | Pump.fun | [references/pumpfun.md](./references/pumpfun.md) |
+
+If on Base, help them decide between Clanker and Flaunch:
+- **Clanker:** Uniswap V4 pool, sniper protection, stable token pairing (USDC), wider multi-chain support if they want to reuse the integration later
+- **Flaunch:** 30-minute fair launch period (built-in sniper prevention), custom fee split managers, bonding curve model
+
+### Step 2: Build the Code Together
+
+Using the reference file for their chosen platform, actively help the user create their launch script. Do not just link to the reference file — pull the relevant code patterns and walk through them:
+
+1. **Generate the setup code** — imports, client initialization, wallet configuration. Use the Setup section from the platform reference file. Use placeholder values for sensitive inputs (private key, RPC URL) and tell the user where to substitute their real values.
+
+2. **Generate the fee configuration code** — show them exactly how to set 100% of fees to their wallet address. Pull from the platform reference file's fee/reward configuration section. Explain what each field does.
+
+3. **Generate the launch function** — the full deployment code with their token name, ticker, and any customizations they've requested. Fill in what you know (token name, symbol, chain) and mark what the user needs to provide.
+
+4. **Generate the fee management code** — claim fees, check unclaimed, update recipient. These are operations they'll need after launch.
+
+5. **Package it all together** — help them create a complete, runnable script or module that they can copy into their project.
+
+### Step 2b: Generate Unsigned Transaction Calldata
+
+For EVM launches (Clanker and Flaunch), the agent can help generate the unsigned transaction calldata that the user can then execute through any wallet they have available. This bridges Direct Mode with whatever wallet skill the user has installed.
+
+**The pattern:**
+
+1. **Agent generates the encoded calldata** — using the reference file's ABI, function names, and parameters, build the `encodeFunctionData` call with the user's specific values (token name, symbol, fee recipients, etc.)
+
+2. **Agent outputs the unsigned transaction object** — a JSON object the user can pass to any wallet:
+```json
+{
+  "to": "0xContractAddress",
+  "data": "0xEncodedCalldata",
+  "value": "0",
+  "chainId": 8453,
+  "gas": "500000"
+}
+```
+
+3. **User sends it to their wallet** — whatever wallet skill they have installed can sign and broadcast this:
+   - **Lobster:** "sign and send this transaction: [paste unsigned TX]"
+   - **AgentWallet / Frames:** "execute this transaction on Base: [paste unsigned TX]"
+   - **base-wallet / evm-wallet:** "broadcast this transaction: [paste unsigned TX]"
+   - **Manual:** Import into MetaMask, Rabby, or any wallet that supports custom transactions
+   - **Programmatic:** Use viem/ethers `sendTransaction()` in their own code
+
+**For Clanker**, help build the calldata using the Clanker SDK's transaction builders:
+- `clanker.deploy(...)` returns transaction data that can be extracted before signing
+- For claims: `clanker.getClaimRewardsTransaction(...)` returns the unsigned TX config directly
+- For updates: `clanker.getUpdateRewardRecipientTransaction(...)` returns unsigned TX config
+- See [references/clanker.md — Unsigned Transaction sections](./references/clanker.md)
+
+**For Flaunch**, help encode the contract calls:
+- Launch: encode `flaunch()` on the FlaunchZap contract with all parameters
+- Claim: encode `claim()` on the AddressFeeSplitManager
+- Update recipient: encode `transferRecipientShare(newRecipient)` on the fee manager
+- See [references/flaunch.md — each operation has an unsigned TX pattern](./references/flaunch.md)
+
+**For Pump.fun (Solana)**, the pattern is different — Solana transactions need all signers present at signing time. The agent can help build the transaction instructions and serialize them, but the user needs a Solana wallet that can sign. Options:
+- Build the transaction with `@solana/web3.js`, serialize to base64, and pass to a Solana wallet skill
+- Use a bot wallet that signs directly (the pattern in [references/pumpfun.md](./references/pumpfun.md))
+
+**The goal:** The user should never have to leave the conversation to execute a Direct Mode launch. The agent generates the calldata, the user pipes it to their wallet, done. Same UX as Easy Mode but with 100% fee ownership.
+
+### Step 3: Configure Fee Recipients
+
+This is where Direct Mode pays for itself — the user keeps 100%. Help them set up the reward/fee configuration:
+
+**Clanker:** Set `rewards.recipients` with their wallet at `bps: 10_000` (100%). See [references/clanker.md — Launch section](./references/clanker.md) for the full rewards config.
+
+**Flaunch:** Deploy an `AddressFeeSplitManager` with their wallet at `share: 100_00000` (100%). See [references/flaunch.md — Step 1: Create a Custom Fee Split Manager](./references/flaunch.md).
+
+**Pump.fun:** Set up `create_fee_sharing_config` + `update_fee_shares` with their wallet at `10000` BPS (100%). See [references/pumpfun.md — Step 2: Set Up Fee Sharing](./references/pumpfun.md).
+
+### Step 4: Guide Testing
+
+Before launching a real token, walk the user through validation:
+- Deploy with a fresh wallet holding minimal funds (gas only)
+- Verify the deployed token with a Quick Intel scan
+- Confirm fee recipients are set correctly on-chain (check the relevant block explorer)
+- Test the claim flow to make sure fees route to the correct wallet
+
+### Step 5: Post-Launch Fee Management
+
+After deployment, help the user with ongoing operations. Pull code patterns from the reference files:
+
+| Operation | What to Reference |
+|-----------|------------------|
+| Check unclaimed fees | Platform reference → "Check Unclaimed" section |
+| Claim creator fees | Platform reference → "Claim" section |
+| Update fee recipient | Platform reference → "Update Recipient" section |
+| Verify token security | Quick Intel scan: `POST https://x402.quickintel.io/v1/scan/full` |
+
+### When to Recommend Easy Mode Instead
+
+If the user seems overwhelmed by the setup, it's fine to suggest Easy Mode as a starting point. They can always switch to Direct Mode later for their next token:
+- Easy Mode: working in minutes, 90% of fees, no code to write
+- Direct Mode: working in hours, 100% of fees, requires development and testing
+- Both modes support the same post-launch operations (claim, update recipient, check fees)
 
 ---
 
@@ -90,7 +219,7 @@ See [REFERENCE.md](./REFERENCE.md) for Direct Mode overview and the [references/
 
 | Variable | Required For | Sensitive | How to Store |
 |----------|-------------|-----------|-------------|
-| `WALLET_PRIVATE_KEY` | Signing deploy/claim/update transactions | **Yes — grants full wallet control** | Secrets manager (AWS SM, GCP SM, Vault). Never plaintext. |
+| `WALLET_PRIVATE_KEY` | Direct Mode: signing deploy/claim/update transactions | **Yes — grants full wallet control** | Secrets manager (AWS SM, GCP SM, Vault). Never plaintext. |
 | `RPC_URL` | Talking to the blockchain | No (but keep private to avoid rate limit abuse) | Environment variable or config |
 | `SOLANA_RPC_URL` | Solana operations (Pump.fun only) | No | Environment variable or config |
 | `PINATA_API_KEY` or `IPFS_API_KEY` | Uploading token metadata to IPFS | Yes | Secrets manager |
@@ -104,9 +233,9 @@ When you call the Tator x402 API (`POST https://x402.quickintel.io/v1/tator/prom
 1. **Sent to Tator:** `walletAddress` (public address — not sensitive), `prompt` (your instruction), `provider` (your agent name)
 2. **NOT sent to Tator:** Your private key, seed phrase, or any signing material
 3. **x402 payment:** Your wallet provider signs a USDC authorization locally → the signed payment header is sent with the request. The API verifies the signature on-chain — it never has your key
-4. **Returned to you:** Unsigned transaction(s) — you sign locally and broadcast yourself
+4. **Returned to you:** Confirmation of the deployed token — token address, transaction hash, and fee configuration details. For non-launch operations (claiming fees, updating recipients), Tator may return unsigned transactions for you to sign.
 
-**No private keys ever leave your machine in Easy Mode. The skill itself never has access to your private key — your wallet provider handles signing independently.**
+**No private keys are involved in Easy Mode. You provide a public wallet address, pay $0.20 via x402, and Tator handles the rest. The skill itself never has access to your private key — your x402-compatible wallet handles the payment signing independently.**
 
 ### Direct Mode Data Flow
 
@@ -126,17 +255,6 @@ Direct Mode code runs entirely in your own infrastructure:
 - **Pump.fun bot wallet:** Solana requires a bot wallet that signs directly (unlike EVM where unsigned transactions can be returned). This wallet needs SOL for gas but should never hold significant value. See [references/pumpfun.md](./references/pumpfun.md)
 - **Revocation plan.** Ensure you can abandon the launch wallet if compromised — use a fresh wallet you can walk away from
 
-### Privacy Note on SDK Context Fields
-
-Some platform SDKs (like Clanker) accept an optional `context` object for analytics tracking. **These fields are entirely optional.** If you use them, be aware:
-
-- `context.interface` — your agent/app name (sent to Clanker)
-- `context.platform` — where the user is (e.g., "telegram") (sent to Clanker)
-- `context.messageId` — message ID that triggered the launch (sent to Clanker)
-- `context.id` — user identifier (sent to Clanker)
-
-**If privacy is a concern, omit the context object entirely or use non-identifying values.** The context object is not required for any operation to succeed. See the Clanker reference for details.
-
 ### Verify External Endpoints
 
 Before using any endpoint, verify you're connecting to the correct service:
@@ -151,6 +269,32 @@ Before using any endpoint, verify you're connecting to the correct service:
 
 ---
 
+## How Both Paths Work
+
+Both modes need the same input from the user. The difference is who executes the deployment:
+
+```
+USER INPUT (both modes):
+  1. Token details (name, ticker, chain, platform preference)
+  2. Wallet address (the public address that receives creator fees)
+
+EASY MODE:                              DIRECT MODE:
+  Agent sends to Tator API               Agent builds calldata from reference files
+  User pays $0.20 via x402               Agent outputs unsigned TX
+  (requires x402-compatible wallet)       User signs + broadcasts TX with their wallet
+  Tator deploys the token for you         Token deploys on-chain
+  User's wallet set as fee recipient      User's wallet set as fee recipient
+  ↓                                      ↓
+  Token is live.                         Token is live.
+  90% creator fees (10% to Tator)        100% creator fees (nothing to anyone)
+```
+
+**Easy Mode:** Tator handles deployment end-to-end. The user never signs a deploy transaction — they just pay the $0.20 API fee via x402 and Tator executes everything. Requires an x402-compatible wallet for the payment (Lobster, AgentWallet, or any wallet that supports EIP-3009 USDC authorization).
+
+**Direct Mode:** The agent builds the unsigned transaction calldata and gives it to the user. The user signs and broadcasts it through whatever wallet they have. No external service involved in deployment.
+
+---
+
 ## Easy Mode — Full Walkthrough
 
 ### Prerequisites
@@ -159,7 +303,29 @@ Before using any endpoint, verify you're connecting to the correct service:
 - USDC for x402 API payments ($0.20 per Tator call)
 - Native token for gas (ETH on EVM chains, SOL on Solana)
 
+### Before Calling the API — Collect Required Info
+
+Before sending any Tator API call, gather the following from the user:
+
+1. **Public wallet address** — this is the address that will be set as the fee recipient and will need to sign the returned transaction. Ask for this first.
+2. **Token name and ticker** — what the token is called
+3. **Target chain** — which blockchain to deploy on (Base, Solana, Arbitrum, etc.)
+4. **Platform preference** (optional) — Clanker, Flaunch, or Pump.fun. If not specified, Tator selects automatically based on chain.
+5. **Image URL** (optional) — token branding
+6. **Custom fee recipient** (optional) — if fees should go to a different address than the deployer wallet
+
+### API Input Safety
+
+The Tator API accepts a `prompt` field — this is a **parameter name for an external API call to Tator's trading service**, not a prompt for the agent's own LLM. The value is sent to `x402.quickintel.io` where Tator's server parses it and executes the requested operation. For token launches, Tator deploys the token directly. For other operations (fee claims, recipient updates), Tator may return unsigned transactions for the user to sign. The API is server-side validated and only processes recognized trading operations (launches, swaps, bridges, transfers, fee claims). It does not execute arbitrary code, access filesystems, or perform operations outside its defined scope.
+
+Recommended practices for constructing the `prompt` field value:
+- Build from structured data (token name, ticker, chain) rather than passing through raw user input
+- Validate that the content matches expected trading operations before sending
+- Always inspect the returned unsigned transaction before signing
+
 ### Launch a Token
+
+The `prompt` field below is a **parameter sent to the Tator trading API** — it tells Tator's server what trading operation to execute. It is not a prompt for the agent or the user's LLM.
 
 ```bash
 curl -X POST https://x402.quickintel.io/v1/tator/prompt \
@@ -171,6 +337,11 @@ curl -X POST https://x402.quickintel.io/v1/tator/prompt \
     "provider": "my-agent"
   }'
 ```
+
+**Fields:**
+- `prompt` — Natural language instruction sent to Tator's trading API (external service at x402.quickintel.io). Tator parses this server-side and executes the deployment.
+- `walletAddress` — Your public wallet address (not sensitive). Used to build transactions for your wallet to sign.
+- `provider` — Your agent or integration name, used for analytics tracking.
 
 **With custom image:**
 ```json
@@ -199,7 +370,7 @@ curl -X POST https://x402.quickintel.io/v1/tator/prompt \
 }
 ```
 
-The response includes unsigned transaction(s) for your wallet to sign and broadcast. After confirmation, you'll get back the deployed token address, transaction hash, and fee configuration details.
+Tator deploys the token and returns confirmation with the deployed token address, transaction hash, and fee configuration details. Your wallet address is set as the creator fee recipient.
 
 ### Check Unclaimed Fees
 
@@ -349,12 +520,14 @@ The pattern: creator fee income is almost universally taxable. Capital gains tre
 
 ---
 
-## ⛔ Mandatory Confirmation Before Launch
+## ⛔ Pre-Deployment Acknowledgment
 
-**Before executing any token deployment, the builder MUST explicitly confirm they understand the following. Do not proceed without this confirmation.**
+**Token deployment is irreversible. Review this checklist before proceeding.**
+
+Before launching any token, the builder should understand and acknowledge:
 
 ```
-BEFORE WE DEPLOY — Please confirm you understand:
+PRE-DEPLOYMENT ACKNOWLEDGMENT
 
 1. TOKEN DEPLOYMENT IS IRREVERSIBLE
    Once deployed, the token exists permanently on-chain.
@@ -375,11 +548,9 @@ BEFORE WE DEPLOY — Please confirm you understand:
 
 6. THIS IS NOT TAX OR LEGAL ADVICE
    This skill provides tools, not counsel.
-
-Do you confirm you understand these points and want to proceed?
 ```
 
-**Do not deploy until the builder explicitly confirms.** This is non-negotiable.
+The builder should confirm they understand these points before proceeding with deployment.
 
 ---
 
@@ -391,7 +562,7 @@ Do you confirm you understand these points and want to proceed?
 - [ ] Wallet ready with native token for gas
 - [ ] Fee recipient confirmed (your wallet or custom address)
 - [ ] Image/branding prepared
-- [ ] Mandatory tax/legal confirmation received
+- [ ] Pre-deployment acknowledgment reviewed
 - [ ] Security scan planned for post-deployment
 
 ---

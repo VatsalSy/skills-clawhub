@@ -1,5 +1,7 @@
 # Pump.fun — Direct Mode Reference
 
+> **This file is developer documentation only.** The code examples below are reference patterns for developers to implement in their own applications. This skill does not execute code or access private keys at runtime.
+
 Launch SPL tokens on Solana with bonding curves that graduate to Raydium. Manual instruction building required due to Anchor IDL constraints. Supports custom fee sharing with configurable shareholder splits.
 
 **Publisher:** Quick Intel / Web3 Collective — https://quickintel.io
@@ -31,14 +33,14 @@ import {
   getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
 
-// Load securely from secrets manager — never hardcode
-const connection = new Connection(process.env.SOLANA_RPC_URL, "confirmed");
+// Replace with your key-loading logic — see Security section
+const connection = new Connection("YOUR_SOLANA_RPC_URL", "confirmed");
 const botWallet = Keypair.fromSecretKey(
-  Buffer.from(JSON.parse(process.env.LAUNCH_WALLET_PRIVATE_KEY))
+  Buffer.from(JSON.parse("YOUR_LAUNCH_WALLET_PRIVATE_KEY_ARRAY"))
 );
 ```
 
-> **Security: Bot Wallet Model.** Pump.fun requires a signing wallet (Solana transactions need all signers present). This wallet is the on-chain "creator" of the token. **Use a dedicated wallet funded with only ~0.05 SOL for gas.** Never use your main wallet. The private key must be stored in a secrets manager — never in plaintext. This wallet signs launch and fee-sharing transactions but never holds token value. See the [Security section in REFERENCE.md](../REFERENCE.md) for details.
+> **Security: Bot Wallet Model.** The code patterns below show how Pump.fun's Solana integration works. If you implement Direct Mode for Solana in your own application: use a dedicated wallet funded with only ~0.05 SOL for gas, never your main wallet. Store the key in a secrets manager, never in plaintext. This wallet signs launch and fee-sharing transactions but should never hold significant value. See the [Security section in REFERENCE.md](../REFERENCE.md) for details.
 
 ---
 
