@@ -1,0 +1,11 @@
+{
+  "owner": "nickylin",
+  "slug": "whisper-stt",
+  "displayName": "Whisper STT",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772206234529,
+    "commit": null
+  },
+  "history": []
+}
