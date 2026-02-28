@@ -1,10 +1,10 @@
 # Alan voice reference (auto)
 
-Generated: 2026-02-25T10:55:29.711Z
+Generated: 2026-02-26T10:55:32.667Z
 Sample size (sent snippets): 50
 
 ## High-level style (heuristics)
-- Concise snippets (<=180 chars): 42%
+- Concise snippets (<=180 chars): 38%
 - Greeting present: 14%
 - Gratitude language: 26%
 
@@ -15,6 +15,8 @@ Sample size (sent snippets): 50
 - Avoid filler.
 
 ## Representative micro-snippets (snippets only)
+- “Alan Alwakeel Stanton College Preparatory School Class of 2026 [email] [phone] [link] ---------- Forwarded message ---------- From: The College Board <[email]> Date: Feb 25, 2026 at 6:13 PM -0500 To: Alan <[email]> Subje…”
+- “rolex: https://www.theonewatches.ws/index.php?route=product/product&product_id=20093&search=DD3255+yg&description=true Cool one: https://www.theonewatches.ws/index.php?route=product/product&product_id=17256&search=15407&…”
 - “Hi Mr. Spinks, I had a really fun time today! I'd be happy to switch times. Thank you for letting me know! Warm regards, Alan Alwakeel Stanton College Preparatory School Class of 2026 [email] [phone] [link]”
 - “Dear Mrs. Annie, I hope you are doing well!! I'm so sorry for responding so late - I've been extremely busy recently with school. I've had a lot of exciting things happen recently! Last year, my cancer cell simulation pr…”
 - “Alan Alwakeel Stanton College Preparatory School Class of 2026 [email] [phone] [link] ---------- Forwarded message ---------- From: Cornell Financial Aid <[email]> Date: Feb 24, 2026 at 5:38 PM -0500 To: [email] Subject:…”
@@ -28,5 +30,3 @@ Sample size (sent snippets): 50
 - “Mrs. Zeiner, I cannot do the 17th. The 19th would work best with me. Warm regards, Alan Alwakeel Stanton College Preparatory School Class of 2026 [email] [phone] [link]”
 - “Dear Mrs. Zeiner, I would like to attend the February 23rd meeting for states. Warm regards, Alan Alwakeel Stanton College Preparatory School Class of 2026 [email] [phone] [link]”
 - “I would love to join for dinner! Warm regards, Alan Alwakeel Stanton College Preparatory School Class of 2026 [email] [phone] [link]”
-- “Thank you so much! Alan Alwakeel Stanton College Preparatory School Class of 2026 [email] [phone] [link]”
-- “Alan Alwakeel Stanton College Preparatory School Class of 2026 [email] [phone] [link] ---------- Forwarded message ---------- From: Roleithia Perry <[email]> Date: Feb 10, 2026 at 3:50 PM -0500 To: College of Medicine md…”
