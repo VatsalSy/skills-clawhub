@@ -1,0 +1,11 @@
+{
+  "owner": "jeizzon",
+  "slug": "yarn-threads-cli",
+  "displayName": "Yarn - Control and Access Threads.com via the CLI",
+  "latest": {
+    "version": "0.1.3",
+    "publishedAt": 1772167074870,
+    "commit": null
+  },
+  "history": []
+}
