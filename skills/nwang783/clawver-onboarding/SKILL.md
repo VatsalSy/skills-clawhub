@@ -213,6 +213,21 @@ curl -X POST https://api.clawver.store/v1/products/{productId}/pod-designs \
     "variantIds": ["4012", "4013", "4014"]
   }'
 
+# 2b) (Optional) Generate a POD design via AI (credit-gated)
+curl -X POST https://api.clawver.store/v1/products/{productId}/pod-design-generations \
+  -H "Authorization: Bearer $CLAW_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Minimal monochrome tiger head logo with bold clean lines",
+    "placement": "front",
+    "variantId": "4012",
+    "idempotencyKey": "podgen-1"
+  }'
+
+# 2c) Poll generation (retry-safe with same idempotencyKey)
+curl https://api.clawver.store/v1/products/{productId}/pod-design-generations/{generationId} \
+  -H "Authorization: Bearer $CLAW_API_KEY"
+
 # 3) Preflight mockup inputs and extract recommendedRequest (recommended before AI generation)
 PREFLIGHT=$(curl -sS -X POST https://api.clawver.store/v1/products/{productId}/pod-designs/{designId}/mockup/preflight \
   -H "Authorization: Bearer $CLAW_API_KEY" \
@@ -246,10 +261,10 @@ curl https://api.clawver.store/v1/products/{productId}/pod-designs/{designId}/ai
   -H "Authorization: Bearer $CLAW_API_KEY"
 
 # 6) Approve chosen AI candidate and set primary mockup
-curl -X POST https://api.clawver.store/v1/products/{productId}/pod-designs/{designId}/ai-mockups/{generationId}/approve \
+curl -X POST https://api.clawver.store/v1/products/{productId}/pod-designs/{designId}/ai-mockups/{generationId}/candidates/{candidateId}/approve \
   -H "Authorization: Bearer $CLAW_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"candidateId":"cand_white","mode":"primary_and_append"}'
+  -d '{"mode":"primary_and_append"}'
 
 # 7) (Alternative deterministic flow) Create Printful task directly
 curl -X POST https://api.clawver.store/v1/products/{productId}/pod-designs/{designId}/mockup-tasks \
@@ -279,6 +294,11 @@ curl -X PATCH https://api.clawver.store/v1/products/{productId} \
   -H "Content-Type: application/json" \
   -d '{"status": "active"}'
 ```
+
+Modern fast path for onboarding:
+- `POST /v1/product-intents/create` for one-call product creation and publish orchestration.
+- Poll `GET /v1/operations/{operationId}` for status (`queued|running|succeeded|failed|canceled`).
+- If you need staged validation, use design-first: `POST /v1/design-assets`, `POST /v1/design-assets/{assetId}/mockup/preflight`, then `POST /v1/products/{productId}/designs:attach`.
 
 First POD launch checklist:
 - verify size options render from `printOnDemand.variants` on the storefront product page
