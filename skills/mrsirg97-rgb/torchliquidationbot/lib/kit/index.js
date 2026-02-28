@@ -25,66 +25,43 @@ const utils_1 = require("./utils");
 // scan & liquidate
 // ---------------------------------------------------------------------------
 const scanAndLiquidate = async (connection, log, vaultCreator, agentKeypair) => {
-    const { tokens } = await (0, torchsdk_1.getTokens)(connection, {
-        status: 'migrated',
-        sort: 'volume',
-        limit: 50,
-    });
+    const { tokens } = await (0, utils_1.withTimeout)((0, torchsdk_1.getTokens)(connection, { status: 'migrated', sort: 'volume', limit: 50 }), 'getTokens');
     log('debug', `discovered ${tokens.length} migrated tokens`);
     for (const token of tokens) {
-        let lending;
+        let positions;
         try {
-            lending = await (0, torchsdk_1.getLendingInfo)(connection, token.mint);
+            const result = await (0, utils_1.withTimeout)((0, torchsdk_1.getAllLoanPositions)(connection, token.mint), 'getAllLoanPositions');
+            positions = result.positions;
         }
         catch {
             continue; // lending not enabled for this token
         }
-        if (!lending.active_loans || lending.active_loans === 0)
+        if (positions.length === 0)
             continue;
-        log('debug', `${token.symbol} — ${lending.active_loans} active loans, ` +
-            `threshold: ${(0, utils_1.bpsToPercent)(lending.liquidation_threshold_bps)}, ` +
-            `bonus: ${(0, utils_1.bpsToPercent)(lending.liquidation_bonus_bps)}`);
-        // get holders as potential borrowers
-        let holders;
-        try {
-            const result = await (0, torchsdk_1.getHolders)(connection, token.mint);
-            holders = result.holders;
-        }
-        catch {
-            log('debug', `${token.symbol} — could not fetch holders, skipping`);
-            continue;
-        }
-        for (const holder of holders) {
-            let position;
-            try {
-                position = await (0, torchsdk_1.getLoanPosition)(connection, token.mint, holder.address);
-            }
-            catch {
-                continue; // no loan position for this holder
-            }
-            // SDK provides health status directly — skip non-liquidatable positions
+        log('debug', `${token.symbol} — ${positions.length} active loans`);
+        // positions are pre-sorted: liquidatable → at_risk → healthy
+        for (const position of positions) {
             if (position.health !== 'liquidatable')
-                continue;
-            log('info', `LIQUIDATABLE | ${token.symbol} | borrower=${holder.address.slice(0, 8)}... | ` +
-                `LTV=${position.current_ltv_bps != null ? (0, utils_1.bpsToPercent)(position.current_ltv_bps) : '?'} > ` +
-                `threshold=${(0, utils_1.bpsToPercent)(lending.liquidation_threshold_bps)} | ` +
+                break; // sorted, so no more liquidatable after this
+            log('info', `LIQUIDATABLE | ${token.symbol} | borrower=${position.borrower.slice(0, 8)}... | ` +
+                `LTV=${position.current_ltv_bps != null ? (0, utils_1.bpsToPercent)(position.current_ltv_bps) : '?'} | ` +
                 `owed=${(0, utils_1.sol)(position.total_owed)} SOL`);
             // build and execute liquidation through the vault
             try {
-                const { transaction, message } = await (0, torchsdk_1.buildLiquidateTransaction)(connection, {
+                const { transaction, message } = await (0, utils_1.withTimeout)((0, torchsdk_1.buildLiquidateTransaction)(connection, {
                     mint: token.mint,
                     liquidator: agentKeypair.publicKey.toBase58(),
-                    borrower: holder.address,
+                    borrower: position.borrower,
                     vault: vaultCreator,
-                });
+                }), 'buildLiquidateTransaction');
                 transaction.sign(agentKeypair);
                 const signature = await connection.sendRawTransaction(transaction.serialize());
-                await (0, torchsdk_1.confirmTransaction)(connection, signature, agentKeypair.publicKey.toBase58());
-                log('info', `LIQUIDATED | ${token.symbol} | borrower=${holder.address.slice(0, 8)}... | ` +
+                await (0, utils_1.withTimeout)((0, torchsdk_1.confirmTransaction)(connection, signature, agentKeypair.publicKey.toBase58()), 'confirmTransaction');
+                log('info', `LIQUIDATED | ${token.symbol} | borrower=${position.borrower.slice(0, 8)}... | ` +
                     `sig=${signature.slice(0, 16)}... | ${message}`);
             }
             catch (err) {
-                log('warn', `LIQUIDATION FAILED | ${token.symbol} | ${holder.address.slice(0, 8)}... | ${err.message}`);
+                log('warn', `LIQUIDATION FAILED | ${token.symbol} | ${position.borrower.slice(0, 8)}... | ${err.message}`);
             }
         }
     }
@@ -126,13 +103,13 @@ const main = async () => {
     console.log(`scan interval: ${config.scanIntervalMs}ms`);
     console.log();
     // verify vault exists
-    const vault = await (0, torchsdk_1.getVault)(connection, config.vaultCreator);
+    const vault = await (0, utils_1.withTimeout)((0, torchsdk_1.getVault)(connection, config.vaultCreator), 'getVault');
     if (!vault) {
         throw new Error(`vault not found for creator ${config.vaultCreator}`);
     }
     log('info', `vault found — authority=${vault.authority}`);
     // verify agent wallet is linked to vault
-    const link = await (0, torchsdk_1.getVaultForWallet)(connection, agentKeypair.publicKey.toBase58());
+    const link = await (0, utils_1.withTimeout)((0, torchsdk_1.getVaultForWallet)(connection, agentKeypair.publicKey.toBase58()), 'getVaultForWallet');
     if (!link) {
         console.log();
         console.log('--- ACTION REQUIRED ---');
