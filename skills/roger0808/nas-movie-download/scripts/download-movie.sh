@@ -271,19 +271,19 @@ echo "📊 正在分析种子质量..."
 BEST_TORRENT=$(echo "$JSON_PART" | jq -r '
     # 定义质量排序函数
     def quality_sort:
-        if (.Title | ascii_downcase | contains("4k") or .Title | ascii_downcase | contains("2160p")) then 4
-        elif (.Title | ascii_downcase | contains("1080p") or .Title | ascii_downcase | contains("fullhd")) then 3
-        elif (.Title | ascii_downcase | contains("720p") or .Title | ascii_downcase | contains("hd")) then 2
+        if (.Title | ascii_downcase | test("4k|2160p")) then 4
+        elif (.Title | ascii_downcase | test("1080p|fullhd")) then 3
+        elif (.Title | ascii_downcase | test("720p|hd")) then 2
         else 1 end;
 
     # 选择最佳种子
-    sort_by(
+    .Results | sort_by(
         # 主要排序：质量
         quality_sort,
         # 次要排序：种子数
         (.Seeders // 0),
         # 最后排序：文件大小
-        (.Size | split(" ")[0] | tonumber // 0)
+        (.Size // 0)
     )
     | reverse | .[0]
 ')
