@@ -1,0 +1,11 @@
+{
+  "owner": "minilozio",
+  "slug": "serper-google-search",
+  "displayName": "Google Search Skill",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772192129744,
+    "commit": null
+  },
+  "history": []
+}
