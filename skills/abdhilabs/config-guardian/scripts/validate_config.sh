@@ -14,8 +14,8 @@ openclaw doctor --non-interactive
 CONFIG_PATH="$HOME/.openclaw/openclaw.json"
 
 # 3. Check for dangerous keys
-DANGEROUS_KEYS=("system" "eval" "exec" "shell" "sudo")
-for key in "${DANGEROUS_KEYS[@]}"; do
+BLOCKED_KEYS=("system" "eval" "exec" "shell" "sudo")
+for key in "${BLOCKED_KEYS[@]}"; do
     if grep -q "\"$key\"" "$CONFIG_PATH" 2>/dev/null; then
         echo "⚠️  Warning: Found potentially dangerous key: $key"
     fi
