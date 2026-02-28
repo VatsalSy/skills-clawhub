@@ -1,0 +1,11 @@
+{
+  "owner": "0x-professor",
+  "slug": "dl-transformer-finetune",
+  "displayName": "Dl Transformer Finetune",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1772136391248,
+    "commit": null
+  },
+  "history": []
+}
