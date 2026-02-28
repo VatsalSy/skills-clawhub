@@ -1,0 +1,11 @@
+{
+  "owner": "lilianzhu",
+  "slug": "zadig",
+  "displayName": "Zadig DevOps",
+  "latest": {
+    "version": "4.0.0",
+    "publishedAt": 1772193040024,
+    "commit": null
+  },
+  "history": []
+}
