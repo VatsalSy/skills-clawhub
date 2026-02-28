@@ -1,47 +1,58 @@
-# Pastel Color Palettes
+# Pastel Palettes (Soft Color Theory)
 
-Pastel colors are soft, muted, and easy on the eyes. Preferred by Azzar.
+Pastel colors are high-value, low-saturation tones that create a sense of calmness, creativity, and premium softness. They are essential for modern dashboard systems (M3 Pastel) and minimalist interfaces.
 
-## Curated Palettes
+## Design DNA
 
-### 1. Spring Morning (Soft & Fresh)
-- Primary: `#B2E2F2` (Soft Blue)
-- Secondary: `#F2C6D2` (Soft Pink)
-- Accent: `#D9F2B6` (Soft Green)
-- Background: `#F9F9F9`
+| Property | Value |
+|---|---|
+| **Saturation** | Low (10% – 40%) |
+| **Value (Brightness)** | High (85% – 98%) |
+| **Mood** | Airy, professional, creative, non-aggressive |
 
-### 2. Sunset Glow (Warm & Muted)
-- Primary: `#FFD8B1` (Peach)
-- Secondary: `#FFB7B2` (Coral)
-- Accent: `#E2F0CB` (Lime)
+## Tonal Swatches
 
-### 3. Lavender Dreams (Calm & Elegant)
-- Primary: `#E0BBE4` (Lavender)
-- Secondary: `#957DAD` (Deep Lavender)
-- Accent: `#D291BC` (Orchid)
+### The "Studio Blue" Set
+- Primary: #D1E4FF
+- Container: #E6F0FF
+- Accent: #00497D
 
-## Tailwind CSS Configuration
+### The "Creative Purple" Set
+- Primary: #F7D8FF
+- Container: #FBEAFF
+- Accent: #550066
 
-```javascript
-// tailwind.config.js
-module.exports = {
-  theme: {
-    extend: {
-      colors: {
-        pastel: {
-          blue: '#B2E2F2',
-          pink: '#F2C6D2',
-          green: '#D9F2B6',
-          peach: '#FFD8B1',
-          lavender: '#E0BBE4',
-        }
-      }
-    }
-  }
+### The "Success Mint" Set
+- Primary: #C4EED0
+- Container: #E1F7E8
+- Accent: #00210E
+
+## Color Rules
+
+1. Background Interaction: Always use a neutral off-white background (Slate-50 or Zinc-50) when using pastel primary colors to prevent the UI from looking "muddy."
+2. Contrast Check: Ensure that the "On-Container" text color (the dark version of the pastel) has a contrast ratio of at least 4.5:1.
+3. Limited Spectrum: Use no more than 3 distinct pastel hues in a single view to maintain professional clarity.
+
+## CSS Variable Implementation
+
+```css
+:root {
+    --p-blue-200: #D1E4FF;
+    --p-blue-900: #003258;
+    
+    --p-rose-200: #FCE7F3;
+    --p-rose-900: #701A75;
+}
+
+.card-pastel {
+    background: var(--p-blue-200);
+    color: var(--p-blue-900);
+    border-radius: 20px;
+    padding: 1.5rem;
 }
 ```
 
-## Best Practices
-- Use pastels for backgrounds and large surfaces.
-- Use a slightly darker version of the pastel color for text or borders to ensure accessibility.
-- Mix with high-quality whitespace (Minimalism).
+## Anti-Patterns
+
+- Neon Overload: If the color hurts the eyes, it is not a pastel.
+- Black Text on Pastel: Prefer a very dark version of the same hue (e.g., Deep Navy on Pastel Blue) instead of pure black for a more "expensive" feel.

@@ -1,48 +1,56 @@
-# Neo-M3 Hybrid Design Language
+# Neo-M3 Hybrid (Industrial Modernism)
 
-A sophisticated blend of Neo-Brutalism's raw energy and Material You's user-centric softness. Inspired by tech journalism giants like **Wired** and **The Verge**.
+A high-density design language blending the raw structure of Neo-Brutalism with the fluid geometry of Material You 3. Inspired by tech journalism and high-end engineering interfaces.
 
-## Core Principles
+---
 
-### 1. Structure: Industrial Softness
-- **Borders:** 3px to 4px solid black (#000000). Use dashed borders for experimental or "Edan" elements.
-- **Corners:** Large rounded corners (24px to 32px / `rounded-3xl`) on main containers and cards.
-- **Shadows:** Hard, non-blurry offset shadows (6px to 10px). Vibe: "Physical items on a grid."
+## Design DNA
 
-### 2. Typography: The "Wired" Impact
-- **Headlines:** Sans-serif with heavy weights (800-900). Tight letter spacing.
-- **Font Choice:** Plus Jakarta Sans or Lexend Mega.
-- **Monospace Accents:** Use JetBrains Mono for system stats, timestamps, and metadata to give an "engineering terminal" feel.
+| Property | Value |
+|---|---|
+| **Border Radius** | Large: 24px – 32px (rounded-3xl) |
+| **Borders** | Bold: 3px – 4px Solid Black. Use dashed for experimental states |
+| **Shadows** | Hard Offset: 6px – 10px (No blur) |
+| **Typography** | Plus Jakarta Sans (Headers), JetBrains Mono (Metadata/Stats) |
 
-### 3. Color: Tonal Pastels & High Contrast
-- **Base Background:** Neutral Slate-50 (#f8fafc) or Light Grey (#f0f0f0).
-- **Accents:** Use a "Verge" inspired tonal palette:
-  - Lavender (#e9d5ff)
-  - Sky Blue (#dbeafe)
-  - Rose (#fce7f3)
-  - Mint (#dcfce7)
-- **High Contrast:** Text is always pure black (#000000) on cards, or white on pure black footers/marquees.
+---
 
-### 4. Elements
-- **Marquees:** Use top-edge scrolling marquees for system status.
-- **Navigation:** Floating pills with high-contrast active states.
-- **Labels:** Small, inverted background labels (white text on black) for tags/categories.
+## The Verge-inspired Palette
 
-## Sample Tailwind Config Extension
+| Name | Hex Code | Usage |
+|---|---|---|
+| **Canvas** | #F8FAFC | Main background |
+| **Ink** | #000000 | Borders and inverted labels |
+| **M3 Lavender** | #E9D5FF | Hero cards, primary actions |
+| **M3 Sky** | #DBEAFE | Secondary info, data viz |
 
-```javascript
-{
-  theme: {
-    extend: {
-      colors: {
-        'neo-bg': '#f8fafc',
-        'neo-accent': '#6366f1',
-        'neo-pink': '#ff00ff',
-      },
-      boxShadow: {
-        'brutal': '8px 8px 0px 0px rgba(0,0,0,1)',
-      }
-    }
-  }
-}
+---
+
+## Component Logic
+
+### 1. The Wired Article Card
+```html
+<article class="bg-white border-[3px] border-black rounded-[32px] p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+    <div class="flex gap-2 mb-6">
+        <span class="bg-black text-white text-[10px] font-black uppercase px-3 py-1 rounded-full">Intelligence</span>
+    </div>
+    <h2 class="text-3xl font-extrabold tracking-tighter leading-none mb-4">Project Prism.</h2>
+    <p class="text-zinc-600 mb-8">Engineering the future through Neo-M3 architecture.</p>
+</article>
 ```
+
+### 2. System Status Marquee
+```html
+<div class="bg-black text-white py-2 overflow-hidden whitespace-nowrap">
+    <div class="animate-marquee inline-block font-mono text-xs uppercase tracking-widest">
+        System Operational • Memory Cache Synced • Welcome Master Azzar • 
+    </div>
+</div>
+```
+
+## Anti-Patterns
+
+- Subtle Borders: Anything less than 2px is too weak.
+- Low Contrast: Black on white is mandatory.
+- Traditional Icons: Use geometric/minimal icons.
+- Rounded Corners < 16px: Keep it bold.

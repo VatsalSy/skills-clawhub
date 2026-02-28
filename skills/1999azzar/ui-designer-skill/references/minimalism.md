@@ -1,38 +1,62 @@
-# Minimalist Design Principles
+# Minimalism (Functional Elegance)
 
-"Less is more." Focus on essential elements, high-quality typography, and purposeful whitespace.
+Minimalist design is the art of extreme intentionality. It focuses on essential elements, high-quality typography, and purposeful whitespace to create clarity.
 
-## Core Concepts
+---
 
-### 1. Whitespace (Negative Space)
-- Don't be afraid of empty space. It directs attention.
-- Use generous margins and padding (`p-8`, `m-12`).
+## Design DNA
 
-### 2. Typography-First
-- Let the font do the heavy lifting.
-- Use a clear hierarchy: One bold Sans-Serif for headings, a highly readable Serif or Sans-Serif for body.
-- Limit the number of font weights and sizes.
+| Property | Value |
+|---|---|
+| **Border Radius** | Subtle: 6px – 12px |
+| **Borders** | Rare. Use 0.5px or 1px with low-contrast colors (e.g., #f1f1f1) |
+| **Shadows** | Ambient only. Very large blur, very low opacity (2%-5%) |
+| **Typography** | Inter, Geist, or Plus Jakarta Sans. Strict size scale |
+| **Spacing** | Generous. gap-12, p-20. Spacing is the divider |
 
-### 3. Purposeful Color
-- Use a neutral base (white, off-white, or very dark grey).
-- Use a single accent color for calls to action.
+---
 
-### 4. Remove Non-Essentials
-- Ditch unnecessary borders and shadows. Use subtle contrast or spacing to separate sections.
+## The Quiet Palette
 
-## Tailwind CSS Implementation
+- Snow White: #FFFFFF
+- Soft Graphite: #18181B
+- Ghost Text: #71717A
+- Deep Ink: #09090B
 
+---
+
+## Component Logic
+
+### 1. The Border-less Content Section
 ```html
-<section class="max-w-2xl mx-auto py-20 px-6">
-  <h1 class="text-5xl font-bold tracking-tight mb-8">Elegance in Simplicity.</h1>
-  <p class="text-xl text-zinc-600 leading-relaxed">
-    Design is not just what it looks like and feels like. Design is how it works.
-  </p>
+<section class="max-w-3xl mx-auto py-32 px-8">
+    <span class="text-xs font-bold uppercase tracking-widest text-zinc-400 mb-4 block">Process</span>
+    <h2 class="text-4xl font-bold tracking-tight mb-8">Refining the core.</h2>
+    <p class="text-lg text-zinc-500 leading-relaxed">
+        Strip away the noise until only the essence remains.
+    </p>
 </section>
 ```
 
-## Usage in Skill
-When asked for Minimalist design:
-- Simplify layouts to a single column or a very clean grid.
-- Suggest "Zinc" or "Slate" palettes.
-- Prioritize high-contrast typography.
+### 2. The Subtle Button
+```css
+.btn-minimal {
+    padding: 0.75rem 1.5rem;
+    border-radius: 99px;
+    background: #000;
+    color: #fff;
+    font-weight: 600;
+}
+```
+
+## Layout Strategy
+
+1. Focus on the 80/20 Rule: Only show the essential 20% of information.
+2. Invisible Dividers: Use margins instead of lines.
+3. Contrast as Guide: Use varying shades of gray to communicate hierarchy.
+
+## Anti-Patterns
+
+- Drop Shadows with Color: Shadows should always be neutral.
+- Nested Boxes: Avoid "a box inside a box". Use white space.
+- Icons for Everything: Use text when it is clearer.

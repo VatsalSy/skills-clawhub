@@ -1,17 +1,55 @@
-# Material You (Material 3) Principles
+# Material You (M3 Design Principles)
 
-Material You focuses on personalization, adaptive shapes, and expressive motion.
+Google's Material Design 3 focus on personal, adaptive, and expressive design. It emphasizes dynamic color, organic shapes, and a systematic approach to elevation and hierarchy.
 
-## Core Features
-- **Large Corner Radii**: Buttons and cards typically use `rounded-3xl` or fully rounded shapes.
-- **Dynamic Color**: Use a seed color to generate a palette (Primary, Secondary, Tertiary, Surface).
-- **Surface Elevation**: Use color tints (tonal palettes) instead of heavy shadows to indicate elevation.
-- **Minimalist Iconography**: Simple, stroke-based icons.
+## Design DNA
 
-## Component Patterns
-- **Cards**: Flat or slightly tinted background with high corner radius.
-- **Buttons**: Pill-shaped (fully rounded) with filled or tonal backgrounds.
-- **Typography**: Clean sans-serif (e.g., Roboto, Inter, or Product Sans).
+| Property | Value |
+|---|---|
+| **Corner Radius** | Small: 8px, Medium: 12px, Large: 28px, Extra Large: 32px |
+| **Elevation** | Surface tinting (tonal palettes) instead of heavy shadows |
+| **Icons** | Material Symbols (Outlined, Rounded, or Sharp) |
+| **Grid** | 4px Baseline grid, 8px spacing steps |
+| **Typography** | Roboto or Product Sans (Google Sans) |
 
-## Interaction
-- Focus on "state" changes (hover, pressed) through subtle opacity shifts or tonal changes.
+## Tonal Palette Logic
+
+Hierarchy is defined by the container's tone rather than its shadow depth.
+
+| Level | Role | Usage |
+|---|---|---|
+| **Primary** | Key Actions | Most prominent buttons and highlights |
+| **Secondary** | Less Prominent | Supporting UI elements |
+| **Tertiary** | Accent/Contrast | Contrasting elements for visual interest |
+| **Surface** | Backgrounds | Main canvas and non-interactive areas |
+
+## Components
+
+### Floating Action Button (FAB)
+```html
+<button class="w-14 h-14 bg-m3-primary-container text-m3-on-primary-container rounded-[16px] shadow-md flex items-center justify-center">
+    <i class="fa-solid fa-plus"></i>
+</button>
+```
+
+### Large Card (M3 Standard)
+```css
+.m3-card-large {
+    background: var(--md-sys-color-surface-variant);
+    border-radius: 28px;
+    padding: 1.5rem;
+    border: none;
+}
+```
+
+## Motion Guidelines
+
+- Duration: Transitions typically range from 200ms to 500ms.
+- Easing: Use "Emphasized" easing (`cubic-bezier(0.2, 0, 0, 1)`) for expressive movements.
+- Feedback: Every interaction should trigger a ripple or scale effect.
+
+## Anti-Patterns
+
+- Tiny Border Radius: M3 is fundamentally based on large, comfortable curves.
+- High Saturation: Unless for specific emphasis, stick to tonal ranges of a single seed color.
+- Static Layouts: Design for flexibility and adaptive spacing.

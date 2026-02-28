@@ -1,35 +1,49 @@
-# Claymorphism Design Principles
+# Claymorphism (Soft 3D Design)
 
-Claymorphism is a friendly, 3D-inspired design style characterized by soft, "clay-like" textures. It feels tactile, inflated, and works exceptionally well with pastel color schemes.
+Claymorphism is a design trend that evolves from neumorphism, focusing on soft, inflated, 3D-like surfaces that look like they are made of clay. It uses double inner shadows to create volume and depth without the heavy outer shadows of traditional skeuomorphism.
 
-## Core Concepts
+## Design DNA
 
-### 1. Double Inner Shadows
-- The "inflated" look is achieved using two inner shadows: one light (top-left) and one dark (bottom-right).
-- Example: `inner-shadow-light` and `inner-shadow-dark`.
+| Property | Value |
+|---|---|
+| **Border Radius** | Extra Large: 32px – 48px (rounded-3xl or more) |
+| **Inner Shadows** | Double: One light (top-left), one dark (bottom-right) |
+| **Outer Shadow** | Large, soft, floating drop shadow with low opacity |
+| **Background** | Solid pastel or vivid colors |
+| **Typography** | Rounded or friendly sans-serif (Quicksand, Fredoka, or Plus Jakarta Sans) |
 
-### 2. Large Border Radius
-- Use extremely rounded corners (`rounded-3xl` or `rounded-[40px]`) to emphasize the soft, doughy feel.
+## Color Strategy
 
-### 3. Background Blur & Transparency
-- Often combined with a subtle backdrop blur to keep the UI feeling "light" despite the 3D volume.
+Claymorphism works best with vibrant backgrounds and light-colored floating cards.
 
-### 4. Floating Elements
-- Use soft, large, blurred drop shadows to make elements feel like they are floating above the background.
+| Layer | Hex Code | Purpose |
+|---|---|---|
+| **Primary Clay** | #FFFFFF | Default card color |
+| **Pastel Blue** | #E0E7FF | Soft background |
+| **Vibrant Pink** | #F472B6 | Emphasis background |
 
-## Tailwind CSS Implementation
+## CSS Implementation
 
-```html
-<div class="bg-blue-200 rounded-[40px] p-10 shadow-2xl 
-            shadow-[inset_-8px_-8px_16px_rgba(0,0,0,0.1),inset_8px_8px_16px_rgba(255,255,255,0.8)]">
-  <h2 class="text-3xl font-bold text-blue-900 mb-2">Soft & Tactile</h2>
-  <p class="text-blue-800">Claymorphism brings a playful, 3D aesthetic to your interfaces.</p>
-</div>
+```css
+.clay-card {
+    background: #ffffff;
+    border-radius: 40px;
+    box-shadow: 
+        35px 35px 70px #bebebe,
+        -35px -35px 70px #ffffff,
+        inset 10px 10px 20px rgba(0,0,0,0.05),
+        inset -10px -10px 20px rgba(255,255,255,0.8);
+    padding: 3rem;
+    transition: transform 0.3s ease;
+}
+
+.clay-card:hover {
+    transform: scale(1.02) translateY(-10px);
+}
 ```
 
-## Usage in Skill
-When asked for Claymorphism:
-- Suggest pastel backgrounds (`bg-pink-100`, `bg-indigo-100`).
-- Enforce `rounded-[40px]`.
-- Use complex `box-shadow` configurations for the inner-glow and outer-float effects.
-- Keep the overall vibe playful and high-end.
+## Anti-Patterns
+
+- No Sharp Corners: Everything must be "inflated" and round.
+- No Flat Colors: Use the inner shadows to ensure volume is visible.
+- No Dark Backgrounds for Cards: Clay cards are typically light or very bright; dark clay looks like heavy stone, losing the "clay" feel.

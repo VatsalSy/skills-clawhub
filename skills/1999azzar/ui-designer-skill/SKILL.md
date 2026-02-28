@@ -1,6 +1,6 @@
 ---
 name: ui-designer
-description: Design beautiful interfaces using Material You, Minimalism, Glassmorphism, Neo-Brutalism, and Claymorphism. Expert in Tailwind CSS, color harmonics, component theming, and accessibility (WCAG).
+description: Design beautiful interfaces using Material You, Minimalism, Glassmorphism, Neo-Brutalism, Claymorphism, and Swiss Design. Expert in Tailwind CSS, color harmonics, component theming, and accessibility (WCAG).
 ---
 
 # UI Designer Skill
@@ -54,6 +54,10 @@ Evaluate and refine interfaces for maximum inclusivity and compliance.
 - **Key traits:** Wired/Verge inspired high-contrast, 3px solid black borders, hard shadows (6px+), 24px rounded corners, tonal pastel accents.
 - **Reference:** [neo-m3-hybrid.md](references/neo-m3-hybrid.md)
 
+### 8. Swiss Design (International Typographic Style)
+- **Key traits:** Strict 12-column grid, massive sans-serif typography, zero border-radius, no shadows, restrained 1–2 color accent palette, asymmetric layouts, whitespace as structure.
+- **Reference:** [swiss-design.md](references/swiss-design.md)
+
 ## Automation: Cursor Integration
 
 This skill can automatically update your project's `.cursorrules` to keep the AI aligned with your design goals.
@@ -62,14 +66,14 @@ This skill can automatically update your project's `.cursorrules` to keep the AI
 Run this script to append design rules to your current directory's .cursorrules.
 
 ```bash
-python ~/.gemini/skills/ui-designer/scripts/apply_ui_rules.py --style [material|minimal|glass|neo-brutalism|claymorphism|m3-pastel|neo-m3] --palette [pastel|dark|vibrant]
+python3 $WORKSPACE/skills/ui-designer-skill/scripts/apply_ui_rules.py --style [material|minimal|glass|neo-brutalism|claymorphism|m3-pastel|neo-m3|swiss] --palette [pastel|dark|vibrant]
 ```
 
 ## Workflows
 
 ### 1. Design Conception
 When starting a new feature, ask for:
-- Primary design language? (Material You, Minimalism, Glassmorphism, Neo-Brutalism, Claymorphism, M3 Pastel Glass, Neo-M3 Hybrid)
+- Primary design language? (Material You, Minimalism, Glassmorphism, Neo-Brutalism, Claymorphism, M3 Pastel Glass, Neo-M3 Hybrid, Swiss Design)
 - Color vibe? (Pastel, Dark, High-Contrast)
 
 ### 2. Component Architecture

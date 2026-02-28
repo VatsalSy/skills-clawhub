@@ -1,17 +1,50 @@
-# Dark Pastel Aesthetics
+# Dark Pastel (Midnight Tones)
 
-A combination of deep backgrounds and soft, low-saturation pastel colors for a sophisticated yet approachable look.
+A sophisticated design language that combines the comfort of Dark Mode with the softness of Pastel palettes. It avoids pure black (#000000) to reduce eye strain, opting for deep, desaturated midnight tones.
 
-## Color Palette Strategy
-- **Background**: Deep grays or tinted blacks (e.g., `#121212`, `#1A1B1E`).
-- **Accent Colors**: Soft mint (`#B2F2BB`), lavender (`#E5DBFF`), pastel blue (`#D0EBFF`), and salmon (`#FFD8D8`).
-- **Surface**: Slightly lighter than the background (`#1E1E24`).
+## Design DNA
 
-## Typography
-- **Headlines**: Semi-bold with generous letter spacing.
-- **Body**: High readability, slightly off-white (`#E8E8E8`) to reduce eye strain.
+| Property | Value |
+|---|---|
+| **Base Background** | Deep Midnight: #0A0C10 or #111827 |
+| **Surface Color** | Lighter Midnight: #1F2937 (Glass effect often applied) |
+| **Accents** | Muted Pastels (Low saturation, high value) |
+| **Borders** | Subtle rules: 1px solid rgba(255, 255, 255, 0.05) |
+| **Typography** | Inter or Geist. High contrast for body text (Zinc 100-300). |
 
-## Best Practices
-- Use pastels only for primary actions or highlights.
-- Ensure 4.5:1 contrast ratio for accessibility.
-- Works perfectly with **Minimalism** and **Glassmorphism**.
+## Midnight Palette
+
+| Component | Hex Code | Usage |
+|---|---|---|
+| **Canvas** | #0A0B0E | Body background |
+| **Surface** | #161B22 | Card/Sidebar background |
+| **Pastel Mint** | #98FB98 | Success/Primary action |
+| **Pastel Rose** | #FFB6C1 | Error/Secondary action |
+| **Pastel Lavender** | #E6E6FA | Metadata/Informational |
+
+## Component Logic
+
+### Dark Glass Card
+```css
+.dark-glass {
+    background: rgba(31, 41, 55, 0.4);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 24px;
+    color: #F3F4F6;
+}
+```
+
+### Glowing Text
+```css
+.glow-text-mint {
+    color: #98FB98;
+    text-shadow: 0 0 15px rgba(152, 251, 152, 0.3);
+}
+```
+
+## Layout Strategy
+
+1. Depth through Layers: Use slightly lighter backgrounds for nested elements instead of shadows.
+2. Controlled Vibrancy: Only one pastel accent per screen to maintain the "Midnight" vibe.
+3. Typography Weight: Use medium to semibold for headings to ensure they "pop" against the dark background.

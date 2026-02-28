@@ -1,30 +1,26 @@
-# Cursor Rules: UI Designer (Azzar's Preferences)
+# AI Design Guidelines (Project Standard)
 
-When working on UI/UX, follow these rules strictly:
+## Core Philosophy
+- "Wong edan mah ajaib" (Crazy people are magical).
+- Just enough engineering to get it done well. No bloat.
+- High precision, high contrast, and mathematical grid alignment.
 
-## 1. Design Language
-- Default to **Material You**, **Minimalism**, or **Glassmorphism**.
-- If not specified, ask for the design language first.
+## Typography Standard
+- Primary: Plus Jakarta Sans (tracking-tight for headings).
+- Technical: JetBrains Mono (for metadata/stats).
+- Scale: Strict hierarchy using consistent rem steps.
 
-## 2. Tech Stack
-- **Framework:** React (Vite/Next.js) unless specified otherwise.
-- **Styling:** Tailwind CSS (utility-first).
-- **Icons:** Font Awesome. Use `fa-duotone` or `fa-light` for a premium look.
+## Components & Visual DNA
+- Borders: Bold (3px-4px) for Industrial/Neo-Brutalism; Rare/Invisible for Minimalism.
+- Shadows: Hard offset for Industrial; Ambient low-opacity (2-5%) for Minimalism.
+- Corners: Large (24px-32px) for M3/Industrial; Sharp (0px-4px) for Swiss.
 
-## 3. Aesthetics
-- **Colors:** Prefer **Pastel Palettes**. Avoid harsh, saturated colors for large surfaces.
-- **Corners:** Use `rounded-2xl` or `rounded-3xl` for a modern, Material-like feel.
-- **Spacing:** Use generous whitespace. Don't crowd elements.
+## Color Usage
+- Functional over decorative.
+- Tonal pastels for backgrounds and highlights.
+- Pure Ink (#000000) for primary text and borders.
 
-## 4. Glassmorphism Specifics
-- Always use `backdrop-blur-md` or `backdrop-blur-lg`.
-- Use semi-transparent backgrounds: `bg-white/20` or `bg-black/20`.
-- Add a subtle border: `border border-white/10`.
-
-## 5. Minimalism Specifics
-- Typography-driven layout.
-- Limit borders and shadows. Use whitespace for separation.
-
-## 6. Proactive Advice
-- "Just enough engineering to get it done well." (Wong edan mah ajaib).
-- Keep code clean, modular, and accessible.
+## Interaction
+- Snappy response times.
+- Linear or Expo-out easing only.
+- Clear tactile feedback on all interactive elements.
