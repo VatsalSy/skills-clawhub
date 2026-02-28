@@ -1,63 +1,89 @@
 #!/usr/bin/env bash
-# Neutron Agent Memory CLI
+# Neutron Memory CLI — save and search only
 
-API_BASE="https://api-neutron.vanarchain.com"
+API_BASE="${NEUTRON_API_BASE:-https://api-neutron.vanarchain.com}"
 CONFIG_FILE="${HOME}/.config/neutron/credentials.json"
 
-# Load credentials - env vars first, then credentials file
-API_KEY="${NEUTRON_API_KEY:-}"
-APP_ID="${NEUTRON_AGENT_ID:-}"
-EXTERNAL_USER_ID="${YOUR_AGENT_IDENTIFIER:-}"
-
-if [[ -z "$API_KEY" || -z "$APP_ID" ]] && [[ -f "$CONFIG_FILE" ]]; then
-    if command -v jq &> /dev/null; then
-        [[ -z "$API_KEY" ]] && API_KEY=$(jq -r '.api_key // empty' "$CONFIG_FILE" 2>/dev/null)
-        [[ -z "$APP_ID" ]] && APP_ID=$(jq -r '.agent_id // empty' "$CONFIG_FILE" 2>/dev/null)
-        [[ -z "$EXTERNAL_USER_ID" ]] && EXTERNAL_USER_ID=$(jq -r '.your_agent_identifier // empty' "$CONFIG_FILE" 2>/dev/null)
-    else
-        [[ -z "$API_KEY" ]] && API_KEY=$(grep '"api_key"' "$CONFIG_FILE" | sed 's/.*"api_key"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
-        [[ -z "$APP_ID" ]] && APP_ID=$(grep '"agent_id"' "$CONFIG_FILE" | sed 's/.*"agent_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
-        [[ -z "$EXTERNAL_USER_ID" ]] && EXTERNAL_USER_ID=$(grep '"your_agent_identifier"' "$CONFIG_FILE" | sed 's/.*"your_agent_identifier"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
-    fi
+# --- Dependency checks ---
+if ! command -v curl &> /dev/null; then
+    echo "Error: curl is required but not installed"
+    echo "  macOS:  brew install curl"
+    echo "  Linux:  apt install curl"
+    exit 1
 fi
 
-# Default external user ID
-EXTERNAL_USER_ID="${EXTERNAL_USER_ID:-1}"
+if ! command -v jq &> /dev/null; then
+    echo "Error: jq is required but not installed"
+    echo "  macOS:  brew install jq"
+    echo "  Linux:  apt install jq"
+    exit 1
+fi
+
+# --- Load API key — env var first, then credentials file ---
+API_KEY="${API_KEY:-${NEUTRON_API_KEY:-}}"
+
+if [[ -z "$API_KEY" ]] && [[ -f "$CONFIG_FILE" ]]; then
+    API_KEY=$(jq -r '.api_key // empty' "$CONFIG_FILE" 2>/dev/null)
+fi
 
 if [[ -z "$API_KEY" || "$API_KEY" == "null" ]]; then
-    echo "Error: NEUTRON_API_KEY not found"
+    echo "Error: API_KEY not found"
     echo ""
-    echo "Get your API keys at: https://openclaw.vanarchain.com/"
+    echo "Get your API key at: https://openclaw.vanarchain.com/"
     echo ""
-    echo "Option 1 - Environment variables:"
-    echo "  export NEUTRON_API_KEY=your_key"
-    echo "  export NEUTRON_AGENT_ID=your_agent_id"
-    echo "  export YOUR_AGENT_IDENTIFIER=1  # optional, defaults to 1"
+    echo "Option 1 - Environment variable:"
+    echo "  export API_KEY=nk_your_key"
     echo ""
     echo "Option 2 - Credentials file:"
     echo "  mkdir -p ~/.config/neutron"
-    echo '  echo '"'"'{"api_key":"your_key","agent_id":"your_agent_id","your_agent_identifier":"1"}'"'"' > ~/.config/neutron/credentials.json'
+    echo '  echo '"'"'{"api_key":"nk_your_key"}'"'"' > ~/.config/neutron/credentials.json'
     exit 1
 fi
 
-if [[ -z "$APP_ID" || "$APP_ID" == "null" ]]; then
-    echo "Error: NEUTRON_AGENT_ID not found"
-    echo "Set NEUTRON_AGENT_ID env var or add agent_id to ~/.config/neutron/credentials.json"
-    exit 1
-fi
+# --- Helpers ---
 
-QUERY_PARAMS="appId=${APP_ID}&externalUserId=${EXTERNAL_USER_ID}"
-
-# Pretty-print JSON if jq is available
 format_json() {
-    if command -v jq &> /dev/null; then
-        jq .
-    else
-        cat
-    fi
+    jq .
 }
 
-# Commands
+# Parse API errors into human-readable messages
+check_response() {
+    local result="$1"
+    local exit_code="$2"
+
+    if [[ "$exit_code" -ne 0 ]]; then
+        echo "Error: Could not reach Neutron API at ${API_BASE}"
+        echo "  Check your internet connection and try again."
+        return 1
+    fi
+
+    if [[ "$result" == *"Unauthorized"* || "$result" == *"Invalid API key"* ]]; then
+        echo "Error: Invalid or expired API key"
+        echo "  Check your key at: https://openclaw.vanarchain.com/manage"
+        return 1
+    fi
+
+    if [[ "$result" == *"Payment Required"* || "$result" == *"Insufficient credits"* ]]; then
+        echo "Error: Insufficient credits"
+        echo "  Check your balance at: https://openclaw.vanarchain.com/manage"
+        return 1
+    fi
+
+    if [[ "$result" == *'"error"'* ]]; then
+        local msg
+        if command -v jq &> /dev/null; then
+            msg=$(echo "$result" | jq -r '.message // .error // "Unknown error"' 2>/dev/null)
+        else
+            msg="$result"
+        fi
+        echo "Error: $msg"
+        return 1
+    fi
+
+    return 0
+}
+
+# --- Commands ---
 case "${1:-}" in
     save)
         text="$2"
@@ -66,12 +92,20 @@ case "${1:-}" in
             echo "Usage: neutron-memory save TEXT [TITLE]"
             exit 1
         fi
-        curl -s -X POST "${API_BASE}/seeds?${QUERY_PARAMS}" \
+        # Build form field values safely using jq (prevents JSON injection)
+        text_json=$(jq -n --arg t "$text" '[$t]')
+        title_json=$(jq -n --arg t "$title" '[$t]')
+        result=$(curl -s -X POST "${API_BASE}/memory/save" \
             -H "Authorization: Bearer ${API_KEY}" \
-            -F "text=[\"${text}\"]" \
+            -F "text=${text_json}" \
             -F 'textTypes=["text"]' \
             -F 'textSources=["bot_save"]' \
-            -F "textTitles=[\"${title}\"]" | format_json
+            -F "textTitles=${title_json}" 2>&1)
+        if check_response "$result" "$?"; then
+            echo "$result" | format_json
+        else
+            exit 1
+        fi
         ;;
     search)
         query="$2"
@@ -81,83 +115,147 @@ case "${1:-}" in
             echo "Usage: neutron-memory search QUERY [LIMIT] [THRESHOLD]"
             exit 1
         fi
-        curl -s -X POST "${API_BASE}/seeds/query?${QUERY_PARAMS}" \
-            -H "Authorization: Bearer ${API_KEY}" \
-            -H "Content-Type: application/json" \
-            -d "{\"query\":\"${query}\",\"limit\":${limit},\"threshold\":${threshold}}" | format_json
-        ;;
-    context-create)
-        agent_id="$2"
-        memory_type="$3"
-        data="$4"
-        metadata="${5:-{}}"
-        if [[ -z "$agent_id" || -z "$memory_type" || -z "$data" ]]; then
-            echo "Usage: neutron-memory context-create AGENT_ID MEMORY_TYPE JSON_DATA [JSON_METADATA]"
-            echo ""
-            echo "Memory types: episodic, semantic, procedural, working"
+        # Validate numeric inputs
+        if ! [[ "$limit" =~ ^[0-9]+$ ]]; then
+            echo "Error: LIMIT must be a positive integer (got: $limit)"
             exit 1
         fi
-        curl -s -X POST "${API_BASE}/agent-contexts?${QUERY_PARAMS}" \
-            -H "Authorization: Bearer ${API_KEY}" \
-            -H "Content-Type: application/json" \
-            -d "{\"agentId\":\"${agent_id}\",\"memoryType\":\"${memory_type}\",\"data\":${data},\"metadata\":${metadata}}" | format_json
-        ;;
-    context-list)
-        agent_id="$2"
-        extra=""
-        if [[ -n "$agent_id" ]]; then
-            extra="&agentId=${agent_id}"
-        fi
-        curl -s -X GET "${API_BASE}/agent-contexts?${QUERY_PARAMS}${extra}" \
-            -H "Authorization: Bearer ${API_KEY}" | format_json
-        ;;
-    context-get)
-        context_id="$2"
-        if [[ -z "$context_id" ]]; then
-            echo "Usage: neutron-memory context-get CONTEXT_ID"
+        if ! [[ "$threshold" =~ ^[0-9]*\.?[0-9]+$ ]]; then
+            echo "Error: THRESHOLD must be a number between 0 and 1 (got: $threshold)"
             exit 1
         fi
-        curl -s -X GET "${API_BASE}/agent-contexts/${context_id}?${QUERY_PARAMS}" \
-            -H "Authorization: Bearer ${API_KEY}" | format_json
+        # Build JSON body safely using jq (prevents JSON injection)
+        json_body=$(jq -n --arg q "$query" --argjson l "$limit" --argjson t "$threshold" \
+            '{"query":$q,"limit":$l,"threshold":$t}')
+        result=$(curl -s -X POST "${API_BASE}/memory/search" \
+            -H "Authorization: Bearer ${API_KEY}" \
+            -H "Content-Type: application/json" \
+            -d "$json_body" 2>&1)
+        if check_response "$result" "$?"; then
+            echo "$result" | format_json
+        else
+            exit 1
+        fi
         ;;
     test)
         echo "Testing Neutron API connection..."
-        result=$(curl -s -X POST "${API_BASE}/seeds/query?${QUERY_PARAMS}" \
+        echo ""
+
+        # Check connectivity + auth
+        result=$(curl -s -w "\n%{http_code}" -X POST "${API_BASE}/memory/search" \
             -H "Authorization: Bearer ${API_KEY}" \
             -H "Content-Type: application/json" \
-            -d '{"query":"test","limit":1}')
-        if [[ $? -eq 0 && "$result" != *"error"* && "$result" != *"Unauthorized"* ]]; then
-            echo "API connection successful"
-            echo "$result" | format_json
+            -d '{"query":"test","limit":1}' 2>&1)
+        curl_exit=$?
+
+        # Split response body and HTTP status code
+        http_code=$(echo "$result" | tail -1)
+        body=$(echo "$result" | sed '$d')
+
+        if [[ "$curl_exit" -ne 0 ]]; then
+            echo "FAIL: Cannot reach ${API_BASE}"
+            echo "  Check your internet connection."
+            exit 1
+        fi
+
+        if [[ "$http_code" == "401" || "$http_code" == "403" ]]; then
+            echo "FAIL: Authentication failed (HTTP $http_code)"
+            echo "  Your API key is invalid or expired."
+            echo "  Check it at: https://openclaw.vanarchain.com/manage"
+            exit 1
+        fi
+
+        if [[ "$http_code" == "402" ]]; then
+            echo "FAIL: Insufficient credits (HTTP 402)"
+            echo "  Top up at: https://openclaw.vanarchain.com/manage"
+            exit 1
+        fi
+
+        if [[ "$http_code" -ge 200 && "$http_code" -lt 300 ]]; then
+            echo "OK: API connection successful"
+            echo "OK: Authentication verified"
+            if command -v jq &> /dev/null; then
+                count=$(echo "$body" | jq '.results | length' 2>/dev/null || echo "?")
+                echo "OK: Found $count existing memories"
+            fi
+            echo ""
+            echo "$body" | format_json
         else
-            echo "API connection failed"
-            echo "$result" | format_json
+            echo "FAIL: Unexpected response (HTTP $http_code)"
+            echo "$body" | format_json
             exit 1
         fi
         ;;
+    diagnose)
+        echo "Neutron Memory — Diagnostics"
+        echo ""
+
+        # Check dependencies
+        echo -n "curl:    "
+        if command -v curl &> /dev/null; then
+            echo "OK ($(curl --version | head -1 | cut -d' ' -f1-2))"
+        else
+            echo "MISSING — install with: brew install curl"
+        fi
+
+        echo -n "jq:      "
+        if command -v jq &> /dev/null; then
+            echo "OK ($(jq --version 2>/dev/null))"
+        else
+            echo "MISSING — install with: brew install jq"
+        fi
+
+        # Check API key
+        echo -n "API key: "
+        if [[ -n "$API_KEY" && "$API_KEY" != "null" ]]; then
+            echo "OK (${API_KEY:0:7}...)"
+        else
+            echo "MISSING — run: export API_KEY=nk_your_key"
+        fi
+
+        # Check credentials file
+        echo -n "Config:  "
+        if [[ -f "$CONFIG_FILE" ]]; then
+            echo "OK ($CONFIG_FILE)"
+        else
+            echo "Not found ($CONFIG_FILE) — optional if env var is set"
+        fi
+
+        # Check API connectivity
+        echo -n "API:     "
+        http_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST "${API_BASE}/memory/search" \
+            -H "Authorization: Bearer ${API_KEY}" \
+            -H "Content-Type: application/json" \
+            -d '{"query":"ping","limit":1}' 2>/dev/null)
+        curl_exit=$?
+
+        if [[ "$curl_exit" -ne 0 ]]; then
+            echo "UNREACHABLE — cannot connect to ${API_BASE}"
+        elif [[ "$http_code" == "401" || "$http_code" == "403" ]]; then
+            echo "AUTH FAILED (HTTP $http_code) — check your API key"
+        elif [[ "$http_code" == "402" ]]; then
+            echo "NO CREDITS (HTTP 402) — top up at openclaw.vanarchain.com/manage"
+        elif [[ "$http_code" -ge 200 && "$http_code" -lt 300 ]]; then
+            echo "OK (HTTP $http_code)"
+        else
+            echo "ERROR (HTTP $http_code)"
+        fi
+
+        echo ""
+        ;;
     *)
-        echo "Neutron Agent Memory CLI"
+        echo "Neutron Memory CLI"
         echo ""
         echo "Usage: neutron-memory [command] [args]"
         echo ""
-        echo "Seed Commands:"
-        echo "  save TEXT [TITLE]                         Save text as a seed"
-        echo "  search QUERY [LIMIT] [THRESHOLD]          Semantic search on seeds"
-        echo ""
-        echo "Agent Context Commands:"
-        echo "  context-create AGENT_ID TYPE JSON_DATA [JSON_METADATA]"
-        echo "                                            Create agent context"
-        echo "  context-list [AGENT_ID]                   List agent contexts"
-        echo "  context-get CONTEXT_ID                    Get specific context"
-        echo ""
-        echo "Utility:"
-        echo "  test                                      Test API connection"
+        echo "Commands:"
+        echo "  save TEXT [TITLE]                         Save text to memory"
+        echo "  search QUERY [LIMIT] [THRESHOLD]          Semantic search"
+        echo "  test                                      Test connection and auth"
+        echo "  diagnose                                  Check all prerequisites"
         echo ""
         echo "Examples:"
-        echo "  neutron-memory save \"Hello world\" \"My first seed\""
+        echo "  neutron-memory save \"Hello world\" \"My first memory\""
         echo "  neutron-memory search \"hello\" 10 0.5"
-        echo "  neutron-memory context-create \"my-agent\" \"episodic\" '{\"key\":\"value\"}'"
-        echo "  neutron-memory context-list \"my-agent\""
-        echo "  neutron-memory context-get abc-123"
         ;;
 esac
