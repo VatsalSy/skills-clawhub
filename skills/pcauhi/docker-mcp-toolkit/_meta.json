@@ -1,0 +1,11 @@
+{
+  "owner": "pcauhi",
+  "slug": "docker-mcp-toolkit",
+  "displayName": "Docker MCP Toolkit",
+  "latest": {
+    "version": "0.1.1",
+    "publishedAt": 1772242406535,
+    "commit": null
+  },
+  "history": []
+}
