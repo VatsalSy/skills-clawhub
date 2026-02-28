@@ -1,12 +1,35 @@
 #!/usr/bin/env bash
 # wreckit — CLI bootstrap for triggering a full swarm audit
-# Usage: ./run-audit.sh [project-path] [mode]
+# Usage: ./run-audit.sh [project-path] [mode] [--spawn]
 # Mode: BUILD | REBUILD | FIX | AUDIT (default: AUDIT)
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WRECKIT_DIR="$(dirname "$SCRIPT_DIR")"
+
+SPAWN=0
+SHOW_HELP=0
+ARGS=()
+for arg in "$@"; do
+  case "$arg" in
+    --spawn) SPAWN=1 ;;
+    --help|-h) SHOW_HELP=1 ;;
+    *) ARGS+=("$arg") ;;
+  esac
+done
+set -- "${ARGS[@]}"
+
+if [ "$SHOW_HELP" -eq 1 ]; then
+  echo "wreckit — Swarm Audit Bootstrap"
+  echo ""
+  echo "Usage: ./run-audit.sh [project-path] [mode] [--spawn]"
+  echo "  project-path: target project directory (default: .)"
+  echo "  mode: BUILD | REBUILD | FIX | AUDIT (default: AUDIT)"
+  echo "  --spawn: attempt to spawn the orchestrator via openclaw"
+  exit 0
+fi
+
 PROJECT="${1:-.}"
 MODE="${2:-AUDIT}"
 PROJECT="$(cd "$PROJECT" && pwd)"
@@ -83,7 +106,19 @@ if [ "$ERRORS" -gt 0 ]; then
   exit 1
 fi
 
-# ─── Detect project stack ───────────────────────────────────────────────────
+# ─── Detect project type + stack ────────────────────────────────────────────
+echo ""
+echo "Detecting project profile..."
+PROJECT_TYPE_JSON=$("$SCRIPT_DIR/project-type.sh" "$PROJECT" 2>/dev/null || echo "{}")
+P_TYPE=$(echo "$PROJECT_TYPE_JSON" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('type','unknown'))" 2>/dev/null || echo "unknown")
+P_CONF=$(echo "$PROJECT_TYPE_JSON" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('confidence',0.0))" 2>/dev/null || echo "0.0")
+P_SLOP=$(echo "$PROJECT_TYPE_JSON" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('calibration',{}).get('slop_per_kloc',5))" 2>/dev/null || echo "5")
+P_GOD=$(echo "$PROJECT_TYPE_JSON" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('calibration',{}).get('god_module_fanin',10))" 2>/dev/null || echo "10")
+P_CI_REQ=$(echo "$PROJECT_TYPE_JSON" | python3 -c "import json,sys; d=json.load(sys.stdin); print(str(bool(d.get('calibration',{}).get('ci_required', False))).lower())" 2>/dev/null || echo "false")
+
+echo "  Project type: $P_TYPE (confidence $P_CONF)"
+echo "  Calibration: slop_per_kloc=$P_SLOP god_module_fanin=$P_GOD ci_required=$P_CI_REQ"
+
 echo ""
 echo "Detecting project stack..."
 STACK_JSON=$("$SCRIPT_DIR/detect-stack.sh" "$PROJECT" 2>/dev/null || echo "{}")
@@ -116,7 +151,7 @@ echo "================================================"
 echo "  READY-TO-PASTE ORCHESTRATOR TASK"
 echo "================================================"
 echo ""
-cat << TASK
+TASK_TEXT=$(cat << TASK
 You are the wreckit orchestrator for a code verification run.
 
 PROJECT: $PROJECT
@@ -166,6 +201,9 @@ Worker models:
 - slop/typecheck/testquality/mutation/security: anthropic/claude-sonnet-4-6
 - cross-verify/regression/judge: anthropic/claude-opus-4-6
 TASK
+)
+
+echo "$TASK_TEXT"
 
 echo ""
 echo "================================================"
@@ -175,3 +213,15 @@ echo "  sessions_spawn(task=<above>, label='wreckit-orchestrator')"
 echo ""
 echo "Or trigger from OpenClaw:"
 echo "  'Use wreckit to audit $PROJECT. Don\\'t change anything.'"
+
+if [ "$SPAWN" -eq 1 ] || [[ "${*}" == *"--spawn"* ]]; then
+  echo ""
+  echo "Attempting to spawn via openclaw..."
+  if command -v openclaw >/dev/null 2>&1; then
+    openclaw session spawn --task "$TASK_TEXT" --label "wreckit-orchestrator-$(date +%s)" 2>/dev/null && \
+      echo "✅ Spawned! Monitor with: openclaw session list" || \
+      echo "⚠️  Spawn failed. Copy the task above and paste it into your agent session."
+  else
+    echo "openclaw not found. Copy the task above and paste it into your agent session."
+  fi
+fi

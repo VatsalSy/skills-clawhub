@@ -110,6 +110,34 @@ sessions_spawn:
 
 ## Phase 2: Building (Sequential)
 
+Before building tasks (BUILD/REBUILD/FIX modes only), run these workers:
+
+**Behavior Capture (REBUILD mode only):**
+```
+sessions_spawn:
+  task: "wreckit gate: Behavior Capture.
+    Project: [path]
+    Run: ~/Projects/wreckit-ralph/scripts/behavior-capture.sh [path]
+    Read references/gates/behavior-capture.md for pass/fail criteria.
+    Report format: follow references/swarm/handoff.md exactly.
+    First line: WRECKIT-BEHAVIOR: [PASS|FAIL|WARN|ERROR]"
+  label: wreckit-behavior
+  model: anthropic/claude-sonnet-4-6
+```
+
+**Ralph Loop (BUILD/REBUILD/FIX modes only):**
+```
+sessions_spawn:
+  task: "wreckit gate: Ralph Loop.
+    Project: [path]
+    Run: ~/Projects/wreckit-ralph/scripts/ralph-loop.sh [path]
+    Then read references/gates/ralph-loop.md for additional AI-driven checks.
+    Report format: follow references/swarm/handoff.md exactly.
+    First line: WRECKIT-RALPH: [PASS|FAIL|WARN|ERROR]"
+  label: wreckit-ralph
+  model: anthropic/claude-sonnet-4-6
+```
+
 For each task in IMPLEMENTATION_PLAN.md, spawn ONE implementer. Wait for each to complete before spawning the next.
 
 ```
@@ -175,7 +203,8 @@ sessions_spawn:
 sessions_spawn:
   task: "wreckit gate: Type Check.
     Project: [path]
-    Run detect-stack.sh to get type checker command, then run it.
+    Run: ~/Projects/wreckit-ralph/scripts/type-check.sh [path]
+    (falls back to detect-stack.sh type checker command if needed)
     Read references/gates/type-check.md for pass/fail criteria.
     Report format: follow references/swarm/handoff.md exactly.
     First line: WRECKIT-TYPECHECK: [PASS|FAIL|WARN|ERROR]"
@@ -202,7 +231,7 @@ sessions_spawn:
   task: "wreckit gate: Mutation Kill.
     Project: [path]
     Run ~/Projects/wreckit-ralph/scripts/mutation-test.sh [path]
-    Read references/gates/mutation-kill.md for pass/fail (>=95% = pass).
+    Read references/gates/mutation-kill.md for thresholds (>=95% ship, 90-94 caution, <90 blocked).
     Report format: follow references/swarm/handoff.md exactly.
     First line: WRECKIT-MUTATION: [PASS|FAIL|WARN|ERROR]"
   label: wreckit-mutation
@@ -410,7 +439,8 @@ Only after ALL workers from phases 3 and 4 have reported:
 
 1. Collect all results
 2. Apply decision framework from SKILL.md
-3. Write proof bundle (see `references/gates/proof-bundle.md`)
+3. Run: echo '[...gate-results-json-array...]' | ~/Projects/wreckit-ralph/scripts/proof-bundle.sh [path] [mode]
+   (pipe the collected gate results JSON array to proof-bundle.sh — it calculates verdict deterministically)
 4. Output final verdict: **Ship ✅ / Caution ⚠️ / Blocked 🚫**
 
 ---
@@ -503,3 +533,31 @@ All workers complete! Results:
 
 Verdict: Ship ✅
 ```
+
+## Adaptive Gate Behavior (added 2026-02-22)
+
+Based on live runs against zod and chatbot-ui, the orchestrator should adapt:
+
+### Skip gates when irrelevant:
+- Skip `coverage_stats` and `mutation_kill` if `detect-stack.sh` returns `testRunner: none` or no test script
+- Skip `ralph_loop` in AUDIT mode unless `IMPLEMENTATION_PLAN.md` exists
+- Skip `behavior_capture` unless mode == REBUILD
+
+### Early exit on critical failures:
+- `check_deps` FAIL → BLOCKED immediately (hallucinated deps = unshippable)
+- `slop_scan` finds >50 artifacts → BLOCKED immediately
+- `type_check` > 10 errors → BLOCKED immediately
+- Log reason in proof bundle
+
+### Project size adaptation:
+- >100 source files: set `WRECKIT_LARGE_PROJECT=1` (scripts should use sampling)
+- Monorepos (multiple `package.json`): run detect-stack per sub-package
+
+### Telemetry-driven gate ordering (fast-fail first):
+After runs accumulate in `.wreckit/metrics.json`, reorder gates by:
+1. check_deps (fast, catches hallucinated deps)
+2. slop_scan (fast, catches obvious problems)
+3. type_check (catches type errors)
+4. coverage_stats / ci_integration (medium speed)
+5. design_review / red_team (slower, run after fast gates pass)
+6. mutation_kill (slowest — only if above all pass)

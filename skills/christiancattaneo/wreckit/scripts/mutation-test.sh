@@ -5,9 +5,25 @@
 # Exit 0 = results produced, check JSON for pass/fail
 
 set -euo pipefail
+# Capture SCRIPT_DIR before any cd (BASH_SOURCE may be relative)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT="${1:-.}"
 TEST_CMD="${2:-}"
+PROJECT="$(cd "$PROJECT" && pwd)"
 cd "$PROJECT"
+
+verdict_from_rate() {
+  local rate="$1"
+  local rate_int
+  rate_int=$(echo "$rate" | cut -d. -f1)
+  if [ "$rate_int" -ge 95 ] 2>/dev/null; then
+    echo "SHIP"
+  elif [ "$rate_int" -ge 90 ] 2>/dev/null; then
+    echo "CAUTION"
+  else
+    echo "BLOCKED"
+  fi
+}
 
 # Auto-detect test command
 if [ -z "$TEST_CMD" ]; then
@@ -44,7 +60,6 @@ echo "Baseline OK" >&2
 
 # JS/TS → Stryker
 if ([ -f "tsconfig.json" ] || [ -f "package.json" ]) && ! [ -f "Cargo.toml" ]; then
-  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   if npx stryker --version >/dev/null 2>&1 && [ -f "$SCRIPT_DIR/mutation-test-stryker.sh" ]; then
     echo "Using Stryker for mutation testing..." >&2
     OUTPUT=$("$SCRIPT_DIR/mutation-test-stryker.sh" "$PROJECT" 2>/dev/null || true)
@@ -81,7 +96,8 @@ if [ -f "pyproject.toml" ] || [ -f "requirements.txt" ] || [ -f "setup.py" ]; th
     TOTAL=$((KILLED + SURVIVED))
     if [ "$TOTAL" -gt 0 ]; then
       KILL_RATE=$(echo "scale=1; $KILLED * 100 / $TOTAL" | bc 2>/dev/null || echo "0")
-      echo "{\"total\":$TOTAL,\"killed\":$KILLED,\"survived\":$SURVIVED,\"killRate\":$KILL_RATE,\"language\":\"py\",\"tool\":\"mutmut\"}"
+      VERDICT=$(verdict_from_rate "$KILL_RATE")
+      echo "{\"total\":$TOTAL,\"killed\":$KILLED,\"survived\":$SURVIVED,\"killRate\":$KILL_RATE,\"language\":\"py\",\"tool\":\"mutmut\",\"verdict\":\"$VERDICT\"}"
       exit 0
     fi
     echo "mutmut returned no results — falling back to AI mutations" >&2
@@ -104,7 +120,8 @@ killed=sum(1 for m in data if m.get('outcome')=='Caught')
 survived=sum(1 for m in data if m.get('outcome')=='Missed')
 total=killed+survived
 rate=round(killed*100/total,1) if total>0 else 0
-print(json.dumps({'total':total,'killed':killed,'survived':survived,'killRate':rate,'language':'rs','tool':'cargo-mutants'}))
+verdict='SHIP' if rate>=95 else ('CAUTION' if rate>=90 else 'BLOCKED')
+print(json.dumps({'total':total,'killed':killed,'survived':survived,'killRate':rate,'language':'rs','tool':'cargo-mutants','verdict':verdict}))
 "
       exit 0
     fi
@@ -200,6 +217,7 @@ if [ "$TOTAL" -eq 0 ]; then
 fi
 
 KILL_RATE=$(echo "scale=1; $KILLED * 100 / $TOTAL" | bc 2>/dev/null || echo "0")
+VERDICT=$(verdict_from_rate "$KILL_RATE")
 
 echo ""
 echo "=== MUTATION TEST RESULTS ==="
@@ -210,7 +228,7 @@ echo "Kill rate: ${KILL_RATE}%"
 
 cat <<EOF
 
-{"total":$TOTAL,"killed":$KILLED,"survived":$SURVIVED,"killRate":$KILL_RATE,"language":"$LANG","tool":"ai-mutations"}
+{"total":$TOTAL,"killed":$KILLED,"survived":$SURVIVED,"killRate":$KILL_RATE,"language":"$LANG","tool":"ai-mutations","verdict":"$VERDICT"}
 EOF
 
 rm -f "$RESULTS_FILE"

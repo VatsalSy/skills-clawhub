@@ -11,6 +11,7 @@ GENERATE=false
 if [ "${2:-}" = "--generate" ]; then
   GENERATE=true
 fi
+PROJECT="$(cd "$PROJECT" && pwd)"
 cd "$PROJECT"
 
 echo "=== CI Integration Check ===" >&2
@@ -80,40 +81,121 @@ if [ "$CI_FOUND" = true ] && [ -n "$CI_FILE" ] && [ -f "$CI_FILE" ]; then
   echo "Scoring $CI_FILE..." >&2
   missing=""
 
-  # Tests present (40 pts)
-  if grep -qiE "(npm test|npm run test|pytest|go test|cargo test|vitest|jest|mocha|yarn test)" "$CI_FILE" 2>/dev/null; then
-    SCORE=$((SCORE + 40))
-    echo "  ✓ Tests: +40pts" >&2
-  else
-    missing="${missing}\"tests\","
-    echo "  ✗ Tests: 0pts" >&2
-  fi
+  if [ "$CI_TYPE" = "github-actions" ]; then
+    WORKFLOW_FILES=$(ls .github/workflows/*.yml .github/workflows/*.yaml 2>/dev/null || true)
+    if [ -z "$WORKFLOW_FILES" ]; then
+      WORKFLOW_COUNT=0
+    else
+      WORKFLOW_COUNT=$(echo "$WORKFLOW_FILES" | wc -l | tr -d ' ')
+    fi
 
-  # Type check present (30 pts)
-  if grep -qiE "(tsc|mypy|pyright|flow|type-check|typecheck|--noEmit)" "$CI_FILE" 2>/dev/null; then
+    if [ "$WORKFLOW_COUNT" -gt 0 ]; then
+      SCORE=$((SCORE + 30))
+      echo "  ✓ Workflows present: +30pts" >&2
+    else
+      missing="${missing}\"workflows\","
+      echo "  ✗ Workflows present: 0pts" >&2
+    fi
+
+    JOB_WORKFLOW_COUNT=0
+    ON_FOUND=false
+    STEP_FOUND=false
+    MATRIX_FOUND=false
+    OS_UBUNTU=false
+    OS_WINDOWS=false
+    OS_MACOS=false
+
+    while IFS= read -r wf; do
+      [ -z "$wf" ] && continue
+      if grep -qiE "^[[:space:]]*jobs:" "$wf" 2>/dev/null; then
+        JOB_WORKFLOW_COUNT=$((JOB_WORKFLOW_COUNT + 1))
+      fi
+      if grep -qiE "(^|[^a-z])(push|pull_request)([^a-z]|$)" "$wf" 2>/dev/null; then
+        ON_FOUND=true
+      fi
+      if grep -qiE "run:.*(test|lint|build)|npm test|npm run test|pytest|go test|cargo test|vitest|jest|mocha|yarn test" "$wf" 2>/dev/null; then
+        STEP_FOUND=true
+      fi
+      if grep -qiE "matrix:" "$wf" 2>/dev/null; then
+        MATRIX_FOUND=true
+      fi
+      if grep -qiE "runs-on:.*ubuntu" "$wf" 2>/dev/null; then
+        OS_UBUNTU=true
+      fi
+      if grep -qiE "runs-on:.*windows" "$wf" 2>/dev/null; then
+        OS_WINDOWS=true
+      fi
+      if grep -qiE "runs-on:.*macos" "$wf" 2>/dev/null; then
+        OS_MACOS=true
+      fi
+    done <<< "$WORKFLOW_FILES"
+
+    if [ "$JOB_WORKFLOW_COUNT" -gt 0 ]; then
+      SCORE=$((SCORE + 15 * JOB_WORKFLOW_COUNT))
+      echo "  ✓ Workflows with jobs: +$((15 * JOB_WORKFLOW_COUNT))pts" >&2
+    else
+      missing="${missing}\"jobs\","
+      echo "  ✗ Workflows with jobs: 0pts" >&2
+    fi
+
+    if [ "$ON_FOUND" = true ]; then
+      SCORE=$((SCORE + 20))
+      echo "  ✓ Runs on push/PR: +20pts" >&2
+    else
+      missing="${missing}\"on-push-pr\","
+      echo "  ✗ Runs on push/PR: 0pts" >&2
+    fi
+
+    if [ "$STEP_FOUND" = true ]; then
+      SCORE=$((SCORE + 15))
+      echo "  ✓ Test/lint/build step: +15pts" >&2
+    else
+      missing="${missing}\"test-lint-build\","
+      echo "  ✗ Test/lint/build step: 0pts" >&2
+    fi
+
+    OS_COUNT=0
+    [ "$OS_UBUNTU" = true ] && OS_COUNT=$((OS_COUNT + 1))
+    [ "$OS_WINDOWS" = true ] && OS_COUNT=$((OS_COUNT + 1))
+    [ "$OS_MACOS" = true ] && OS_COUNT=$((OS_COUNT + 1))
+    if [ "$MATRIX_FOUND" = true ] || [ "$OS_COUNT" -ge 2 ]; then
+      SCORE=$((SCORE + 20))
+      echo "  ✓ Matrix or multi-OS: +20pts" >&2
+    else
+      missing="${missing}\"matrix-or-multi-os\","
+      echo "  ✗ Matrix or multi-OS: 0pts" >&2
+    fi
+  else
     SCORE=$((SCORE + 30))
-    echo "  ✓ Type check: +30pts" >&2
-  else
-    missing="${missing}\"type-check\","
-    echo "  ✗ Type check: 0pts" >&2
+    echo "  ✓ CI config present: +30pts" >&2
+
+    if [ -s "$CI_FILE" ]; then
+      SCORE=$((SCORE + 15))
+      echo "  ✓ CI config non-empty: +15pts" >&2
+    else
+      missing="${missing}\"empty-config\","
+      echo "  ✗ CI config non-empty: 0pts" >&2
+    fi
+
+    if grep -qiE "(test|lint|build)" "$CI_FILE" 2>/dev/null; then
+      SCORE=$((SCORE + 15))
+      echo "  ✓ Test/lint/build step: +15pts" >&2
+    else
+      missing="${missing}\"test-lint-build\","
+      echo "  ✗ Test/lint/build step: 0pts" >&2
+    fi
+
+    if grep -qiE "(push|pull_request|merge_request)" "$CI_FILE" 2>/dev/null; then
+      SCORE=$((SCORE + 20))
+      echo "  ✓ Triggers present: +20pts" >&2
+    else
+      missing="${missing}\"triggers\","
+      echo "  ✗ Triggers present: 0pts" >&2
+    fi
   fi
 
-  # Coverage (20 pts)
-  if grep -qiE "(coverage|--coverage|codecov|coveralls|lcov)" "$CI_FILE" 2>/dev/null; then
-    SCORE=$((SCORE + 20))
-    echo "  ✓ Coverage: +20pts" >&2
-  else
-    missing="${missing}\"coverage\","
-    echo "  ✗ Coverage: 0pts" >&2
-  fi
-
-  # Security scan (10 pts)
-  if grep -qiE "(npm audit|snyk|trivy|semgrep|bandit|safety|dependabot|codeql)" "$CI_FILE" 2>/dev/null; then
-    SCORE=$((SCORE + 10))
-    echo "  ✓ Security scan: +10pts" >&2
-  else
-    missing="${missing}\"security-scan\","
-    echo "  ✗ Security scan: 0pts" >&2
+  if [ "$SCORE" -gt 100 ]; then
+    SCORE=100
   fi
 
   if [ -n "$missing" ]; then
@@ -177,19 +259,23 @@ fi
 
 VERDICT="FAIL"
 SUMMARY=""
+CONFIDENCE="0.0"
 
 if [ "$CI_FOUND" = false ]; then
   VERDICT="FAIL"
   SUMMARY="FAIL: No CI configuration found in project."
+  CONFIDENCE="1.0"
 elif [ "$SCORE" -ge 70 ]; then
   VERDICT="PASS"
   SUMMARY="PASS: CI found (${CI_TYPE}), score ${SCORE}/100."
 elif [ "$SCORE" -ge 40 ]; then
   VERDICT="WARN"
   SUMMARY="WARN: CI found (${CI_TYPE}) but incomplete, score ${SCORE}/100."
+  CONFIDENCE="0.5"
 else
   VERDICT="FAIL"
   SUMMARY="FAIL: CI found (${CI_TYPE}) but critically incomplete, score ${SCORE}/100."
+  CONFIDENCE="0.5"
 fi
 
 # ─── Output ───────────────────────────────────────────────────────────────────
@@ -219,7 +305,9 @@ cat <<EOF
   "score_100": $SCORE,
   "missing_steps": $MISSING_STEPS,
   "generated_config_path": $GENERATED_JSON,
+  "status": "$VERDICT",
   "verdict": "$VERDICT",
-  "summary": "$SUMMARY"
+  "summary": "$SUMMARY",
+  "confidence": $CONFIDENCE
 }
 EOF

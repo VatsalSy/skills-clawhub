@@ -2,6 +2,7 @@
 # wreckit — Adversarial Red-Team Scanner
 # Usage: ./red-team.sh [project-path]
 # Scans for security vulnerabilities, injection vectors, auth bypasses, and more.
+# For regex analysis, use regex-complexity.sh
 # Outputs structured JSON report.
 
 set -euo pipefail
@@ -193,19 +194,13 @@ scan_pattern "PROTO_POLLUTION" "deserialization" "Possible prototype pollution" 
   "Validate that user input doesn't contain __proto__ or constructor keys" \
   "__proto__|constructor\s*\[|prototype\s*\["
 
-# ─── 9. REDOS: Catastrophic regex ─────────────────────────────────────────────
-log "Scanning: ReDoS patterns..."
-scan_pattern "REDOS_NESTED" "resource_exhaustion" "Nested quantifiers in regex (potential ReDoS)" "blocker" \
-  "Rewrite regex to avoid nested quantifiers on user input" \
-  "(\([^)]*\+[^)]*\)\+|\([^)]*\*[^)]*\)\*|\([^)]*\+[^)]*\)\*)"
-
-# ─── 10. RESOURCE: Unchecked allocation ───────────────────────────────────────
+# ─── 9. RESOURCE: Unchecked allocation ───────────────────────────────────────
 log "Scanning: Resource exhaustion patterns..."
 scan_pattern "ALLOC_USER_SIZE" "resource_exhaustion" "Buffer allocation size from user input" "warning" \
   "Validate and cap user-controlled sizes before allocation" \
   "(Buffer\.alloc|new Array|malloc|calloc)\s*\([^)]*req\."
 
-# ─── 11. Check for .env files committed ──────────────────────────────────────
+# ─── 10. Check for .env files committed ──────────────────────────────────────
 log "Checking for committed secret files..."
 if git -C "$PROJECT" ls-files --error-unmatch .env 2>/dev/null; then
   add_finding "ENV_COMMITTED" "auth" ".env file committed to git" "blocker" ".env" "0" \
@@ -218,7 +213,7 @@ if git -C "$PROJECT" ls-files 2>/dev/null | grep -qE "\.(pem|key|p12|pfx|jks)$";
     "Private key file tracked in git" "Remove file, rotate keys, add to .gitignore"
 fi
 
-# ─── 12. Check git history for secrets (last 3 commits only, fast) ───────────
+# ─── 11. Check git history for secrets (last 3 commits only, fast) ───────────
 log "Checking recent git history for secrets..."
 if git -C "$PROJECT" log --oneline -3 2>/dev/null > /dev/null 2>&1; then
   GIT_SECRETS=$(git -C "$PROJECT" log -3 -p --no-merges 2>/dev/null | \
@@ -269,6 +264,27 @@ report = {
     },
     "verdict": "$VERDICT"
 }
+
+hardcoded_ids = {
+    "HARDCODED_PASSWORD",
+    "HARDCODED_SECRET",
+    "HARDCODED_AWS",
+    "HARDCODED_JWT_SECRET",
+    "ENV_COMMITTED",
+    "KEY_COMMITTED",
+    "GIT_HISTORY_SECRETS",
+}
+hardcoded_found = any(f.get("id") in hardcoded_ids for f in findings)
+if hardcoded_found:
+    confidence = 1.0
+elif len(findings) > 0:
+    confidence = 0.7
+else:
+    confidence = 0.0
+
+report["status"] = "$VERDICT"
+report["confidence"] = confidence
+report["hardcoded_secrets"] = hardcoded_found
 
 print(json.dumps(report, indent=2))
 PYEOF

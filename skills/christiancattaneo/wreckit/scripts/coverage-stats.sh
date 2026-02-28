@@ -2,20 +2,23 @@
 # wreckit — extract raw coverage stats from test runners
 # Usage: ./coverage-stats.sh [project-path]
 # Outputs JSON with coverage numbers
+# Fix: use absolute script path for detect-stack (works from any cwd)
 
 set -euo pipefail
 PROJECT="${1:-.}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT="$(cd "$PROJECT" && pwd)"
 cd "$PROJECT"
 
 # Detect stack
-STACK=$(bash "$(dirname "$0")/detect-stack.sh" "$PROJECT" 2>/dev/null)
+STACK=$(bash "$SCRIPT_DIR/detect-stack.sh" "$PROJECT" 2>/dev/null)
 LANG=$(echo "$STACK" | python3 -c "import sys,json; print(json.load(sys.stdin).get('language','unknown'))" 2>/dev/null || echo "unknown")
 TEST_RUNNER=$(echo "$STACK" | python3 -c "import sys,json; print(json.load(sys.stdin).get('testRunner','none'))" 2>/dev/null || echo "none")
 
 case "$TEST_RUNNER" in
   vitest)
     # vitest writes coverage to coverage/coverage-summary.json (not stdout)
-    npx vitest run --coverage --coverage.reporter=json-summary 2>/dev/null || true
+    npx vitest run --coverage --coverage.reporter=json-summary >/dev/null 2>&1 || true
     if [ -f "coverage/coverage-summary.json" ]; then
       cat coverage/coverage-summary.json
     elif [ -f "coverage/coverage-final.json" ]; then
@@ -34,7 +37,7 @@ print(json.dumps({'total': {'statements': {'pct': pct, 'total': total_stmts, 'co
     fi
     ;;
   jest)
-    npx jest --coverage --coverageReporters=json-summary 2>/dev/null
+    npx jest --coverage --coverageReporters=json-summary >/dev/null 2>&1
     if [ -f "coverage/coverage-summary.json" ]; then
       cat coverage/coverage-summary.json
     else
@@ -42,7 +45,7 @@ print(json.dumps({'total': {'statements': {'pct': pct, 'total': total_stmts, 'co
     fi
     ;;
   pytest)
-    pytest --cov=. --cov-report=json 2>/dev/null
+    pytest --cov=. --cov-report=json >/dev/null 2>&1
     if [ -f "coverage.json" ]; then
       cat coverage.json
     else
@@ -58,7 +61,7 @@ print(json.dumps({'total': {'statements': {'pct': pct, 'total': total_stmts, 'co
     fi
     ;;
   go)
-    go test -coverprofile=coverage.out ./... 2>/dev/null
+    go test -coverprofile=coverage.out ./... >/dev/null 2>&1
     if [ -f "coverage.out" ]; then
       go tool cover -func=coverage.out | tail -1
       rm -f coverage.out

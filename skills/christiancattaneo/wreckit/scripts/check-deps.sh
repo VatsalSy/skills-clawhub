@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # wreckit — verify declared dependencies exist in registries
 # Usage: ./check-deps.sh [project-path]
-# Outputs hallucinated deps to stdout (one per line)
-# Exit 0 = all deps real, Exit 1 = hallucinated deps found
+# Outputs JSON to stdout (status PASS/FAIL), human-readable logs to stderr
+# Exit 0 = results produced (check JSON status)
 
 set -euo pipefail
 PROJECT="${1:-.}"
+PROJECT="$(cd "$PROJECT" && pwd)"
 cd "$PROJECT"
 HALLUCINATED=()
 
@@ -44,12 +45,17 @@ if [ -f "package.json" ]; then
 import json,sys
 d=json.load(open('package.json'))
 for k in ['dependencies','devDependencies']:
-  for p in d.get(k,{}):
-    if not p.startswith('@types/'): print(p)
+  for p,v in d.get(k,{}).items():
+    if not p.startswith('@types/'):
+      print(f'{p}\\t{v}')
 " 2>/dev/null || true)
-  for pkg in $deps; do
+  while IFS=$'\t' read -r pkg version; do
+    [ -z "$pkg" ] && continue
+    if [[ "$version" == npm:* ]] || [[ "$version" == workspace:* ]] || [[ "$version" == file:* ]] || [[ "$version" == link:* ]] || [[ "$version" == github:* ]] || [[ "$version" == git+https:* ]] || [[ "$version" == patch:* ]] || [[ "$version" == portal:* ]]; then
+      continue
+    fi
     check_npm "$pkg"
-  done
+  done <<< "$deps"
 fi
 
 # Python
@@ -88,12 +94,51 @@ for dep in d.get('dependencies',{}):
 fi
 
 if [ ${#HALLUCINATED[@]} -gt 0 ]; then
-  echo "HALLUCINATED DEPENDENCIES FOUND:"
+  echo "HALLUCINATED DEPENDENCIES FOUND:" >&2
   for h in "${HALLUCINATED[@]}"; do
-    echo "  ❌ $h"
+    echo "  ❌ $h" >&2
   done
-  exit 1
+  # Serialize the hallucinated list to JSON via a short one-liner, then pass
+  # it as an env variable to the reporting script.  This avoids the pipe+heredoc
+  # stdin conflict that would cause findings to be under-reported.
+  HALLUCINATED_JSON=$(printf '%s\n' "${HALLUCINATED[@]}" | python3 -c "
+import json, sys
+seen = set()
+items = []
+for raw in sys.stdin:
+    entry = raw.strip()
+    if entry and entry not in seen:
+        seen.add(entry)
+        items.append(entry)
+print(json.dumps(items))
+")
+  # Build the final report: findings MUST always equal len(hallucinated)
+  HALLUCINATED_JSON="$HALLUCINATED_JSON" python3 - <<'PYEOF'
+import json, os
+
+items = json.loads(os.environ["HALLUCINATED_JSON"])
+
+# Invariant: findings == len(hallucinated) — enforced here, not assumed.
+findings = len(items)
+
+print(json.dumps({
+    "status": "FAIL",
+    "confidence": 1.0,
+    "findings": findings,
+    "hallucinated": items
+}))
+PYEOF
 else
-  echo "All dependencies verified in registries."
-  exit 0
+  echo "All dependencies verified in registries." >&2
+  python3 - <<'PYEOF'
+import json
+print(json.dumps({
+    "status": "PASS",
+    "confidence": 1.0,
+    "findings": 0,
+    "hallucinated": []
+}))
+PYEOF
 fi
+
+exit 0

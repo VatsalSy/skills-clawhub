@@ -61,6 +61,10 @@ Use these scripts (~/Projects/wreckit-ralph/scripts/):
   - slop-scan.sh, coverage-stats.sh, mutation-test.sh, red-team.sh
   - dynamic-analysis.sh, perf-benchmark.sh, property-test.sh
   - design-review.sh, ci-integration.sh, differential-test.sh
+  - ralph-loop.sh [path] — validates IMPLEMENTATION_PLAN.md structure (BUILD/REBUILD/FIX)
+  - type-check.sh [path] — runs type checker, JSON output
+  - behavior-capture.sh [path] — captures golden fixtures before rebuild (REBUILD only)
+  - proof-bundle.sh [path] [mode] — deterministic proof writer (pipe gate results JSON array to stdin)
 
 THEN: STOP. Do not proceed until you have received announces from ALL workers.
 Update the checklist after every announce.

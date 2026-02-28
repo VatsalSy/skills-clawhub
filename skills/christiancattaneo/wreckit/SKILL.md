@@ -62,14 +62,34 @@ Read the gate file before executing it. Each contains: question, checks, pass/fa
 
 Deterministic helpers — run these, don't rewrite them:
 
+**Core (all modes):**
+- `scripts/project-type.sh [path]` — classify project context + calibration profile (`skip_gates`, thresholds, tolerated warns)
 - `scripts/detect-stack.sh [path]` — auto-detect language, framework, test runner → JSON
-- `scripts/check-deps.sh [path]` — verify all dependencies exist in registries
-- `scripts/slop-scan.sh [path]` — scan for placeholders, template artifacts, dead code
-- `scripts/mutation-test.sh [path] [test-cmd]` — automated mutation testing (up to 20 mutations)
-- `scripts/mutation-test-stryker.sh [path]` — Stryker-based mutation testing → JSON
+- `scripts/check-deps.sh [path]` — verify all deps exist in registries (hallucination check)
+- `scripts/slop-scan.sh [path]` — semantic slop scan (tracked vs untracked debt, categorized output) → JSON
+- `scripts/type-check.sh [path]` — run type checker (tsc/mypy/cargo/go vet) → JSON
+- `scripts/ralph-loop.sh [path]` — validate IMPLEMENTATION_PLAN.md structure → JSON
 - `scripts/coverage-stats.sh [path]` — extract raw coverage numbers from test runner
-- `scripts/design-review.sh [path]` — dep graph, coupling, circular dep detection → JSON
+- `scripts/mutation-test.sh [path] [test-cmd]` — mutation testing (mutmut/cargo-mutants/Stryker/AI)
+- `scripts/mutation-test-stryker.sh [path]` — Stryker-specific mutation testing → JSON
+- `scripts/red-team.sh [path]` — SAST + 20+ vulnerability patterns → JSON
+- `scripts/regex-complexity.sh [path] [--context library|app]` — targeted ReDoS analysis → JSON
+- `scripts/proof-bundle.sh [path] [mode]` — corroboration-based aggregation + proof bundle writer
+- `scripts/run-all-gates.sh [path] [mode] [--log-file]` — sequential gate runner with telemetry + adaptive skipping/tolerance
+
+**Mode-specific:**
+- `scripts/behavior-capture.sh [path]` — capture golden fixtures before rebuild (REBUILD)
+- `scripts/design-review.sh [path]` — dep graph, coupling, circular deps (AUDIT/REBUILD) → JSON
 - `scripts/ci-integration.sh [path]` — CI config detection and scoring → JSON
+- `scripts/differential-test.sh [path]` — oracle comparison, golden tests (BUILD/REBUILD) → JSON
+
+**Extended verification:**
+- `scripts/dynamic-analysis.sh [path]` — memory leaks, race conditions, FD leaks → JSON
+- `scripts/perf-benchmark.sh [path]` — benchmark detection + regression vs baseline → JSON
+- `scripts/property-test.sh [path]` — property-based/fuzz testing, generates stubs → JSON
+
+**Bootstrap:**
+- `scripts/run-audit.sh [path] [mode] [--spawn]` — generate orchestrator task + optional spawn
 
 ## Swarm Architecture
 
@@ -98,9 +118,11 @@ Worker output format: `references/swarm/handoff.md`.
 
 | Verdict | Criteria |
 |---------|----------|
-| **Ship** ✅ | All gates pass, ≥95% mutation kill, zero slop |
-| **Caution** ⚠️ | All pass but mutation kill 90-95%, or minor slop in non-critical |
-| **Blocked** 🚫 | Any gate fails, hallucinated deps, <90% mutation kill |
+| **Ship** ✅ | No hard blocks; no corroborated multi-domain fail evidence above block threshold |
+| **Caution** ⚠️ | Single non-hard fail, warning-only risk, or corroboration below block threshold |
+| **Blocked** 🚫 | Any hard block OR corroborated non-hard failure pattern (multi-signal, multi-domain, high-confidence) |
+
+Hard-block + corroboration rule details: `references/gates/corroboration.md`
 
 ## Running an Audit (Single-Agent, No Swarm)
 
@@ -119,7 +141,7 @@ For small projects or when swarm isn't needed, run gates sequentially:
 11. `scripts/perf-benchmark.sh` → `references/gates/performance.md` (benchmark detection + regression)
 12. `scripts/property-test.sh` → `references/gates/property-based.md` (fuzzing, invariant checks)
 13. `scripts/differential-test.sh` → `references/gates/differential.md` (oracle comparison, metamorphic tests)
-14. Read + execute `references/gates/proof-bundle.md` → write `.wreckit/`
+14. echo '[...gate-results-json...]' | `scripts/proof-bundle.sh [path] [mode]` → writes `.wreckit/proof.json`, `dashboard.json`, `decision.md`
 
 ## Quick Start
 
@@ -134,3 +156,12 @@ For small projects or when swarm isn't needed, run gates sequentially:
 
 `assets/dashboard/` contains a local web dashboard for viewing proof bundles across repos.
 Run: `node assets/dashboard/server.mjs` (port 3939). Reads `.wreckit/dashboard.json` from projects.
+
+## Codex CLI Notes (2026-02-22)
+
+When using Codex CLI to build/run projects:
+- `--full-auto` sandbox blocks `npm install` network access (ENOTFOUND registry.npmjs.org)
+- Fix: use `--dangerously-bypass-approvals-and-sandbox` flag instead
+- Auth: `echo "$OPENAI_API_KEY" | codex login --with-api-key` stores credentials to `~/.codex/auth.json`
+- Config: `~/.codex/config.toml` with `model = "gpt-5.2-codex"` and `[shell_environment_policy] inherit = "all"`
+- `gpt-5.3-codex` is Copilot/VS Code only — not available via direct API. Use `gpt-5.2-codex`.

@@ -6,6 +6,7 @@
 
 set -euo pipefail
 PROJECT="${1:-.}"
+PROJECT="$(cd "$PROJECT" && pwd)"
 cd "$PROJECT"
 
 echo "=== Stryker Mutation Testing ===" >&2
