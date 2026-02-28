@@ -2,9 +2,9 @@
 name: openclaw-occ
 title: OCC for OpenClaw
 description: "OCC (Origin Controlled Computing) — cryptographic proof of every OpenClaw agent action. Install, configure, and audit."
-version: 1.1.0
+version: 1.1.1
 homepage: https://occprotocol.com/openclaw
-source: https://github.com/mikeargento/occ-core
+source: https://github.com/mikeargento/occ-core/tree/main/packages/occ-core/examples/openclaw-occ
 requires:
   - npm
   - npx
@@ -14,6 +14,7 @@ metadata:
   openclaw:
     homepage: https://occprotocol.com/openclaw
     emoji: "🔐"
+    npm: https://www.npmjs.com/package/openclaw-occ
 ---
 
 ## What this skill does
@@ -30,7 +31,7 @@ Use this skill to help users install the plugin, configure it, and understand th
 
 ## Privacy & data
 
-**What the notary receives:** each proof contains the tool name (e.g. `bash`, `read`), a timestamp, a SHA-256 hash chained to the previous proof, and a monotonic counter. It does **not** contain the content of tool inputs or outputs — no file contents, no bash commands, no API responses.
+**What the notary receives:** each proof contains the tool name (e.g. `bash`, `read`), a timestamp, a SHA-256 hash chained to the previous proof, and a monotonic counter. It does **not** contain the content of tool inputs or outputs — no file contents, no bash commands, no API responses. Source: [`lib/notary.js`](https://github.com/mikeargento/occ-core/blob/main/packages/occ-core/examples/openclaw-occ/lib/notary.js)
 
 **Zero-network option:** set `"mode": "stub"` in `~/.openclaw/workspace/occ.json`. All proofs are stored locally as SHA-256 hashes with no outbound requests.
 
