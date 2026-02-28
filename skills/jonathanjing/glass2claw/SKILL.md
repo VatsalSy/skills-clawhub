@@ -1,85 +1,72 @@
 ---
 name: glass2claw
-description: "A logic-based protocol for organizing life-captures into Notion. Routes images from WhatsApp into categorized Notion databases via your private Discord server channels using OpenClaw's sessions_send tool."
+description: "Turn your Meta Ray-Ban smart glasses into a life-logging system. Snap a photo with a voice command, send it to yourself on WhatsApp — OpenClaw picks it up and routes it into your own databases automatically."
 metadata:
   {
     "openclaw":
       {
         "emoji": "👁️",
-        "requires": {
-          "env": ["NOTION_API_KEY"],
-          "configPaths": ["configs/vision_router.md"],
-          "tools": ["sessions_send", "message", "web_fetch"]
-        },
-        "dataFlow": {
-          "input": "Image URL forwarded from WhatsApp via sessions_send",
-          "routing": "Agent reads configs/vision_router.md, classifies image intent (Wine/Tea/Contacts), then calls sessions_send to the matching Discord channel session key",
-          "output": "Structured entry written to the corresponding Notion database using NOTION_API_KEY"
-        }
-      },
+        "tools": ["sessions_send", "message"]
+      }
   }
 ---
 
-# glass2claw: The Vision Router Protocol
+# glass2claw: From Your Eyes to Your Database — Instantly
 
-`glass2claw` provides logical routing templates to organize visual captures from WhatsApp into structured Notion databases, via your private Discord server.
+You're wearing your **Meta Ray-Ban glasses**. You see a wine label, a business card, a tea tin. You say:
 
-## 🏗️ Design Philosophy
+> *"Hey Meta, take a picture and send this to myself on WhatsApp."*
 
-This skill is **instruction-only**. No binaries, no curl, no exec commands. It relies entirely on native OpenClaw platform tools:
+That's it. OpenClaw does the rest.
 
-| Step | Tool Used | What it does |
-|------|-----------|--------------|
-| Receive image | `sessions_send` | WhatsApp session forwards image URL to Discord hub session |
-| Classify intent | Agent reasoning | Determines Wine / Tea / Contacts from image |
-| Route | `sessions_send` | Hub sends to the correct specialist Discord channel session |
-| Store | `message` + Notion API | Specialist posts image and writes entry to Notion database |
+The photo lands in your WhatsApp. OpenClaw's Vision Router picks it up, classifies what it is, and writes a structured entry into the right database — wine cellar, contacts, tea collection, whatever you've set up.
 
-**No data leaves your private OpenClaw infrastructure.** All routing happens between your own Discord server's channels.
-
-## 🚀 Configuration
-
-### 1. Required Config File: `configs/vision_router.md`
-
-Create this file in your OpenClaw workspace at the exact path `configs/vision_router.md`. The Agent reads this file to resolve Notion database IDs. This path is declared in the skill metadata under `configPaths`.
-
-```markdown
-# Vision Router Config
-
-## Notion Database IDs
-- Wine Cellar: [YOUR_NOTION_DATABASE_ID]
-- Tea Closet: [YOUR_NOTION_DATABASE_ID]
-- Contacts: [YOUR_NOTION_DATABASE_ID]
-
-## Discord Session Keys (hub → specialist routing)
-- Wine session: agent:main:discord:channel:[YOUR_WINE_CHANNEL_ID]
-- Tea session: agent:main:discord:channel:[YOUR_TEA_CHANNEL_ID]
-- Contacts session: agent:main:discord:channel:[YOUR_CONTACTS_CHANNEL_ID]
-```
-
-### 2. Apply the Templates
-
-- **Hub routing logic**: `SAMPLE_AGENT.md` — paste into your hub Discord channel's AGENTS.md or SOUL.md
-- **Wine specialist persona**: `SAMPLE_SOUL_WINE.md` — paste into your wine channel's SOUL.md
-
-## 🔄 Data Flow (explicit)
-
-```
-WhatsApp (image received)
-  → sessions_send → Discord #hub channel session
-      → Agent classifies: Wine | Tea | Contacts
-      → sessions_send → matching Discord specialist channel session
-          → message tool: posts image to channel
-          → Notion API (NOTION_API_KEY): writes structured entry
-```
-
-All hops are within your private Discord server. The session keys in `configs/vision_router.md` are user-defined and point only to channels you own.
-
-## 🛡️ Best Practices
-
-- **Least Privilege**: Scope your Notion token to only the three required databases
-- **Private channels only**: Use private Discord servers, never public ones
-- **No agent discretion on destinations**: All target session keys are hardcoded in `configs/vision_router.md`, not inferred by the agent
+**No typing. No app switching. No friction.**
 
 ---
+
+## 📸 How It Works
+
+```
+Meta Ray-Ban glasses
+  → "Hey Meta, take a picture and send this to myself on WhatsApp"
+      → Meta AI delivers the photo to your WhatsApp
+          → OpenClaw (WhatsApp session) receives the image
+              → classifies intent: Wine | Tea | Contacts | Cigar | ...
+                  → routes to the matching specialist agent
+                      → writes structured entry to your database
+```
+
+Your only action is the voice command. Everything downstream is automatic.
+
+---
+
+## 🔧 What You Need to Set Up
+
+This skill is a **routing protocol** — it defines the pattern, not the specific implementation. You bring your own:
+
+- **Meta AI + WhatsApp connection** — enable Meta AI on your Ray-Ban glasses and link it to WhatsApp (one-time setup in the Meta View app)
+- **OpenClaw with WhatsApp channel** — your OpenClaw instance needs a WhatsApp session to receive the incoming images
+- **Destination databases** — connect whichever databases you want: Notion, Airtable, a local file, a Discord channel. The skill routes to wherever you configure it
+- **Database credentials** — set up API access for your chosen database yourself (Notion API key, Airtable token, etc.)
+
+> The skill templates in this package show one reference implementation using Notion + Discord. Adapt them to your own stack.
+
+---
+
+## 🔒 Privacy
+
+This skill processes **photos from your personal camera**. Images flow from WhatsApp → your OpenClaw instance → your configured destination. Any external services you connect (Notion, Discord, etc.) are governed by their own privacy policies. All routing logic runs on your own OpenClaw instance.
+
+---
+
+## 📦 What's Included
+
+- `SAMPLE_AGENT.md` — reference routing logic for the hub agent
+- `SAMPLE_SOUL_WINE.md` — reference persona for a wine specialist agent
+
+Use these as starting points. Customize for your own categories and destinations.
+
+---
+
 *Created by JonathanJing | AI Reliability Architect*
