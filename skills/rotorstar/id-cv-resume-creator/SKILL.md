@@ -119,7 +119,16 @@ Content-Type: application/json
     "firstName": "Alex",
     "lastName": "Johnson",
     "title": "Software Engineer",
-    "email": "alex@example.com"
+    "email": "alex@example.com",
+    "experience": [{
+      "jobTitle": "Senior Developer",
+      "company": "Acme Inc.",
+      "startDate": "2022-01",
+      "isCurrent": true
+    }],
+    "hardSkills": [{ "name": "React", "level": 4 }],
+    "softSkills": [{ "name": "Team Leadership" }],
+    "languages": [{ "name": "English", "level": "NATIVE" }]
   }
 }
 ```
@@ -171,13 +180,16 @@ Content-Type: application/json
 {
   "prefer_hitl": true,
   "hitl_continue_case_id": "review_a7f3b2c8d9e1f0g4",
+  "slug": "dev",
   "cv_data": { ... }
 }
 ```
 
+> **Important:** `slug` and `template_id` go at the **top level** of the request, not inside `cv_data`. When continuing after slug selection, include the human's chosen slug at the top level so the server knows to advance to the template step.
+
 Steps are skipped when you already provide the value:
-- Include `slug` → slug selection step is skipped
-- Include `template_id` → template selection step is skipped
+- Include `slug` (top-level) → slug selection step is skipped
+- Include `template_id` (top-level) → template selection step is skipped
 - Include both → only confirmation, data review, and approval remain
 
 ### Inline Submit (v0.6)
@@ -375,6 +387,17 @@ You do **not** need to check slug availability or validate data — the server h
 - `languages` — with CEFR `level`: `NATIVE`, `C2`, `C1`, `B2`, `B1`, `A2`, `A1`
 
 Do **not** use a generic `skills` array — it will be ignored.
+
+## Common Mistakes
+
+| Wrong | Correct | Why |
+|-------|---------|-----|
+| `"role": "Engineer"` | `"jobTitle": "Engineer"` | Experience uses `jobTitle`, not `role` or `position` |
+| `"start": "2022"` / `"end": "2023"` | `"startDate": "2022-01"` / `"endDate": "2023-06"` | Wrong field names — `start`/`end` are silently ignored in experience and education |
+| `"skills": [...]` | `"hardSkills": [...]` etc. | Generic `skills` array is ignored — use 4 separate arrays |
+| `"slug": "dev"` inside `cv_data` | `"slug": "dev"` at top level | `slug` and `template_id` are request-level fields, not inside `cv_data` |
+| `"startDate": "January 2024"` | `"startDate": "2024-01"` | Dates must be `YYYY` or `YYYY-MM` format |
+| Sending empty arrays `"hobbies": []` | Omit the field entirely | Don't send empty arrays — omit what you don't have |
 
 ## Guardrails
 
