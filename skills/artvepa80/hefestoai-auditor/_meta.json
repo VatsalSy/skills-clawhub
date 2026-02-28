@@ -3,11 +3,16 @@
   "slug": "hefestoai-auditor",
   "displayName": "Hefestoai Auditor",
   "latest": {
-    "version": "2.1.0",
-    "publishedAt": 1771095091207,
-    "commit": "https://github.com/openclaw/skills/commit/6bd68d3fc63a289d588d7fe5b5dbd599b7e572fe"
+    "version": "2.2.0",
+    "publishedAt": 1772228909390,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.1.0",
+      "publishedAt": 1771095091207,
+      "commit": "https://github.com/openclaw/skills/commit/6bd68d3fc63a289d588d7fe5b5dbd599b7e572fe"
+    },
     {
       "version": "1.2.0",
       "publishedAt": 1770838223491,
