@@ -3,9 +3,15 @@
   "slug": "symbiont",
   "displayName": "Symbiont",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1771137596902,
-    "commit": "https://github.com/openclaw/skills/commit/d81da2c42f553d8c052dc132fbfffbc7bcab9d89"
+    "version": "1.0.2",
+    "publishedAt": 1772232177988,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1771137596902,
+      "commit": "https://github.com/openclaw/skills/commit/d81da2c42f553d8c052dc132fbfffbc7bcab9d89"
+    }
+  ]
 }
