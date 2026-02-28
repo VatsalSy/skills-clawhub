@@ -1,9 +1,14 @@
 ---
-name: OCC for OpenClaw
-slug: openclaw-occ
+name: openclaw-occ
 title: OCC for OpenClaw
-description: Set up and manage OCC (Origin Controlled Computing) — cryptographic proof logs of every OpenClaw agent action. Helps users install the plugin, configure notary modes, and interpret their audit trail.
-version: 1.0.5
+description: "OCC (Origin Controlled Computing) — cryptographic proof of every OpenClaw agent action. Install, configure, and audit."
+version: 1.0.7
+homepage: https://occ.fyi/openclaw
+source: https://github.com/mikeargento/occ-core
+requires:
+  - npm
+  - npx
+  - curl
 metadata:
   openclaw:
     homepage: https://occ.fyi/openclaw
@@ -107,7 +112,9 @@ npx occ-verify --json                # raw JSON output (for piping / scripting)
 
 ## Self-hosting a notary
 
-If the user wants full control and offline verification, they can deploy their own Cloudflare Worker notary:
+If the user wants full control and offline verification, they can deploy their own Cloudflare Worker notary.
+
+**Prerequisites:** a Cloudflare account with Workers and KV enabled, and Wrangler authenticated (`npx wrangler login`).
 
 ```bash
 cd ~/.openclaw/extensions/openclaw-occ/notary-worker
