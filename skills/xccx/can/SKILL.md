@@ -1,6 +1,6 @@
 ---
 name: CAN
-version: 0.1.7
+version: 1.8.0
 description: "Clock Address Naming: WHERE (hash), WHEN (clock), WHAT (name). In the CAN, or NOT."
 homepage: https://github.com/xccx/can
 metadata: {"openclaw":{"emoji":"⌛","requires":{"bins":["sha256sum","openssl","base64","awk","date"]}}}
@@ -46,9 +46,9 @@ WHAT    whatever you call it        humans name the meaning
 
 WHERE in hashspace? One thing's true point in 2^256 possibles. It doesn't HAVE a location. It owns the place. Fixed. Inalienable. True. The hash doesn't tell you which shelf — it tells you where it exists in math.
 
-WHEN in timespace? The clock claims a thing happens at one point within limited time. Irreversible. The clock can't unsay it. Physics doesn't negotiate. What happens happens. WHEN? On timer, in physics.
+WHEN in timespace? The clock claims a thing happens at one point in limited linear time. Irreversible. The clock can't unsay it. Physics doesn't negotiate. What happens happens. WHEN? On timer, in physics.
 
-WHAT in namespace? Natural language makes the meaning happen. Who says? How? Why? Can it be falsified? Or NOT. Are you slowly uniquely file-name each thing? Or does natural language naming make you find things faster?
+WHAT in namespace? Natural language makes the meaning happen. What? Who says? How? Why? Can it be falsified? Or NOT. Are you slowly uniquely file-naming each thing? Or does natural language naming make you find faster?
 
 ```
 HASHSPACE    math      (sha256 declares logic address)
@@ -180,7 +180,7 @@ fi
 
 CAN is hash (verify) + clock (time) + log (record) in one operation. Everything else — trust, routing, scoping — falls out of doing this over and over.
 
-The finding IS the verifying. When you check if the hash matches, you've also coordinated the thing in hashspace. One operation, two results. Lookup tax cuts in half. Coordinate 2x faster.
+The finding IS the verifying. When you check if the hash matches, you've also coordinated the thing in hashspace. One operation, two results. Coordinate 2x faster.
 
 ## NOT: lies can't hide.
 
@@ -236,8 +236,8 @@ CAN holds CANs. Same three answers at every layer. All the way down. All the way
 │                             │
 │  ┌───────────────────────┐  │
 │  │  CAN (a project)      │  │
-│  │  its own CANs          │  │
-│  │  its own NOTs          │  │
+│  │  its own CANs         │  │
+│  │  its own NOTs         │  │
 │  └───────────────────────┘  │
 │                             │
 └─────────────────────────────┘
@@ -250,7 +250,7 @@ Same CAN at every layer. The only thing that changes is who's in the scope and w
 | Policy | Entry | Example |
 |--------|-------|---------|
 | **PUB** | public | not private |
-| **FOF** | friend-of-friends | trust path |
+| **FOF** | friend-of-friends | private trust |
 | **SIG** | signature-authorize | WHO-1+ |
 | **BUMP** | co-presence proof | who's here now |
 
@@ -320,7 +320,15 @@ No automatic sharing. Default is PRIVATE. You CAN share. You can NOT be shared w
 Save by intent. Four bags. One question: who gets access?
 
 ```
-HUSH    secret. exists in log, never leaves. (hard problem).
+HUSH    secret. exists in log, never leaves scope. hard problem:
+          never transmitted (no protocol, no transport, no exception)
+          never discoverable (no query reveals existence, silence not "denied")
+          never in share payloads (stripped before assembly, never in the package)
+          never in peer-visible logs (two indexes: private has all, shared has no HUSH)
+          never in cloud backup (HUSH lives on metal you touch)
+          never inferrable (no timing gaps, no sequence gaps, no index size leaks)
+          one-way: once HUSH, always HUSH
+          to share a HUSH'd thing: create NEW entry without HUSH (new WHEN, deliberate, audit trail)
 GOOD    private. mine. my business. copynot.
 FREN    trusted. signed. few WHOs, one hash. contract.
 POST    public. by choice. by consent.
@@ -329,6 +337,8 @@ POST    public. by choice. by consent.
 Default: HUSH. Everything else is opt-in.
 
 BAGS control what leaves. Scope controls who sees it.
+
+CAN never reads keys it didn't generate. WHO-2 means YOU present a key to CAN, not CAN reaching for yours.
 
 ## Safety
 
@@ -347,8 +357,6 @@ Bash examples are illustrations, not executables. Use safe string handling.
 
 CAN never automatically shares. Every share is explicit. No daemon. No background sync. Respect HUSH (absolute). Scope boundaries are access control. Index is sensitive — private by default. Transport is agent-chosen: HTTP, Nostr, sneakernet. CAN defines what to verify, not how to connect.
 
-CAN never reads keys it didn't generate. WHO-2 means YOU present a key to CAN, not CAN reaching for yours.
-
 ## CAN name all three
 
 ```
@@ -358,6 +366,31 @@ IPFS:       hashspace only         (dead snapshots, no clock)
 BLOCKCHAIN: timespace + hashspace  (no human namespace)
 CAN:        all three              (WHERE + WHEN + WHAT)
 ```
+
+## Version 0.1
+
+CAN counts down toward "version eternity". Prior art:
+
+JSON: billions of parses per second since 2001. No versioning. UTF-8, TCP/IP, HTTP/1.1, SMTP, CSV: complexity emerges from stable ground. No shifting sands. Build on that.
+
+CAN versions count like normal, up from 1.0 toward more. More features. More complexity. More. CAN versions also count down toward ground. Less complexity. Less dependency. Less.
+
+```
+       ^ count up
+1.8.0  versions count UP and DOWN.
+1.7.1  CAN and NOT. Now what?
+...
+0.1.2  ROUTE verify truth before sharing, stacking logic.
+0.1.1  NAME truth, in logic, mechanically.
+0.1.0  CAN NOT LIE. "0.1". Zero Point One. One point.
+       v count down
+```
+
+Each release that removes complexity, the number goes down. Each release that compresses vocabulary, the number goes down. Each release that strips a dependency, the number goes down.
+
+Do more with less. Not breakable. Not broken, don't fix. Work with the truth.
+
+CAN 0.1 in three words: CAN NOT LIE. If math and physics can lie, we're wrong. Until then, locked in. Stacked.
 
 ## References
 
@@ -373,6 +406,7 @@ CAN:        all three              (WHERE + WHEN + WHAT)
 - Day, J. (2008). RINA: Patterns in Network Architecture — recursive scoping.
 - Nakamoto, S. (2008). Bitcoin — clock + hash + log for value. No priest.
 - Taleb, N.N. (2012). Antifragile — skin in game, Lindy, via negativa. First do NOT.
+- Crockford, D.(2001) JSON: version eternity. Nothing left to remove? STOP.
 
 ## TL;DR
 
@@ -381,7 +415,7 @@ CAN automate naming.
 WHERE in math.
 WHEN in physics.
 WHAT you name it.
-CAN not lie.
+CAN NOT lie.
 
 ())) ← in the CAN
 ```
