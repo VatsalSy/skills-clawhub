@@ -1,108 +1,214 @@
 # ClawSaver
 
-> Stop paying for round-trips. Batch related asks, save real money.
+> 💡 **Did you know?** Every message re-sends your full workspace context before it gets to your question — SOUL.md, MEMORY.md, AGENTS.md, conversation history, all of it. Ask 3 related things in 3 separate turns and you pay to load that context 3 times. ClawSaver gives your agent the judgment to consolidate.
 
-ClawSaver is an OpenClaw skill that reduces AI API costs by teaching your assistant to recognize when multiple questions or tasks can be answered together — instead of paying for each one separately.
+ClawSaver is a **behavior-change skill** — it teaches your agent to recognize when multiple asks can be answered together, and to proactively offer consolidation. Fewer round-trips, less repeated context overhead, same quality output.
 
----
-
-## Why ClawSaver?
-
-Every message to an AI model costs money: API overhead, context re-sent, response tokens. When you're asking 3 related things in 3 separate turns, you're paying for that context 3 times.
-
-ClawSaver fixes this by making the assistant proactively notice when tasks can be merged — and handle them in a single well-structured response.
-
-**Typical results:**
-- ~30–50% fewer API requests per session
-- ~20–35% fewer tokens consumed
-- No quality loss — batched responses are structured, not compressed
+> **How it works:** ClawSaver shapes agent behavior through instructions, the same way execution-loop-breaker and most top ClawHub skills work. It doesn't intercept requests at the network level — it trains the agent to notice batchable patterns and act on them. Think of it as giving your agent good judgment about when to consolidate, not a router that does it automatically.
 
 ---
 
-## What It Does
-
-When ClawSaver is loaded, the assistant:
-
-1. **Detects batchable asks** — multiple questions on the same topic, follow-ups within a few turns, redundant tool calls
-2. **Groups them intelligently** — merges into one structured response with clear per-question sections
-3. **Skips when it shouldn't** — sequential dependencies, unrelated domains, and explicit opt-outs are respected
-4. **Shows the savings** (optional) — a one-liner like `💸 Batched 3 asks → 1 response`
-
----
-
-## Batch vs. Don't Batch
-
-| Scenario | ClawSaver Action |
-|----------|-----------------|
-| "Explain X, also check Y, and what about Z?" (same topic) | ✅ Batch → 1 response |
-| Code review + next steps + test suggestions | ✅ Batch → 1 response |
-| "What's the status?" then 2 turns later "What should I do next?" | ✅ Offer to consolidate |
-| Task A whose output is required for Task B | ❌ Keep separate |
-| Two completely unrelated topics | ❌ Keep separate |
-| "Answer each one separately" | ❌ Defer to user |
-
----
-
-## Response Format (Batched)
+## Quick Start
 
 ```
-## Code Review
+/batch
+```
 
-**Correctness**
+The agent will review your recent messages and offer to consolidate related open threads into one response.
+
+---
+
+## Commands
+
+| Command | What it does |
+|---------|--------------|
+| `/batch` | Review recent asks, offer to consolidate |
+| `/batch status` | Show batching activity this session |
+| `/batch off` | Disable automatic batch detection |
+| `/batch on` | Re-enable (on by default when skill is loaded) |
+
+---
+
+## What It Looks Like
+
+When ClawSaver consolidates 3 related questions:
+
+```
+╭──────────────────────────────────────────────╮
+│  💸 ClawSaver — Batching 3 asks → 1 response │
+╰──────────────────────────────────────────────╯
+
+**Code review**
 No bugs found. The null check on line 14 is correct.
 
 **Performance**
 The nested loop on line 47 is O(n²) — consider a Map for O(n).
 
-**Test Coverage**
+**Test coverage**
 Missing edge case: empty array input.
 
 ---
-💸 Batched 3 asks → 1 response. Est. savings: ~2 API calls, ~600 tokens.
+💸 Batched 3 asks → 1 response · Est. savings: ~2 API calls · ~800 tokens
 ```
+
+Without ClawSaver, those 3 questions would have each re-sent your full workspace context.
+
+---
+
+## Batch vs. Don't Batch
+
+| Scenario | Action |
+|---------|--------|
+| Multiple questions, same topic | ✅ Batch |
+| Code review + next steps + tests | ✅ Batch |
+| Follow-up, same subject (≤3 turns) | ✅ Offer |
+| Task B needs Task A output | ❌ Separate |
+| Completely unrelated topics | ❌ Separate |
+| "Answer each separately" | ❌ Defer |
 
 ---
 
 ## Decision Rules
 
-| Signal | Action |
-|--------|--------|
-| 2+ questions in one message, same topic | Always batch |
-| Follow-up ≤3 turns on same subject | Offer to batch |
-| Redundant data fetch (same file/URL twice) | Cache & reuse |
-| Clarifying question preemptable from context | Anticipate & answer |
-| Sequential dependency (A feeds B) | Keep separate |
-| >3 unrelated domains | Keep separate |
+| Signal | Rule |
+|--------|------|
+| 2+ questions, same topic | Always batch |
+| Follow-up within 3 turns | Offer to batch |
+| Same file/URL twice | Cache & reuse |
+| Clarifying Q from context | Anticipate |
+| A feeds B | Separate |
+| 3+ unrelated domains | Separate |
 
 ---
 
-## Savings Estimate Table
+## Optional: See Your Own Savings (analyze.py)
 
-| Session Type | Requests Saved | Tokens Saved |
-|-------------|---------------|-------------|
-| 3-part code review | ~67% | ~30% |
-| Research + summary + action | ~67% | ~25% |
-| Config/setup questions (5) | ~60% | ~35% |
-| Status check + next steps | ~50% | ~20% |
-| Unrelated mixed tasks | 0% | 0% |
+> **Credentials note:** The core batching skill requires **no credentials whatsoever**. The analyzer below is a separate, optional script. It requires an OpenRouter management key — a high-privilege credential. Only run it if you trust the source, have reviewed the script, and understand what it accesses. The script's sole network call is `GET https://openrouter.ai/api/v1/activity`.
+
+ClawSaver includes an optional analyzer script that queries your OpenRouter usage and estimates what batching would save:
+
+```bash
+# Review the script first:
+cat ~/.openclaw/workspace/skills/clawsaver/analyze.py
+
+# Then run with your management key:
+export OPENROUTER_MANAGEMENT_KEY=sk-or-v1-...
+python3 ~/.openclaw/workspace/skills/clawsaver/analyze.py
+```
+
+Options:
+- `--days 30` — analyze a longer window (default: 7)
+- `--batch-rate 0.40` — tune what % of your requests you estimate are batchable (default: 0.25)
+- `--batch-ratio 3` — avg requests collapsed per batch (default: 3)
+
+Example output:
+```
+╭────────────────────────────────────────────────────╮
+│            💸 ClawSaver — Session Analysis          │
+├────────────────────────────────────────────────────┤
+│  Period                               Last 7 days  │
+│  Requests                                   1,240  │
+│  Avg context/request                      48,300 tok  │
+│  Input/output ratio                           180x  │
+├────────────────────────────────────────────────────┤
+│         Batching estimate (25% of reqs, 3→1)       │
+│  Requests avoided                             207  │
+│  Cost saved                                 $4.20  │
+│  Request reduction                             17%  │
+╰────────────────────────────────────────────────────╯
+```
+
+> Requires an OpenRouter **management key** (not a standard API key). Get one at openrouter.ai → Settings → API Keys.
+
+> **Note:** The analyzer works against your whole OpenRouter account — daily aggregates by model. It can't scope to a single session or conversation. For per-session breakdown you'd need dedicated session logging (not currently part of ClawSaver).
+
+---
+
+## Why Context Overhead Dominates Costs
+
+Every OpenClaw session re-sends workspace files with each request — SOUL.md, MEMORY.md, AGENTS.md, conversation history. This context grows over time and gets re-sent on every single turn, whether or not it's relevant to your question.
+
+The more you ask in separate messages, the more times you pay for that overhead. Batching 3 related asks into 1 means paying it once instead of three times — same answers, fraction of the cost.
+
+---
+
+## Savings by Billing Model
+
+### 💰 Token-based (OpenRouter, Anthropic, OpenAI)
+
+Each batched turn eliminates one full context re-send.
+
+| Session | Before | After | Saved |
+|---------|--------|-------|-------|
+| Code review (3-part) | ~9,000 tok | ~4,500 tok | ~50% |
+| Config questions (5) | ~15,000 tok | ~6,000 tok | ~60% |
+| Research & summary | ~12,000 tok | ~5,000 tok | ~58% |
+| Status + next steps | ~6,000 tok | ~3,500 tok | ~42% |
+| Unrelated tasks | — | — | 0% |
+
+### 🎫 Call-based / quota (GitHub Copilot, enterprise)
+
+Each batched turn saves a request from your allocation.
+
+| Session | Before | After | Saved |
+|---------|--------|-------|-------|
+| Code review (3-part) | 3 req | 1 req | 67% |
+| Research & summary | 3 req | 1 req | 67% |
+| Config questions (5) | 5 req | 2 req | 60% |
+| Status + next steps | 2 req | 1 req | 50% |
+| Unrelated tasks | 2 req | 2 req | 0% |
 
 ---
 
 ## Installation
 
+**Step 1 — Install the skill:**
 ```bash
 clawhub install clawsaver
 ```
 
+**Step 2 — Register it in `openclaw.json`:**
+
+**Global registry** (available across all agents):
+```json
+{
+  "skills": {
+    "entries": {
+      "clawsaver": { "enabled": true }
+    }
+  }
+}
+```
+
+**Per-agent** (scoped to a specific agent):
+```json
+{
+  "agents": {
+    "list": [
+      {
+        "id": "your-agent-id",
+        "skills": ["clawsaver"]
+      }
+    ]
+  }
+}
+```
+
+**Step 3 — Restart the gateway:**
+```bash
+openclaw gateway restart
+```
+
+ClawSaver is now active every session automatically.
+
 ---
 
-## Safety Model
+## Safety
 
-ClawSaver never:
-- Merges tasks with sequential dependencies
-- Compresses responses in ways that lose meaning
-- Assumes missing context to force a batch
-- Overrides explicit user instructions to keep things separate
+- ✅ **Never merges sequential tasks** — if result A feeds task B, they stay separate
+- ✅ **Never compresses for brevity** — batched responses are structured, not squeezed
+- ✅ **Never assumes context** — if combining requires guessing, it asks instead
+- ✅ **Explicit opt-out** — "answer each one separately" and ClawSaver defers immediately
 
 ---
 
@@ -114,9 +220,13 @@ ClawSaver never:
 
 ---
 
-## Version
+## Version History
 
-**1.0.0** — Initial release
+- **1.3.3** — Declared `OPENROUTER_MANAGEMENT_KEY` in skill metadata (optional env); analyzer section clearly marked optional with credentials callout; addresses ClawHub security scanner findings
+- **1.3.0** — Dual registration in `skills.entries` + `agents.list`; updated install docs
+- **1.2.0** — Added `openclaw.json` installation instructions; dogfooded on own instance
+- **1.1.0** — Added `/batch` commands, dashboard preview, visceral cost hook, ✅ safety format
+- **1.0.0** — Initial release
 
 ---
 

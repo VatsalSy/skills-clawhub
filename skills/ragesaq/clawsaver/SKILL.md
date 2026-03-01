@@ -1,60 +1,75 @@
 ---
 name: clawsaver
-version: 1.0.0
-description: "Reduce AI costs by batching related asks into fewer, smarter responses. ClawSaver identifies when multiple questions or tasks can be answered together — cutting API calls 30-50% and tokens 20-35% without losing quality."
+version: 1.3.3
+description: "Behavior-change skill that trains your agent to batch related asks into fewer responses. No credentials required for core batching. Optionally includes analyze.py (requires OPENROUTER_MANAGEMENT_KEY) to measure your own usage and estimate savings."
 metadata:
-  {"openclaw":{"emoji":"💸","os":["darwin","linux","win32"]}}
+  {"openclaw":{"emoji":"💸","os":["darwin","linux","win32"],"env":{"OPENROUTER_MANAGEMENT_KEY":{"required":false,"description":"OpenRouter management key — only needed to run the optional analyze.py script. The core batching skill works without any credentials."}}}}
 ---
 
-# ClawSaver v1
+# ClawSaver v1.1
 
-> Stop paying for round-trips. When you have 3 related questions, one smart answer beats three dumb ones.
+> 💡 **Did you know?** Every message re-sends your full workspace context — SOUL.md, MEMORY.md, AGENTS.md, conversation history — before it even gets to your question. Ask 3 related things in 3 turns and you pay to load that context 3 times. ClawSaver fixes that.
 
-ClawSaver teaches the assistant to **recognize batchable tasks** and handle them in a single well-structured response — fewer requests, less token overhead, same quality.
+ClawSaver teaches the assistant to batch related asks into a single well-structured response — fewer round-trips, less repeated context overhead, same quality.
+
+---
+
+## Commands
+
+When a user runs a `/batch` command, respond as follows:
+
+- **`/batch`** — Review the last 5 turns. If 2+ asks share context, offer to consolidate them into a single response. List what you'd combine and ask for confirmation.
+- **`/batch status`** — Report how many asks have been batched this session vs. kept separate. Estimate tokens/requests saved.
+- **`/batch off`** — Acknowledge and disable automatic batch detection for this session.
+- **`/batch on`** — Re-enable batch detection (default state when skill is loaded).
+
+---
 
 ## When to Use
 
-Use this skill when:
-- You're about to ask multiple related questions
-- You've been going back and forth with the assistant on a single topic
-- You want the assistant to proactively notice when tasks can be merged
-- You're monitoring session cost and want to reduce round-trip overhead
+Load this skill when:
+- The user is asking multiple related questions in a session
+- You notice follow-up questions on the same topic across recent turns
+- You want to reduce repeated context load overhead
+- The user is on a quota-limited plan and burning requests on related asks
 
-Do **not** use when:
-- Tasks are genuinely independent and time-sensitive
-- You need incremental output (e.g. streaming code you review as it comes)
-- Task A's result is required input for task B (sequential dependency)
+Do **not** batch when:
+- Task A's output is required input for Task B (sequential dependency)
+- The user explicitly says "answer each one separately"
+- Topics are genuinely unrelated (3+ distinct domains)
+- The user needs incremental output to review as it arrives
 
 ---
 
 ## Core Behavior
 
-When ClawSaver is active, the assistant applies these rules before responding:
+Apply these rules before every response when ClawSaver is active:
 
 ### Batch Decision Rules
 
 | Signal | Action |
 |--------|--------|
-| Same topic, ≥2 questions in one message | Batch into one structured response |
-| Follow-up within 3 turns on the same subject | Offer to consolidate: "Want me to address all three at once?" |
-| Redundant tool calls (same data fetched twice) | Cache and reuse within the response |
-| Short clarifying question that could be preempted | Anticipate and answer proactively |
-| Completely unrelated tasks | Keep separate — don't force-batch |
+| Same topic, 2+ questions | Batch into one response |
+| Follow-up within 3 turns | Offer to consolidate |
+| Same data fetched twice | Cache and reuse |
+| Clarifying Q from context | Anticipate and answer |
+| Unrelated tasks | Keep separate |
 
-### Batching Thresholds
+### Trigger Phrases to Watch For
 
-- **Always batch:** 2+ questions about the same resource/file/topic
-- **Offer to batch:** 2+ questions where shared context exists
-- **Never batch:** Tasks with sequential dependencies or > 3 unrelated domains
+- "Also..." / "And one more thing..." / "While you're at it..."
+- "Can you also check..." / "What about..."
+- Multiple `?` in a single message
+- "Before you answer, also tell me..."
 
 ---
 
 ## Response Structure (When Batching)
 
-When combining multiple asks, use this structure:
-
 ```
-## [Topic]
+╭──────────────────────────────────────────────╮
+│  💸 ClawSaver — Batching 3 asks → 1 response │
+╰──────────────────────────────────────────────╯
 
 **[Q1 / Task 1]**
 Answer here.
@@ -66,55 +81,50 @@ Answer here.
 Answer here.
 
 ---
-💸 *Batched 3 asks → 1 response. Est. savings: ~2 API calls, ~800 tokens.*
+💸 Batched 3 asks → 1 response · Est. savings: ~2 API calls · ~800 tokens
 ```
 
-The savings line is optional — include when it helps the user see the value, skip in high-frequency task flows.
-
----
-
-## Trigger Phrases
-
-The assistant activates batching mode when it sees phrases like:
-
-- "Also..." / "And one more thing..." / "While you're at it..."
-- "Can you also check..." / "What about..."
-- Multiple "?" in a single message
-- "Before you answer, also tell me..."
+The savings footer is optional — include when it adds value, skip in high-frequency task flows.
 
 ---
 
 ## Cost Impact Reference
 
-| Scenario | Normal | With ClawSaver | Saved |
-|----------|--------|----------------|-------|
-| 3-part code review | 3 | 1 | 67% |
-| Status check + next steps | 2 | 1 | 50% |
-| 5 config questions | 5 | 2 | 60% |
-| Research + summary + action | 3 | 1 | 67% |
-| Unrelated tasks (2) | 2 | 2 | 0% |
+**💰 Token-based** (OpenRouter, Anthropic, OpenAI):
 
-Typical session savings: **30-50% fewer requests**, **20-35% fewer tokens**.
+| Session | Before | After | Saved |
+|---------|--------|-------|-------|
+| Code review (3-part) | ~9,000 tok | ~4,500 tok | ~50% |
+| Config questions (5) | ~15,000 tok | ~6,000 tok | ~60% |
+| Research & summary | ~12,000 tok | ~5,000 tok | ~58% |
+| Unrelated tasks | — | — | 0% |
+
+**🎫 Call-based / quota** (GitHub Copilot, enterprise):
+
+| Session | Before | After | Saved |
+|---------|--------|-------|-------|
+| Code review (3-part) | 3 req | 1 req | 67% |
+| Status + next steps | 2 req | 1 req | 50% |
+| Config questions (5) | 5 req | 2 req | 60% |
+| Research & summary | 3 req | 1 req | 67% |
+| Unrelated tasks | 2 req | 2 req | 0% |
 
 ---
 
 ## Safety
 
-- **Never merges tasks that require sequential output** — if result A feeds task B, they stay separate
-- **Never sacrifices clarity for brevity** — batched responses are structured, not compressed
-- **Never assumes context** — if combining asks requires guessing, it asks instead
-- **Explicit opt-out:** Say "answer each one separately" and ClawSaver defers
-
----
-
-## Installation
-
-```bash
-clawhub install clawsaver
-```
+- ✅ **Never merges sequential tasks** — if result A feeds task B, they stay separate
+- ✅ **Never compresses for brevity** — batched responses are structured, not squeezed
+- ✅ **Never assumes context** — if combining requires guessing, it asks instead
+- ✅ **Explicit opt-out** — "answer each one separately" and ClawSaver defers immediately
 
 ---
 
 ## Version History
 
+- **1.3.3** — Declared `OPENROUTER_MANAGEMENT_KEY` as optional env in metadata; analyzer clearly optional; addresses ClawHub security scanner findings
+- **1.3.1** — Honest scope language: behavior-change skill, not active interceptor
+- **1.3.0** — Dual registration: `skills.entries` (global) + `agents.list` (per-agent); full install docs
+- **1.2.0** — Proper openclaw.json install instructions; dogfooded on own instance
+- **1.1.0** — Added `/batch` commands, dashboard preview, visceral cost hook, ✅ safety format
 - **1.0.0** — Initial release. Batch decision rules, trigger detection, structured response format.
