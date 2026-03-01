@@ -38,9 +38,11 @@ def test_model_config(provider_config, model_id, test_tool_calling=False, test_s
             result["error"] = "API key 为空"
             return result
 
-        # 简单的 API key 格式验证
-        if ":" not in api_key:
-            result["error"] = "API key 格式不正确（应该包含 : 分隔符）"
+        # 更灵活的 API key 格式验证
+        # 有些提供商使用 key_id:secret 格式，有些使用单一 token
+        # 只要 API key 不为空且长度合理，就认为有效
+        if len(api_key) < 10:
+            result["error"] = "API key 格式不正确（长度太短）"
             return result
 
         result["api_key_valid"] = True
