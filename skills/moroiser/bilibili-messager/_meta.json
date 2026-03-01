@@ -3,9 +3,15 @@
   "slug": "bilibili-messager",
   "displayName": "Bilibili Messager",
   "latest": {
-    "version": "1.1.0",
-    "publishedAt": 1772333893882,
-    "commit": "https://github.com/openclaw/skills/commit/27d07bdfddbaf1febbf0305bc218ad953d6b7113"
+    "version": "1.2.0",
+    "publishedAt": 1772346087076,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.1.0",
+      "publishedAt": 1772333893882,
+      "commit": "https://github.com/openclaw/skills/commit/27d07bdfddbaf1febbf0305bc218ad953d6b7113"
+    }
+  ]
 }
