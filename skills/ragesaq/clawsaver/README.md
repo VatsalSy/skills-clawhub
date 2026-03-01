@@ -81,49 +81,6 @@ Without ClawSaver, those 3 questions would have each re-sent your full workspace
 
 ---
 
-## Optional: See Your Own Savings (analyze.py)
-
-> **Credentials note:** The core batching skill requires **no credentials whatsoever**. The analyzer below is a separate, optional script. It requires an OpenRouter management key — a high-privilege credential. Only run it if you trust the source, have reviewed the script, and understand what it accesses. The script's sole network call is `GET https://openrouter.ai/api/v1/activity`.
-
-ClawSaver includes an optional analyzer script that queries your OpenRouter usage and estimates what batching would save:
-
-```bash
-# Review the script first:
-cat ~/.openclaw/workspace/skills/clawsaver/analyze.py
-
-# Then run with your management key:
-export OPENROUTER_MANAGEMENT_KEY=sk-or-v1-...
-python3 ~/.openclaw/workspace/skills/clawsaver/analyze.py
-```
-
-Options:
-- `--days 30` — analyze a longer window (default: 7)
-- `--batch-rate 0.40` — tune what % of your requests you estimate are batchable (default: 0.25)
-- `--batch-ratio 3` — avg requests collapsed per batch (default: 3)
-
-Example output:
-```
-╭────────────────────────────────────────────────────╮
-│            💸 ClawSaver — Session Analysis          │
-├────────────────────────────────────────────────────┤
-│  Period                               Last 7 days  │
-│  Requests                                   1,240  │
-│  Avg context/request                      48,300 tok  │
-│  Input/output ratio                           180x  │
-├────────────────────────────────────────────────────┤
-│         Batching estimate (25% of reqs, 3→1)       │
-│  Requests avoided                             207  │
-│  Cost saved                                 $4.20  │
-│  Request reduction                             17%  │
-╰────────────────────────────────────────────────────╯
-```
-
-> Requires an OpenRouter **management key** (not a standard API key). Get one at openrouter.ai → Settings → API Keys.
-
-> **Note:** The analyzer works against your whole OpenRouter account — daily aggregates by model. It can't scope to a single session or conversation. For per-session breakdown you'd need dedicated session logging (not currently part of ClawSaver).
-
----
-
 ## Why Context Overhead Dominates Costs
 
 Every OpenClaw session re-sends workspace files with each request — SOUL.md, MEMORY.md, AGENTS.md, conversation history. This context grows over time and gets re-sent on every single turn, whether or not it's relevant to your question.
@@ -222,7 +179,8 @@ ClawSaver is now active every session automatically.
 
 ## Version History
 
-- **1.3.3** — Declared `OPENROUTER_MANAGEMENT_KEY` in skill metadata (optional env); analyzer section clearly marked optional with credentials callout; addresses ClawHub security scanner findings
+- **1.4.0** — Removed analyze.py; pure behavior-change skill, zero credentials, zero scripts
+- **1.3.3** — Declared `OPENROUTER_MANAGEMENT_KEY` in skill metadata (optional env); analyzer marked optional
 - **1.3.0** — Dual registration in `skills.entries` + `agents.list`; updated install docs
 - **1.2.0** — Added `openclaw.json` installation instructions; dogfooded on own instance
 - **1.1.0** — Added `/batch` commands, dashboard preview, visceral cost hook, ✅ safety format

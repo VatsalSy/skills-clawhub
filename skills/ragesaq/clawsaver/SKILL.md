@@ -1,9 +1,9 @@
 ---
 name: clawsaver
-version: 1.3.3
-description: "Behavior-change skill that trains your agent to batch related asks into fewer responses. No credentials required for core batching. Optionally includes analyze.py (requires OPENROUTER_MANAGEMENT_KEY) to measure your own usage and estimate savings."
+version: 1.4.0
+description: "Behavior-change skill that trains your agent to batch related asks into fewer responses. No credentials required. Pure instruction-based — no scripts, no network calls."
 metadata:
-  {"openclaw":{"emoji":"💸","os":["darwin","linux","win32"],"env":{"OPENROUTER_MANAGEMENT_KEY":{"required":false,"description":"OpenRouter management key — only needed to run the optional analyze.py script. The core batching skill works without any credentials."}}}}
+  {"openclaw":{"emoji":"💸","os":["darwin","linux","win32"]}}
 ---
 
 # ClawSaver v1.1
@@ -122,9 +122,10 @@ The savings footer is optional — include when it adds value, skip in high-freq
 
 ## Version History
 
-- **1.3.3** — Declared `OPENROUTER_MANAGEMENT_KEY` as optional env in metadata; analyzer clearly optional; addresses ClawHub security scanner findings
+- **1.4.0** — Removed analyze.py; ClawSaver is now pure behavior-change skill with zero credentials/scripts
+- **1.3.3** — Declared `OPENROUTER_MANAGEMENT_KEY` as optional env; addressed ClawHub security scanner
 - **1.3.1** — Honest scope language: behavior-change skill, not active interceptor
-- **1.3.0** — Dual registration: `skills.entries` (global) + `agents.list` (per-agent); full install docs
+- **1.3.0** — Dual registration: `skills.entries` + `agents.list`; full install docs
 - **1.2.0** — Proper openclaw.json install instructions; dogfooded on own instance
-- **1.1.0** — Added `/batch` commands, dashboard preview, visceral cost hook, ✅ safety format
-- **1.0.0** — Initial release. Batch decision rules, trigger detection, structured response format.
+- **1.1.0** — Added `/batch` commands, dashboard preview, cost hook, ✅ safety format
+- **1.0.0** — Initial release

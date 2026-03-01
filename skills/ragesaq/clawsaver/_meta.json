@@ -3,11 +3,16 @@
   "slug": "clawsaver",
   "displayName": "ClawSaver",
   "latest": {
-    "version": "1.3.3",
-    "publishedAt": 1772330474942,
-    "commit": "https://github.com/openclaw/skills/commit/a1e38bc5809a598b8d14f063cf7b1a6bb776b271"
+    "version": "1.4.0",
+    "publishedAt": 1772330654645,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.3.3",
+      "publishedAt": 1772330474942,
+      "commit": "https://github.com/openclaw/skills/commit/a1e38bc5809a598b8d14f063cf7b1a6bb776b271"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1772250813048,
