@@ -7,16 +7,34 @@ description: >-
   PII redaction, watermarking, digital signatures, form fill, merge/split/reorder pages, and API usage
   checks. Prefers MCP server mode, with direct API/curl fallback. Activates on keywords: PDF, document,
   convert, extract, OCR, redact, watermark, sign, merge, split, compress, form fill, document processing, MCP.
+homepage: https://www.nutrient.io/api/
+repository: https://github.com/PSPDFKit-labs/nutrient-agent-skill
 license: Apache-2.0
 compatibility: >-
   Requires Node.js 18+ and an internet connection. Works with Claude Code, Codex CLI, Gemini CLI,
   OpenCode, Cursor, Windsurf, GitHub Copilot, Amp, or any Agent Skills-compatible product.
   Alternatively, use curl for direct API access without Node.js.
 metadata:
-  author: nutrient-sdk
-  version: "1.0"
-  homepage: "https://www.nutrient.io/api/"
-  repository: "https://github.com/PSPDFKit-labs/nutrient-agent-skill"
+  {
+    "openclaw":
+      {
+        "emoji": "📄",
+        "requires":
+          {
+            "anyBins": ["npx", "curl"],
+            "env": ["NUTRIENT_API_KEY", "NUTRIENT_DWS_API_KEY"],
+          },
+        "install":
+          [
+            {
+              "id": "node",
+              "kind": "node",
+              "package": "@nutrient-sdk/dws-mcp-server",
+              "label": "Install Nutrient DWS MCP Server (optional)",
+            },
+          ],
+      },
+  }
 ---
 
 # Nutrient Document Processing (Universal Agent Skill)
@@ -59,6 +77,15 @@ export NUTRIENT_API_KEY="your_api_key_here"
 ```
 
 All requests go to `https://api.nutrient.io/build` as multipart POST with an `instructions` JSON field.
+
+
+## Safety Boundaries
+
+- This skill sends documents to the Nutrient DWS API (`api.nutrient.io`) for processing. Documents may contain sensitive data — ensure your Nutrient account's data handling policies are acceptable.
+- It does NOT access local files beyond those explicitly passed for processing.
+- It does NOT store API keys or credentials beyond the current session.
+- MCP server mode (`npx @nutrient-sdk/dws-mcp-server`) downloads the official Nutrient MCP server package from npm at runtime.
+- All API calls require an explicit API key — no anonymous access is possible.
 
 ## Operations
 

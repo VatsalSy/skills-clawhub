@@ -3,9 +3,15 @@
   "slug": "nutrient-document-processing-universal",
   "displayName": "Nutrient Document Processing (Universal Agent Skill)",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1772212162740,
-    "commit": "https://github.com/openclaw/skills/commit/74742008215794915e0f5ee1d86d5fded0f1a05b"
+    "version": "1.1.1",
+    "publishedAt": 1772257587651,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1772212162740,
+      "commit": "https://github.com/openclaw/skills/commit/74742008215794915e0f5ee1d86d5fded0f1a05b"
+    }
+  ]
 }
