@@ -4,6 +4,7 @@ veille.py - CLI principal du skill RSS veille OpenClaw.
 
 Commandes :
   fetch [--hours N] [--filter-seen] [--filter-topic] [--sources FILE]
+  score [--dry-run]
   seen-stats
   topic-stats
   mark-seen URL [URL...]
@@ -57,6 +58,14 @@ DEFAULT_CONFIG = {
     "topic_ttl_days": 5,
     "topic_similarity_threshold": 0.40,
     "sources": {},
+    "llm": {
+        "enabled": False,
+        "base_url": "https://api.openai.com/v1",
+        "api_key_file": "~/.openclaw/secrets/openai_api_key",
+        "model": "gpt-4o-mini",
+        "top_n": 10,
+        "ghost_threshold": 5,
+    },
 }
 
 # ---- Config loading ---------------------------------------------------------
@@ -110,6 +119,25 @@ _NS = {
 }
 
 USER_AGENT = "Mozilla/5.0 compatible Jarvis-veille/1.0"
+
+# URL patterns that are known RSS redirect/tracking wrappers
+_RSS_REDIRECT_PATTERNS = (
+    "go.theregister.com/feed/",
+    "feedproxy.google.com/",
+    "feeds.feedburner.com/",
+    "rss.feedsportal.com/",
+)
+
+def _resolve_url(url: str) -> str:
+    """Follow redirects to get the final URL. Used for known RSS tracking wrappers."""
+    if not any(p in url for p in _RSS_REDIRECT_PATTERNS):
+        return url
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            return resp.url
+    except Exception:
+        return url
 
 
 def _text(el, *tags) -> str:
@@ -231,7 +259,7 @@ def _parse_rss(root: ET.Element, source_name: str, hours: int, max_articles: int
             articles.append({
                 "source":       source_name,
                 "title":        title,
-                "url":          link,
+                "url":          _resolve_url(link),
                 "summary":      summary,
                 "published":    pub_dt.strftime("%d/%m %H:%M"),
                 "published_ts": pub_dt.timestamp(),
@@ -301,7 +329,7 @@ def _parse_atom(root: ET.Element, source_name: str, hours: int, max_articles: in
             articles.append({
                 "source":       source_name,
                 "title":        title,
-                "url":          link,
+                "url":          _resolve_url(link),
                 "summary":      summary,
                 "published":    pub_dt.strftime("%d/%m %H:%M"),
                 "published_ts": pub_dt.timestamp(),
@@ -426,6 +454,27 @@ def cmd_send(args, cfg: dict):
         raise VeilleError(f"Dispatch failed: {results['fail']}")
 
 
+def cmd_score(args, cfg: dict):
+    """Score articles with LLM (reads JSON from stdin)."""
+    from scorer import score_articles
+
+    try:
+        data = json.loads(sys.stdin.read())
+    except json.JSONDecodeError as e:
+        raise VeilleError(f"Invalid JSON on stdin: {e}")
+
+    result = score_articles(data, cfg=cfg)
+
+    if args.dry_run:
+        count = len(result.get("articles", []))
+        ghost = len(result.get("ghost_picks", []))
+        scored = result.get("scored", False)
+        print(f"[score] scored={scored}, articles={count}, ghost_picks={ghost}",
+              file=sys.stderr)
+
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+
+
 def cmd_config(_args, cfg: dict):
     """Affiche la config active sans secrets (pas de credentials ici)."""
     print(json.dumps(cfg, indent=2, ensure_ascii=False))
@@ -462,6 +511,10 @@ def main():
     p_send = sub.add_parser("send", help="Dispatch digest JSON (stdin) to configured outputs")
     p_send.add_argument("--profile", default=None, help="Named output profile from config")
 
+    # score
+    p_score = sub.add_parser("score", help="Score articles with LLM (stdin JSON from fetch)")
+    p_score.add_argument("--dry-run", action="store_true", help="Print scored output without sending")
+
     # config
     sub.add_parser("config", help="Show active configuration")
 
@@ -485,6 +538,8 @@ def main():
         cmd_mark_seen(args, cfg)
     elif args.command == "send":
         cmd_send(args, cfg)
+    elif args.command == "score":
+        cmd_score(args, cfg)
     elif args.command == "config":
         cmd_config(args, cfg)
     else:

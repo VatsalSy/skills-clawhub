@@ -1,13 +1,12 @@
 ---
 name: veille
-description: "RSS feed aggregator, deduplication engine, and output dispatcher for OpenClaw agents. Use when: fetching recent articles from configured sources, filtering already-seen URLs, deduplicating by topic, dispatching digests to Telegram/email/Nextcloud/file. Enhanced by mail-client (email output) and nextcloud-files (cloud storage). NOT for: LLM scoring (handled by the agent)."
+description: "RSS feed aggregator, deduplication engine, LLM scoring, and output dispatcher for OpenClaw agents. Use when: fetching recent articles from configured sources, filtering already-seen URLs, deduplicating by topic, scoring with LLM, dispatching digests to Telegram/email/Nextcloud/file. Enhanced by mail-client (email output) and nextcloud-files (cloud storage)."
 homepage: https://github.com/Rwx-G/openclaw-skill-veille
 compatibility: Python 3.9+ - no external dependencies (stdlib only) - network access to RSS feeds
 metadata:
   {
     "openclaw": {
       "emoji": "📡",
-      "requires": { "env": [] },
       "suggests": ["mail-client", "nextcloud-files"]
     }
   }
@@ -48,8 +47,10 @@ python3 scripts/setup.py
 # 2. Validate
 python3 scripts/init.py
 
-# 3. Fetch
-python3 scripts/veille.py fetch --hours 24 --filter-seen --filter-topic
+# 3. Fetch + Score + Send (full pipeline)
+python3 scripts/veille.py fetch --filter-seen --filter-topic \
+  | python3 scripts/veille.py score \
+  | python3 scripts/veille.py send
 ```
 
 ---
@@ -132,6 +133,28 @@ python3 scripts/setup.py --cleanup
 
 ---
 
+## Security model
+
+### Credential isolation
+- API keys are read from dedicated files (default `~/.openclaw/secrets/`), never from config.json. The scorer warns at runtime if a key file has overly permissive filesystem permissions.
+- SMTP credentials (fallback only) are stored in the output config block — use the mail-client skill delegation to avoid storing SMTP passwords.
+
+### Subprocess boundaries
+- Dispatch delegates to other OpenClaw skills via `subprocess.run()` (never `shell=True`). Script paths are validated to reside under `~/.openclaw/workspace/skills/` before execution, preventing path traversal.
+- No credentials are passed as subprocess arguments — each skill manages its own authentication.
+
+### File output safety
+- The `file` output type validates the target path before writing: only `~/.openclaw/` is allowed by default. Additional directories can be whitelisted via `config.security.allowed_output_dirs`. Sensitive paths (`.ssh`, `.gnupg`, `/etc/`, `.bashrc`, etc.) are always blocked regardless of allowlist.
+- Written content is checked for suspicious patterns (shell shebangs, SSH keys, PGP blocks, code injection) and size-limited to 1 MB.
+
+### Cross-config reads
+- The only cross-config file read is `~/.openclaw/openclaw.json` for the Telegram bot token, and only when `telegram_bot` output is enabled without an explicit `bot_token`. This read is logged to stderr. Set `bot_token` in the output config to eliminate this read entirely.
+
+### Autonomous dispatch
+- When scheduled (cron), the skill can send messages/files to configured outputs without user interaction. All dispatch actions are logged to stderr with an audit summary. Use `enabled: false` on any output to disable it without removing its config.
+
+---
+
 ## CLI reference
 
 ### `fetch`
@@ -182,6 +205,25 @@ python3 veille.py mark-seen URL [URL ...]
 
 Marks one or more URLs as already seen (prevents them from appearing in future fetches with `--filter-seen`).
 
+### `score`
+
+```
+python3 veille.py score [--dry-run]
+```
+
+Reads a digest JSON from stdin (output of `fetch`) and scores articles using an OpenAI-compatible LLM.
+Returns enriched JSON with `scored`, `ghost_picks`, and per-article `score`/`reason` fields.
+
+Options:
+- `--dry-run` : print summary on stderr without calling the LLM API
+
+When `llm.enabled` is `false` (default), articles pass through unchanged (`"scored": false`).
+
+Pipeline usage:
+```bash
+python3 veille.py fetch --filter-seen --filter-topic | python3 veille.py score | python3 veille.py send
+```
+
 ### `send`
 
 ```
@@ -194,7 +236,8 @@ Accepts both raw fetch output (`articles` key) and LLM-processed digests (`categ
 Output types: `telegram_bot`, `mail-client`, `nextcloud`, `file`.
 - `telegram_bot`: bot token auto-read from OpenClaw config - no extra setup if Telegram already configured.
 - `mail-client`: delegates to mail-client skill if installed, falls back to raw SMTP config.
-- `nextcloud`: delegates to nextcloud-files skill if installed.
+- `nextcloud`: delegates to nextcloud-files skill if installed (append mode by default with date separator).
+- `file`: writes digest to a local file. Path must be under `~/.openclaw/` (default) or a directory listed in `config.security.allowed_output_dirs`. Sensitive paths and suspicious content are blocked (see Security model).
 
 Configure outputs interactively:
 ```bash
@@ -208,6 +251,80 @@ python3 veille.py config
 ```
 
 Prints the active configuration (no secrets).
+
+---
+
+## LLM scoring configuration
+
+The `llm` key in `config.json` controls the optional LLM-based article scoring:
+
+```json
+{
+  "llm": {
+    "enabled": false,
+    "base_url": "https://api.openai.com/v1",
+    "api_key_file": "~/.openclaw/secrets/openai_api_key",
+    "model": "gpt-4o-mini",
+    "top_n": 10,
+    "ghost_threshold": 5
+  }
+}
+```
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `enabled` | `false` | Enable LLM scoring (requires API key) |
+| `base_url` | `https://api.openai.com/v1` | OpenAI-compatible API endpoint |
+| `api_key_file` | `~/.openclaw/secrets/openai_api_key` | Path to file containing the API key |
+| `model` | `gpt-4o-mini` | Model to use for scoring |
+| `top_n` | `10` | Max articles to send to LLM per batch |
+| `ghost_threshold` | `5` | Score threshold for `ghost_picks` (blog-worthy articles) |
+
+Scoring rules:
+- Only the first `top_n` articles are sent to the LLM. Articles beyond `top_n`
+  are excluded from the digest entirely. `fetch` returns articles sorted by date
+  desc, so `top_n` selects the most recent ones. Increase `top_n` to evaluate
+  more articles per run (higher token cost).
+- Score >= `ghost_threshold` : added to `ghost_picks` list
+- Score >= 3 : kept in `articles` list
+- Score <= 2 : excluded from output
+- Articles are sorted by score (descending)
+
+When disabled, the `score` subcommand passes data through unchanged.
+
+## Nextcloud output mode
+
+The nextcloud output now defaults to **append mode** with a date separator. Each dispatch adds content below a `## YYYY-MM-DD HH:MM` header, preserving previous entries.
+
+Set `"mode": "overwrite"` in the output config to restore the old behavior:
+
+```json
+{ "type": "nextcloud", "path": "/Veille/digest.md", "mode": "overwrite" }
+```
+
+## File output configuration
+
+The `file` output writes digests to the local filesystem. By default, only paths under `~/.openclaw/` are allowed. To authorize additional directories, use `config.security.allowed_output_dirs`:
+
+```json
+{
+  "security": {
+    "allowed_output_dirs": [
+      "~/Documents/veille",
+      "/srv/digests"
+    ]
+  }
+}
+```
+
+**Blocked paths** (always rejected, even if inside an allowed directory):
+`.ssh`, `.gnupg`, `.config/systemd`, `crontab`, `/etc/`, `.bashrc`, `.profile`, `.bash_profile`, `.zshrc`, `.env`
+
+**Content validation** — written content is rejected if it:
+- Exceeds 1 MB
+- Contains shell shebangs (`#!/`), SSH keys, PGP blocks, or code injection patterns (`eval(`, `exec(`, `__import__(`, `import os`, `import subprocess`)
+
+All blocked attempts are logged to stderr with the reason.
 
 ---
 
@@ -238,10 +355,18 @@ Please summarize the 5 most important stories, focusing on security and tech.
 
 ```
 1. Call veille fetch --filter-seen --filter-topic
-2. If count > 0: pass wrapped_listing to LLM for analysis
-3. LLM produces digest summary
-4. Optionally: send digest via mail-client skill
-5. Optionally: save to Nextcloud via nextcloud-files skill
+2. Pipe through veille score (LLM scoring, if enabled)
+3. If count > 0: pass wrapped_listing to LLM for analysis
+4. LLM produces digest summary
+5. Pipe through veille send (dispatches to configured outputs)
+```
+
+### Pipeline (CLI)
+
+```bash
+python3 scripts/veille.py fetch --filter-seen --filter-topic \
+  | python3 scripts/veille.py score \
+  | python3 scripts/veille.py send
 ```
 
 ### Filtering by keyword (post-fetch)
@@ -293,3 +418,4 @@ Common issues:
 - **XML parse error on a feed**: some feeds use non-standard XML; the skill skips broken items silently
 - **All articles filtered as seen**: run `seen-stats` to check store size; reset with `rm seen_urls.json`
 - **Import error**: ensure you run `veille.py` from its directory or via full path
+- **File output blocked**: path is outside `~/.openclaw/` — add the target directory to `config.security.allowed_output_dirs` (see File output configuration)

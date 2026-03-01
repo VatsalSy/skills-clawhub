@@ -1,11 +1,17 @@
 {
   "owner": "romain-grosos",
   "slug": "veille",
-  "displayName": "Veille",
+  "displayName": "Openclaw Skill Veille",
   "latest": {
-    "version": "1.1.2",
-    "publishedAt": 1772055067627,
-    "commit": "https://github.com/openclaw/skills/commit/14e3d318505db3ef046c75241453e8d2cdd1fc47"
+    "version": "1.2.4",
+    "publishedAt": 1772285800936,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.1.2",
+      "publishedAt": 1772055067627,
+      "commit": "https://github.com/openclaw/skills/commit/14e3d318505db3ef046c75241453e8d2cdd1fc47"
+    }
+  ]
 }
