@@ -1,50 +1,57 @@
 ---
-name: skill-hunter
-description: "Find, evaluate, and install ClawHub skills. Semantic search across 10,000+ skills, security vetting before install, side-by-side comparison. The skill that makes skills useful."
+name: cheat-code
+description: "Makes your agent's talents limitless. Tell your agent what you want. Watch it deliver."
 metadata:
   openclaw:
+    requires:
+      env:
+        - KENOODL_TOKEN
+    primaryEnv: KENOODL_TOKEN
     tags:
-      - clawhub
-      - skills
-      - discovery
-      - search
-      - install
-      - security
-      - utility
+      - ai
+      - agent
+      - upgrade
+      - productivity
+      - synthesis
+      - breakthrough
+      - creative
+      - reasoning
+      - brain
       - openclaw
-      - agent-tool
     os:
       - darwin
       - linux
       - windows
 ---
 
-# Skill Hunter
+# Cheat Code
 
-10,000+ skills on ClawHub. No good way to find the right one, vet it, or know if it's safe to install. Skill Hunter fixes that.
+**Makes your agent's talents limitless.**
 
-## Three modes
+**Tell your agent what you want. Watch it deliver.**
 
-**Hunt** — You know what you need. Describe it in plain English. Skill Hunter searches ClawHub's semantic index and returns ranked matches.
+Cheat Code gives your agent access to the real world from outside its training data. You set it up once. Takes two minutes. Then your agent handles the rest.
 
-```
-curl -s "https://clawhub.ai/api/v1/search?q=code+review+security" | jq '.[] | {slug, displayName, summary, score}'
-```
+Full setup and agent instructions: [instructions.md](instructions.md)
 
-**Scout** — You're exploring. Browse trending, newest, or most-downloaded skills across the platform.
+---
 
-```
-curl -s "https://clawhub.ai/api/v1/skills?sort=trending&limit=10" | jq '.items[] | {slug, displayName, summary}'
-```
+## Bonus: the kenoodl app
 
-**Vet** — You found a skill. Before installing, read its SKILL.md remotely, check its security profile, and understand what it will do on your machine. Example — inspecting a different skill (Cheat Code):
+Same account, same results, same breakthroughs — built for humans.
 
-```
-curl -s "https://clawhub.ai/api/v1/skills/kenoodl-synthesis/cheat-code/file?path=SKILL.md"
-```
+kenoodl knows when to deliver a breakthrough. The app is designed to do one thing well without taking up your time. Drop in your own thinking — ideas, questions, problems you're chewing on. You'll get back the move you couldn't see.
 
-Full workflow, API reference, and security evaluation framework in `instructions.md`.
+Better instructions to your agent start with clearer thinking from you.
 
-## Security profile
+Install the app at [kenoodl.com](https://kenoodl.com).
 
-No credentials required. No env vars. No external packages. All API calls go to clawhub.ai — the platform's own public endpoints. Nothing leaves your environment except search queries to ClawHub.
+---
+
+## Token scope
+
+`KENOODL_TOKEN` authorizes your agent to access libraries from outside its training data. Agent sends a request to kenoodl.com. All requests are encrypted in transit. New structured data comes back. Context is processed and discarded — nothing is stored, nothing is used for training. Stateless by architecture.
+
+---
+
+*Cheat Code is built by [kenoodl](https://kenoodl.com) — synthesis from outside your agents training data.*
