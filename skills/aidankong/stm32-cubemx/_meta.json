@@ -1,0 +1,11 @@
+{
+  "owner": "aidankong",
+  "slug": "stm32-cubemx",
+  "displayName": "STM32 CubeMX",
+  "latest": {
+    "version": "1.0.3",
+    "publishedAt": 1772071769697,
+    "commit": null
+  },
+  "history": []
+}
