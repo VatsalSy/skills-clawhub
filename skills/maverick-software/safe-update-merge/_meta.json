@@ -1,0 +1,11 @@
+{
+  "owner": "maverick-software",
+  "slug": "safe-update-merge",
+  "displayName": "Safe Update/Merge Skill",
+  "latest": {
+    "version": "1.1.0",
+    "publishedAt": 1772355326237,
+    "commit": null
+  },
+  "history": []
+}
