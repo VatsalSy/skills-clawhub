@@ -1,0 +1,11 @@
+{
+  "owner": "bisbeebucky",
+  "slug": "hledger",
+  "displayName": "Hledger",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772300230082,
+    "commit": null
+  },
+  "history": []
+}
