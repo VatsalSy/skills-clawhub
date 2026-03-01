@@ -1,14 +1,12 @@
 ---
 name: ipeaky
-version: "3.0.0"
 description: Secure API key management for OpenClaw. Store, list, test, and delete API keys without exposing them in chat history. Keys are stored directly in openclaw.json via gateway config.patch — fully native integration. Use when a user needs to provide, manage, or test API keys (e.g., OpenAI, ElevenLabs, Anthropic, Brave, or any service). Triggers on phrases like "add API key", "store my key", "manage keys", "test my key", "set up API key", or when a skill requires an API key that isn't configured.
 metadata:
   openclaw:
-    version: "3.0.0"
     platforms: [macos]
     requires:
-      bins: [osascript, python3]
-    notes: "Secure input popup requires macOS (osascript). python3 required for zero-exposure config write."
+      bins: [osascript]
+    notes: "Secure input popup requires macOS (osascript). Linux/Windows users can pipe keys via stdin directly."
 ---
 
 # ipeaky — Secure API Key Management
@@ -34,6 +32,40 @@ This means every skill that declares `primaryEnv` automatically picks up the key
 `openai-image-gen`, etc. ElevenLabs key is used by `sag` and `talk`. When storing, set ALL
 relevant config paths for that key.
 
+## Storing Keys (v4 — Single Paste, Zero Exposure) ⭐ PREFERRED
+
+One popup. Paste everything. Regex parses. One save. One restart. Keys never touch chat or network.
+
+```bash
+bash {baseDir}/scripts/store_key_v4.sh "<SERVICE_NAME>" "<config_prefix>"
+```
+
+### Examples:
+```bash
+# X API keys (consumer key + secret + bearer in one paste)
+bash {baseDir}/scripts/store_key_v4.sh "X API" "skills.entries.x-twitter.env"
+
+# Any service — user pastes in any format:
+#   consumer key: abc123
+#   secret: xyz789
+#   bearer token: AAAA...
+```
+
+The script:
+1. Shows ONE macOS popup — user pastes all keys in any format
+2. Local Python regex parses key-value pairs (no AI, no network)
+3. Confirmation popup: "Found 3 keys: X, Y, Z — Store all?"
+4. ONE `openclaw config set` batch → ONE gateway restart
+5. Keys never appear in chat, logs, or shell history
+
+### Supported input formats:
+- `key_name: value` or `key_name = value`
+- `KEY_NAME=value`
+- Bare tokens on separate lines (auto-labeled in order)
+- Mixed formats in one paste
+
+---
+
 ## Storing a Key (v3 — Zero Exposure)
 
 **Use the v3 script.** The agent NEVER sees the key. The script handles popup + storage directly.
@@ -56,7 +88,7 @@ bash {baseDir}/scripts/store_key_v3.sh "ElevenLabs" "skills.entries.sag.apiKey" 
 
 The script:
 1. Shows macOS popup (hidden input)
-2. Writes key directly to `openclaw.json` via Python (never in process argv — no `ps aux` exposure)
+2. Calls `openclaw config set` for each path
 3. Restarts gateway
 4. Returns ONLY "OK" or "ERROR" — key never appears in agent output or chat history
 
@@ -108,6 +140,27 @@ Source the key from the config (via gateway config.get), test it, report result.
 ## Deleting a Key
 
 Use `gateway config.patch` to set the key value to an empty string or remove the entry.
+
+## 💎 Paid Tier (Coming Soon)
+
+ipeaky core is free forever. A paid tier is in development with premium features:
+
+- **Team key sharing** — Role-based access across team members
+- **Key rotation reminders** — Automated expiry alerts
+- **Usage analytics** — Track key usage across skills
+- **Breach monitoring** — Leak database notifications
+- **Cross-platform** — Linux & Windows secure input
+- **Backup & sync** — Encrypted cloud backup
+
+See `paid_tier/README-paid.md` for details. Billing is powered by Stripe.
+
+```bash
+# Set up Stripe integration (uses ipeaky to store its own key!)
+bash {baseDir}/paid_tier/stripe-setup.sh
+
+# Create a checkout session
+bash {baseDir}/paid_tier/stripe-checkout.sh --price price_XXXXX --mode subscription
+```
 
 ## Security Guarantees
 

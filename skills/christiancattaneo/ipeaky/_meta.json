@@ -1,13 +1,18 @@
 {
   "owner": "christiancattaneo",
   "slug": "ipeaky",
-  "displayName": "Ipeaky",
+  "displayName": "ipeaky",
   "latest": {
-    "version": "3.1.0",
-    "publishedAt": 1771905740455,
-    "commit": "https://github.com/openclaw/skills/commit/2d65827723ed96fd0110753c86732fab71b6d0a7"
+    "version": "3.2.0",
+    "publishedAt": 1772392387654,
+    "commit": null
   },
   "history": [
+    {
+      "version": "3.1.0",
+      "publishedAt": 1771905740455,
+      "commit": "https://github.com/openclaw/skills/commit/2d65827723ed96fd0110753c86732fab71b6d0a7"
+    },
     {
       "version": "2.2.0",
       "publishedAt": 1770964419504,

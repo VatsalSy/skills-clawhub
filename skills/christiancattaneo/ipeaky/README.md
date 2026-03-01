@@ -73,6 +73,12 @@ ipeaky v3 stores keys in **OpenClaw's native config** (`openclaw.json`) via `gat
 - **Storage is local** — `openclaw.json` on disk, no external transmission
 - **Tests are networked** — validation calls provider APIs (opt-in, read-only endpoints)
 
+## 💎 Paid Tier (Coming Soon)
+
+ipeaky core is free forever. A paid tier is in development with premium features for power users and teams — key rotation reminders, team sharing, usage analytics, breach monitoring, and cross-platform support.
+
+See [`paid_tier/README-paid.md`](paid_tier/README-paid.md) for the full roadmap and setup.
+
 ## Testing
 
 Run the full test suite (32 tests — static analysis, security audit, live key validation):

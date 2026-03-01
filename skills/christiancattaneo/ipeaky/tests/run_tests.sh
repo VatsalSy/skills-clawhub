@@ -3,7 +3,7 @@
 # Usage: bash tests/run_tests.sh
 
 set -uo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 
 PASS=0
 FAIL=0
