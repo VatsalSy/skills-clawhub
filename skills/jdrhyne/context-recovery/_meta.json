@@ -3,11 +3,16 @@
   "slug": "context-recovery",
   "displayName": "Context Recovery",
   "latest": {
-    "version": "1.1.0",
-    "publishedAt": 1772253019639,
-    "commit": "https://github.com/openclaw/skills/commit/81f21206fd87e437c678ee869837d8662233d173"
+    "version": "1.2.2",
+    "publishedAt": 1772258477063,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.1.0",
+      "publishedAt": 1772253019639,
+      "commit": "https://github.com/openclaw/skills/commit/81f21206fd87e437c678ee869837d8662233d173"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1770352565944,
