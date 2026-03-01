@@ -23,11 +23,84 @@ Crawl From X 是一个专注于 X (Twitter) 帖子抓取的自动化工具，可
 
 ### 前置要求
 
-- [OpenClaw](https://github.com/openclaw/openclaw) 已安装并运行
-- 已安装浏览器扩展（Chrome/Edge）
-- X 账号已登录
+⚠️ **重要**：此技能需要 OpenClaw 的 **Browser Relay（浏览器中转）功能**来抓取用户帖子。
 
-### 安装
+#### 必要的依赖
+
+1. **安装 OpenClaw**
+   ```bash
+   # 访问官网下载安装
+   open https://github.com/openclaw/openclaw
+   ```
+
+2. **安装浏览器扩展**
+   
+   **Chrome/Edge 用户：**
+   - 打开 OpenClaw 设置
+   - 进入 "Browser Relay" 部分
+   - 按照提示安装浏览器扩展
+   - 完成后，浏览器扩展会显示 "Relay On" 或绿色图标
+
+   **未安装浏览器扩展会导致：**
+   - ❌ 无法抓取用户主页
+   - ❌ 无法提取帖子 URL
+   - ❌ 程序报错
+
+3. **启动 Browser Relay 服务**
+   ```bash
+   # 确保 Browser Relay 已启动
+   openclaw browser status
+   
+   # 如果未启动，使用以下命令启动
+   openclaw browser start
+   ```
+
+4. **X 账号已登录**
+   - 在安装了 Browser Relay 扩展的浏览器中登录 X（Twitter）
+   - 技能会使用已登录的会话抓取内容
+
+#### 验证安装
+
+运行以下命令验证所有依赖已就绪：
+
+```bash
+# 1. 检查 OpenClaw 状态
+openclaw status
+
+# 2. 检查 Browser Relay 状态
+openclaw browser status
+
+# 3. 如果显示 "browser: enabled"，说明一切就绪
+```
+
+**如果遇到问题，请访问：**
+- [OpenClaw 文档 - Browser Relay](https://docs.openclaw.ai/guide/browser-relay)
+- [OpenClaw GitHub Issues](https://github.com/openclaw/openclaw/issues)
+
+### 安装技能
+
+**通过 ClawHub 安装（推荐）：**
+```bash
+npx clawhub@latest install crawl-from-x
+```
+
+安装后，文件会位于：
+- `$CLAWD/skills/crawl-from-x/scripts/craw_hot.py` - 主脚本
+- `$CLAWD/skills/crawl-from-x/users.txt` - 用户列表（模板）
+- `$CLAWD/skills/crawl-from-x/results/` - 抓取结果
+
+**或手动克隆：**
+```bash
+git clone https://github.com/flyingtimes/crawl-from-x.git
+cd crawl-from-x
+```
+
+安装依赖（如果需要）：
+```bash
+pip install -r requirements.txt
+```
+
+---
 
 **通过 ClawHub 安装（推荐）：**
 ```bash

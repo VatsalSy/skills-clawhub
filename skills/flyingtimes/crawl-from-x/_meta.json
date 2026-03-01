@@ -3,11 +3,16 @@
   "slug": "crawl-from-x",
   "displayName": "Crawl From X",
   "latest": {
-    "version": "2.4.2",
-    "publishedAt": 1772353792486,
-    "commit": "https://github.com/openclaw/skills/commit/d5fb9eadec9d34585de06e3b20760a21a93d8267"
+    "version": "2.6.0",
+    "publishedAt": 1772365669922,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.4.2",
+      "publishedAt": 1772353792486,
+      "commit": "https://github.com/openclaw/skills/commit/d5fb9eadec9d34585de06e3b20760a21a93d8267"
+    },
     {
       "version": "2.4.0",
       "publishedAt": 1772353328279,

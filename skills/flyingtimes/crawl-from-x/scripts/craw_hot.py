@@ -11,7 +11,7 @@ Crawl Hot - X/Twitter 帖子抓取工具（重构版）
 """
 
 from dataclasses import dataclass
-from typing import Optional, List, Dict, Any, Callable
+from typing import Optional, List, Dict, Any, Callable, Tuple
 from datetime import datetime
 from pathlib import Path
 import json
@@ -23,7 +23,9 @@ import subprocess
 import requests
 import re
 import threading
+import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from urllib.parse import urlparse
 
 
 # ============================================================================
@@ -68,6 +70,7 @@ class Config:
         self.log_file = self.base_dir / "craw_hot.log"
         self.users_file = self.base_dir / "users.txt"
         self.results_dir = self.base_dir / "results"
+        self.images_dir = self.results_dir / "images"
         self.request_headers = {
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
         }
@@ -1124,6 +1127,54 @@ class CrawlHot:
         self.logger.error(f"All attempts failed for @{username}")
         return []
 
+    def crawl_single_user_full(self, username: str) -> Dict[str, List[str]]:
+        """抓取单个用户（完整流程：抓取 + 生成 Markdown + 下载媒体）"""
+        timestamp = datetime.now()
+        results = {}
+
+        self.logger.info(f"Starting crawl for single user: @{username}")
+
+        # 抓取 URL
+        urls = self.crawl_single_user(username)
+        results[username] = urls
+
+        if not urls:
+            self.logger.info(f"@{username}: no posts found today")
+            return results
+
+        # 生成 Markdown 文件（使用与全部用户相同的格式）
+        self.logger.info(f"Generating Markdown for {len(urls)} posts...")
+        md_filepath = self.result_manager.save_markdown(
+            results,
+            timestamp,
+            self.api_client,
+            self.formatter
+        )
+
+        # 下载媒体并替换 URL
+        self.logger.info("Starting media download and URL replacement...")
+        try:
+            from media_downloader import MediaDownloader
+            downloader = MediaDownloader(md_filepath, self.config.images_dir, self.logger)
+            downloaded = downloader.process_markdown()
+            if downloaded > 0:
+                self.logger.info(f"✓ Successfully downloaded {downloaded} media files")
+        except Exception as e:
+            self.logger.error(f"Media download failed: {str(e)}")
+            import traceback
+            self.logger.debug(traceback.format_exc())
+
+        # 打印结果摘要
+        print(f"\n@{username} found {len(urls)} posts:")
+        for url in urls:
+            print(f"  {url}")
+        print(f"\nResults saved to:")
+        print(f"  - {md_filepath}")
+        if self.config.images_dir.exists():
+            print(f"  - Media files: {self.config.images_dir}")
+
+        return results
+
     def crawl_all_users(self) -> Dict[str, List[str]]:
         """抓取所有用户（并发模式）"""
         users = self.user_manager.load()
@@ -1176,12 +1227,33 @@ class CrawlHot:
         self.result_manager.finalize_txt(txt_filepath, total_posts)
 
         # 生成 Markdown 文件
-        self.result_manager.save_markdown(
+        md_filepath = self.result_manager.save_markdown(
             all_results,
             timestamp,
             self.api_client,
             self.formatter
         )
+
+        # 下载媒体并替换 URL（新增功能）
+        self.logger.info("Starting media download and URL replacement...")
+        try:
+            # 导入媒体下载器
+            import sys
+            script_dir = Path(__file__).parent / 'scripts'
+            if script_dir.exists():
+                sys.path.insert(0, str(script_dir))
+            else:
+                sys.path.insert(0, str(Path(__file__).parent))
+            
+            from media_downloader import MediaDownloader
+            downloader = MediaDownloader(md_filepath, self.config.images_dir, self.logger)
+            downloaded = downloader.process_markdown()
+            if downloaded > 0:
+                self.logger.info(f"✓ Successfully downloaded {downloaded} media files")
+        except Exception as e:
+            self.logger.error(f"Media download failed: {str(e)}")
+            import traceback
+            self.logger.debug(traceback.format_exc())
 
         self._print_summary(all_results)
         return all_results
@@ -1240,14 +1312,9 @@ def main():
 
         elif command == "crawl":
             if len(sys.argv) >= 3:
+                # 单用户抓取：使用与全部用户相同的策略
                 username = sys.argv[2]
-                urls = crawler.crawl_single_user(username)
-                if urls:
-                    print(f"\n@{username} found {len(urls)} posts:")
-                    for url in urls:
-                        print(f"  {url}")
-                else:
-                    print(f"\n@{username}: no posts found today")
+                results = crawler.crawl_single_user_full(username)
             else:
                 results = crawler.crawl_all_users()
 
