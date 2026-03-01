@@ -3,7 +3,7 @@
 > **No Mac Mini. No local machine. Your agent runs it anywhere.**  
 > Residential IPs from 10+ countries. Bypasses Cloudflare, DataDome, PerimeterX.
 >
-> 🌐 **Product page:** https://humanbrowser.dev  
+> 🌐 **Product page:** https://humanbrowser.cloud  
 > 💬 **Support:** https://t.me/virixlabs
 
 ---
@@ -31,7 +31,7 @@ Human Browser solves this by combining:
 ```js
 const { launchHuman } = require('./scripts/browser-human');
 
-// 🚀 Zero config — auto-fetches trial credentials from humanbrowser.dev
+// 🚀 Zero config — auto-fetches trial credentials from humanbrowser.cloud
 const { browser, page, humanType, humanClick, humanScroll, sleep } = await launchHuman();
 // Output: 🎉 Human Browser trial activated! (~100MB Romania residential IP)
 
@@ -49,7 +49,7 @@ await humanClick(page, 760, 400);
 await browser.close();
 ```
 
-> **Trial exhausted?** Get a paid plan at https://humanbrowser.dev, then set `PROXY_USER` / `PROXY_PASS` in your `.env`.
+> **Trial exhausted?** Get a paid plan at https://humanbrowser.cloud, then set `PROXY_USER` / `PROXY_PASS` in your `.env`.
 
 ---
 
@@ -85,7 +85,7 @@ clawhub install al1enjesus/human-browser
 ## Proxy Providers
 
 ### Option 1: Human Browser Managed (recommended)
-Buy directly at **humanbrowser.dev** — we handle everything, from $13.99/mo.  
+Buy directly at **humanbrowser.cloud** — we handle everything, from $13.99/mo.  
 Supports crypto (USDT/ETH/BTC/SOL) and card. AI agents can auto-purchase.
 
 ### Option 2: Bring Your Own Proxy
@@ -95,9 +95,11 @@ Plug any residential proxy into Human Browser via env vars.
 
 | Provider | Quality | Price | Best for |
 |---|---|---|---|
-| **[Decodo](https://decodo.com)** (ex-Smartproxy) | ⭐⭐⭐⭐⭐ | ~$2.5/GB | Cloudflare, DataDome, all-round |
-| **[IPRoyal](https://iproyal.com)** | ⭐⭐⭐⭐ | $1.75/GB | High volume, budget |
-| **[Bright Data](https://brightdata.com)** | ⭐⭐⭐⭐⭐ | ~$8.4/GB | Enterprise, most IPs |
+| **[Decodo](https://decodo.com)** (ex-Smartproxy) | ⭐⭐⭐⭐⭐ | ~$2.5/GB | Cloudflare, DataDome, all-round. No KYC. |
+| **[Bright Data](https://get.brightdata.com/4ihj1kk8jt0v)** | ⭐⭐⭐⭐⭐ | ~$8.4/GB | Enterprise-grade, 72M+ IPs, 195 countries |
+| **[IPRoyal](https://iproyal.com)** | ⭐⭐⭐⭐ | ~$1.75/GB | High volume, budget, ethically sourced |
+| **[NodeMaven](https://nodemaven.com)** | ⭐⭐⭐⭐ | ~$3.5/GB | High success rate, pay-per-GB, no minimums |
+| **[Oxylabs](https://oxylabs.io)** | ⭐⭐⭐⭐⭐ | ~$8/GB | Business-grade, dedicated support |
 
 ```env
 PROXY_HOST=your-proxy-host
@@ -123,5 +125,5 @@ PROXY_PASS=your-password
 
 ---
 
-→ **Product page + pricing:** https://humanbrowser.dev  
+→ **Product page + pricing:** https://humanbrowser.cloud  
 → **Support & questions:** https://t.me/virixlabs
