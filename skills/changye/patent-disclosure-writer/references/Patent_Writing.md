@@ -190,9 +190,8 @@
 3. 确保所有标签使用中文
 4. 生成markdown格式的图表文档
 5. 同步生成技术示意图，并在专利交底书md文件中相应位置引用
-6. 如果没安装mermaid-cli，用下述步骤安装：
-   - npm install -g @mermaid-js/mermaid-cli
-7. 导出png图表：mmdc -i patent_figures.md -o figures/
+6. 生成 Mermaid 格式的图表文件
+7. 如用户已安装 mermaid-cli，可协助将图表转换为 PNG；否则仅生成 Markdown 格式图表，由用户自行转换
 8. 在专利交底书md文件中相应位置引用
 
 ## 技术要点总结

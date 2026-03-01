@@ -1,12 +1,12 @@
 ---
 name: patent-disclosure-writer
-description: "撰写中文专利交底书/Prepare the Disclosure for a Chinese Patent Application"
+description: "撰写中文专利交底书。Use when: 用户需要撰写专利交底书、技术交底书、专利申请文档。"
 metadata:
   {
     "openclaw":
       {
         "emoji": "📋",
-        "requires": { "bins": [] },
+        "requires": { "bins": ["pandoc", "mmdc"] },
       },
   }
 ---
@@ -84,14 +84,16 @@ metadata:
 
 ### 环境和工具检查阶段
 
-用户确认后，首先确认撰写专利的工具环境是否具备。具体来说，检查：
+用户确认后，确认撰写专利所需的工具环境。本技能依赖以下工具（需用户自行安装）：
 
-1. 当前网络状态是否正常
-2. 生成 markdown 文件和生成专利图片的工具是否具备
-3. 在skills 的 references 目录下是否有 `Patent_Writing.md` 和 `patent_example.md` 文件
-4. 将 markdown 转化为 word 文件的工具是否存在
+**必需：**
+- `references/Patent_Writing.md` 和 `references/patent_example.md` 参考文件
 
-如果不存在则将需要进行的操作或需要安装的工具展示给用户。 如果有 root 安装权限则询问用户是否需要自动安装；如果没有则向用户提示工具安装的方法，指导用户安装。
+**可选（用于生成 Word 和附图）：**
+- pandoc - 用于将 Markdown 转换为 Word 文档
+- mermaid-cli - 用于将 Mermaid 图表转换为 PNG 图片
+
+如果上述工具未安装，向用户说明依赖关系，由用户自行决定是否安装。
 
 ### 建立工作目录阶段
 
