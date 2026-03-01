@@ -1,0 +1,11 @@
+{
+  "owner": "ant-1984",
+  "slug": "my-tasks",
+  "displayName": "My Tasks",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1772365341232,
+    "commit": null
+  },
+  "history": []
+}
