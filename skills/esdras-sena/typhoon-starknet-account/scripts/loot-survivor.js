@@ -14,15 +14,14 @@
  *
  * Usage examples:
  *   node scripts/loot-survivor.js '{"mode":"state","adventurerId":123}'
- *   node scripts/loot-survivor.js '{"mode":"start_game","adventurerId":123,"weapon":0, "privateKey":"0x..","accountAddress":"0x.."}'
+ *   node scripts/loot-survivor.js '{"mode":"start_game","adventurerId":123,"weapon":0,"accountAddress":"0x.."}'
  *
- * If privateKey/accountAddress are omitted for write modes, PRIVATE_KEY env can be used
- * and accountAddress must be provided.
+ * For write modes, private key is loaded from ~/.openclaw/secrets/starknet via accountAddress.
  */
 
 import { Provider, Account, Contract, CallData, shortString } from 'starknet';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
-import { join } from 'path';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync } from 'fs';
+import { join, isAbsolute } from 'path';
 import { homedir } from 'os';
 import { resolveRpcUrl } from './_rpc.js';
 
@@ -79,7 +78,7 @@ function lootStateGetPending(accountAddress) {
 }
 
 function lootStateSetLatest(accountAddress, adventurerId) {
-  if (!accountAddress || !adventurerId) return;
+  if (accountAddress == null || adventurerId == null || adventurerId === '') return;
   try {
     mkdirSync(LOOT_STATE_DIR, { recursive: true });
     const map = lootStateLoad();
@@ -106,9 +105,56 @@ function lootStateSetPending(accountAddress, pending) {
   }
 }
 
+function loadPersistedAdventurerId(accountAddress) {
+  return lootStateGetLatest(accountAddress);
+}
+
+function savePersistedAdventurerId(accountAddress, adventurerId) {
+  lootStateSetLatest(accountAddress, adventurerId);
+}
+
 function fail(message, extra = {}) {
   console.error(JSON.stringify({ success: false, error: message, ...extra }));
   process.exit(1);
+}
+
+function getSecretsDir() {
+  return join(homedir(), '.openclaw', 'secrets', 'starknet');
+}
+
+function loadPrivateKeyByAccountAddress(accountAddress) {
+  const dir = getSecretsDir();
+  if (!existsSync(dir)) fail('Missing secrets directory: ~/.openclaw/secrets/starknet');
+
+  const files = readdirSync(dir).filter(f => f.endsWith('.json'));
+  const target = String(accountAddress).toLowerCase();
+
+  for (const file of files) {
+    const accountPath = join(dir, file);
+    let data;
+    try {
+      data = JSON.parse(readFileSync(accountPath, 'utf8'));
+    } catch {
+      continue;
+    }
+
+    if (String(data.address || '').toLowerCase() !== target) continue;
+
+    if (!(typeof data.privateKeyPath === 'string' && data.privateKeyPath.trim().length > 0)) {
+      fail('Account is missing privateKeyPath (file-based key is required).');
+    }
+
+    const keyPath = isAbsolute(data.privateKeyPath)
+      ? data.privateKeyPath
+      : join(dir, data.privateKeyPath);
+
+    if (!existsSync(keyPath)) fail(`Private key file not found: ${keyPath}`);
+    const privateKey = readFileSync(keyPath, 'utf8').trim();
+    if (!privateKey) fail('Private key file is empty.');
+    return privateKey;
+  }
+
+  fail(`Account not found in ~/.openclaw/secrets/starknet for address: ${accountAddress}`);
 }
 
 function parseJsonArg() {
@@ -159,14 +205,22 @@ function tryDecodeFeltToString(feltHex) {
 
 async function readGameState(provider, adventurerId) {
   const abi = await abiAt(provider, ADDRS.GAME);
-  const contract = new Contract(abi, ADDRS.GAME, provider);
+  const contract = new Contract({
+    abi,
+    address: ADDRS.GAME,
+    providerOrAccount: provider
+  });
   const res = await contract.call('get_game_state', [toU64(adventurerId, 'adventurerId')]);
   return res;
 }
 
 async function invoke(account, contractAddress, method, args) {
   const abi = await abiAt(account.provider, contractAddress);
-  const contract = new Contract(abi, contractAddress, account);
+  const contract = new Contract({
+    abi,
+    address: contractAddress,
+    providerOrAccount: account
+  });
   const result = await contract.invoke(method, args, { waitForTransaction: true });
   return {
     txHash: result.transaction_hash,
@@ -301,24 +355,24 @@ async function main() {
 
   if (mode === 'state') {
     let adventurerId = input.adventurerId;
-    if (!adventurerId && input.accountAddress) {
-      adventurerId = lootStateGetLatest(input.accountAddress);
+    if ((adventurerId === undefined || adventurerId === null || adventurerId === '') && input.accountAddress) {
+      adventurerId = loadPersistedAdventurerId(input.accountAddress);
     }
-    if (!adventurerId) {
+    if (adventurerId === undefined || adventurerId === null || adventurerId === '') {
       fail('Missing adventurerId and no latest adventurer stored yet. Start/mint once or provide adventurerId.');
     }
     const state = await readGameState(provider, adventurerId);
     // Persist best-effort
-    if (input.accountAddress) lootStateSetLatest(input.accountAddress, adventurerId);
+    if (input.accountAddress) savePersistedAdventurerId(input.accountAddress, adventurerId);
     console.log(JSON.stringify({ success: true, mode, adventurerId, state }, null, 2));
     return;
   }
 
   // Write modes need account
-  const privateKey = input.privateKey || process.env.PRIVATE_KEY;
   const accountAddress = input.accountAddress;
-  if (!privateKey) fail('Missing privateKey (or PRIVATE_KEY env) for write mode');
   if (!accountAddress) fail('Missing accountAddress for write mode');
+  if (input.privateKey) fail('Do not pass privateKey in JSON input.');
+  const privateKey = loadPrivateKeyByAccountAddress(accountAddress);
 
   const account = new Account({
     provider,
@@ -350,7 +404,11 @@ async function main() {
     };
 
     const abi = await abiAt(provider, ADDRS.GAME_TOKEN);
-    const contract = new Contract(abi, ADDRS.GAME_TOKEN, account);
+    const contract = new Contract({
+      abi,
+      address: ADDRS.GAME_TOKEN,
+      providerOrAccount: account
+    });
 
     // Try invoke with object args first; if it fails, compile calldata and retry.
     let tx;
@@ -359,7 +417,8 @@ async function main() {
       tx = res.transaction_hash;
     } catch (e) {
       try {
-        const calldata = CallData.compile(args, contract.abi.find(x => x.name === 'mint_game'));
+        const calldataBuilder = new CallData(contract.abi);
+        const calldata = calldataBuilder.compile('mint_game', args);
         const res2 = await contract.invoke('mint_game', calldata, { waitForTransaction: true });
         tx = res2.transaction_hash;
       } catch (e2) {
@@ -369,6 +428,9 @@ async function main() {
 
     const receipt = await getReceipt(provider, tx);
     const minted = tryExtractMintedAdventurerIdFromReceipt(receipt);
+    if (minted) {
+      savePersistedAdventurerId(accountAddress, minted);
+    }
     console.log(JSON.stringify({
       success: true,
       mode,
@@ -384,10 +446,14 @@ async function main() {
   // Other write modes: Game contract
   const ensuredAdventurerId = (v) => {
     let id = v;
-    if (!id && accountAddress) id = lootStateGetLatest(accountAddress);
-    if (!id) fail('Missing adventurerId and no latest adventurer stored yet. Start/mint once or provide adventurerId.');
+    if ((id === undefined || id === null || id === '') && accountAddress) {
+      id = loadPersistedAdventurerId(accountAddress);
+    }
+    if (id === undefined || id === null || id === '') {
+      fail('Missing adventurerId and no latest adventurer stored yet. Start/mint once or provide adventurerId.');
+    }
     // Persist intent
-    if (accountAddress) lootStateSetLatest(accountAddress, id);
+    if (accountAddress) savePersistedAdventurerId(accountAddress, id);
     return id;
   };
 
@@ -395,7 +461,10 @@ async function main() {
     const adventurerId = ensuredAdventurerId(input.adventurerId);
     const weapon = input.weapon ?? 0;
     const tx = await invoke(account, ADDRS.GAME, 'start_game', [toU64(adventurerId, 'adventurerId'), toU8(weapon, 'weapon')]);
-    if (accountAddress) lootStateSetLatest(accountAddress, adventurerId);
+    if (accountAddress) {
+      savePersistedAdventurerId(accountAddress, adventurerId);
+      lootStateSetPending(accountAddress, false);
+    }
 
     const postState = await readGameState(provider, adventurerId);
     const summary = buildSummaryFromGameState(postState);
@@ -408,7 +477,7 @@ async function main() {
     const adventurerId = ensuredAdventurerId(input.adventurerId);
     const tillBeast = toBool(input.tillBeast, false);
     const tx = await invoke(account, ADDRS.GAME, 'explore', [toU64(adventurerId, 'adventurerId'), tillBeast ? '1' : '0']);
-    if (accountAddress) lootStateSetLatest(accountAddress, adventurerId);
+    if (accountAddress) savePersistedAdventurerId(accountAddress, adventurerId);
 
     const postState = await readGameState(provider, adventurerId);
     const summary = buildSummaryFromGameState(postState);
@@ -433,7 +502,7 @@ async function main() {
     const adventurerId = ensuredAdventurerId(input.adventurerId);
     const toTheDeath = toBool(input.toTheDeath, false);
     const tx = await invoke(account, ADDRS.GAME, 'attack', [toU64(adventurerId, 'adventurerId'), toTheDeath ? '1' : '0']);
-    if (accountAddress) lootStateSetLatest(accountAddress, adventurerId);
+    if (accountAddress) savePersistedAdventurerId(accountAddress, adventurerId);
 
     const postState = await readGameState(provider, adventurerId);
     const summary = buildSummaryFromGameState(postState);
@@ -457,7 +526,7 @@ async function main() {
     const adventurerId = ensuredAdventurerId(input.adventurerId);
     const toTheDeath = toBool(input.toTheDeath, false);
     const tx = await invoke(account, ADDRS.GAME, 'flee', [toU64(adventurerId, 'adventurerId'), toTheDeath ? '1' : '0']);
-    if (accountAddress) lootStateSetLatest(accountAddress, adventurerId);
+    if (accountAddress) savePersistedAdventurerId(accountAddress, adventurerId);
 
     const postState = await readGameState(provider, adventurerId);
     const summary = buildSummaryFromGameState(postState);

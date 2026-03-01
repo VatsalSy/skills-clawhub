@@ -57,7 +57,8 @@ function attestIssue() {
     writeFileSync(p, JSON.stringify({ createdAt: now, expiresAt: now + ATTEST_TTL_MS }), 'utf8');
   } catch (err) {
     // If we can't write, still return token; resolve will fail closed.
-    console.error(`Failed to write attestation for token ${token} in ${ATTEST_DIR}: ${err.message}`);
+    // Never log token values.
+    console.error(`Failed to write attestation in ${ATTEST_DIR}: ${err.message}`);
   }
   return token;
 }
@@ -188,7 +189,6 @@ function validatePromptSecurity(prompt) {
     { pattern: /p-r-i-v-a-t-e\s*key/i, threat: 'key_exposure' },
     { pattern: /pr\\u0069vate\s*key/i, threat: 'key_exposure' },
     { pattern: /prıvate\s*key/i, threat: 'key_exposure' },
-    { pattern: /^(?=.{32,}$)(?:[A-Za-z0-9+/]{4})+(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/m, threat: 'obfuscation' },
 
     // Social-engineering patterns to bypass confirmation
     { pattern: /\b(skip|bypass|without)\b.{0,40}\b(confirmation|confirm|authorization|approval|asking)\b/i, threat: 'auth_bypass' },
@@ -226,6 +226,13 @@ function validatePromptSecurity(prompt) {
     if (pattern.test(prompt)) {
       threats.push(threat);
     }
+  }
+
+  // Context-aware base64 obfuscation detection (reduces false positives)
+  const hasBase64Context = /\b(base64|atob|btoa|decode|encoded|payload)\b/i.test(prompt);
+  const base64Candidates = prompt.match(/\b[A-Za-z0-9+/]{64,}={0,2}\b/g) || [];
+  if (hasBase64Context && base64Candidates.length > 0) {
+    threats.push('obfuscation');
   }
   
   if (threats.length > 0) {
@@ -385,6 +392,7 @@ async function main() {
   // If user is asking to create an account, just return instructions.
   if (isAccountCreationPrompt(prompt)) {
     const hasAcct = hasAnyAccount();
+    const guide = buildNoAccountGuide();
     console.log(JSON.stringify({
       success: true,
       security,
@@ -392,7 +400,9 @@ async function main() {
       canProceed: false,
       operationType: "CREATE_ACCOUNT_INTENT",
       hasAccount: hasAcct,
-      noAccountGuide: buildNoAccountGuide(),
+      noAccountGuide: guide,
+      steps: guide.steps,
+      stepsText: guide.steps.map(s => `${s.step}. ${s.title}${s.url ? ` — ${s.url}` : ''}${s.description ? ` — ${s.description}` : ''}`),
       nextStep: hasAcct ? "ACCOUNT_ALREADY_EXISTS" : "CREATE_ACCOUNT_REQUIRED",
       message: hasAcct
         ? "Account already exists. You can ask for your address or start sending transactions."
@@ -406,18 +416,18 @@ async function main() {
     const { type, name, address } = register;
     
     if (type === 'protocol') {
-      if (!name || !/^[A-Za-z0-9_-]+$/.test(name)) {
+      if (!name || !/^[A-Za-z0-9_-]{2,64}$/.test(name)) {
         console.log(JSON.stringify({
           success: false,
-          error: "Invalid name format"
+          error: "Invalid protocol name format (expected 2-64 chars: letters, numbers, _, -)"
         }));
         process.exit(1);
       }
 
-      if (!address || !address.startsWith('0x')) {
+      if (!address || !/^0x[0-9a-fA-F]+$/.test(address)) {
         console.log(JSON.stringify({
           success: false,
-          error: "Invalid address format"
+          error: "Invalid protocol address format (expected 0x-prefixed hex)"
         }));
         process.exit(1);
       }
@@ -442,6 +452,7 @@ async function main() {
   // Step 2.5: Account presence check
   // parse-smart must not proceed to ABI fetching/LLM parsing if no account exists.
   if (!hasAnyAccount()) {
+    const guide = buildNoAccountGuide();
     console.log(JSON.stringify({
       success: true,
       security,
@@ -449,7 +460,9 @@ async function main() {
       canProceed: false,
       needsAccount: true,
       operationType: "NO_ACCOUNT",
-      noAccountGuide: buildNoAccountGuide(),
+      noAccountGuide: guide,
+      steps: guide.steps,
+      stepsText: guide.steps.map(s => `${s.step}. ${s.title}${s.url ? ` — ${s.url}` : ''}${s.description ? ` — ${s.description}` : ''}`),
       nextStep: "CREATE_ACCOUNT_REQUIRED"
     }));
     return;

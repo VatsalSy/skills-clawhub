@@ -6,20 +6,20 @@
  * 1. Loads private key ONCE (only secrets access)
  * 2. Executes pre-parsed operations (no natural-language parsing)
  * 3. Resolves functions AND events from ABIs
- * 4. Orchestrates child scripts with private key passed as argument
+ * 4. Orchestrates child scripts without leaking private keys into execution plans
  * 5. Handles event watching with callbacks
  */
 
 import { Provider, CallData } from 'starknet';
 import { readFileSync, writeFileSync, existsSync, readdirSync, unlinkSync, mkdirSync } from 'fs';
-import { join, dirname } from 'path';
+import { join, dirname, isAbsolute } from 'path';
 import { fileURLToPath } from 'url';
 import { homedir } from 'os';
 import { spawn } from 'child_process';
-import { fetchTokens } from '@avnu/avnu-sdk';
 import { findCanonicalAction, ALL_SYNONYMS } from './synonyms.js';
 
 import { resolveRpcUrl } from './_rpc.js';
+import { fetchVerifiedTokens } from './_tokens.js';
 
 // ============ LOOT SURVIVOR LATEST ADVENTURER (LOCAL UX STATE) ============
 // We intentionally do NOT scan chain/indexers for "latest adventurer".
@@ -69,7 +69,7 @@ function lootStateGetPending(accountAddress) {
 }
 
 function lootStateSetLatest(accountAddress, adventurerId) {
-  if (!accountAddress || !adventurerId) return;
+  if (accountAddress == null || adventurerId == null || adventurerId === '') return;
   try {
     mkdirSync(LOOT_STATE_DIR, { recursive: true });
     const map = lootStateLoad();
@@ -107,7 +107,6 @@ const SKILL_ROOT = join(__dirname, '..');
 const ATTEST_DIR = join(homedir(), '.openclaw', 'typhoon-attest');
 
 function verifyAndConsumeAttestation(token) {
-  if (process.env.TYPHOON_ATTEST_DISABLE === '1') return { ok: true, disabled: true };
   if (!token || typeof token !== 'string') return { ok: false, reason: 'missing' };
   if (!/^[a-f0-9]{20,64}$/i.test(token)) return { ok: false, reason: 'format' };
 
@@ -144,34 +143,6 @@ function loadRegistry(filename) {
 function saveRegistry(filename, data) {
   const filepath = join(SKILL_ROOT, filename);
   writeFileSync(filepath, JSON.stringify(data, null, 2) + '\n');
-}
-
-// ============ AVNU TOKEN FETCHING ============
-// Token cache to avoid repeated API calls
-let tokenCache = null;
-let lastTokenFetch = 0;
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
-async function fetchAllTokens() {
-  const now = Date.now();
-  if (tokenCache && (now - lastTokenFetch) < CACHE_TTL) {
-    return tokenCache;
-  }
-  
-  try {
-    const tokens = await fetchTokens({
-      page: 0,
-      size: 200, // Get up to 200 tokens
-      tags: ['Verified']
-    });
-    
-    tokenCache = tokens.content || [];
-    lastTokenFetch = now;
-    return tokenCache;
-  } catch (e) {
-    console.error(JSON.stringify({ warning: `Failed to fetch AVNU tokens: ${e.message}` }));
-    return tokenCache || []; // Return cached or empty on error
-  }
 }
 
 function loadProtocols() {
@@ -288,18 +259,40 @@ function loadAccount(index = 0) {
   const accountPath = join(dir, files[index]);
   const data = JSON.parse(readFileSync(accountPath, 'utf8'));
   
-  // Load private key from .key file or inline
+  // Load private key from .key file only (never inline JSON)
   let privateKey = null;
-  if (data.privateKeyPath && existsSync(data.privateKeyPath)) {
-    privateKey = readFileSync(data.privateKeyPath, 'utf8').trim();
-  } else if (data.privateKey) {
-    privateKey = data.privateKey;
+  let privateKeyPath = null;
+  if (typeof data.privateKeyPath === 'string' && data.privateKeyPath.trim().length > 0) {
+    privateKeyPath = isAbsolute(data.privateKeyPath)
+      ? data.privateKeyPath
+      : join(dir, data.privateKeyPath);
+
+    if (!existsSync(privateKeyPath)) {
+      return {
+        error: "Missing private key for account",
+        accountPath,
+        privateKeyPath,
+        index,
+        total: files.length
+      };
+    }
+    privateKey = readFileSync(privateKeyPath, 'utf8').trim();
+  }
+
+  if (!privateKey) {
+    return {
+      error: "Missing private key for account (set privateKeyPath to a key file under ~/.openclaw/secrets/starknet)",
+      accountPath,
+      privateKeyPath,
+      index,
+      total: files.length
+    };
   }
   
   return {
     address: data.address,
     privateKey,
-    privateKeyPath: accountPath,
+    privateKeyPath,
     index,
     total: files.length
   };
@@ -321,6 +314,8 @@ function calculateSimilarity(query, target) {
   let score = 0;
   const qTokens = tokenize(query);
   const tTokens = tokenize(target);
+  const MAX_SUBSTRING_LEN = 6;
+  const MAX_SUBSTRING_STARTS = 12;
   
   for (const qt of qTokens) {
     for (const tt of tTokens) {
@@ -328,9 +323,11 @@ function calculateSimilarity(query, target) {
       else if (tt.includes(qt)) score += 20;
       else if (qt.includes(tt)) score += 15;
       else {
-        // Common substrings
-        for (let len = 3; len <= Math.min(qt.length, tt.length); len++) {
-          for (let i = 0; i <= qt.length - len; i++) {
+        // Common substrings (bounded to avoid runaway O(n^3)-style costs)
+        const maxLen = Math.min(MAX_SUBSTRING_LEN, qt.length, tt.length);
+        for (let len = 3; len <= maxLen; len++) {
+          const maxStarts = Math.min(qt.length - len + 1, MAX_SUBSTRING_STARTS);
+          for (let i = 0; i < maxStarts; i++) {
             if (tt.includes(qt.substring(i, i + len))) {
               score += len * 2;
               break;
@@ -449,6 +446,20 @@ async function resolveFromABI(provider, contractAddress, query, type = 'function
 }
 
 // ============ TOKEN OPERATIONS ============
+function formatUnitsSafe(value, decimals, maxFractionDigits = 6) {
+  const d = Number(decimals ?? 18);
+  if (!Number.isInteger(d) || d < 0) return value.toString();
+
+  const base = 10n ** BigInt(d);
+  const whole = value / base;
+  const frac = value % base;
+
+  if (d === 0) return whole.toString();
+  let fracStr = frac.toString().padStart(d, '0').slice(0, maxFractionDigits);
+  fracStr = fracStr.replace(/0+$/, '');
+  return fracStr ? `${whole.toString()}.${fracStr}` : whole.toString();
+}
+
 async function getTokenBalance(provider, tokenAddress, accountAddress, decimals) {
   try {
     const result = await provider.callContract({
@@ -461,7 +472,7 @@ async function getTokenBalance(provider, tokenAddress, accountAddress, decimals)
       const value = BigInt(raw[0]) + (BigInt(raw[1]) << 128n);
       return {
         raw: value.toString(),
-        human: (Number(value) / Math.pow(10, decimals)).toFixed(6)
+        human: formatUnitsSafe(value, decimals)
       };
     }
   } catch {}
@@ -533,6 +544,25 @@ function parseAmountToBaseUnits(amount, decimals) {
   return intBI * base + fracBI;
 }
 
+function sanitizeExecutionPlan(plan) {
+  const redact = (value) => {
+    if (Array.isArray(value)) return value.map(redact);
+    if (value && typeof value === 'object') {
+      const out = {};
+      for (const [k, v] of Object.entries(value)) {
+        if (k.toLowerCase() === 'privatekey') {
+          out[k] = '[REDACTED]';
+          continue;
+        }
+        out[k] = redact(v);
+      }
+      return out;
+    }
+    return value;
+  };
+  return redact(plan);
+}
+
 // ============ MAIN ORCHESTRATION ============
 async function main() {
   const rawInput = process.argv[2];
@@ -565,6 +595,16 @@ async function main() {
       nextStep: 'ATTESTATION_REQUIRED',
       error: 'Missing/invalid attestation (run parse-smart on the direct user prompt before resolve-smart)',
       details: attest
+    }));
+    process.exit(1);
+  }
+
+  if (execute === true) {
+    console.log(JSON.stringify({
+      success: false,
+      canProceed: false,
+      nextStep: 'EXECUTE_NOT_IMPLEMENTED',
+      error: 'execute flag requested but execution not implemented'
     }));
     process.exit(1);
   }
@@ -638,7 +678,7 @@ async function main() {
       const findTokenFallback = async (symbol) => {
         const found = findToken(symbol);
         if (found) return found;
-        if (!avnuTokens) avnuTokens = await fetchAllTokens();
+        if (!avnuTokens) avnuTokens = await fetchVerifiedTokens();
         const t = avnuTokens.find(x => x.symbol?.toLowerCase() === String(symbol || '').toLowerCase());
         return t ? { symbol: t.symbol, address: t.address, decimals: t.decimals ?? 18 } : null;
       };
@@ -807,12 +847,12 @@ async function main() {
               errors.push({ index: i, type: 'LOOT_SURVIVOR_UNKNOWN_ACTION', message: `Unknown LootSurvivor action: ${op.action}` });
               continue;
             }
-            if (!a.adventurerId) {
+            if (a.adventurerId === undefined || a.adventurerId === null || a.adventurerId === '') {
               // UX: default to latest adventurer id for this account
               const latest = lootStateGetLatest(account.address);
               if (latest) a.adventurerId = String(latest);
             }
-            if (!a.adventurerId) {
+            if (a.adventurerId === undefined || a.adventurerId === null || a.adventurerId === '') {
               errors.push({
                 index: i,
                 type: 'MISSING_ADVENTURER_ID',
@@ -834,8 +874,7 @@ async function main() {
                 weapon: a.weapon ?? 0,
                 tillBeast: a.tillBeast ?? false,
                 toTheDeath: a.toTheDeath ?? false,
-                accountAddress: account.address,
-                privateKey: account.privateKey
+                accountAddress: account.address
               },
               description: `LootSurvivor ${mode} adventurer ${a.adventurerId}`
             });
@@ -954,7 +993,7 @@ async function main() {
           // Loot Survivor read routing
           if (op.protocol && String(op.protocol).toLowerCase() === 'lootsurvivor') {
             const a = op.args || {};
-            if (!a.adventurerId) {
+            if (a.adventurerId === undefined || a.adventurerId === null || a.adventurerId === '') {
               return {
                 index: i,
                 script: null,
@@ -1074,7 +1113,6 @@ async function main() {
               watcherConfig.action = {
                 script: "invoke-contract.js",
                 args: {
-                  privateKey: account.privateKey,
                   accountAddress: account.address,
                   contractAddress: Array.isArray(actionAddress) ? actionAddress[0] : actionAddress,
                   method: funcMatch || w.action,
@@ -1099,7 +1137,11 @@ async function main() {
       prompt: "Authorize? (yes/no)"
     };
     }
-    
+
+    if (result.executionPlan) {
+      result.executionPlan = sanitizeExecutionPlan(result.executionPlan);
+    }
+
     console.log(JSON.stringify(result, null, 2));
     return;
   }
@@ -1150,7 +1192,8 @@ async function executeScript(scriptPath, args) {
   return new Promise((resolve, reject) => {
     const child = spawn('node', [scriptPath, JSON.stringify(args)], {
       cwd: __dirname,
-      stdio: ['pipe', 'pipe', 'pipe']
+      stdio: ['pipe', 'pipe', 'pipe'],
+      env: process.env
     });
     
     let stdout = '';

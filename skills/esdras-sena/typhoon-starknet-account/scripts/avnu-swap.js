@@ -6,12 +6,15 @@
  * This script receives account info via arguments - NO secrets access.
  * 
  * Usage:
- *   node avnu-swap.js '{"sellToken":"ETH","buyToken":"STRK","sellAmount":"0.001","accountAddress":"0x...","privateKey":"0x..."}'
+ *   node avnu-swap.js '{"sellToken":"ETH","buyToken":"STRK","sellAmount":"0.001","accountAddress":"0x..."}'
  */
 
 import { getQuotes, executeSwap } from '@avnu/avnu-sdk';
 import { RpcProvider, Account, PaymasterRpc } from 'starknet';
 import { fileURLToPath } from 'url';
+import { existsSync, readdirSync, readFileSync } from 'fs';
+import { join, isAbsolute } from 'path';
+import { homedir } from 'os';
 import { resolveRpcUrl } from './_rpc.js';
 import { fetchVerifiedTokens } from './_tokens.js';
 
@@ -79,8 +82,67 @@ async function getSwapQuote(sellTokenSymbol, buyTokenSymbol, sellAmount, account
   return { quote: quotes[0], sellToken, buyToken };
 }
 
+const DEFAULT_PAYMASTER_URL = 'https://starknet.paymaster.avnu.fi';
+const ALLOWED_PAYMASTER_HOSTS = new Set([
+  'starknet.paymaster.avnu.fi',
+  'sepolia.paymaster.avnu.fi'
+]);
+
+function resolvePaymasterUrl() {
+  const value = process.env.PAYMASTER_URL || DEFAULT_PAYMASTER_URL;
+  let parsed;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new Error(`Invalid PAYMASTER_URL: ${value}`);
+  }
+  if (!ALLOWED_PAYMASTER_HOSTS.has(parsed.hostname)) {
+    throw new Error(`Untrusted paymaster host: ${parsed.hostname}`);
+  }
+  return parsed.toString();
+}
+
+function getSecretsDir() {
+  return join(homedir(), '.openclaw', 'secrets', 'starknet');
+}
+
+function loadPrivateKeyByAccountAddress(accountAddress) {
+  const dir = getSecretsDir();
+  if (!existsSync(dir)) throw new Error('Missing secrets directory: ~/.openclaw/secrets/starknet');
+
+  const files = readdirSync(dir).filter(f => f.endsWith('.json'));
+  const target = String(accountAddress).toLowerCase();
+
+  for (const file of files) {
+    const accountPath = join(dir, file);
+    let data;
+    try {
+      data = JSON.parse(readFileSync(accountPath, 'utf8'));
+    } catch {
+      continue;
+    }
+
+    if (String(data.address || '').toLowerCase() !== target) continue;
+
+    if (!(typeof data.privateKeyPath === 'string' && data.privateKeyPath.trim().length > 0)) {
+      throw new Error('Account is missing privateKeyPath (file-based key is required).');
+    }
+
+    const keyPath = isAbsolute(data.privateKeyPath)
+      ? data.privateKeyPath
+      : join(dir, data.privateKeyPath);
+
+    if (!existsSync(keyPath)) throw new Error(`Private key file not found: ${keyPath}`);
+    const privateKey = readFileSync(keyPath, 'utf8').trim();
+    if (!privateKey) throw new Error('Private key file is empty.');
+    return privateKey;
+  }
+
+  throw new Error(`Account not found in ~/.openclaw/secrets/starknet for address: ${accountAddress}`);
+}
+
 const paymaster = new PaymasterRpc({
-  nodeUrl: process.env.PAYMASTER_URL || 'https://starknet.paymaster.avnu.fi',
+  nodeUrl: resolvePaymasterUrl(),
 });
 
 async function executeAvnuSwap(quote, account, slippage = DEFAULT_SLIPPAGE) {
@@ -100,7 +162,7 @@ async function main() {
   if (!rawInput) {
     console.log(JSON.stringify({
       error: "No input provided",
-      usage: 'node avnu-swap.js \'{"sellToken":"ETH","buyToken":"STRK","sellAmount":"0.001","accountAddress":"0x...","privateKey":"0x..."}\''
+      usage: 'node avnu-swap.js \'{"sellToken":"ETH","buyToken":"STRK","sellAmount":"0.001","accountAddress":"0x..."}\''
     }));
     process.exit(1);
   }
@@ -118,8 +180,7 @@ async function main() {
     buyToken, 
     sellAmount, 
     slippage = DEFAULT_SLIPPAGE,
-    accountAddress,
-    privateKey
+    accountAddress
   } = input;
   
   if (!sellToken || !buyToken || !sellAmount) {
@@ -129,12 +190,19 @@ async function main() {
     process.exit(1);
   }
   
-  if (!accountAddress || !privateKey) {
+  if (!accountAddress) {
     console.log(JSON.stringify({
-      error: "Missing required fields: accountAddress, privateKey (passed from resolve-smart.js)"
+      error: "Missing required field: accountAddress"
     }));
     process.exit(1);
   }
+
+  if (input.privateKey) {
+    console.log(JSON.stringify({ error: 'Do not pass privateKey in JSON input.' }));
+    process.exit(1);
+  }
+
+  const privateKey = loadPrivateKeyByAccountAddress(accountAddress);
   
   // Create account from passed arguments (no secrets access)
   const rpcUrl = resolveRpcUrl();

@@ -161,7 +161,7 @@ async function main() {
       success: false,
       error: `Unknown/unconfigured pool: ${poolName}`,
       nextStep: 'CONFIGURE_VESU_POOL',
-      message: 'Add this pool to vesu-pools.json with a verified poolAddress.'
+      message: 'Add this pool to protocols.json (under VESU.pools) with a verified poolAddress.'
     }));
     process.exit(1);
   }
@@ -179,6 +179,8 @@ async function main() {
   // For supply-only, debt_asset is still required by the protocol; use configured defaultDebtAssetSymbol.
   const collateralToken = input.collateralToken || input.token;
   const debtToken = input.debtToken;
+  let collateralInfo;
+  let debtInfo;
 
   if (supportedCollaterals && collateralToken) {
     const sym = String(collateralToken).toUpperCase();
