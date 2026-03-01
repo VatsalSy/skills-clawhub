@@ -2,6 +2,7 @@
 """
 Send Email - 邮件发送工具
 支持 SMTP 邮件发送，包括 HTML、附件等功能
+支持 keyring 密钥管理
 """
 
 import smtplib
@@ -16,6 +17,134 @@ from email.mime.image import MIMEImage
 from email.utils import formataddr, formatdate
 from typing import Optional, List, Dict, Any
 import argparse
+
+# 尝试导入 keyring，失败则使用备用方案
+try:
+    import keyring
+    KEYRING_AVAILABLE = True
+except ImportError:
+    KEYRING_AVAILABLE = False
+    print("⚠️  keyring 未安装，将使用备用存储方案")
+    print("   安装 keyring: pip install keyring")
+
+
+# ============================================================================
+# 密钥管理
+# ============================================================================
+
+class KeyringManager:
+    """密钥管理器 - 使用 keyring 或备用方案"""
+
+    def __init__(self):
+        self.service_name = "send_email_tool"
+        self.password_backup_file = Path.home() / ".send_email_password"
+        self.username_backup_file = Path.home() / ".send_email_username"
+
+    def get_password(self, username: str) -> Optional[str]:
+        """获取密码"""
+        if KEYRING_AVAILABLE:
+            try:
+                password = keyring.get_password(self.service_name, username)
+                if password:
+                    return password
+            except Exception as e:
+                print(f"⚠️  keyring 读取失败: {str(e)}")
+
+        # 备用方案：从文件读取
+        return self._read_from_backup(self.password_backup_file)
+
+    def get_username(self) -> Optional[str]:
+        """获取发件人邮箱（用户名）"""
+        if KEYRING_AVAILABLE:
+            try:
+                username = keyring.get_password(self.service_name, "username")
+                if username:
+                    return username
+            except Exception as e:
+                print(f"⚠️  keyring 读取失败: {str(e)}")
+
+        # 备用方案：从文件读取
+        return self._read_from_backup(self.username_backup_file)
+
+    def set_password(self, username: str, password: str) -> None:
+        """保存密码"""
+        if KEYRING_AVAILABLE:
+            try:
+                keyring.set_password(self.service_name, username, password)
+                print(f"✓ 密码已保存到 keyring (用户名: {username})")
+                return
+            except Exception as e:
+                print(f"⚠️  keyring 保存失败: {str(e)}，使用备用方案")
+
+        # 备用方案：保存到文件
+        self._save_to_backup(self.password_backup_file, password)
+        print(f"✓ 密码已保存到备用文件 (用户名: {username})")
+
+    def set_username(self, username: str) -> None:
+        """保存发件人邮箱（用户名）"""
+        if KEYRING_AVAILABLE:
+            try:
+                keyring.set_password(self.service_name, "username", username)
+                print(f"✓ 发件人邮箱已保存到 keyring: {username}")
+                return
+            except Exception as e:
+                print(f"⚠️  keyring 保存失败: {str(e)}，使用备用方案")
+
+        # 备用方案：保存到文件
+        self._save_to_backup(self.username_backup_file, username)
+        print(f"✓ 发件人邮箱已保存到备用文件: {username}")
+
+    def delete_password(self, username: str) -> None:
+        """删除密码"""
+        if KEYRING_AVAILABLE:
+            try:
+                keyring.delete_password(self.service_name, username)
+                print(f"✓ 密码已从 keyring 删除 (用户名: {username})")
+                return
+            except Exception as e:
+                print(f"⚠️  keyring 删除失败: {str(e)}")
+
+        # 备用方案：删除文件
+        if self.password_backup_file.exists():
+            self.password_backup_file.unlink()
+            print("✓ 备用密码文件已删除")
+
+    def delete_username(self) -> None:
+        """删除发件人邮箱"""
+        if KEYRING_AVAILABLE:
+            try:
+                keyring.delete_password(self.service_name, "username")
+                print("✓ 发件人邮箱已从 keyring 删除")
+                return
+            except Exception as e:
+                print(f"⚠️  keyring 删除失败: {str(e)}")
+
+        # 备用方案：删除文件
+        if self.username_backup_file.exists():
+            self.username_backup_file.unlink()
+            print("✓ 备用用户名文件已删除")
+
+    def _save_to_backup(self, backup_file: Path, content: str) -> None:
+        """保存到备用文件（加密或编码）"""
+        # 使用 base64 简单编码（注意：这不是加密，仅避免明文存储）
+        import base64
+        encoded = base64.b64encode(content.encode('utf-8')).decode('utf-8')
+
+        # 设置文件权限为仅用户可读写
+        backup_file.write_text(encoded)
+        backup_file.chmod(0o600)
+
+    def _read_from_backup(self, backup_file: Path) -> Optional[str]:
+        """从备用文件读取"""
+        if not backup_file.exists():
+            return None
+
+        try:
+            import base64
+            encoded = backup_file.read_text()
+            return base64.b64decode(encoded).decode('utf-8')
+        except Exception:
+            return None
 
 
 # ============================================================================
@@ -35,13 +164,12 @@ class EmailConfig:
             # 创建默认配置模板
             default_config = {
                 "smtp": {
-                    "host": "smtp.gmail.com",
+                    "host": "smtp.gd.chinamobile.com",
                     "port": 587,
                     "use_tls": True
                 },
                 "sender": {
-                    "email": "your-email@gmail.com",
-                    "name": "Your Name"
+                    "name": "中国移动用户"
                 }
             }
             self._save_config(default_config)
@@ -59,9 +187,24 @@ class EmailConfig:
         """获取 SMTP 配置"""
         return self.config.get('smtp', {})
 
-    def get_sender_config(self) -> Dict[str, Any]:
+    def get_sender_config(self, username: Optional[str] = None) -> Dict[str, Any]:
         """获取发件人配置"""
-        return self.config.get('sender', {})
+        sender_config = self.config.get('sender', {})
+
+        # 如果提供了 username，使用它；否则尝试从 keyring 读取
+        if username:
+            sender_config['email'] = username
+        elif 'email' not in sender_config:
+            # 从 keyring 读取邮箱
+            keyring = KeyringManager()
+            stored_username = keyring.get_username()
+            if stored_username:
+                sender_config['email'] = stored_username
+            else:
+                # 使用默认邮箱
+                sender_config['email'] = "user@gd.chinamobile.com"
+
+        return sender_config
 
     def update_smtp(self, host: str, port: int, use_tls: bool = True) -> None:
         """更新 SMTP 配置"""
@@ -73,14 +216,17 @@ class EmailConfig:
         self._save_config(self.config)
         print(f"✓ SMTP 配置已更新: {host}:{port}")
 
-    def update_sender(self, email: str, name: str) -> None:
+    def update_sender(self, name: str) -> None:
         """更新发件人配置"""
         if 'sender' not in self.config:
             self.config['sender'] = {}
-        self.config['sender']['email'] = email
         self.config['sender']['name'] = name
         self._save_config(self.config)
-        print(f"✓ 发件人配置已更新: {name} <{email}>")
+        print(f"✓ 发件人名称已更新: {name}")
+
+        # 提示使用 keyring 保存邮箱
+        print(f"\n⚠️  邮箱地址需通过 keyring 保存：")
+        print(f"   python send_email.py username --save --email your-email@gd.chinamobile.com")
 
 
 # ============================================================================
@@ -90,11 +236,21 @@ class EmailConfig:
 class EmailSender:
     """邮件发送器"""
 
-    def __init__(self, config: EmailConfig, password: str):
+    def __init__(self, config: EmailConfig, username: Optional[str] = None):
         self.config = config
-        self.password = password
+        self.keyring = KeyringManager()
         self.smtp_config = config.get_smtp_config()
-        self.sender_config = config.get_sender_config()
+        self.sender_config = config.get_sender_config(username)
+
+        # 从 keyring 读取发件人邮箱
+        if not username:
+            stored_username = self.keyring.get_username()
+            if stored_username:
+                self.sender_config['email'] = stored_username
+
+        # 从 keyring 读取密码
+        email = self.sender_config.get('email', '')
+        self.password = self.keyring.get_password(email)
 
     def create_message(
         self,
@@ -217,7 +373,7 @@ class EmailSender:
                 recipients.extend(bcc_emails)
 
             # 连接 SMTP 服务器
-            host = self.smtp_config.get('host', 'smtp.gmail.com')
+            host = self.smtp_config.get('host', 'smtp.gd.chinamobile.com')
             port = self.smtp_config.get('port', 587)
             use_tls = self.smtp_config.get('use_tls', True)
 
@@ -230,8 +386,9 @@ class EmailSender:
                 server = smtplib.SMTP_SSL(host, port)
 
             # 登录
-            print(f"正在登录...")
-            server.login(self.sender_config.get('email', ''), self.password)
+            email = self.sender_config.get('email', '')
+            print(f"正在登录 (发件人: {email})...")
+            server.login(email, self.password)
 
             # 发送
             print(f"正在发送邮件到: {to_email}")
@@ -264,9 +421,20 @@ def main():
     smtp_parser.add_argument('--no-tls', action='store_true', help='不使用 TLS')
 
     # 发件人配置
-    sender_parser = subparsers.add_parser('sender', help='配置发件人信息')
-    sender_parser.add_argument('--email', required=True, help='发件人邮箱')
+    sender_parser = subparsers.add_parser('sender', help='配置发件人名称')
     sender_parser.add_argument('--name', required=True, help='发件人名称')
+
+    # 发件人邮箱管理命令
+    username_parser = subparsers.add_parser('username', help='发件人邮箱管理')
+    username_parser.add_argument('--save', action='store_true', help='保存发件人邮箱到 keyring')
+    username_parser.add_argument('--delete', action='store_true', help='删除保存的发件人邮箱')
+    username_parser.add_argument('--email', help='发件人邮箱地址')
+
+    # 密码管理命令
+    password_parser = subparsers.add_parser('password', help='密码管理')
+    password_parser.add_argument('--save', action='store_true', help='保存密码到 keyring')
+    password_parser.add_argument('--delete', action='store_true', help='删除保存的密码')
+    password_parser.add_argument('--password', help='密码内容')
 
     # 发送命令
     send_parser = subparsers.add_parser('send', help='发送邮件')
@@ -278,7 +446,7 @@ def main():
     send_parser.add_argument('--attachments', nargs='*', help='附件文件路径（多个）')
     send_parser.add_argument('--cc', nargs='*', help='抄送邮箱（多个）')
     send_parser.add_argument('--bcc', nargs='*', help='密送邮箱（多个）')
-    send_parser.add_argument('--password', help='邮箱密码或应用专用密码')
+    # 移除 --password 和 --save-pwd 参数，强制使用 keyring
 
     args = parser.parse_args()
 
@@ -293,29 +461,93 @@ def main():
         print("配置文件位置:", config.config_path)
         print("\n当前配置:")
         print(json.dumps(config.config, indent=2, ensure_ascii=False))
+
+        # 显示 keyring 中的邮箱
+        keyring = KeyringManager()
+        stored_username = keyring.get_username()
+        if stored_username:
+            print(f"\nkeyring 中的发件人邮箱: {stored_username}")
+        else:
+            print(f"\nkeyring 中的发件人邮箱: 未设置")
+
         print("\n使用以下命令配置:")
-        print("  python send_email.py smtp --host smtp.gmail.com --port 587")
-        print("  python send_email.py sender --email your-email@gmail.com --name 'Your Name'")
+        print("  python send_email.py smtp --host smtp.gd.chinamobile.com --port 587")
+        print("  python send_email.py sender --name 'Your Name'")
+        print("  python send_email.py username --save --email your-email@gd.chinamobile.com")
+        print("  python send_email.py password --save")
 
     elif args.command == 'smtp':
         config.update_smtp(args.host, args.port, not args.no_tls)
 
     elif args.command == 'sender':
-        config.update_sender(args.email, args.name)
+        config.update_sender(args.name)
+
+    elif args.command == 'username':
+        keyring = KeyringManager()
+
+        if args.save:
+            email = args.email
+            if not email:
+                print("请输入发件人邮箱:")
+                email = input().strip()
+            if email:
+                keyring.set_username(email)
+            else:
+                print("✗ 邮箱不能为空")
+
+        elif args.delete:
+            keyring.delete_username()
+
+        else:
+            # 显示当前邮箱状态
+            stored_username = keyring.get_username()
+            if stored_username:
+                print(f"✓ 已保存发件人邮箱到 keyring: {stored_username}")
+            else:
+                print(f"✗ 未保存发件人邮箱到 keyring")
+                print(f"默认邮箱: user@gd.chinamobile.com")
+
+    elif args.command == 'password':
+        keyring = KeyringManager()
+        email = keyring.get_username() or "user@gd.chinamobile.com"
+
+        if args.save:
+            password = args.password
+            if not password:
+                print(f"请输入密码 (邮箱: {email}):")
+                password = input().strip()
+            if password:
+                keyring.set_password(email, password)
+            else:
+                print("✗ 密码不能为空")
+
+        elif args.delete:
+            keyring.delete_password(email)
+
+        else:
+            # 显示当前密码状态
+            stored_pwd = keyring.get_password(email)
+            if stored_pwd:
+                print(f"✓ 已保存密码到 keyring (邮箱: {email})")
+            else:
+                print(f"✗ 未保存密码 (邮箱: {email})")
 
     elif args.command == 'send':
-        # 获取密码
-        password = args.password or os.environ.get('EMAIL_PASSWORD')
-        if not password:
-            print("请提供邮箱密码或应用专用密码:")
-            password = input().strip()
+        # 创建发送器（自动从 keyring 获取邮箱和密码）
+        sender = EmailSender(config)
 
-        if not password:
-            print("✗ 密码不能为空")
+        # 检查发件人邮箱和密码
+        email = sender.sender_config.get('email', '')
+        if not email:
+            print("\n✗ 未找到发件人邮箱，请先运行以下命令：")
+            print("   python send_email.py username --save")
             sys.exit(1)
 
-        # 创建发送器
-        sender = EmailSender(config, password)
+        if not sender.password:
+            print(f"\n✗ 未找到密码，请先运行以下命令：")
+            print(f"   python send_email.py password --save")
+            print(f"\n发件人邮箱: {email}")
+            sys.exit(1)
 
         # 发送邮件
         sender.send(
