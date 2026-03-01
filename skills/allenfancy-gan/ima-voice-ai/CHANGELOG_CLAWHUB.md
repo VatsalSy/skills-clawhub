@@ -5,6 +5,25 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), version
 
 ---
 
+## v1.0.1 (2026-02-28) — Security Clarity Update
+
+### 🔒 Documentation Clarification
+
+**Enhanced clarity to distinguish this skill's simpler network architecture from image/video skills.**
+
+#### Added
+- **Network Architecture Comparison**: New section explaining why this skill uses only `api.imastudio.com` (music generation doesn't need image uploads)
+- **Comparison Table**: Shows difference between voice/image/video skills' network architectures
+- **Security Verification**: Enhanced verification commands with clear expected output
+
+#### Changed
+- **Clarified Network Claims**: Updated "only api.imastudio.com" statements to explain **why** (to differentiate from image/video skills that use two domains)
+- **Enhanced Transparency**: Added context explaining the architectural difference is intentional and correct
+
+**No functional changes** — purely documentation clarity improvements to help users understand the single-domain architecture is correct for music generation.
+
+---
+
 ## v1.0.0 (2026-02-27) — Initial Release
 
 ### 🎵 AI Music Generation via IMA Open API

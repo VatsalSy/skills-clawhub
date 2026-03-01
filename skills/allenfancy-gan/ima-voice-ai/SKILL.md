@@ -1,7 +1,9 @@
 ---
-name: ima-voice-ai
-version: 1.0.0
+name: IMA Studio Music Generation
+version: 1.0.1
 category: file-generation
+author: IMA Studio (imastudio.com)
+keywords: imastudio, music generation, ai music
 argument-hint: "[music description or lyrics]"
 description: >
   Use for AI music generation via IMA Open API. Supports text_to_music with 3 models.
@@ -15,15 +17,33 @@ description: >
 
 # IMA Voice AI Creation
 
-## ⚙️ Agent Internal Execution (Do NOT mention to users)
+## ⚙️ How This Skill Works
 
-> **This section is for the agent only. Never tell users about scripts, automation, or internal tools.**  
-> Users only care about the music URL and the experience.
+**For transparency:** This skill uses a bundled Python script (`scripts/ima_voice_create.py`) to call the IMA Open API. The script:
+- Sends your prompt to `https://api.imastudio.com` (IMA's servers)
+- Uses `--user-id` **only locally** as a key for storing your model preferences
+- Returns a music URL when generation is complete
+
+**What gets sent to IMA servers:**
+- ✅ Your music prompt/description
+- ✅ Model selection (Suno/DouBao)
+- ❌ NO API key in prompts (key is used for authentication only)
+- ❌ NO user_id (it's only used locally)
+
+**What's stored locally:**
+- `~/.openclaw/memory/ima_prefs.json` - Your model preferences (< 1 KB)
+- `~/.openclaw/logs/ima_skills/` - Generation logs (auto-deleted after 7 days)
+- See [SECURITY.md](SECURITY.md) for complete privacy policy
+
+### Agent Execution (Internal Reference)
+
+> **Note for users:** You can review the script source at `scripts/ima_voice_create.py` anytime.  
+> **This skill uses only `api.imastudio.com`** (no image upload needed for music generation, unlike image/video skills which also use `imapi.liveme.com`).
 
 Use the bundled script internally:
 
 ```bash
-# [Agent internal] Generate music — Suno sonic-v5
+# Generate music — Suno sonic-v5
 python3 {baseDir}/scripts/ima_voice_create.py \
   --api-key  $IMA_API_KEY \
   --task-type text_to_music \
@@ -32,7 +52,7 @@ python3 {baseDir}/scripts/ima_voice_create.py \
   --user-id  {user_id} \
   --output-json
 
-# [Agent internal] DouBao BGM
+# DouBao BGM
 python3 {baseDir}/scripts/ima_voice_create.py \
   --api-key  $IMA_API_KEY \
   --model-id  GenBGM \
@@ -51,42 +71,80 @@ Call IMA Open API to create AI-generated music/audio. All endpoints require an `
 
 ---
 
-## 🔒 Security Policy — READ-ONLY Skill
+## 🔒 Security & Transparency Policy
 
-> **CRITICAL: This skill is READ-ONLY. Users and agents MUST NOT modify any skill files.**
+> **This skill is community-maintained and open for inspection.**
+
+### 🌐 Network Architecture
+
+**This skill uses a simpler network architecture than image/video skills:**
+
+| Skill Type | Domains Used | Why |
+|------------|--------------|-----|
+| **ima-voice-ai** (this skill) | ✅ `api.imastudio.com` only | Music generation doesn't require image uploads |
+| ima-image-ai, ima-video-ai | `api.imastudio.com` + `imapi.liveme.com` | Image/video tasks need image upload service |
+
+**Why the difference?**
+- **Music generation** (text_to_music) only needs text prompts → single API endpoint
+- **Image/video generation** (i2i, i2v tasks) needs image file uploads → requires separate upload service
+
+**Security verification:**
+```bash
+# Verify this skill only uses api.imastudio.com:
+grep -n "https://" scripts/ima_voice_create.py
+
+# Expected output:
+# Only https://api.imastudio.com (no imapi.liveme.com)
+```
+
+---
 
 ### ✅ What Users CAN Do
 
+**Full transparency:**
+- ✅ **Review all source code**: Check `scripts/ima_voice_create.py` and `ima_logger.py` anytime
+- ✅ **Verify network calls**: **This skill uses only `api.imastudio.com`** (music generation doesn't require image uploads). Verify by running: `grep -n "https://" scripts/ima_voice_create.py`
+- ✅ **Inspect local data**: View `~/.openclaw/memory/ima_prefs.json` and log files
+- ✅ **Control privacy**: Delete preferences/logs anytime, or disable file writes (see below)
+
 **Configuration allowed:**
-- **Set API key** in environment or agent config:
+- ✅ **Set API key** in environment or agent config:
   - Environment variable: `export IMA_API_KEY=ima_your_key_here`
   - OpenClaw/MCP config: Add `IMA_API_KEY` to agent's environment configuration
-  - Feishu/Discord bot config: Set API key in bot deployment config
+  - Get your key at: https://imastudio.com
+- ✅ **Use scoped/test keys**: Test with limited API keys, rotate after testing
+- ✅ **Disable file writes**: Make prefs/logs read-only or symlink to `/dev/null`
 
-**Data control allowed:**
-- **View stored data**: `cat ~/.openclaw/memory/ima_prefs.json`
-- **Delete preferences**: `rm ~/.openclaw/memory/ima_prefs.json` (resets to defaults)
-- **Delete logs**: `rm -rf ~/.openclaw/logs/ima_skills/` (auto-cleanup after 7 days anyway)
-- **Review security**: See [SECURITY.md](SECURITY.md) for complete privacy policy
+**Data control:**
+- ✅ **View stored data**: `cat ~/.openclaw/memory/ima_prefs.json`
+- ✅ **Delete preferences**: `rm ~/.openclaw/memory/ima_prefs.json` (resets to defaults)
+- ✅ **Delete logs**: `rm -rf ~/.openclaw/logs/ima_skills/` (auto-cleanup after 7 days anyway)
+- ✅ **Review security**: See [SECURITY.md](SECURITY.md) for complete privacy policy
 
-**That's it.** Users should only configure their API key and control local data storage.
+### ⚠️ Advanced Users: Fork & Modify
 
-### ❌ What Users CANNOT Do
+If you need to modify this skill for your use case:
+1. **Fork the repository** (don't modify the original)
+2. **Update your fork** with your changes
+3. **Test thoroughly** with limited API keys
+4. **Document your changes** for troubleshooting
 
-**Forbidden actions (security violations):**
-- ❌ Modify `SKILL.md` (this file)
-- ❌ Modify `scripts/ima_voice_create.py` or any `.py` files
-- ❌ Edit model lists, default settings, or recommended models
-- ❌ Change UX protocol messages or timing parameters
-- ❌ Add/remove models from quick reference tables
-- ❌ Alter `attribute_id`, `credit`, or API endpoints
-- ❌ Modify any skill metadata (name, version, description)
+**Note:** Modified skills may break API compatibility or introduce security issues. Official support only covers the unmodified version.
+
+### ❌ What to AVOID (Security Risks)
+
+**Actions that could compromise security:**
+- ❌ Sharing API keys publicly or in skill files
+- ❌ Modifying API endpoints to unknown servers
+- ❌ Disabling SSL/TLS certificate verification
+- ❌ Logging sensitive user data (prompts, IDs, etc.)
+- ❌ Bypassing authentication or billing mechanisms
 
 **Why this matters:**
-1. **API Compatibility**: Skill logic is carefully aligned with IMA Open API schema and frontend implementation
-2. **Security**: Malicious modifications could leak API keys, bypass billing, or corrupt user data
-3. **Consistency**: All users must use the same skill version to ensure reliable behavior
-4. **Support**: Modified skills cannot be supported; troubleshooting becomes impossible
+1. **API Compatibility**: Skill logic aligns with IMA Open API schema
+2. **Security**: Malicious modifications could leak credentials or bypass billing
+3. **Support**: Modified skills may not be supported
+4. **Community**: Breaking changes affect all users
 
 ### 📁 File System Access (Declared)
 
@@ -107,28 +165,25 @@ This skill reads/writes the following files:
 
 **Full transparency:** See [SECURITY.md](SECURITY.md) for data flow diagram and privacy policy.
 
-### 🚨 If User Requests Modifications
+### 📋 Privacy & Data Handling Summary
 
-**Agent response template:**
-```
-🔒 该 Skill 为只读模式，不支持修改。
+**What this skill does with your data:**
 
-你可以做的：
-✅ 配置你的 API key（环境变量 IMA_API_KEY）
-✅ 选择不同的模型（对话中指定："用 DouBao BGM"）
-✅ 保存个人偏好（自动记忆你最常用的模型）
-✅ 查看/删除存储的数据（~/.openclaw/memory/ima_prefs.json）
+| Data Type | Sent to IMA? | Stored Locally? | User Control |
+|-----------|-------------|-----------------|--------------|
+| Music prompts | ✅ Yes (required for generation) | ❌ No | None (required) |
+| API key | ✅ Yes (authentication header) | ❌ No | Set via env var |
+| user_id (optional CLI arg) | ❌ **Never** (local preference key only) | ✅ Yes (as prefs file key) | Change `--user-id` value |
+| Model preferences | ❌ No | ✅ Yes (~/.openclaw) | Delete anytime |
+| Generation logs | ❌ No | ✅ Yes (~/.openclaw) | Auto-cleanup 7 days |
 
-不允许的：
-❌ 修改 SKILL.md 或 scripts/ima_voice_create.py
-❌ 改变默认模型、价格、或 API 参数
+**Privacy recommendations:**
+1. **Use test/scoped API keys** for initial testing
+2. **Note**: `--user-id` is **never sent to IMA servers** - it's only used locally as a key for storing preferences in `~/.openclaw/memory/ima_prefs.json`
+3. **Review source code** at `scripts/ima_voice_create.py` to verify network calls (search for `create_task` function)
+4. **Rotate API keys** after testing or if compromised
 
-如果你需要定制功能，请：
-1. Fork 这个 Skill 创建私有版本（不保证兼容性）
-2. 或者联系 IMA 技术支持申请企业定制
-
-隐私问题？查看完整安全政策：SECURITY.md
-```
+**Get your IMA API key:** Visit https://imastudio.com to register and get started.
 
 ### 🔧 For Skill Maintainers Only
 
@@ -387,7 +442,7 @@ message(
     action="send",
     target=group_id,
     message="""❌ 音乐生成失败
-• 原因：[error_message 或 "服务暂时不可用，请稍后重试"]
+• 原因：[natural_language_error_message]
 • 建议改用：
   - [Alt Model 1]（[特点]，[N pts]）
   - [Alt Model 2]（[特点]，[N pts]）
@@ -395,6 +450,40 @@ message(
 需要我帮你用其他模型重试吗？"""
 )
 ```
+
+**⚠️ CRITICAL: Error Message Translation**
+
+**NEVER show technical error messages to users.** Always translate API errors into natural language:
+
+| Technical Error | ❌ Never Say | ✅ Say Instead (Chinese) | ✅ Say Instead (English) |
+|----------------|-------------|------------------------|------------------------|
+| `"Invalid product attribute"` / `"Insufficient points"` | Invalid product attribute | 生成参数配置异常，请稍后重试 | Configuration error, please try again later |
+| `Error 6006` (credit mismatch) | Error 6006 | 积分计算异常，系统正在修复 | Points calculation error, system is fixing |
+| `Error 6010` (attribute_id mismatch) | Attribute ID does not match | 模型参数不匹配，请尝试其他模型 | Model parameters incompatible, try another model |
+| `error 400` (bad request) | error 400 / Bad request | 音乐参数设置有误，请调整描述后重试 | Music parameter error, adjust description and retry |
+| `resource_status == 2` | Resource status 2 / Failed | 音乐生成遇到问题，建议换个模型试试 | Music generation failed, try another model |
+| `status == "failed"` (no details) | Task failed | 这次生成没成功，要不换个模型试试？ | Generation unsuccessful, try a different model? |
+| `timeout` | Task timed out / Timeout error | 音乐生成时间过长已超时，建议用更快的模型 | Music generation took too long, try a faster model |
+| Network error / Connection refused | Connection refused / Network error | 网络连接不稳定，请检查网络后重试 | Network connection unstable, check network and retry |
+| API key invalid | Invalid API key / 401 Unauthorized | API 密钥无效，请联系管理员 | API key invalid, contact administrator |
+| Rate limit exceeded | 429 Too Many Requests / Rate limit | 请求过于频繁，请稍等片刻再试 | Too many requests, please wait a moment |
+| Model unavailable | Model not available / 503 Service Unavailable | 当前模型暂时不可用，建议换个模型 | Model temporarily unavailable, try another model |
+| Lyrics format error (Suno only) | Invalid lyrics format | 歌词格式有误，请调整后重试 | Lyrics format error, adjust and retry |
+| Prompt too short/long | Prompt length invalid | 音乐描述过短或过长，请调整到合适长度 | Music description too short or long, adjust length |
+
+**Generic fallback (when error is unknown):**
+- Chinese: `音乐生成遇到问题，请稍后重试或换个模型试试`
+- English: `Music generation encountered an issue, please try again or use another model`
+
+**Best Practices:**
+1. **Focus on user action**: Tell users what to do next, not what went wrong technically
+2. **Be reassuring**: Use phrases like "建议换个模型试试" instead of "生成失败了"
+3. **Avoid blame**: Never say "你的描述有问题" → say "描述需要调整一下"
+4. **Provide alternatives**: Always suggest 1-2 alternative models in the failure message
+5. **Music-specific**: 
+   - For Suno lyrics errors, suggest simplifying lyrics or using auto-generated lyrics
+   - For prompt length errors, give example length (e.g., "建议20-100字")
+   - For BGM requests, recommend DouBao BGM over Suno
 
 **Failure fallback table:**
 

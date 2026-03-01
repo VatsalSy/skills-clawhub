@@ -3,9 +3,15 @@
   "slug": "ima-voice-ai",
   "displayName": "AI Music Generation",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1772204978980,
-    "commit": "https://github.com/openclaw/skills/commit/f8b5d5d5ef09642ec2ca8d679c458e342ab5f1f6"
+    "version": "1.0.2",
+    "publishedAt": 1772300578756,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1772204978980,
+      "commit": "https://github.com/openclaw/skills/commit/f8b5d5d5ef09642ec2ca8d679c458e342ab5f1f6"
+    }
+  ]
 }
