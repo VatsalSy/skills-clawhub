@@ -1,0 +1,11 @@
+{
+  "owner": "kafcoppelia",
+  "slug": "privatebin-upload",
+  "displayName": "PrivateBin Upload Skill",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772333836392,
+    "commit": null
+  },
+  "history": []
+}
