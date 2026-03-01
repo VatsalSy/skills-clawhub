@@ -1,0 +1,11 @@
+{
+  "owner": "wbule",
+  "slug": "reddit-topic-insight",
+  "displayName": "Reddit 主题洞察",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1772348926011,
+    "commit": null
+  },
+  "history": []
+}
