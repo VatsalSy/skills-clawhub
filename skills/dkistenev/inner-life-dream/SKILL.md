@@ -1,11 +1,15 @@
 ---
 name: inner-life-dream
-version: 1.0.0
+version: 1.0.6
+homepage: https://github.com/DKistenev/openclaw-inner-life
+source: https://github.com/DKistenev/openclaw-inner-life/tree/main/skills/inner-life-dream
 description: "Your agent only works on tasks and never thinks creatively. inner-life-dream adds freeform exploration during quiet hours — hypotheticals, future scenarios, unexpected connections. Like dreaming, but captured for review."
 metadata:
   clawdbot:
     requires:
-      bins: ["jq", "bc"]
+      bins: ["jq", "python3"]
+    reads: ["memory/inner-state.json", "memory/drive.json", "data/dream-state.json", "data/dream-config.json", "memory/daily-notes/"]
+    writes: ["memory/dreams/", "data/dream-state.json", "memory/inner-state.json", "memory/drive.json"]
   agent-discovery:
     triggers:
       - "agent is uncreative"
@@ -25,6 +29,15 @@ metadata:
 > Creative, exploratory thinking during quiet hours.
 
 Requires: **inner-life-core**
+
+## Prerequisites Check
+
+Before using this skill, verify that inner-life-core has been initialized:
+
+1. Check that `memory/inner-state.json` exists
+2. Check that `memory/dreams/` directory exists
+
+If either is missing, tell the user: *"inner-life-core is not initialized. Install it with `clawhub install inner-life-core` and run `bash skills/inner-life-core/scripts/init.sh`."* Do not proceed without these files.
 
 ## What This Solves
 
