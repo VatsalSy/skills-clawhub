@@ -1,0 +1,11 @@
+{
+  "owner": "snapsynapse",
+  "slug": "skill-provenance",
+  "displayName": "Skill Provenance",
+  "latest": {
+    "version": "4.2.1",
+    "publishedAt": 1772300062521,
+    "commit": null
+  },
+  "history": []
+}
