@@ -1,0 +1,11 @@
+{
+  "owner": "bryan-project",
+  "slug": "vt-hash-intel",
+  "displayName": "VirusTotal Hash Analyzer",
+  "latest": {
+    "version": "1.0.2",
+    "publishedAt": 1772259942185,
+    "commit": null
+  },
+  "history": []
+}
