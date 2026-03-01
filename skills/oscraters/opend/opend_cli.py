@@ -92,8 +92,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--trd-env", default="SIMULATE", choices=["SIMULATE", "REAL"], help="Trading environment")
     parser.add_argument(
         "--credential-method",
-        default="env",
-        choices=["env", "keyring", "config", "none"],
+        default="openclaw",
+        choices=["openclaw", "secret-ref", "env", "keyring", "config", "none"],
         help="How trade password is loaded",
     )
     parser.add_argument("--output", default="json", choices=["json", "text"], help="Output format")

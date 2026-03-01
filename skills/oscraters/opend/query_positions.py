@@ -8,7 +8,7 @@ from opend_cli import main
 
 def _legacy_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--method', default='env', choices=['env', 'keyring', 'config'])
+    parser.add_argument('--method', default='openclaw', choices=['openclaw', 'secret-ref', 'env', 'keyring', 'config'])
     return parser.parse_args()
 
 

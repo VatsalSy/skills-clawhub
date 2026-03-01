@@ -15,6 +15,10 @@ def load_sdk():
     """Load moomoo/futu SDK with optional explicit path support."""
     sdk_path = os.getenv("OPEND_SDK_PATH")
     if sdk_path and sdk_path not in sys.path:
+        print(
+            "Warning: OPEND_SDK_PATH is set. Only load SDK code from a trusted location.",
+            file=sys.stderr,
+        )
         sys.path.insert(0, sdk_path)
 
     try:
@@ -54,7 +58,7 @@ class OpenDSettings:
     market: str = "HK"
     security_firm: str = "FUTUSECURITIES"
     trd_env: str = "SIMULATE"
-    credential_method: str = "env"
+    credential_method: str = "openclaw"
 
 
 class OpenDClient:
