@@ -1,8 +1,10 @@
 # Changelog
 
+## 0.9.0-beta.2
+- Reframed this ClawHub package as a **text-only adapter/documentation bundle**.
+- Added explicit pinned runtime source and safer install flow in `INSTALL.md`.
+- Added explicit first-run confirmation guidance (no blind auto-execution).
+- Simplified `SKILL.md` to remove capability/package mismatch risk.
+
 ## 0.9.0-beta.1
-- Scenario-first beta release for messy table workflows
-- English SKILL docs finalized for public distribution
-- Added dual FastAPI deployment docs (CSS API + OCR API route)
-- Clarified Discord-first validation and cross-platform adaptation note
-- Added release notes and publish-ready metadata
+- Initial beta publish draft.
