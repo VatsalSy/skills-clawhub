@@ -1,13 +1,13 @@
 ---
-title: Use afterRequest for Response Modification
+title: Use onAfterRequest for Response Logging
 impact: LOW
 impactDescription: enables response logging and cleanup without modifying agents
-tags: middleware, afterRequest, response, cleanup
+tags: middleware, onAfterRequest, response, cleanup
 ---
 
-## Use afterRequest for Response Modification
+## Use onAfterRequest for Response Logging
 
-Use the `afterRequest` middleware hook for logging completed requests, tracking usage metrics, or cleaning up resources. This runs after the agent response stream has completed.
+Use the `onAfterRequest` middleware hook for logging completed requests, tracking usage metrics, or cleaning up resources. This runs after the agent response has completed.
 
 **Incorrect (logging inside agent, couples concerns):**
 
@@ -22,23 +22,25 @@ class ResearchAgent {
 }
 ```
 
-**Correct (afterRequest for logging and cleanup):**
+**Correct (onAfterRequest for logging and cleanup):**
 
 ```typescript
-const runtime = new CopilotKitRuntime({
-  agents: [researchAgent],
+import { CopilotRuntime } from "@copilotkit/runtime"
+
+const runtime = new CopilotRuntime({
   middleware: {
-    afterRequest: async (req, res) => {
+    onAfterRequest: async (options) => {
+      const { threadId, runId, inputMessages, outputMessages, properties } = options
       await logUsage({
-        agentId: req.agentId,
-        userId: req.context?.userId,
-        duration: res.duration,
-        tokenCount: res.tokenCount,
+        threadId,
+        runId,
+        inputCount: inputMessages.length,
+        outputCount: outputMessages.length,
+        userId: properties?.userId,
       })
-      await cleanupTempFiles(req.threadId)
     },
   },
 })
 ```
 
-Reference: [Middleware](https://docs.copilotkit.ai/reference/runtime/middleware)
+Reference: [CopilotRuntime](https://docs.copilotkit.ai/reference/v1/classes/CopilotRuntime)

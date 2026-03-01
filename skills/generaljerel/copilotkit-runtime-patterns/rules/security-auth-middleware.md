@@ -7,36 +7,55 @@ tags: security, auth, middleware, authentication
 
 ## Authenticate Before Agent Execution
 
-Always authenticate requests before they reach the agent. An unauthenticated CopilotKit endpoint lets anyone invoke your agents and consume your LLM tokens. Use the `beforeRequest` middleware to validate tokens.
+Always authenticate requests before they reach the agent. An unauthenticated CopilotKit endpoint lets anyone invoke your agents and consume your LLM tokens. Use the `onBeforeRequest` middleware or external auth middleware to validate tokens.
 
 **Incorrect (no auth, open to public):**
 
 ```typescript
-const runtime = new CopilotKitRuntime({
-  agents: [myAgent],
-})
+import { CopilotRuntime, OpenAIAdapter, copilotRuntimeNextJSAppRouterEndpoint } from "@copilotkit/runtime"
 
-app.use("/api/copilotkit", runtime.expressHandler())
+const runtime = new CopilotRuntime()
+const serviceAdapter = new OpenAIAdapter()
+
+export const POST = async (req: NextRequest) => {
+  const { handleRequest } = copilotRuntimeNextJSAppRouterEndpoint({
+    runtime, serviceAdapter, endpoint: "/api/copilotkit",
+  })
+  return handleRequest(req)
+}
 ```
 
-**Correct (JWT auth before agent execution):**
+**Correct (JWT auth via properties and middleware):**
 
 ```typescript
-const runtime = new CopilotKitRuntime({
-  agents: [myAgent],
+import { CopilotRuntime, OpenAIAdapter, copilotRuntimeNextJSAppRouterEndpoint } from "@copilotkit/runtime"
+
+const runtime = new CopilotRuntime({
   middleware: {
-    beforeRequest: async (req) => {
-      const token = req.headers.get("authorization")?.replace("Bearer ", "")
-      if (!token) throw new Response("Missing token", { status: 401 })
+    onBeforeRequest: async (options) => {
+      const token = options.properties?.authToken
+      if (!token) throw new Error("Missing authentication token")
 
       const payload = await verifyJwt(token)
-      if (!payload) throw new Response("Invalid token", { status: 403 })
-
-      req.context = { userId: payload.sub, role: payload.role }
-      return req
+      if (!payload) throw new Error("Invalid token")
     },
   },
 })
+
+const serviceAdapter = new OpenAIAdapter()
+
+export const POST = async (req: NextRequest) => {
+  const { handleRequest } = copilotRuntimeNextJSAppRouterEndpoint({
+    runtime, serviceAdapter, endpoint: "/api/copilotkit",
+  })
+  return handleRequest(req)
+}
 ```
 
-Reference: [Security](https://docs.copilotkit.ai/guides/security)
+Pass the auth token from the frontend:
+
+```tsx
+<CopilotKit runtimeUrl="/api/copilotkit" properties={{ authToken: session.token }} />
+```
+
+Reference: [CopilotRuntime](https://docs.copilotkit.ai/reference/v1/classes/CopilotRuntime)

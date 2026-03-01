@@ -1,13 +1,13 @@
 ---
-title: Use beforeRequest for Auth and Logging
+title: Use onBeforeRequest for Auth and Logging
 impact: MEDIUM
 impactDescription: centralizes cross-cutting concerns before agent execution
-tags: middleware, beforeRequest, auth, logging
+tags: middleware, onBeforeRequest, auth, logging
 ---
 
-## Use beforeRequest for Auth and Logging
+## Use onBeforeRequest for Auth and Logging
 
-Use the `beforeRequest` middleware hook to handle authentication, logging, and context injection before the agent processes a request. This centralizes cross-cutting concerns and keeps agent code focused on business logic.
+Use the `onBeforeRequest` middleware hook to handle authentication, logging, and context injection before the agent processes a request. This centralizes cross-cutting concerns and keeps agent code focused on business logic.
 
 **Incorrect (auth logic inside each agent):**
 
@@ -16,27 +16,32 @@ class ResearchAgent {
   async run(input: RunInput) {
     const token = input.headers?.authorization
     if (!verifyToken(token)) throw new Error("Unauthorized")
-    // ... agent logic
   }
 }
 ```
 
-**Correct (auth in beforeRequest middleware):**
+**Correct (auth in onBeforeRequest middleware):**
 
 ```typescript
-const runtime = new CopilotKitRuntime({
-  agents: [researchAgent, writerAgent],
+import { CopilotRuntime } from "@copilotkit/runtime"
+
+const runtime = new CopilotRuntime({
   middleware: {
-    beforeRequest: async (req) => {
-      const token = req.headers.get("authorization")?.replace("Bearer ", "")
+    onBeforeRequest: async (options) => {
+      const { threadId, runId, inputMessages, properties } = options
+      const token = properties?.authToken
       if (!token || !await verifyToken(token)) {
-        throw new Response("Unauthorized", { status: 401 })
+        throw new Error("Unauthorized")
       }
-      req.context = { userId: decodeToken(token).sub }
-      return req
     },
   },
 })
 ```
 
-Reference: [Middleware](https://docs.copilotkit.ai/reference/runtime/middleware)
+Pass auth tokens from the frontend via the `properties` prop on `CopilotKit`:
+
+```tsx
+<CopilotKit runtimeUrl="/api/copilotkit" properties={{ authToken: session.token }}>
+```
+
+Reference: [CopilotRuntime](https://docs.copilotkit.ai/reference/v1/classes/CopilotRuntime)

@@ -12,36 +12,37 @@ Add rate limiting to your CopilotKit runtime endpoint to prevent individual user
 **Incorrect (no rate limiting):**
 
 ```typescript
-app.use("/api/copilotkit", runtime.expressHandler())
+import { CopilotRuntime, OpenAIAdapter, copilotRuntimeNextJSAppRouterEndpoint } from "@copilotkit/runtime"
+
+const runtime = new CopilotRuntime()
+// Anyone can make unlimited requests
 ```
 
-**Correct (rate limiting by user ID):**
+**Correct (rate limiting via middleware):**
 
 ```typescript
-import { RateLimiter } from "rate-limiter-flexible"
+import { RateLimiterMemory } from "rate-limiter-flexible"
+import { CopilotRuntime, OpenAIAdapter } from "@copilotkit/runtime"
 
-const limiter = new RateLimiter({
+const limiter = new RateLimiterMemory({
   points: 50,
   duration: 60,
-  keyPrefix: "copilotkit",
 })
 
-const runtime = new CopilotKitRuntime({
-  agents: [myAgent],
+const runtime = new CopilotRuntime({
   middleware: {
-    beforeRequest: async (req) => {
-      const userId = req.context?.userId
-      if (!userId) throw new Response("Unauthorized", { status: 401 })
+    onBeforeRequest: async (options) => {
+      const userId = options.properties?.userId
+      if (!userId) throw new Error("Unauthorized")
 
       try {
         await limiter.consume(userId)
       } catch {
-        throw new Response("Rate limit exceeded", { status: 429 })
+        throw new Error("Rate limit exceeded")
       }
-      return req
     },
   },
 })
 ```
 
-Reference: [Security](https://docs.copilotkit.ai/guides/security)
+Reference: [CopilotRuntime](https://docs.copilotkit.ai/reference/v1/classes/CopilotRuntime)

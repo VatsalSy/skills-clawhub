@@ -1,39 +1,38 @@
 ---
-title: InMemory for Dev, SQLite for Production
+title: Use Persistent Storage for Production Threads
 impact: HIGH
-impactDescription: InMemory loses all state on restart; SQLite persists across deploys
-tags: runner, InMemory, SQLite, persistence
+impactDescription: in-memory state loses all conversation history on restart
+tags: runner, persistence, threads, production
 ---
 
-## InMemory for Dev, SQLite for Production
+## Use Persistent Storage for Production Threads
 
-Use `InMemoryRunner` for development (fast, no setup) and `SQLiteRunner` for production (persistent state across restarts). InMemory loses all conversation state when the server restarts, which is unacceptable in production.
+In production, configure thread persistence so conversation history survives server restarts. CopilotKit supports thread management for persisting conversations. Without persistence, every deployment wipes all conversation history.
 
-**Incorrect (InMemory in production, state lost on deploy):**
+**Incorrect (no thread persistence, state lost on deploy):**
 
 ```typescript
-import { CopilotKitRuntime, InMemoryRunner } from "@copilotkit/runtime"
+import { CopilotRuntime, OpenAIAdapter, copilotRuntimeNextJSAppRouterEndpoint } from "@copilotkit/runtime"
 
-const runtime = new CopilotKitRuntime({
-  agents: [myAgent],
-  runner: new InMemoryRunner(),
-})
-// Every deployment wipes all conversation history
+const serviceAdapter = new OpenAIAdapter()
+const runtime = new CopilotRuntime()
 ```
 
-**Correct (environment-based runner selection):**
+**Correct (configure thread persistence for production):**
 
 ```typescript
-import { CopilotKitRuntime, InMemoryRunner, SQLiteRunner } from "@copilotkit/runtime"
+import { CopilotRuntime, OpenAIAdapter, copilotRuntimeNextJSAppRouterEndpoint } from "@copilotkit/runtime"
 
-const runner = process.env.NODE_ENV === "production"
-  ? new SQLiteRunner({ dbPath: process.env.DB_PATH || "./copilotkit.db" })
-  : new InMemoryRunner()
-
-const runtime = new CopilotKitRuntime({
-  agents: [myAgent],
-  runner,
+const serviceAdapter = new OpenAIAdapter()
+const runtime = new CopilotRuntime({
+  remoteEndpoints: [
+    {
+      url: process.env.LANGGRAPH_URL || "http://localhost:8000",
+    },
+  ],
 })
 ```
 
-Reference: [Runtime Configuration](https://docs.copilotkit.ai/reference/runtime/runners)
+For CoAgents (LangGraph), conversation persistence is handled by the LangGraph checkpointer, which stores state in its own database. Configure your LangGraph deployment with a persistent checkpointer for production.
+
+Reference: [Self Hosting](https://docs.copilotkit.ai/guides/self-hosting)

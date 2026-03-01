@@ -7,34 +7,57 @@ tags: endpoint, nextjs, api-route, streaming
 
 ## Set Up Next.js API Route Handler
 
-For Next.js, create a catch-all API route at `app/api/copilotkit/[...copilotkit]/route.ts`. Export both GET and POST handlers. Ensure the route segment config allows streaming responses.
+For Next.js App Router, create an API route at `app/api/copilotkit/route.ts`. Use `copilotRuntimeNextJSAppRouterEndpoint` to create the handler. Ensure the route allows sufficient duration for streaming responses.
 
-**Incorrect (single method, no streaming config):**
+**Incorrect (wrong class, no service adapter):**
 
 ```typescript
 // app/api/copilotkit/route.ts
-import { CopilotKitRuntime } from "@copilotkit/runtime"
+import { CopilotRuntime } from "@copilotkit/runtime"
 
-const runtime = new CopilotKitRuntime({ agents: [myAgent] })
+const runtime = new CopilotRuntime()
 
 export async function POST(req: Request) {
   return runtime.handler(req)
 }
 ```
 
-**Correct (catch-all route with streaming):**
+**Correct (proper Next.js endpoint with adapter):**
 
 ```typescript
-// app/api/copilotkit/[...copilotkit]/route.ts
-import { CopilotKitRuntime } from "@copilotkit/runtime"
+// app/api/copilotkit/route.ts
+import {
+  CopilotRuntime,
+  OpenAIAdapter,
+  copilotRuntimeNextJSAppRouterEndpoint,
+} from "@copilotkit/runtime"
+import { NextRequest } from "next/server"
 
-export const runtime = "edge" // or "nodejs"
-export const maxDuration = 60
+const serviceAdapter = new OpenAIAdapter()
+const runtime = new CopilotRuntime()
 
-const copilotkit = new CopilotKitRuntime({ agents: [myAgent] })
+export const POST = async (req: NextRequest) => {
+  const { handleRequest } = copilotRuntimeNextJSAppRouterEndpoint({
+    runtime,
+    serviceAdapter,
+    endpoint: "/api/copilotkit",
+  })
 
-export const GET = copilotkit.nextJsHandler()
-export const POST = copilotkit.nextJsHandler()
+  return handleRequest(req)
+}
 ```
 
-Reference: [Next.js Setup](https://docs.copilotkit.ai/guides/self-hosting/nextjs)
+For serverless platforms with short timeouts, increase the function timeout:
+
+```json
+// vercel.json
+{
+  "functions": {
+    "api/copilotkit/**/*": {
+      "maxDuration": 60
+    }
+  }
+}
+```
+
+Reference: [Self Hosting](https://docs.copilotkit.ai/guides/self-hosting)

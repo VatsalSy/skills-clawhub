@@ -1,6 +1,6 @@
 # CopilotKit Runtime Patterns
 
-**Version 1.0.0**  
+**Version 2.0.0**  
 CopilotKit  
 February 2026
 
@@ -14,30 +14,30 @@ February 2026
 
 ## Abstract
 
-Server-side runtime configuration patterns for CopilotKit. Contains 15 rules covering Express/Hono endpoint setup, agent runner selection (InMemory vs SQLite), middleware hooks, security configuration, and performance optimization.
+Server-side runtime configuration patterns for CopilotKit. Contains 15 rules covering Express/Hono/Next.js endpoint setup with CopilotRuntime and service adapters, agent registration via remoteEndpoints, middleware hooks (onBeforeRequest/onAfterRequest), security configuration, and performance optimization.
 
 ---
 
 ## Table of Contents
 
 1. [Endpoint Setup](#1-endpoint-setup) — **CRITICAL**
-   - 1.1 [Configure Express Endpoint with CORS](#1.1-configure-express-endpoint-with-cors)
-   - 1.2 [Configure Hono Endpoint for Edge](#1.2-configure-hono-endpoint-for-edge)
-   - 1.3 [Set Up Next.js API Route Handler](#1.3-set-up-next-js-api-route-handler)
-2. [Agent Runners](#2-agent-runners) — **HIGH**
-   - 2.1 [Configure Multi-Agent Routing](#2.1-configure-multi-agent-routing)
-   - 2.2 [InMemory for Dev, SQLite for Production](#2.2-inmemory-for-dev-sqlite-for-production)
-   - 2.3 [Register Agents with Descriptive Metadata](#2.3-register-agents-with-descriptive-metadata)
+   - 1.1 [Configure Express Endpoint with CORS](#11-configure-express-endpoint-with-cors)
+   - 1.2 [Configure Hono Endpoint for Edge](#12-configure-hono-endpoint-for-edge)
+   - 1.3 [Set Up Next.js API Route Handler](#13-set-up-nextjs-api-route-handler)
+2. [Agent Configuration](#2-agent-configuration) — **HIGH**
+   - 2.1 [Configure Multi-Agent Routing](#21-configure-multi-agent-routing)
+   - 2.2 [Register Agents via Remote Endpoints](#22-register-agents-via-remote-endpoints)
+   - 2.3 [Use Persistent Storage for Production Threads](#23-use-persistent-storage-for-production-threads)
 3. [Middleware](#3-middleware) — **MEDIUM**
-   - 3.1 [Handle Middleware Errors Gracefully](#3.1-handle-middleware-errors-gracefully)
-   - 3.2 [Use afterRequest for Response Modification](#3.2-use-afterrequest-for-response-modification)
-   - 3.3 [Use beforeRequest for Auth and Logging](#3.3-use-beforerequest-for-auth-and-logging)
+   - 3.1 [Handle Middleware Errors Gracefully](#31-handle-middleware-errors-gracefully)
+   - 3.2 [Use onAfterRequest for Response Logging](#32-use-onafterrequest-for-response-logging)
+   - 3.3 [Use onBeforeRequest for Auth and Logging](#33-use-onbeforerequest-for-auth-and-logging)
 4. [Security](#4-security) — **HIGH**
-   - 4.1 [Authenticate Before Agent Execution](#4.1-authenticate-before-agent-execution)
-   - 4.2 [Configure CORS for Specific Origins](#4.2-configure-cors-for-specific-origins)
-   - 4.3 [Rate Limit by User or API Key](#4.3-rate-limit-by-user-or-api-key)
+   - 4.1 [Authenticate Before Agent Execution](#41-authenticate-before-agent-execution)
+   - 4.2 [Configure CORS for Specific Origins](#42-configure-cors-for-specific-origins)
+   - 4.3 [Rate Limit by User or API Key](#43-rate-limit-by-user-or-api-key)
 5. [Performance](#5-performance) — **MEDIUM**
-   - 5.1 [Prevent Proxy Buffering of Streams](#5.1-prevent-proxy-buffering-of-streams)
+   - 5.1 [Prevent Proxy Buffering of Streams](#51-prevent-proxy-buffering-of-streams)
 
 ---
 
@@ -51,120 +51,163 @@ Correct endpoint configuration is required for CopilotKit to function. Misconfig
 
 **Impact: CRITICAL (missing CORS or wrong path blocks all frontend connections)**
 
-## Configure Express Endpoint with CORS
-
 When using Express, mount the CopilotKit runtime at a specific path and configure CORS to allow your frontend origin. Missing CORS headers cause the browser to block all requests from your React app.
 
-**Incorrect (no CORS, wrong path mounting):**
+**Incorrect (no CORS, no service adapter):**
 
 ```typescript
 import express from "express"
-import { CopilotKitRuntime } from "@copilotkit/runtime"
+import { CopilotRuntime } from "@copilotkit/runtime"
 
 const app = express()
-const runtime = new CopilotKitRuntime({ agents: [myAgent] })
+const runtime = new CopilotRuntime()
 
 app.use(runtime.handler())
 app.listen(3001)
 ```
 
-**Correct (CORS configured, specific path):**
+**Correct (CORS configured, proper Express endpoint):**
 
 ```typescript
 import express from "express"
 import cors from "cors"
-import { CopilotKitRuntime } from "@copilotkit/runtime"
+import {
+  CopilotRuntime,
+  OpenAIAdapter,
+  copilotRuntimeNodeHttpEndpoint,
+} from "@copilotkit/runtime"
 
 const app = express()
 app.use(cors({ origin: process.env.FRONTEND_URL || "http://localhost:3000" }))
 
-const runtime = new CopilotKitRuntime({ agents: [myAgent] })
-app.use("/api/copilotkit", runtime.expressHandler())
+const serviceAdapter = new OpenAIAdapter()
+const runtime = new CopilotRuntime()
+
+app.use("/api/copilotkit", (req, res, next) => {
+  const handler = copilotRuntimeNodeHttpEndpoint({
+    endpoint: "/api/copilotkit",
+    runtime,
+    serviceAdapter,
+  })
+  return handler(req, res, next)
+})
 
 app.listen(3001)
 ```
 
-Reference: [Express Setup](https://docs.copilotkit.ai/guides/self-hosting/express)
+Reference: [Self Hosting](https://docs.copilotkit.ai/guides/self-hosting)
 
 ### 1.2 Configure Hono Endpoint for Edge
 
 **Impact: HIGH (Hono enables edge runtime deployment for lower latency)**
 
-## Configure Hono Endpoint for Edge
-
 Use Hono for edge runtime deployments (Cloudflare Workers, Vercel Edge). Hono's lightweight design and Web Standard APIs make it ideal for edge CopilotKit runtimes.
 
-**Incorrect (Express patterns in edge runtime):**
+**Incorrect (no service adapter, no CORS):**
 
 ```typescript
 import { Hono } from "hono"
-import { CopilotKitRuntime } from "@copilotkit/runtime"
+import { CopilotRuntime } from "@copilotkit/runtime"
 
 const app = new Hono()
-const runtime = new CopilotKitRuntime({ agents: [myAgent] })
+const runtime = new CopilotRuntime()
 
 app.all("/api/copilotkit", (c) => {
   return runtime.handler()(c.req.raw)
 })
 ```
 
-**Correct (Hono-native handler with CORS):**
+**Correct (Hono with CORS and proper adapter):**
 
 ```typescript
 import { Hono } from "hono"
 import { cors } from "hono/cors"
-import { CopilotKitRuntime } from "@copilotkit/runtime"
+import {
+  CopilotRuntime,
+  OpenAIAdapter,
+} from "@copilotkit/runtime"
 
 const app = new Hono()
 app.use("/api/copilotkit/*", cors({ origin: process.env.FRONTEND_URL }))
 
-const runtime = new CopilotKitRuntime({ agents: [myAgent] })
-app.all("/api/copilotkit", runtime.honoHandler())
+const serviceAdapter = new OpenAIAdapter()
+const runtime = new CopilotRuntime()
+
+app.all("/api/copilotkit", async (c) => {
+  const response = await runtime.process({
+    serviceAdapter,
+    request: c.req.raw,
+  })
+  return response
+})
 
 export default app
 ```
 
-Reference: [Hono Setup](https://docs.copilotkit.ai/guides/self-hosting/hono)
+Reference: [Self Hosting](https://docs.copilotkit.ai/guides/self-hosting)
 
 ### 1.3 Set Up Next.js API Route Handler
 
 **Impact: CRITICAL (incorrect route handler config breaks streaming in Next.js)**
 
-## Set Up Next.js API Route Handler
+For Next.js App Router, create an API route at `app/api/copilotkit/route.ts`. Use `copilotRuntimeNextJSAppRouterEndpoint` to create the handler. Ensure the route allows sufficient duration for streaming responses.
 
-For Next.js, create a catch-all API route at `app/api/copilotkit/[...copilotkit]/route.ts`. Export both GET and POST handlers. Ensure the route segment config allows streaming responses.
-
-**Incorrect (single method, no streaming config):**
+**Incorrect (wrong class, no service adapter):**
 
 ```typescript
 // app/api/copilotkit/route.ts
-import { CopilotKitRuntime } from "@copilotkit/runtime"
+import { CopilotRuntime } from "@copilotkit/runtime"
 
-const runtime = new CopilotKitRuntime({ agents: [myAgent] })
+const runtime = new CopilotRuntime()
 
 export async function POST(req: Request) {
   return runtime.handler(req)
 }
 ```
 
-**Correct (catch-all route with streaming):**
+**Correct (proper Next.js endpoint with adapter):**
 
 ```typescript
-// app/api/copilotkit/[...copilotkit]/route.ts
-import { CopilotKitRuntime } from "@copilotkit/runtime"
+// app/api/copilotkit/route.ts
+import {
+  CopilotRuntime,
+  OpenAIAdapter,
+  copilotRuntimeNextJSAppRouterEndpoint,
+} from "@copilotkit/runtime"
+import { NextRequest } from "next/server"
 
-export const runtime = "edge" // or "nodejs"
-export const maxDuration = 60
+const serviceAdapter = new OpenAIAdapter()
+const runtime = new CopilotRuntime()
 
-const copilotkit = new CopilotKitRuntime({ agents: [myAgent] })
+export const POST = async (req: NextRequest) => {
+  const { handleRequest } = copilotRuntimeNextJSAppRouterEndpoint({
+    runtime,
+    serviceAdapter,
+    endpoint: "/api/copilotkit",
+  })
 
-export const GET = copilotkit.nextJsHandler()
-export const POST = copilotkit.nextJsHandler()
+  return handleRequest(req)
+}
 ```
 
-Reference: [Next.js Setup](https://docs.copilotkit.ai/guides/self-hosting/nextjs)
+For serverless platforms with short timeouts, increase the function timeout:
 
-## 2. Agent Runners
+```json
+// vercel.json
+{
+  "functions": {
+    "api/copilotkit/**/*": {
+      "maxDuration": 60
+    }
+  }
+}
+```
+
+Reference: [Self Hosting](https://docs.copilotkit.ai/guides/self-hosting)
+
+---
+
+## 2. Agent Configuration
 
 **Impact: HIGH**
 
@@ -174,106 +217,110 @@ Agent runners manage agent lifecycle and state persistence. Choosing the wrong r
 
 **Impact: HIGH (ambiguous routing sends requests to wrong agents)**
 
-## Configure Multi-Agent Routing
+When registering multiple agents, ensure each has a unique name that matches the `agent` prop or `agentId` used in the frontend. The runtime routes requests based on this name. Duplicate names cause unpredictable routing.
 
-When registering multiple agents, ensure each has a unique `name` that matches the `agentId` used in the frontend. The runtime routes requests based on this name. Duplicate names cause unpredictable routing.
-
-**Incorrect (duplicate names, ambiguous routing):**
+**Incorrect (single endpoint, no way to distinguish agents):**
 
 ```typescript
-const runtime = new CopilotKitRuntime({
-  agents: [
-    new BuiltInAgent({ name: "agent", tools: [searchTool] }),
-    new BuiltInAgent({ name: "agent", tools: [writeTool] }),
+import { CopilotRuntime } from "@copilotkit/runtime"
+
+const runtime = new CopilotRuntime({
+  remoteEndpoints: [
+    { url: "http://localhost:8000" },
   ],
 })
+
+// Frontend has no way to select a specific agent
 ```
 
-**Correct (unique names matching frontend agentId):**
+**Correct (agents accessible via frontend agent prop):**
 
 ```typescript
-const runtime = new CopilotKitRuntime({
-  agents: [
-    new BuiltInAgent({ name: "researcher", tools: [searchTool] }),
-    new BuiltInAgent({ name: "writer", tools: [writeTool] }),
+import { CopilotRuntime } from "@copilotkit/runtime"
+
+const runtime = new CopilotRuntime({
+  remoteEndpoints: [
+    { url: process.env.LANGGRAPH_URL || "http://localhost:8000" },
   ],
 })
 
-// Frontend:
+// Frontend selects agent via the agent prop:
+// <CopilotKit runtimeUrl="/api/copilotkit" agent="researcher">
+// or via useAgent:
 // useAgent({ agentId: "researcher" })
-// useAgent({ agentId: "writer" })
 ```
 
-Reference: [Multi-Agent Setup](https://docs.copilotkit.ai/guides/multi-agent)
+The runtime discovers available agents from the remote endpoint and routes based on the `agent`/`agentId` specified by the frontend.
 
-### 2.2 InMemory for Dev, SQLite for Production
+Reference: [Multi-Agent Flows](https://docs.copilotkit.ai/coagents/multi-agent-flows)
 
-**Impact: HIGH (InMemory loses all state on restart; SQLite persists across deploys)**
+### 2.2 Register Agents via Remote Endpoints
 
-## InMemory for Dev, SQLite for Production
+**Impact: MEDIUM (missing agent registration prevents proper routing and discovery)**
 
-Use `InMemoryRunner` for development (fast, no setup) and `SQLiteRunner` for production (persistent state across restarts). InMemory loses all conversation state when the server restarts, which is unacceptable in production.
+Register your agents with the runtime using `remoteEndpoints`. This enables the runtime to discover available agents, route requests to the correct agent, and provide agent metadata to the frontend.
 
-**Incorrect (InMemory in production, state lost on deploy):**
+**Incorrect (no agent endpoints configured):**
 
 ```typescript
-import { CopilotKitRuntime, InMemoryRunner } from "@copilotkit/runtime"
+import { CopilotRuntime, OpenAIAdapter } from "@copilotkit/runtime"
 
-const runtime = new CopilotKitRuntime({
-  agents: [myAgent],
-  runner: new InMemoryRunner(),
-})
-// Every deployment wipes all conversation history
+const runtime = new CopilotRuntime()
 ```
 
-**Correct (environment-based runner selection):**
+**Correct (remote endpoints configured for LangGraph agents):**
 
 ```typescript
-import { CopilotKitRuntime, InMemoryRunner, SQLiteRunner } from "@copilotkit/runtime"
+import { CopilotRuntime, OpenAIAdapter } from "@copilotkit/runtime"
 
-const runner = process.env.NODE_ENV === "production"
-  ? new SQLiteRunner({ dbPath: process.env.DB_PATH || "./copilotkit.db" })
-  : new InMemoryRunner()
-
-const runtime = new CopilotKitRuntime({
-  agents: [myAgent],
-  runner,
-})
-```
-
-Reference: [Runtime Configuration](https://docs.copilotkit.ai/reference/runtime/runners)
-
-### 2.3 Register Agents with Descriptive Metadata
-
-**Impact: MEDIUM (missing metadata prevents proper agent routing and debugging)**
-
-## Register Agents with Descriptive Metadata
-
-When registering agents with the runtime, provide descriptive `name` and `description` fields. The name is used for routing (matching `agentId` from the frontend), and the description helps with debugging and multi-agent orchestration.
-
-**Incorrect (no name or description):**
-
-```typescript
-const runtime = new CopilotKitRuntime({
-  agents: [new BuiltInAgent({ tools: [searchTool] })],
-})
-```
-
-**Correct (descriptive metadata for routing and debugging):**
-
-```typescript
-const runtime = new CopilotKitRuntime({
-  agents: [
-    new BuiltInAgent({
-      name: "researcher",
-      description: "Searches and synthesizes information from multiple sources",
-      tools: [searchTool, summarizeTool],
-    }),
+const runtime = new CopilotRuntime({
+  remoteEndpoints: [
+    {
+      url: process.env.LANGGRAPH_URL || "http://localhost:8000",
+    },
   ],
 })
 ```
 
-Reference: [Agent Registration](https://docs.copilotkit.ai/reference/runtime/agents)
+The runtime handles agent discovery and routing automatically when remote endpoints are configured. The frontend specifies which agent to use via the `agent` prop on `CopilotKit` or `agentId` in `useAgent`.
+
+Reference: [Copilot Runtime](https://docs.copilotkit.ai/reference/v1/classes/CopilotRuntime)
+
+### 2.3 Use Persistent Storage for Production Threads
+
+**Impact: HIGH (in-memory state loses all conversation history on restart)**
+
+In production, configure thread persistence so conversation history survives server restarts. CopilotKit supports thread management for persisting conversations. Without persistence, every deployment wipes all conversation history.
+
+**Incorrect (no thread persistence, state lost on deploy):**
+
+```typescript
+import { CopilotRuntime, OpenAIAdapter, copilotRuntimeNextJSAppRouterEndpoint } from "@copilotkit/runtime"
+
+const serviceAdapter = new OpenAIAdapter()
+const runtime = new CopilotRuntime()
+```
+
+**Correct (configure thread persistence for production):**
+
+```typescript
+import { CopilotRuntime, OpenAIAdapter, copilotRuntimeNextJSAppRouterEndpoint } from "@copilotkit/runtime"
+
+const serviceAdapter = new OpenAIAdapter()
+const runtime = new CopilotRuntime({
+  remoteEndpoints: [
+    {
+      url: process.env.LANGGRAPH_URL || "http://localhost:8000",
+    },
+  ],
+})
+```
+
+For CoAgents (LangGraph), conversation persistence is handled by the LangGraph checkpointer, which stores state in its own database. Configure your LangGraph deployment with a persistent checkpointer for production.
+
+Reference: [Self Hosting](https://docs.copilotkit.ai/guides/self-hosting)
+
+---
 
 ## 3. Middleware
 
@@ -285,19 +332,18 @@ Middleware hooks for request/response processing. Used for auth, logging, contex
 
 **Impact: MEDIUM (unhandled middleware errors crash the runtime for all users)**
 
-## Handle Middleware Errors Gracefully
-
-Wrap middleware logic in try/catch to prevent individual request failures from crashing the entire runtime. Return appropriate HTTP error responses instead of letting exceptions propagate.
+Wrap middleware logic in try/catch to prevent individual request failures from crashing the entire runtime. Log errors and re-throw with appropriate context instead of letting raw exceptions propagate.
 
 **Incorrect (unhandled error crashes runtime):**
 
 ```typescript
-const runtime = new CopilotKitRuntime({
+import { CopilotRuntime } from "@copilotkit/runtime"
+
+const runtime = new CopilotRuntime({
   middleware: {
-    beforeRequest: async (req) => {
-      const user = await fetchUser(req.headers.get("x-user-id"))
-      req.context = { user: user.data }
-      return req
+    onBeforeRequest: async (options) => {
+      const user = await fetchUser(options.properties?.userId)
+      // If fetchUser throws, the entire runtime crashes
     },
   },
 })
@@ -306,31 +352,32 @@ const runtime = new CopilotKitRuntime({
 **Correct (graceful error handling):**
 
 ```typescript
-const runtime = new CopilotKitRuntime({
+import { CopilotRuntime } from "@copilotkit/runtime"
+
+const runtime = new CopilotRuntime({
   middleware: {
-    beforeRequest: async (req) => {
+    onBeforeRequest: async (options) => {
       try {
-        const user = await fetchUser(req.headers.get("x-user-id"))
-        req.context = { user: user.data }
+        const user = await fetchUser(options.properties?.userId)
+        if (!user) {
+          throw new Error("User not found")
+        }
       } catch (error) {
         console.error("Middleware error:", error)
-        throw new Response("Internal Server Error", { status: 500 })
+        throw new Error("Authentication failed")
       }
-      return req
     },
   },
 })
 ```
 
-Reference: [Middleware](https://docs.copilotkit.ai/reference/runtime/middleware)
+Reference: [CopilotRuntime](https://docs.copilotkit.ai/reference/v1/classes/CopilotRuntime)
 
-### 3.2 Use afterRequest for Response Modification
+### 3.2 Use onAfterRequest for Response Logging
 
 **Impact: LOW (enables response logging and cleanup without modifying agents)**
 
-## Use afterRequest for Response Modification
-
-Use the `afterRequest` middleware hook for logging completed requests, tracking usage metrics, or cleaning up resources. This runs after the agent response stream has completed.
+Use the `onAfterRequest` middleware hook for logging completed requests, tracking usage metrics, or cleaning up resources. This runs after the agent response has completed.
 
 **Incorrect (logging inside agent, couples concerns):**
 
@@ -345,34 +392,34 @@ class ResearchAgent {
 }
 ```
 
-**Correct (afterRequest for logging and cleanup):**
+**Correct (onAfterRequest for logging and cleanup):**
 
 ```typescript
-const runtime = new CopilotKitRuntime({
-  agents: [researchAgent],
+import { CopilotRuntime } from "@copilotkit/runtime"
+
+const runtime = new CopilotRuntime({
   middleware: {
-    afterRequest: async (req, res) => {
+    onAfterRequest: async (options) => {
+      const { threadId, runId, inputMessages, outputMessages, properties } = options
       await logUsage({
-        agentId: req.agentId,
-        userId: req.context?.userId,
-        duration: res.duration,
-        tokenCount: res.tokenCount,
+        threadId,
+        runId,
+        inputCount: inputMessages.length,
+        outputCount: outputMessages.length,
+        userId: properties?.userId,
       })
-      await cleanupTempFiles(req.threadId)
     },
   },
 })
 ```
 
-Reference: [Middleware](https://docs.copilotkit.ai/reference/runtime/middleware)
+Reference: [CopilotRuntime](https://docs.copilotkit.ai/reference/v1/classes/CopilotRuntime)
 
-### 3.3 Use beforeRequest for Auth and Logging
+### 3.3 Use onBeforeRequest for Auth and Logging
 
 **Impact: MEDIUM (centralizes cross-cutting concerns before agent execution)**
 
-## Use beforeRequest for Auth and Logging
-
-Use the `beforeRequest` middleware hook to handle authentication, logging, and context injection before the agent processes a request. This centralizes cross-cutting concerns and keeps agent code focused on business logic.
+Use the `onBeforeRequest` middleware hook to handle authentication, logging, and context injection before the agent processes a request. This centralizes cross-cutting concerns and keeps agent code focused on business logic.
 
 **Incorrect (auth logic inside each agent):**
 
@@ -381,30 +428,37 @@ class ResearchAgent {
   async run(input: RunInput) {
     const token = input.headers?.authorization
     if (!verifyToken(token)) throw new Error("Unauthorized")
-    // ... agent logic
   }
 }
 ```
 
-**Correct (auth in beforeRequest middleware):**
+**Correct (auth in onBeforeRequest middleware):**
 
 ```typescript
-const runtime = new CopilotKitRuntime({
-  agents: [researchAgent, writerAgent],
+import { CopilotRuntime } from "@copilotkit/runtime"
+
+const runtime = new CopilotRuntime({
   middleware: {
-    beforeRequest: async (req) => {
-      const token = req.headers.get("authorization")?.replace("Bearer ", "")
+    onBeforeRequest: async (options) => {
+      const { threadId, runId, inputMessages, properties } = options
+      const token = properties?.authToken
       if (!token || !await verifyToken(token)) {
-        throw new Response("Unauthorized", { status: 401 })
+        throw new Error("Unauthorized")
       }
-      req.context = { userId: decodeToken(token).sub }
-      return req
     },
   },
 })
 ```
 
-Reference: [Middleware](https://docs.copilotkit.ai/reference/runtime/middleware)
+Pass auth tokens from the frontend via the `properties` prop on `CopilotKit`:
+
+```tsx
+<CopilotKit runtimeUrl="/api/copilotkit" properties={{ authToken: session.token }}>
+```
+
+Reference: [CopilotRuntime](https://docs.copilotkit.ai/reference/v1/classes/CopilotRuntime)
+
+---
 
 ## 4. Security
 
@@ -416,47 +470,62 @@ Security patterns for production CopilotKit deployments. Unprotected endpoints e
 
 **Impact: CRITICAL (unauthenticated endpoints expose LLM capabilities to anyone)**
 
-## Authenticate Before Agent Execution
-
-Always authenticate requests before they reach the agent. An unauthenticated CopilotKit endpoint lets anyone invoke your agents and consume your LLM tokens. Use the `beforeRequest` middleware to validate tokens.
+Always authenticate requests before they reach the agent. An unauthenticated CopilotKit endpoint lets anyone invoke your agents and consume your LLM tokens. Use the `onBeforeRequest` middleware or external auth middleware to validate tokens.
 
 **Incorrect (no auth, open to public):**
 
 ```typescript
-const runtime = new CopilotKitRuntime({
-  agents: [myAgent],
-})
+import { CopilotRuntime, OpenAIAdapter, copilotRuntimeNextJSAppRouterEndpoint } from "@copilotkit/runtime"
 
-app.use("/api/copilotkit", runtime.expressHandler())
+const runtime = new CopilotRuntime()
+const serviceAdapter = new OpenAIAdapter()
+
+export const POST = async (req: NextRequest) => {
+  const { handleRequest } = copilotRuntimeNextJSAppRouterEndpoint({
+    runtime, serviceAdapter, endpoint: "/api/copilotkit",
+  })
+  return handleRequest(req)
+}
 ```
 
-**Correct (JWT auth before agent execution):**
+**Correct (JWT auth via properties and middleware):**
 
 ```typescript
-const runtime = new CopilotKitRuntime({
-  agents: [myAgent],
+import { CopilotRuntime, OpenAIAdapter, copilotRuntimeNextJSAppRouterEndpoint } from "@copilotkit/runtime"
+
+const runtime = new CopilotRuntime({
   middleware: {
-    beforeRequest: async (req) => {
-      const token = req.headers.get("authorization")?.replace("Bearer ", "")
-      if (!token) throw new Response("Missing token", { status: 401 })
+    onBeforeRequest: async (options) => {
+      const token = options.properties?.authToken
+      if (!token) throw new Error("Missing authentication token")
 
       const payload = await verifyJwt(token)
-      if (!payload) throw new Response("Invalid token", { status: 403 })
-
-      req.context = { userId: payload.sub, role: payload.role }
-      return req
+      if (!payload) throw new Error("Invalid token")
     },
   },
 })
+
+const serviceAdapter = new OpenAIAdapter()
+
+export const POST = async (req: NextRequest) => {
+  const { handleRequest } = copilotRuntimeNextJSAppRouterEndpoint({
+    runtime, serviceAdapter, endpoint: "/api/copilotkit",
+  })
+  return handleRequest(req)
+}
 ```
 
-Reference: [Security](https://docs.copilotkit.ai/guides/security)
+Pass the auth token from the frontend:
+
+```tsx
+<CopilotKit runtimeUrl="/api/copilotkit" properties={{ authToken: session.token }} />
+```
+
+Reference: [CopilotRuntime](https://docs.copilotkit.ai/reference/v1/classes/CopilotRuntime)
 
 ### 4.2 Configure CORS for Specific Origins
 
 **Impact: HIGH (wildcard CORS exposes your LLM endpoint to any website)**
-
-## Configure CORS for Specific Origins
 
 Never use wildcard (`*`) CORS in production. Specify the exact frontend origin(s) that should be allowed to access your CopilotKit runtime. Wildcard CORS lets any website send requests to your endpoint, potentially abusing your LLM quota.
 
@@ -482,46 +551,47 @@ Reference: [Security](https://docs.copilotkit.ai/guides/security)
 
 **Impact: HIGH (unbounded access lets single users exhaust LLM budget)**
 
-## Rate Limit by User or API Key
-
 Add rate limiting to your CopilotKit runtime endpoint to prevent individual users from exhausting your LLM budget. Rate limit by authenticated user ID or API key, not just IP address (which doesn't work behind proxies/VPNs).
 
 **Incorrect (no rate limiting):**
 
 ```typescript
-app.use("/api/copilotkit", runtime.expressHandler())
+import { CopilotRuntime, OpenAIAdapter, copilotRuntimeNextJSAppRouterEndpoint } from "@copilotkit/runtime"
+
+const runtime = new CopilotRuntime()
+// Anyone can make unlimited requests
 ```
 
-**Correct (rate limiting by user ID):**
+**Correct (rate limiting via middleware):**
 
 ```typescript
-import { RateLimiter } from "rate-limiter-flexible"
+import { RateLimiterMemory } from "rate-limiter-flexible"
+import { CopilotRuntime, OpenAIAdapter } from "@copilotkit/runtime"
 
-const limiter = new RateLimiter({
+const limiter = new RateLimiterMemory({
   points: 50,
   duration: 60,
-  keyPrefix: "copilotkit",
 })
 
-const runtime = new CopilotKitRuntime({
-  agents: [myAgent],
+const runtime = new CopilotRuntime({
   middleware: {
-    beforeRequest: async (req) => {
-      const userId = req.context?.userId
-      if (!userId) throw new Response("Unauthorized", { status: 401 })
+    onBeforeRequest: async (options) => {
+      const userId = options.properties?.userId
+      if (!userId) throw new Error("Unauthorized")
 
       try {
         await limiter.consume(userId)
       } catch {
-        throw new Response("Rate limit exceeded", { status: 429 })
+        throw new Error("Rate limit exceeded")
       }
-      return req
     },
   },
 })
 ```
 
-Reference: [Security](https://docs.copilotkit.ai/guides/security)
+Reference: [CopilotRuntime](https://docs.copilotkit.ai/reference/v1/classes/CopilotRuntime)
+
+---
 
 ## 5. Performance
 
@@ -533,14 +603,15 @@ Optimization patterns for runtime performance, streaming, and resource managemen
 
 **Impact: MEDIUM (buffered streams cause long delays before first token appears)**
 
-## Prevent Proxy Buffering of Streams
-
 CopilotKit uses Server-Sent Events (SSE) for streaming. Reverse proxies (Nginx, Cloudflare) may buffer the response, causing long delays before the first token reaches the client. Set headers to disable buffering.
 
 **Incorrect (no streaming headers, proxy buffers response):**
 
 ```typescript
-app.use("/api/copilotkit", runtime.expressHandler())
+import { CopilotRuntime, OpenAIAdapter, copilotRuntimeNodeHttpEndpoint } from "@copilotkit/runtime"
+
+// No anti-buffering headers configured
+app.use("/api/copilotkit", handler)
 ```
 
 **Correct (disable proxy buffering for streaming):**
@@ -551,7 +622,7 @@ app.use("/api/copilotkit", (req, res, next) => {
   res.setHeader("Cache-Control", "no-cache, no-transform")
   res.setHeader("Content-Type", "text/event-stream")
   next()
-}, runtime.expressHandler())
+}, handler)
 ```
 
 For Nginx, also add to your server config:
@@ -559,7 +630,7 @@ For Nginx, also add to your server config:
 proxy_buffering off;
 ```
 
-Reference: [Deployment](https://docs.copilotkit.ai/guides/self-hosting)
+Reference: [Self Hosting](https://docs.copilotkit.ai/guides/self-hosting)
 
 ---
 
@@ -567,4 +638,7 @@ Reference: [Deployment](https://docs.copilotkit.ai/guides/self-hosting)
 
 - https://docs.copilotkit.ai
 - https://github.com/CopilotKit/CopilotKit
-- https://docs.copilotkit.ai/reference/runtime
+- https://docs.copilotkit.ai/reference/v1/classes/CopilotRuntime
+- https://docs.copilotkit.ai/guides/self-hosting
+- https://docs.copilotkit.ai/guides/security
+- https://docs.copilotkit.ai/coagents/multi-agent-flows

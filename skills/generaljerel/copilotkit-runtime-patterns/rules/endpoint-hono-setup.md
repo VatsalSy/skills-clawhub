@@ -9,34 +9,45 @@ tags: endpoint, hono, edge, setup
 
 Use Hono for edge runtime deployments (Cloudflare Workers, Vercel Edge). Hono's lightweight design and Web Standard APIs make it ideal for edge CopilotKit runtimes.
 
-**Incorrect (Express patterns in edge runtime):**
+**Incorrect (no service adapter, no CORS):**
 
 ```typescript
 import { Hono } from "hono"
-import { CopilotKitRuntime } from "@copilotkit/runtime"
+import { CopilotRuntime } from "@copilotkit/runtime"
 
 const app = new Hono()
-const runtime = new CopilotKitRuntime({ agents: [myAgent] })
+const runtime = new CopilotRuntime()
 
 app.all("/api/copilotkit", (c) => {
   return runtime.handler()(c.req.raw)
 })
 ```
 
-**Correct (Hono-native handler with CORS):**
+**Correct (Hono with CORS and proper adapter):**
 
 ```typescript
 import { Hono } from "hono"
 import { cors } from "hono/cors"
-import { CopilotKitRuntime } from "@copilotkit/runtime"
+import {
+  CopilotRuntime,
+  OpenAIAdapter,
+} from "@copilotkit/runtime"
 
 const app = new Hono()
 app.use("/api/copilotkit/*", cors({ origin: process.env.FRONTEND_URL }))
 
-const runtime = new CopilotKitRuntime({ agents: [myAgent] })
-app.all("/api/copilotkit", runtime.honoHandler())
+const serviceAdapter = new OpenAIAdapter()
+const runtime = new CopilotRuntime()
+
+app.all("/api/copilotkit", async (c) => {
+  const response = await runtime.process({
+    serviceAdapter,
+    request: c.req.raw,
+  })
+  return response
+})
 
 export default app
 ```
 
-Reference: [Hono Setup](https://docs.copilotkit.ai/guides/self-hosting/hono)
+Reference: [Self Hosting](https://docs.copilotkit.ai/guides/self-hosting)

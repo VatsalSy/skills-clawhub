@@ -1,34 +1,36 @@
 ---
-title: Register Agents with Descriptive Metadata
+title: Register Agents via Remote Endpoints
 impact: MEDIUM
-impactDescription: missing metadata prevents proper agent routing and debugging
-tags: runner, agents, registration, metadata
+impactDescription: missing agent registration prevents proper routing and discovery
+tags: runner, agents, registration, remoteEndpoints
 ---
 
-## Register Agents with Descriptive Metadata
+## Register Agents via Remote Endpoints
 
-When registering agents with the runtime, provide descriptive `name` and `description` fields. The name is used for routing (matching `agentId` from the frontend), and the description helps with debugging and multi-agent orchestration.
+Register your agents with the runtime using `remoteEndpoints`. This enables the runtime to discover available agents, route requests to the correct agent, and provide agent metadata to the frontend.
 
-**Incorrect (no name or description):**
+**Incorrect (no agent endpoints configured):**
 
 ```typescript
-const runtime = new CopilotKitRuntime({
-  agents: [new BuiltInAgent({ tools: [searchTool] })],
-})
+import { CopilotRuntime, OpenAIAdapter } from "@copilotkit/runtime"
+
+const runtime = new CopilotRuntime()
 ```
 
-**Correct (descriptive metadata for routing and debugging):**
+**Correct (remote endpoints configured for LangGraph agents):**
 
 ```typescript
-const runtime = new CopilotKitRuntime({
-  agents: [
-    new BuiltInAgent({
-      name: "researcher",
-      description: "Searches and synthesizes information from multiple sources",
-      tools: [searchTool, summarizeTool],
-    }),
+import { CopilotRuntime, OpenAIAdapter } from "@copilotkit/runtime"
+
+const runtime = new CopilotRuntime({
+  remoteEndpoints: [
+    {
+      url: process.env.LANGGRAPH_URL || "http://localhost:8000",
+    },
   ],
 })
 ```
 
-Reference: [Agent Registration](https://docs.copilotkit.ai/reference/runtime/agents)
+The runtime handles agent discovery and routing automatically when remote endpoints are configured. The frontend specifies which agent to use via the `agent` prop on `CopilotKit` or `agentId` in `useAgent`.
+
+Reference: [Copilot Runtime](https://docs.copilotkit.ai/reference/v1/classes/CopilotRuntime)

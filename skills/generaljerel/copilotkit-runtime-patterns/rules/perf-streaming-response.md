@@ -12,7 +12,10 @@ CopilotKit uses Server-Sent Events (SSE) for streaming. Reverse proxies (Nginx, 
 **Incorrect (no streaming headers, proxy buffers response):**
 
 ```typescript
-app.use("/api/copilotkit", runtime.expressHandler())
+import { CopilotRuntime, OpenAIAdapter, copilotRuntimeNodeHttpEndpoint } from "@copilotkit/runtime"
+
+// No anti-buffering headers configured
+app.use("/api/copilotkit", handler)
 ```
 
 **Correct (disable proxy buffering for streaming):**
@@ -23,7 +26,7 @@ app.use("/api/copilotkit", (req, res, next) => {
   res.setHeader("Cache-Control", "no-cache, no-transform")
   res.setHeader("Content-Type", "text/event-stream")
   next()
-}, runtime.expressHandler())
+}, handler)
 ```
 
 For Nginx, also add to your server config:
@@ -31,4 +34,4 @@ For Nginx, also add to your server config:
 proxy_buffering off;
 ```
 
-Reference: [Deployment](https://docs.copilotkit.ai/guides/self-hosting)
+Reference: [Self Hosting](https://docs.copilotkit.ai/guides/self-hosting)

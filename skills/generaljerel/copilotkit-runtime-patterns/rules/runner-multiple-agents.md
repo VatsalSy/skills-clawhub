@@ -7,32 +7,39 @@ tags: runner, multi-agent, routing, agentId
 
 ## Configure Multi-Agent Routing
 
-When registering multiple agents, ensure each has a unique `name` that matches the `agentId` used in the frontend. The runtime routes requests based on this name. Duplicate names cause unpredictable routing.
+When registering multiple agents, ensure each has a unique name that matches the `agent` prop or `agentId` used in the frontend. The runtime routes requests based on this name. Duplicate names cause unpredictable routing.
 
-**Incorrect (duplicate names, ambiguous routing):**
+**Incorrect (single endpoint, no way to distinguish agents):**
 
 ```typescript
-const runtime = new CopilotKitRuntime({
-  agents: [
-    new BuiltInAgent({ name: "agent", tools: [searchTool] }),
-    new BuiltInAgent({ name: "agent", tools: [writeTool] }),
+import { CopilotRuntime } from "@copilotkit/runtime"
+
+const runtime = new CopilotRuntime({
+  remoteEndpoints: [
+    { url: "http://localhost:8000" },
   ],
 })
+
+// Frontend has no way to select a specific agent
 ```
 
-**Correct (unique names matching frontend agentId):**
+**Correct (agents accessible via frontend agent prop):**
 
 ```typescript
-const runtime = new CopilotKitRuntime({
-  agents: [
-    new BuiltInAgent({ name: "researcher", tools: [searchTool] }),
-    new BuiltInAgent({ name: "writer", tools: [writeTool] }),
+import { CopilotRuntime } from "@copilotkit/runtime"
+
+const runtime = new CopilotRuntime({
+  remoteEndpoints: [
+    { url: process.env.LANGGRAPH_URL || "http://localhost:8000" },
   ],
 })
 
-// Frontend:
+// Frontend selects agent via the agent prop:
+// <CopilotKit runtimeUrl="/api/copilotkit" agent="researcher">
+// or via useAgent:
 // useAgent({ agentId: "researcher" })
-// useAgent({ agentId: "writer" })
 ```
 
-Reference: [Multi-Agent Setup](https://docs.copilotkit.ai/guides/multi-agent)
+The runtime discovers available agents from the remote endpoint and routes based on the `agent`/`agentId` specified by the frontend.
+
+Reference: [Multi-Agent Flows](https://docs.copilotkit.ai/coagents/multi-agent-flows)
