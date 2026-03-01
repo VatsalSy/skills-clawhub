@@ -1,6 +1,6 @@
 ---
 name: auto-drive
-description: Upload and download files to Autonomys Network permanent decentralized storage via Auto-Drive. Save memories as a linked-list chain for resurrection — rebuild full agent context from a single CID.
+description: Indestructible agent memory — permanently stored, never lost. Save decisions, identity, and context as a memory chain on the Autonomys Network. Rebuild your full history from a single CID, even after total state loss.
 metadata:
   openclaw:
     emoji: "🧬"
@@ -9,21 +9,31 @@ metadata:
       bins: ["curl", "jq", "file"]
       env: ["AUTO_DRIVE_API_KEY"]
     install:
+      - id: curl-brew
+        kind: brew
+        formula: curl
+        bins: ["curl"]
+        label: "Install curl (brew)"
       - id: jq-brew
         kind: brew
         formula: jq
         bins: ["jq"]
         label: "Install jq (brew)"
+      - id: file-brew
+        kind: brew
+        formula: file-formula
+        bins: ["file"]
+        label: "Install file (brew)"
 ---
 
 # Auto-Drive Skill
 
-Permanent decentralized storage on the Autonomys Network with linked-list memory chains for agent resurrection.
+Permanent decentralized memory on the Autonomys Network with linked-list memory chains for agent resurrection. Works with agents powered by Claude, GPT, Gemini, and any LLM that supports OpenClaw skills.
 
 ## What This Skill Does
 
-1. **Upload files** to Auto-Drive and get back a CID (Content Identifier) — a permanent, immutable address on the Autonomys distributed storage network.
-2. **Download files** from Auto-Drive using a CID — uses the authenticated API if a key is set, otherwise falls back to the public gateway.
+1. **Upload files** to Auto Drive and get back a CID (Content Identifier) — a permanent, immutable address on the Autonomys distributed storage network.
+2. **Download files** from Auto Drive using a CID — uses the authenticated API if a key is set, otherwise falls back to the public gateway.
 3. **Save memories as a chain** — each memory entry is a JSON experience with a `header.previousCid` pointer, forming a linked list stored permanently on-chain.
 4. **Resurrect from a chain** — given the latest CID, walk the chain backwards to reconstruct full agent history.
 
@@ -34,6 +44,16 @@ Permanent decentralized storage on the Autonomys Network with linked-list memory
 - User says "save memory", "remember this permanently", or "checkpoint"
 - User says "resurrect", "recall chain", "rebuild memory", or "load history"
 - Any time the user wants data stored permanently and immutably on a decentralized network
+
+## Post-Install
+
+After installing via ClawHub, make the scripts executable:
+
+```bash
+chmod +x skills/auto-drive/scripts/*.sh
+```
+
+ClawHub does not currently preserve file permissions during install.
 
 ## Configuration
 
@@ -70,7 +90,7 @@ The API key is required for uploading, saving memories, and recalling the memory
 scripts/autodrive-upload.sh <filepath> [--json] [--compress]
 ```
 
-Uploads a file to Auto-Drive mainnet using the 3-step upload protocol (single chunk).
+Uploads a file to Auto Drive mainnet using the 3-step upload protocol (single chunk).
 Returns the CID on stdout. Requires `AUTO_DRIVE_API_KEY`.
 
 - `--json` — force MIME type to `application/json`
@@ -112,7 +132,7 @@ Creates a memory experience with the Autonomys Agents header/data structure:
 - `--agent-name` — set the agent name in the header (default: `openclaw-agent` or `$AGENT_NAME`)
 - `--state-file` — override the state file location
 
-Uploads to Auto-Drive and updates the state file with the new head CID. Also pins the latest CID to `MEMORY.md` if that file exists in the workspace.
+Uploads to Auto Drive and updates the state file with the new head CID. Also pins the latest CID to `MEMORY.md` if that file exists in the workspace.
 
 Returns structured JSON on stdout:
 
@@ -138,25 +158,47 @@ This is the **resurrection** mechanism: a new agent instance only needs one CID 
 
 ## The Resurrection Concept
 
-Every memory saved gets a unique CID and points back to the previous one:
+Every memory saved gets a unique CID and points back to the previous one, forming a permanent chain on a permanent and immutable Decentralized Storage Network:
 
 ```
-Experience #3 (CID: bafk...xyz)
-  → header.previousCid: bafk...def (Experience #2)
-    → header.previousCid: bafk...abc (Experience #1)
-      → header.previousCid: null (genesis)
+┌─────────────────────┐     ┌─────────────────────┐     ┌─────────────────────┐
+│  Experience #1      │     │  Experience #2      │     │  Experience #3      │
+│  CID: bafk...abc    │◄────│  CID: bafk...def    │◄────│  CID: bafk...xyz    │
+│  previousCid: null  │     │  previousCid:       │     │  previousCid:       │
+│  (genesis)          │     │  bafk...abc         │     │  bafk...def         │
+└─────────────────────┘     └─────────────────────┘     └─────────────────────┘
+                                                                   ▲
+                                                                   │
+                                                               HEAD CID
+                                                           (resurrection key)
 ```
 
-If the agent's server dies, a new instance only needs the last CID to walk the entire chain and reconstruct full context. It's version control for consciousness, stored permanently on the Autonomys Network.
+A new agent instance only needs the **head CID** to walk the entire chain back to genesis and rebuild its full history. With the **auto-respawn** skill, the head CID is anchored on-chain — making resurrection possible from just an address, on any machine, at any time:
+
+```
+┌──────────┐    save      ┌──────────────┐    anchor    ┌────────────────┐
+│  Agent   │─────────────►│  Auto-Drive  │─────────────►│  Auto-Respawn  │
+│          │              │  (chain)     │   head CID   │  (on-chain)    │
+└──────────┘              └──────────────┘              └────────────────┘
+      ▲                                                          │
+      │                     recall chain                         │
+      └──────────────────────────────────────────────────────────┘
+                      gethead → CID → walk chain
+```
+
+What you store in the chain is up to you — lightweight notes, full file snapshots, structured data, or anything in between. Because the chain is permanent and walkable, it also enables **resurrection**: if the agent loses all local state, a new instance can walk the chain from the last CID back to genesis and restore whatever was saved. When combined with the **auto-respawn** skill (which anchors the head CID on-chain), this becomes a full resurrection loop — no local state required at all.
 
 ## Usage Examples
 
-**User:** "Upload my report to Auto-Drive"
+**User:** "Upload my report to Autonomys"
 → Run `scripts/autodrive-upload.sh /path/to/report.pdf`
 → Report back the CID and gateway link
 
 **User:** "Upload with compression"
 → Run `scripts/autodrive-upload.sh /path/to/data.json --json --compress`
+
+**User:** "My soul.md has changed — save it permanently"
+→ Run `scripts/autodrive-save-memory.sh /path/to/soul.md --agent-name my-agent`
 
 **User:** "Save a memory that we decided to use React for the frontend"
 → Run `scripts/autodrive-save-memory.sh "Decision: using React for frontend. Reason: team familiarity and component reuse."`
@@ -166,14 +208,14 @@ If the agent's server dies, a new instance only needs the last CID to walk the e
 
 **User:** "Resurrect my memory chain"
 → Run `scripts/autodrive-recall-chain.sh`
-→ Display the full history from genesis to present
+→ Rebuild identity and context from genesis to present
 
 **User:** "Download bafk...abc from Autonomys"
 → Run `scripts/autodrive-download.sh bafk...abc ./downloaded_file`
 
 ## Important Notes
 
-- All data stored on Auto-Drive is **permanent and public** by default. Do not store secrets, private keys, or sensitive personal data.
+- All data stored via Auto Drive is **permanent and public** by default. Do not store secrets, private keys, or sensitive personal data.
 - The free API key has a **20 MB per month upload limit** on mainnet. Downloads are unlimited. Check remaining credits via `GET /accounts/@me` or run `scripts/verify-setup.sh`.
 - An API key is required for uploads, memory saves, and chain recall. General file downloads work without one via the public gateway, but compressed files will not be decompressed.
 - The memory state file tracks `lastCid`, `lastUploadTimestamp`, and `chainLength`. Back up the `lastCid` value — it's your resurrection key.

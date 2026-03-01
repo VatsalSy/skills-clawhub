@@ -3,11 +3,16 @@
   "slug": "auto-drive",
   "displayName": "auto-drive",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1772030585849,
-    "commit": "https://github.com/openclaw/skills/commit/d77b591710a79786089cbe99d0109529a9db9a9e"
+    "version": "1.0.4",
+    "publishedAt": 1772215994657,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1772030585849,
+      "commit": "https://github.com/openclaw/skills/commit/d77b591710a79786089cbe99d0109529a9db9a9e"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1771610260076,
