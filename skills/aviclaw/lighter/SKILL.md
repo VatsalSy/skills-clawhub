@@ -56,11 +56,34 @@ Requires the official Lighter SDK. Review and verify before installing:
 
 ## Environment Variables
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `LIGHTER_API_KEY` | For orders | API key from SDK setup |
-| `LIGHTER_ACCOUNT_INDEX` | For orders | Your Lighter account index |
-| `LIGHTER_L1_ADDRESS` | Optional | ETH address for lookups |
+| Variable | Required | Description | Where to Find |
+|----------|----------|-------------|---------------|
+| `LIGHTER_API_KEY` | For orders | API key from Lighter SDK setup | See "Getting an API Key" section below |
+| `LIGHTER_ACCOUNT_INDEX` | For orders | Your Lighter subaccount index (0-252) | See "Getting Your Account Index" section below |
+| `LIGHTER_L1_ADDRESS` | Optional | Your ETH address (0x...) used on Lighter | Your MetaMask/Wallet address |
+
+### Setting Up Your Credentials
+
+**Step 1: Get your L1 Address**
+- This is your Ethereum address (e.g., `0x1234...abcd`)
+- Use the same wallet you connect to Lighter dashboard
+
+**Step 2: Get your Account Index**
+```bash
+curl "https://mainnet.zklighter.elliot.ai/api/v1/accountsByL1Address?l1_address=YOUR_ETH_ADDRESS"
+```
+Response returns `sub_accounts[].index` — that's your account index (typically 0 for main account).
+
+**Step 3: Get your API Key**
+1. Install Lighter Python SDK: `pip install lighter-python`
+2. Follow the setup guide: https://github.com/elliottech/lighter-python/blob/main/examples/system_setup.py
+3. The SDK generates API keys tied to your account
+4. Store the private key securely — never commit to git
+
+**Quick test (read-only, no credentials):**
+```bash
+curl "https://mainnet.zklighter.elliot.ai/api/v1/orderBooks"
+```
 
 ## API Usage
 
@@ -87,19 +110,11 @@ curl -H "x-api-key: $LIGHTER_API_KEY" \
 
 ## Getting Your Account Index
 
-```bash
-# Query by ETH address
-curl "https://mainnet.zklighter.elliot.ai/api/v1/accountsByL1Address?l1_address=YOUR_ADDRESS"
-```
-
-Response contains `sub_accounts[].index` - use as your account index.
+See "Setting Up Your Credentials" table above for the quick curl command.
 
 ## Getting an API Key
 
-1. Review the official Lighter SDK: https://github.com/elliottech/lighter-python
-2. Clone and audit the code
-3. Run setup with a dedicated wallet
-4. Store the generated API key securely
+See "Setting Up Your Credentials" table above for the step-by-step guide.
 
 ## Common Issues
 
@@ -124,5 +139,13 @@ Response contains `sub_accounts[].index` - use as your account index.
 - SDK: https://github.com/elliottech/lighter-python
 
 ---
+
+## Additional Examples
+
+See `USAGE.md` in this skill folder for:
+- Detailed curl commands for all endpoints
+- Order book and trade queries
+- Account and position checks
+- Signed transaction flow (nonce → sign → broadcast)
 
 **Disclaimer:** Review all external code before running. Use dedicated wallets for trading.
