@@ -1,4 +1,4 @@
-# openclaw-self-healing-homeofe
+﻿# openclaw-self-healing-elvatis
 
 OpenClaw plugin that improves resilience by automatically fixing reversible failures.
 
@@ -28,13 +28,13 @@ Not implemented yet (next):
 From ClawHub:
 
 ```bash
-clawhub install openclaw-self-healing-homeofe
+clawhub install openclaw-self-healing-elvatis
 ```
 
 For local development:
 
 ```bash
-openclaw plugins install -l ~/.openclaw/workspace/openclaw-self-healing-homeofe
+openclaw plugins install -l ~/.openclaw/workspace/openclaw-self-healing-elvatis
 openclaw gateway restart
 ```
 

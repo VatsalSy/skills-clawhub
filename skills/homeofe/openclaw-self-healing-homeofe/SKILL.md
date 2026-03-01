@@ -1,9 +1,9 @@
----
-name: openclaw-self-healing-homeofe
+﻿---
+name: openclaw-self-healing-elvatis
 description: OpenClaw plugin that applies guardrails and auto-fixes reversible failures (rate limits, disconnects, stuck session pins).
 ---
 
-# openclaw-self-healing-homeofe
+# openclaw-self-healing-elvatis
 
 Self-healing extension for OpenClaw.
 
@@ -16,7 +16,7 @@ Self-healing extension for OpenClaw.
 ## Install
 
 ```bash
-clawhub install openclaw-self-healing-homeofe
+clawhub install openclaw-self-healing-elvatis
 ```
 
 ## Notes
