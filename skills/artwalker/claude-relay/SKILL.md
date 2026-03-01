@@ -1,6 +1,6 @@
 ---
 name: claude-relay
-description: Relay operator for Claude Code via tmux across multiple projects. Start/continue persistent Claude Code terminal sessions, send prompts, read output, and manage background sessions by project name or path.
+description: Relay operator for Claude Code via tmux across multiple projects. Use when the user wants to start/continue a Claude Code terminal session, send prompts, read output, or manage background Claude sessions by project name/path.
 metadata: {"openclaw":{"emoji":"🔄","requires":{"bins":["tmux","claude"]}}}
 ---
 
@@ -8,55 +8,47 @@ metadata: {"openclaw":{"emoji":"🔄","requires":{"bins":["tmux","claude"]}}}
 
 Operate Claude Code as a persistent terminal copilot through tmux.
 
-## Use this skill for
-
-- Starting a Claude Code session in a project directory
-- Sending prompts to a running Claude session
-- Reading Claude's output (tail)
-- Managing multiple concurrent project sessions
-
 ## Script
 
-Use `scripts/relay.sh` for all actions. Prefer script actions over ad-hoc shell so behavior stays deterministic.
+All actions go through `scripts/relay.sh`. Run with no args for usage help.
 
-## Project resolution rules
+```bash
+scripts/relay.sh <action> [project] [args...]
+```
 
-The script resolves project in this order:
+**Actions**: `start`, `send`, `tail`, `stop`, `status`, `session`
 
-1. Absolute path (if exists)
-2. Alias from `projects.map` in the skill folder (`name=/abs/path`)
+## Workflow
+
+1. Start session: `scripts/relay.sh start <project>`
+2. Send instruction: `scripts/relay.sh send <project> "<text>"`
+3. Read output: `scripts/relay.sh tail <project> [lines]`
+4. Repeat send/tail as needed.
+5. Stop when done: `scripts/relay.sh stop <project>`
+
+## Project resolution
+
+The script resolves `<project>` in order:
+
+1. Absolute path (if directory exists)
+2. Alias from `projects.map` (`name=/abs/path`)
 3. `$CLAUDE_RELAY_ROOT/<name>` exact match
-4. Find under `$CLAUDE_RELAY_ROOT` (`maxdepth=2`) by folder name
+4. Find under `$CLAUDE_RELAY_ROOT` (maxdepth=2) by folder name
 5. If omitted, re-use last project
 
-If multiple matches are found, ask user to disambiguate.
-
-## Standard workflow
-
-1. Start or reuse session for target project:
-   - `scripts/relay.sh start <project-or-path>`
-2. Send user instruction:
-   - `scripts/relay.sh send <project-or-path> "<instruction>"`
-3. Read output:
-   - `scripts/relay.sh tail <project-or-path> [lines]`
-4. Repeat send/tail loop.
-5. Stop when asked:
-   - `scripts/relay.sh stop <project-or-path>`
+Multiple matches → script exits with candidates; ask user to clarify.
 
 ## Session naming
 
-- Session name is deterministic: `cc_<project_basename_sanitized>`
-- One project ↔ one tmux session
+Deterministic: `cc_<basename_sanitized>`. One project = one tmux session.
 
-## Quick commands
+## Error handling
 
-```bash
-scripts/relay.sh start myproject
-scripts/relay.sh send myproject "fix the failing tests"
-scripts/relay.sh tail myproject 80
-scripts/relay.sh status
-scripts/relay.sh stop myproject
-```
+- **tmux not installed**: script exits with code 2 and "missing dependency" message.
+- **Claude binary not found**: same exit code 2. Verify `CLAUDE_BIN` env or default path.
+- **Session not running** (send/tail on stopped session): exits code 6. Start first.
+- **Project not found**: exits code 4. Check `projects.map` or project path.
+- **Claude process hung**: `tail` still works — check output. If stuck, `stop` and `start` fresh.
 
 ## Environment variables
 
@@ -75,5 +67,4 @@ scripts/relay.sh stop myproject
 
 ## Notes
 
-- This skill is transport-focused (relay/orchestration), not deep code reasoning.
-- For heavy design/review, switch to a stronger model before synthesis.
+- Transport-focused skill (relay/orchestration), not deep code reasoning.
