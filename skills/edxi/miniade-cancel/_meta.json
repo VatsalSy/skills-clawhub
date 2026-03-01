@@ -1,0 +1,11 @@
+{
+  "owner": "edxi",
+  "slug": "miniade-cancel",
+  "displayName": "Cancel Dispatch Run",
+  "latest": {
+    "version": "0.1.1",
+    "publishedAt": 1772179110490,
+    "commit": null
+  },
+  "history": []
+}
