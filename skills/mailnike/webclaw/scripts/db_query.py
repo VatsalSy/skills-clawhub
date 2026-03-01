@@ -125,9 +125,10 @@ def action_setup_ssl(args):
     if not domain:
         _fail("--domain is required. Example: --domain erp.example.com")
 
-    # Validate domain (basic check)
-    if " " in domain or "/" in domain or not "." in domain:
-        _fail(f"Invalid domain: {domain}")
+    # Validate domain — strict regex to prevent nginx config injection
+    import re
+    if not re.match(r'^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$', domain):
+        _fail(f"Invalid domain: {domain}. Must be a valid hostname (e.g., erp.example.com)")
 
     # Check certbot is available
     if not shutil.which("certbot"):
@@ -455,4 +456,9 @@ if __name__ == "__main__":
     parser.add_argument("--role", default=None)
 
     args, _unknown = parser.parse_known_args()
-    ACTIONS[args.action](args)
+    try:
+        ACTIONS[args.action](args)
+    except SystemExit:
+        raise
+    except Exception as e:
+        _fail(f"{type(e).__name__}: {e}\n\nIf webclaw is not set up yet, run: bash scripts/install.sh\nThen open https://YOUR_SERVER/setup to create your admin account.")

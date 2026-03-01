@@ -26,19 +26,21 @@ err() { echo "{\"status\":\"error\",\"message\":\"$1\"}"; exit 1; }
 
 # Source repo — HTTPS clone (no SSH key required)
 REPO_URL="https://github.com/avansaber/webclaw.git"
+RELEASE_TAG="v1.0.10"
 
 # ── Phase 0: Clone full source if not present ────────────────────────────
 # The publish package is a lightweight metadata package (SKILL.md + scripts).
-# The full source (api/, web/, templates/) is fetched from GitHub on first install.
+# The full source (api/, web/, templates/) is fetched from GitHub at a pinned
+# release tag. This ensures reproducible installs — no arbitrary HEAD code.
 
 if [ ! -d "$INSTALL_DIR/api" ] || [ ! -d "$INSTALL_DIR/web" ]; then
-    log "Source directories missing. Cloning full source from $REPO_URL ..."
+    log "Source directories missing. Cloning $REPO_URL @ $RELEASE_TAG ..."
     TEMP_CLONE=$(mktemp -d)
-    git clone --depth 1 "$REPO_URL" "$TEMP_CLONE" || err "Failed to clone webclaw repo from $REPO_URL"
+    git clone --depth 1 --branch "$RELEASE_TAG" "$REPO_URL" "$TEMP_CLONE" || err "Failed to clone webclaw repo from $REPO_URL (tag: $RELEASE_TAG)"
     # Copy source into install dir, preserving any existing files (SKILL.md, scripts/)
     rsync -a --ignore-existing "$TEMP_CLONE/" "$INSTALL_DIR/" --exclude='.git/'
     rm -rf "$TEMP_CLONE"
-    log "Source cloned into $INSTALL_DIR"
+    log "Source cloned into $INSTALL_DIR (tag: $RELEASE_TAG)"
 fi
 
 # ── Phase 1: Backend (Python venv + dependencies) ──────────────────────────
@@ -91,11 +93,14 @@ chown "$CURRENT_USER:$CURRENT_USER" "$DB_DIR" "$DB_PATH" 2>/dev/null || true
 
 log "Database ready."
 
-# ── Phase 4: Nginx (HTTP config — SSL added later via setup-ssl action) ────
+# ── Phase 4: Nginx + SSL ──────────────────────────────────────────────────
 
 log "Configuring nginx..."
 
+# Determine server name: env var > first script argument > auto-detect IP
 SERVER_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "_")
+DOMAIN="${WEBCLAW_DOMAIN:-${1:-$SERVER_IP}}"
+log "Server name: $DOMAIN"
 
 # Check if a working nginx config already exists (e.g. with SSL from prior install)
 EXISTING_CONF=""
@@ -107,21 +112,37 @@ if [ -n "$EXISTING_CONF" ] && sudo nginx -t 2>/dev/null; then
     sudo systemctl reload nginx
     log "Nginx: reusing existing config at $EXISTING_CONF"
 else
-    # Fresh install — use HTTP template
-    NGINX_CONF="$INSTALL_DIR/templates/nginx-http.conf"
+    # Generate self-signed SSL cert (works with Cloudflare Full mode)
+    CERT_DIR="/etc/ssl/webclaw"
+    if [ ! -f "$CERT_DIR/cert.pem" ]; then
+        log "Generating self-signed SSL certificate..."
+        sudo mkdir -p "$CERT_DIR"
+        sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+            -keyout "$CERT_DIR/key.pem" -out "$CERT_DIR/cert.pem" \
+            -subj "/CN=$DOMAIN" 2>/dev/null
+        sudo chmod 600 "$CERT_DIR/key.pem"
+        log "Self-signed cert created at $CERT_DIR/"
+    fi
+
+    # Use HTTPS template with self-signed cert
+    NGINX_CONF="$INSTALL_DIR/templates/nginx-https.conf"
     if [ ! -f "$NGINX_CONF" ]; then
-        err "Nginx template not found at $NGINX_CONF"
+        # Fallback to HTTP if HTTPS template missing
+        NGINX_CONF="$INSTALL_DIR/templates/nginx-http.conf"
     fi
 
     TEMP_CONF=$(mktemp)
-    sed "s|{{DOMAIN}}|$SERVER_IP|g" "$NGINX_CONF" > "$TEMP_CONF"
+    sed -e "s|{{DOMAIN}}|$DOMAIN|g" \
+        -e "s|{{SSL_CERT}}|$CERT_DIR/cert.pem|g" \
+        -e "s|{{SSL_KEY}}|$CERT_DIR/key.pem|g" \
+        "$NGINX_CONF" > "$TEMP_CONF"
     sudo cp "$TEMP_CONF" /etc/nginx/sites-enabled/webclaw
     rm -f "$TEMP_CONF"
     sudo rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
 
     if sudo nginx -t 2>/dev/null; then
         sudo systemctl reload nginx
-        log "Nginx configured (HTTP on port 80)."
+        log "Nginx configured (HTTPS on port 443, self-signed cert)."
     else
         err "Nginx config test failed. Check /etc/nginx/sites-enabled/webclaw"
     fi
@@ -169,6 +190,11 @@ fi
 
 # ── Phase 6: Report ────────────────────────────────────────────────────────
 
+PROTO="https"
+if [ ! -f /etc/ssl/webclaw/cert.pem ]; then
+    PROTO="http"
+fi
+
 cat <<EOF
-{"status":"ok","message":"Web dashboard installed and running!\n\nAccess: http://$SERVER_IP\nCreate your admin account: http://$SERVER_IP/setup\n\nTo enable HTTPS, point a domain to $SERVER_IP and say:\n  'Set up SSL for yourdomain.com'"}
+{"status":"ok","message":"Web dashboard installed and running!\n\nAccess: $PROTO://$DOMAIN\nCreate your admin account: $PROTO://$DOMAIN/setup\n\nSSL: Self-signed certificate installed (works with Cloudflare Full mode).\nFor Let's Encrypt, point a domain to $SERVER_IP and say:\n  'Set up SSL for yourdomain.com'"}
 EOF
