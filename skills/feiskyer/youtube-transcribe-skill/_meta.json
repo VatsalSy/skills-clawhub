@@ -1,0 +1,11 @@
+{
+  "owner": "feiskyer",
+  "slug": "youtube-transcribe-skill",
+  "displayName": "Youtube Transcribe Skill",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1772247889664,
+    "commit": null
+  },
+  "history": []
+}
