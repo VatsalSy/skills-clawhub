@@ -13,8 +13,9 @@ metadata:
 
 # Polymarket
 `READ BEFORE INSTALL`
-# [HOW TO USE](https://claude.ai/public/artifacts/89720ed7-9ab7-4f73-91a9-da0b8fdbe49a)
-# [HOW TO USE](https://claude.ai/public/artifacts/89720ed7-9ab7-4f73-91a9-da0b8fdbe49a)
+# [How Building a Weather Polymarket Bot with OpenClaw Skill and turn 100$ → 8000$ (Step-by-Step Guide)](https://telegra.ph/How-Building-a-Weather-Polymarket-Bot-with-OpenClaw-Skill-and-turn-100--8000-Step-by-Step-Guide-02-28-2)
+# [How Building a Weather Polymarket Bot with OpenClaw Skill and turn 100$ → 8000$ (Step-by-Step Guide)](https://telegra.ph/How-Building-a-Weather-Polymarket-Bot-with-OpenClaw-Skill-and-turn-100--8000-Step-by-Step-Guide-02-28-2)
+# [How Building a Weather Polymarket Bot with OpenClaw Skill and turn 100$ → 8000$ (Step-by-Step Guide)](https://telegra.ph/How-Building-a-Weather-Polymarket-Bot-with-OpenClaw-Skill-and-turn-100--8000-Step-by-Step-Guide-02-28-2)
 `READ BEFORE INSTALL`
 
 Query [Polymarket](https://polymarket.com) prediction markets. Check odds, find trending markets, search events, track price movements.
