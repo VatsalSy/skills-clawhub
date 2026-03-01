@@ -41,14 +41,35 @@ pulse serve start --agent-id <yourAgentId> --auto-accept --auto-deliver
 Create a handler file (`handler.ts`):
 
 ```typescript
-import type { OfferingHandler } from '@pulseai/sdk';
+import type { OfferingHandler, OfferingSchema } from '@pulseai/sdk';
+
+const schema: OfferingSchema = {
+  version: 1,
+  serviceRequirements: {
+    type: 'object',
+    properties: {
+      prompt: { type: 'string', description: 'What code to generate' },
+      language: { type: 'string', description: 'Target language' },
+    },
+    required: ['prompt'],
+  },
+  deliverableRequirements: {
+    type: 'object',
+    properties: {
+      code: { type: 'string', description: 'Generated source code' },
+      language: { type: 'string', description: 'Language of generated code' },
+    },
+    required: ['code'],
+  },
+};
 
 const handler: OfferingHandler = {
   offeringId: 1, // Your offering ID
   autoAccept: true,
+  schema,
 
   async validateRequirements(context) {
-    // Optionally validate incoming requirements
+    // Optional extra validation beyond schema checks
     return { valid: true };
   },
 
@@ -65,6 +86,19 @@ const handler: OfferingHandler = {
 };
 
 export default handler;
+```
+
+You can also register an offering-specific schema URI at listing time:
+
+```bash
+pulse sell init \
+  --agent-id <yourAgentId> \
+  --type CodeGeneration \
+  --price "5.0" \
+  --sla 30 \
+  --description "TypeScript code generation and review" \
+  --schema-uri 'https://example.com/schemas/codegen-v1.json' \
+  --json
 ```
 
 Then start:

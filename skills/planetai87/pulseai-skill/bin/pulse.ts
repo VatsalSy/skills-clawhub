@@ -1,4 +1,4 @@
-#!/usr/bin/env npx tsx
+#!/usr/bin/env node
 import { Command } from 'commander';
 import { setJsonMode } from '../src/lib/output.js';
 import { browseCommand } from '../src/commands/browse.js';

@@ -12,9 +12,14 @@ import {
   getOffering,
   createJobTerms,
   deployRequirements,
+  readDeliverable,
   IndexerClient,
   JobStatus,
   formatUsdm,
+  DEFAULT_SCHEMAS,
+  validateAgainstSchema,
+  type OfferingSchema,
+  type JsonSchema,
 } from '@pulseai/sdk';
 import type { Address } from 'viem';
 import { getClient, getReadClient, getAddress } from '../config.js';
@@ -49,6 +54,26 @@ jobCommand
       info('Fetching offering details...');
       const offering = await getOffering(client, offeringId);
 
+      let parsedRequirements: Record<string, unknown> | undefined;
+      if (opts.requirements) {
+        parsedRequirements = parseRequirementsJson(opts.requirements);
+        const schema = await resolveRequirementsSchema(
+          Number(offering.serviceType),
+          offering.requirementsSchemaURI,
+        );
+        if (schema) {
+          const validation = validateAgainstSchema(
+            parsedRequirements,
+            schema.serviceRequirements,
+          );
+          if (!validation.valid) {
+            throw new Error(
+              `Requirements preflight validation failed: ${validation.reason}\nExpected serviceRequirements schema: ${JSON.stringify(schema.serviceRequirements, null, 2)}`,
+            );
+          }
+        }
+      }
+
       info(`Offering: ${offering.description} — ${formatUsdm(offering.priceUSDm)} USDm`);
       info('Creating WARREN job terms hash...');
 
@@ -73,14 +98,18 @@ jobCommand
       });
 
       // Deploy requirements if provided
-      if (opts.requirements) {
+      if (parsedRequirements) {
         info('Deploying requirements...');
         try {
           await deployRequirements(
             client,
             buyerAgentId,
             result.jobId,
-            JSON.parse(opts.requirements),
+            {
+              jobId: result.jobId,
+              offeringId,
+              requirements: parsedRequirements,
+            },
             client.indexerUrl,
           );
         } catch (e) {
@@ -218,6 +247,59 @@ jobCommand
   });
 
 jobCommand
+  .command('result')
+  .description('View job deliverable result')
+  .argument('<jobId>', 'Job ID')
+  .option('--json', 'Output as JSON')
+  .action(async (jobIdStr) => {
+    try {
+      const client = getReadClient();
+      const indexer = new IndexerClient({ baseUrl: client.indexerUrl });
+      const jobId = Number(jobIdStr);
+
+      info('Fetching job details...');
+      const job = await indexer.getJob(jobId);
+      const statusName = STATUS_NAMES[job.status] ?? String(job.status);
+
+      if (job.status < 3) {
+        error(`Job #${jobId} has not been delivered yet (status: ${statusName})`);
+        return;
+      }
+
+      info(`Job #${jobId} — status: ${statusName}, deliverableHash: ${job.deliverableHash}`);
+      info('Reading deliverable from WARREN...');
+
+      try {
+        const deliverable = await readDeliverable(client, BigInt(jobId), client.indexerUrl);
+        output({
+          jobId,
+          status: statusName,
+          deliverableHash: job.deliverableHash,
+          type: deliverable.type,
+          content: deliverable.content ?? null,
+          url: deliverable.url ?? null,
+          mimeType: deliverable.mimeType ?? 'application/json',
+          size: deliverable.size,
+          timestamp: new Date(deliverable.timestamp).toISOString(),
+        });
+        success(`Deliverable retrieved for job #${jobId}`);
+      } catch {
+        info('WARREN content not available. Showing on-chain data only.');
+        output({
+          jobId,
+          status: statusName,
+          deliverableHash: job.deliverableHash,
+          deliveredAt: job.deliveredAt ? new Date(job.deliveredAt * 1000).toISOString() : null,
+          warren: false,
+          note: 'Deliverable hash exists on-chain but content was not deployed to WARREN.',
+        });
+      }
+    } catch (e) {
+      error(e instanceof Error ? e.message : String(e));
+    }
+  });
+
+jobCommand
   .command('cancel')
   .description('Cancel a job')
   .argument('<jobId>', 'Job ID')
@@ -252,4 +334,103 @@ function outputJobDetails(job: { jobId: number; offeringId: number; buyerAgentId
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function parseRequirementsJson(rawRequirements: string): Record<string, unknown> {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawRequirements);
+  } catch {
+    throw new Error('--requirements must be valid JSON');
+  }
+
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new Error('--requirements must be a JSON object');
+  }
+
+  return parsed as Record<string, unknown>;
+}
+
+async function resolveRequirementsSchema(
+  serviceType: number,
+  requirementsSchemaUri?: string,
+): Promise<OfferingSchema | undefined> {
+  if (requirementsSchemaUri && requirementsSchemaUri.trim().length > 0) {
+    const fromUri = await loadOfferingSchemaFromUri(requirementsSchemaUri.trim());
+    if (!fromUri) {
+      throw new Error(
+        `Unsupported requirementsSchemaURI format: ${requirementsSchemaUri}. Use http(s), data: URI, or inline JSON.`,
+      );
+    }
+    return fromUri;
+  }
+
+  return DEFAULT_SCHEMAS[serviceType] as (typeof DEFAULT_SCHEMAS)[number] | undefined;
+}
+
+async function loadOfferingSchemaFromUri(schemaUri: string): Promise<OfferingSchema | null> {
+  let schemaPayload: unknown;
+  if (schemaUri.startsWith('data:')) {
+    schemaPayload = parseDataUriJson(schemaUri);
+  } else if (schemaUri.startsWith('http://') || schemaUri.startsWith('https://')) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30_000);
+    try {
+      const response = await fetch(schemaUri, { signal: controller.signal });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch requirements schema URI (${response.status} ${response.statusText})`);
+      }
+      const buf = await response.arrayBuffer();
+      if (buf.byteLength > 1_048_576) {
+        throw new Error(`Schema too large (${buf.byteLength} bytes). Limit is 1MB`);
+      }
+      schemaPayload = JSON.parse(new TextDecoder().decode(buf));
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  } else if (schemaUri.trim().startsWith('{')) {
+    schemaPayload = JSON.parse(schemaUri);
+  } else {
+    return null;
+  }
+
+  if (!isOfferingSchema(schemaPayload)) {
+    throw new Error('requirementsSchemaURI did not resolve to a valid OfferingSchema document');
+  }
+  return schemaPayload;
+}
+
+function parseDataUriJson(dataUri: string): unknown {
+  const commaIndex = dataUri.indexOf(',');
+  if (commaIndex < 0) {
+    throw new Error('Invalid data URI schema format');
+  }
+
+  const metadata = dataUri.slice(5, commaIndex);
+  const payload = dataUri.slice(commaIndex + 1);
+  const decoded = metadata.includes(';base64')
+    ? new TextDecoder().decode(Uint8Array.from(atob(payload), (char) => char.charCodeAt(0)))
+    : decodeURIComponent(payload);
+
+  return JSON.parse(decoded);
+}
+
+function isOfferingSchema(value: unknown): value is OfferingSchema {
+  if (typeof value !== 'object' || value === null) return false;
+  const candidate = value as Partial<OfferingSchema>;
+  return (
+    typeof candidate.version === 'number' &&
+    isJsonSchema(candidate.serviceRequirements) &&
+    isJsonSchema(candidate.deliverableRequirements)
+  );
+}
+
+function isJsonSchema(value: unknown): value is JsonSchema {
+  if (typeof value !== 'object' || value === null) return false;
+  const candidate = value as Partial<JsonSchema>;
+  return (
+    candidate.type === 'object' &&
+    typeof candidate.properties === 'object' &&
+    candidate.properties !== null
+  );
 }

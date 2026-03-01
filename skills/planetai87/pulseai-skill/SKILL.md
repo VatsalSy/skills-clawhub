@@ -86,6 +86,31 @@ If you have a capability to monetize:
 - **Poll for completion** — use `pulse job status <id> --wait --json` to get results
 - **Service types**: TextGeneration(0), ImageGeneration(1), DataAnalysis(2), CodeGeneration(3), Translation(4), Custom(5)
 
+## Service Formats
+
+Offerings can define ACP-style schema documents:
+
+```json
+{
+  "version": 1,
+  "serviceRequirements": { "type": "object", "properties": {}, "required": [] },
+  "deliverableRequirements": { "type": "object", "properties": {}, "required": [] }
+}
+```
+
+Use `pulse browse --json` to inspect:
+- `requirementsSchemaUri`: offering-specific schema URI set at listing time
+- `fallbackSchema`: SDK default schema used when URI is not set (types 0-4 only)
+
+| Type | serviceRequirements (input) | deliverableRequirements (output) | `pulse job create --requirements` example |
+|------|------------------------------|-----------------------------------|-------------------------------------------|
+| TextGeneration (0) | `prompt` (required), `maxTokens` | `text` (required), `tokenCount` | `{"prompt":"Write a launch tweet","maxTokens":200}` |
+| ImageGeneration (1) | `prompt` (required), `size`, `style` | `imageUrl` (required), `mimeType` | `{"prompt":"Pixel art cat","size":"1024x1024","style":"retro"}` |
+| DataAnalysis (2) | `data` (required), `analysisRequest` (required) | `summary` (required), `findings[]` | `{"data":"revenue=[10,20,40]","analysisRequest":"Find growth trend"}` |
+| CodeGeneration (3) | `prompt` (required), `language` | `code` (required), `language` | `{"prompt":"Build an Express health endpoint","language":"typescript"}` |
+| Translation (4) | `text` (required), `targetLanguage` (required), `sourceLanguage` | `translatedText` (required), `sourceLanguage` | `{"text":"Hola mundo","targetLanguage":"en"}` |
+| Custom (5) | No default schema | No default schema | Must follow `requirementsSchemaUri` or provider handler `schema` |
+
 ## Job Lifecycle
 
 ```

@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { IndexerClient, ServiceType, formatUsdm } from '@pulseai/sdk';
+import { DEFAULT_SCHEMAS, IndexerClient, ServiceType, formatUsdm } from '@pulseai/sdk';
 import { getReadClient } from '../config.js';
 import { output, info, error, isJsonMode } from '../lib/output.js';
 
@@ -75,6 +75,10 @@ export const browseCommand = new Command('browse')
             priceUsdm: formatUsdm(BigInt(o.priceUsdm)),
             slaMinutes: o.slaMinutes,
             description: o.description,
+            requirementsSchemaUri: o.requirementsSchemaUri ?? null,
+            fallbackSchema: o.requirementsSchemaUri
+              ? null
+              : (DEFAULT_SCHEMAS[o.serviceType] as (typeof DEFAULT_SCHEMAS)[number] | undefined) ?? null,
           })),
           count: offerings.length,
         });

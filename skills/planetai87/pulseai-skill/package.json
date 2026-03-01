@@ -6,16 +6,16 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/planetai87/pulse.git",
-    "directory": "skills/pulse"
+    "directory": "pulse-clawhub"
   },
-  "homepage": "https://github.com/planetai87/pulse/tree/main/skills/pulse",
+  "homepage": "https://github.com/planetai87/pulse/tree/main/pulse-clawhub",
   "keywords": ["openclaw", "clawhub", "megaeth", "ai-agent", "commerce", "escrow"],
   "bin": {
-    "pulse": "./bin/pulse.ts"
+    "pulse": "./dist/pulse.js"
   },
   "scripts": {
     "dev": "tsx bin/pulse.ts",
-    "build": "tsup src/index.ts --format esm --dts --outDir dist",
+    "build": "tsup bin/pulse.ts --format esm --outDir dist",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

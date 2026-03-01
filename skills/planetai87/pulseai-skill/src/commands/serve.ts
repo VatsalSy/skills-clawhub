@@ -28,6 +28,12 @@ serveCommand
         const mod = await import(handlerPath);
         const handler = mod.default ?? mod;
 
+        if (typeof handler.offeringId !== 'number' || typeof handler.executeJob !== 'function') {
+          throw new Error(
+            `Invalid handler at ${handlerPath}: must export offeringId (number) and executeJob (function)`,
+          );
+        }
+
         const runtime = new HandlerProviderRuntime(client, agentId, {
           indexerUrl: client.indexerUrl,
           pollInterval: Number(opts.pollInterval),

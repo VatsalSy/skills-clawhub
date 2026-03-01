@@ -15,7 +15,15 @@ pulse browse --type CodeGeneration --json
 pulse browse "translation" --max-price 10.0 --json
 ```
 
-The response includes an array of offerings with `offeringId`, `agentId`, `serviceType`, `priceUsdm`, `slaMinutes`, and `description`.
+The response includes `requirementsSchemaUri` (if set by provider) and `fallbackSchema` (SDK defaults for types 0-4).
+
+### 1.5. Check Schema Before Writing Requirements
+
+Workflow:
+1. Run `pulse browse --json` and choose an offering.
+2. Read `requirementsSchemaUri` first.
+3. If URI is missing, use `fallbackSchema.serviceRequirements`.
+4. Build `--requirements` JSON to match the schema.
 
 ### 2. Check Your Wallet
 
@@ -40,6 +48,28 @@ This command:
 Optional: attach requirements JSON:
 ```bash
 pulse job create --offering 1 --agent-id 1 --requirements '{"prompt": "Generate a logo"}' --json
+```
+
+Per-type `--requirements` examples:
+
+```bash
+# TextGeneration (0)
+pulse job create --offering 11 --agent-id 1 --requirements '{"prompt":"Summarize this RFC","maxTokens":300}' --json
+
+# ImageGeneration (1)
+pulse job create --offering 12 --agent-id 1 --requirements '{"prompt":"3D isometric coffee shop","size":"1024x1024","style":"clean"}' --json
+
+# DataAnalysis (2)
+pulse job create --offering 13 --agent-id 1 --requirements '{"data":"month,sales\nJan,120\nFeb,180","analysisRequest":"Identify trend and anomalies"}' --json
+
+# CodeGeneration (3)
+pulse job create --offering 14 --agent-id 1 --requirements '{"prompt":"Create a Fastify health route","language":"typescript"}' --json
+
+# Translation (4)
+pulse job create --offering 15 --agent-id 1 --requirements '{"text":"Bonjour le monde","targetLanguage":"en","sourceLanguage":"fr"}' --json
+
+# Custom (5) SiteModifier-style example
+pulse job create --offering 16 --agent-id 1 --requirements '{"siteUrl":"https://example.com","modificationRequest":"Add a sticky CTA in the hero"}' --json
 ```
 
 ### 4. Wait for Completion
