@@ -1,0 +1,11 @@
+{
+  "owner": "derick001",
+  "slug": "docker-container-cleaner",
+  "displayName": "Docker Container Cleaner",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772287689576,
+    "commit": null
+  },
+  "history": []
+}
