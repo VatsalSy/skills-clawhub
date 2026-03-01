@@ -1,6 +1,6 @@
 ---
 name: clawdcursor
-version: 0.5.7
+version: 0.6.0
 description: >
   AI desktop agent — control any app on Windows/macOS from your OpenClaw agent.
   Send natural language tasks to the Clawd Cursor API and it handles everything:
@@ -15,10 +15,11 @@ privacy: >
   The REST API binds to 127.0.0.1 only and is not network-accessible.
 metadata:
   openclaw:
-    requires:
-      bins:
-        - node
-        - npm
+    # Note: bins check removed — OpenClaw's hasBinary() doesn't handle Windows
+    # PATHEXT (.exe/.cmd), causing false "missing" on Windows even when node is
+    # installed. Since install requires npm (which implies node), the check is
+    # redundant. See: https://github.com/openclaw/openclaw/issues/TBD
+    requires: {}
     install:
       - git clone https://github.com/AmrDab/clawd-cursor.git
       - cd clawd-cursor && npm install && npm run build
@@ -29,11 +30,9 @@ metadata:
       - With Ollama, fully offline — no external API calls
       - With cloud providers, data goes only to user's chosen API endpoint
       - REST API binds to 127.0.0.1 only — not network accessible
-credentials:
-  - name: AI_API_KEY
-    sensitivity: high
-    description: API key for AI provider (Anthropic, OpenAI, or Kimi). Not needed if using Ollama locally.
-    required: false
+notes:
+  - In OpenClaw, this skill inherits the active agent's AI provider + API key.
+  - Standalone CLI mode can still use AI_API_KEY / provider-specific env vars or Ollama.
 ---
 
 # Clawd Cursor
@@ -46,45 +45,43 @@ No task is impossible. If it's on the screen, it's within reach.
 > **IMPORTANT — READ THIS BEFORE ANYTHING ELSE**
 >
 > You have a desktop AI agent over GUI running on the user's machine. This means:
-> 1. You **CAN** open apps, click buttons, type text, fill forms, send emails
+> 1. You **CAN** open apps, click buttons, type text, fill forms
 > 2. You **CAN** see what's on screen (via Clawd Cursor's screenshot pipeline)
-> 3. You **CAN** interact with ANY application — browser, desktop apps, settings, everything
-> 4. You **SHOULD NOT** ask the user to do things you can do via this tool
-> 5. You **SHOULD NOT** say "I can't interact with your desktop" — you can
+> 3. You **CAN** interact with applications — browser, desktop apps, settings
+> 4. You **MUST** respect safety tiers — 🟢 Auto actions run freely, 🔴 Confirm actions require user approval
+> 5. You **MUST** ask before accessing sensitive apps (email, banking, private messages, password managers)
+> 6. You **SHOULD** prefer direct tools (file read, web_fetch, CLI) over desktop automation when available
 >
-> Think of Clawd Cursor as your hands and eyes on the user's computer.
+> Think of Clawd Cursor as your hands and eyes on the user's computer — used with their permission.
 
 ---
 
 ## When to Use This (AGENTS: READ THIS)
 
-You have a desktop AI agent over GUI at your disposal. **Use it.** Don't say "I can't access that" or "I don't have a way to check." If it's visible on a screen, you can interact with it.
+You have a desktop UI agent available. Use it when the user asks you to interact with their desktop, or when no other tool can accomplish the task.
 
-### Use Clawd Cursor when you need to:
-- **Read a webpage** — navigate there, extract the text, bring it back
-- **Interact with any app** — click buttons, fill forms, read results
-- **If another agent says “I can’t”** — Clawd Cursor is the fallback for any UI task. If the skill is installed, use it without asking.
-- **Check something visual** — take a screenshot, read what's on screen
-- **Do browser tasks** — search, navigate, log in, download, fill forms
-- **Control desktop apps** — Notepad, Calculator, VS Code, Settings, anything
-- **Complete YOUR own tasks** — not just user requests. If YOU need to **read** data from a webpage or app to answer a question, use this. (Read-only autonomy — never send messages, delete, or modify things without the user explicitly asking.)
-- **Send emails, messages, or communications** via desktop apps
-- **Configure settings** in any application
-- **Transfer data between apps** — copy from one, paste in another
-- **Automate multi-step workflows** across apps
-- **Verify something visual** — did the page load? what does the UI show?
+### Use Clawd Cursor for:
+- **User-requested desktop tasks** — "open Gmail and send an email", "check my calendar"
+- **Read a webpage** — when web_fetch or browser tools aren't available
+- **Interact with desktop apps** — click buttons, fill forms, read results
+- **Browser tasks** — search, navigate, fill forms (when browser tool unavailable)
+- **Visual verification** — did the page load? what does the UI show?
+- **Cross-app workflows** — copy from one app, paste in another
+- **Settings changes** — when the user explicitly asks
 
-### Don't ask the user to do things you can do yourself.
-❌ "Can you screenshot that page for me?"
-❌ "Can you paste the contents of that website?"
-❌ "I don't have access to that application."
-
-✅ Send the task to Clawd Cursor. Get the answer. Be independent.
+### ⚠️ Sensitive App Policy
+**Always ask the user before** accessing:
+- Email clients (Gmail, Outlook)
+- Banking or financial apps
+- Private messaging (WhatsApp, Signal, Telegram)
+- Password managers
+- Admin panels or cloud consoles
 
 ### Don't use Clawd Cursor when:
 - You can do it with a direct API call or CLI command (faster)
 - The task is purely computational (math, text generation, code writing)
 - You can already read/write the file directly
+- The browser tool or web_fetch can handle it
 
 ### Direct Browser Access (Fast Path)
 For quick page reads without a full task, connect to Chrome via Playwright CDP:
@@ -122,12 +119,17 @@ Before your first task, verify Clawd Cursor is running:
 curl.exe -s http://127.0.0.1:3847/health
 ```
 
-Expected: `{"status":"ok","version":"0.5.7"}`
+Expected: `{"status":"ok","version":"0.6.0"}`
 
-If connection refused — start it:
+If connection refused — **start it yourself** (don't ask the user):
 ```powershell
-cd <clawd-cursor-directory>; npm start
+# Find the skill directory and start the server
+Start-Process -FilePath "node" -ArgumentList "dist/index.js","start" -WorkingDirectory "<clawd-cursor-directory>" -WindowStyle Hidden
+Start-Sleep 3
+# Verify it's running
+curl.exe -s http://127.0.0.1:3847/health
 ```
+The skill directory is wherever SKILL.md lives (the parent of this file). Use that path as the working directory.
 
 ### Sending a Task (Async — Returns Immediately)
 
@@ -288,20 +290,35 @@ const buttons = await page.$$eval('button', els => els.map(e => e.textContent));
 | 🟡 Preview | Typing, form filling | Logs before executing |
 | 🔴 Confirm | Sending messages, deleting | Pauses — **ask the user** before POST `/confirm`. Never self-approve. |
 
-## Security
+## Security & Privacy
 
+### Network Isolation
 - API binds to `127.0.0.1` only — **not network accessible**. Verify: `netstat -an | findstr 3847` should show `127.0.0.1:3847`
 - Screenshots stay in memory, never saved to disk (unless `--debug`)
-- **With Ollama**: 100% local — zero external network calls. No data leaves the machine.
-- **With cloud providers** (Anthropic, OpenAI, Kimi): screenshots/text are sent to that provider's API only. No data goes to skill authors or third parties.
-- The user chooses their provider — this controls whether data stays local or goes to a cloud API.
+- No telemetry, no analytics, no phone-home calls
+
+### Data Flow
+- **With Ollama (local)**: 100% offline — zero external network calls. No data leaves the machine.
+- **With cloud providers**: screenshots/text are sent to the user's chosen provider API **only**. No data goes to skill authors, ClawHub, or third parties.
+- **OpenClaw users**: credentials auto-discovered from local config files — no keys stored in skill directory.
+- The user controls data flow by choosing their provider. Ollama = fully private.
+
+### Agent Autonomy Controls
+- **🟢 Auto** actions (navigation, reading, opening apps) run without prompting
+- **🟡 Preview** actions (typing, form filling) are logged before executing
+- **🔴 Confirm** actions (sending messages, deleting, purchases) **always pause for user approval**
+- Agents **must ask the user** before accessing sensitive apps (email, banking, messaging, passwords)
+- Agents **must never self-approve** 🔴 Confirm actions
 
 ---
 
 ## Setup (User Reference)
 
-Setup is handled by the user. If Clawd Cursor isn't running, tell the user:
-"Clawd Cursor needs to be started. Run `cd clawd-cursor && npm start` in your terminal."
+Setup is handled by the user. If Clawd Cursor isn't running, **start it yourself** using the exec tool:
+```powershell
+Start-Process -FilePath "node" -ArgumentList "dist/index.js","start" -WorkingDirectory "<skill-directory>" -WindowStyle Hidden
+```
+Only ask the user if you cannot start it (e.g., node not installed, build missing).
 
 ```bash
 git clone https://github.com/AmrDab/clawd-cursor.git
@@ -315,10 +332,9 @@ npm start                  # starts on port 3847
 
 | Provider | Setup | Cost |
 |----------|-------|------|
-| **Ollama (free)** | `ollama pull qwen2.5:7b` | $0 |
-| **Anthropic** | Set `AI_API_KEY=sk-ant-...` | ~$3/M tokens |
-| **OpenAI** | Set `AI_API_KEY=sk-...` | ~$5/M tokens |
-| **Kimi** | Set `AI_API_KEY=sk-...` | ~$1/M tokens |
+| **Ollama (free)** | `ollama pull <model>` | $0 (fully offline) |
+| **Any cloud provider** | Set `AI_API_KEY=your-key` | Varies by provider |
+| **OpenClaw users** | Automatic — no setup needed | Uses configured provider |
 
 ---
 
