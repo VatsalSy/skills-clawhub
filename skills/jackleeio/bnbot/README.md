@@ -1,6 +1,6 @@
 # bnbot-openclaw-skill
 
-OpenClaw Skill for [BNBOT](https://chromewebstore.google.com/detail/bnbot) - Control Twitter/X via AI.
+OpenClaw Skill for [BNBOT](https://chromewebstore.google.com/detail/bnbot-your-ai-growth-agen/haammgigdkckogcgnbkigfleejpaiiln) - Control Twitter/X via AI.
 
 ## Install
 
@@ -73,7 +73,7 @@ This skill automatically configures the `bnbot-mcp-server` MCP server and lets y
 
 ## Requirements
 
-- [BNBOT Chrome Extension](https://chromewebstore.google.com/detail/bnbot) installed
+- [BNBOT Chrome Extension](https://chromewebstore.google.com/detail/bnbot-your-ai-growth-agen/haammgigdkckogcgnbkigfleejpaiiln) installed
 - OpenClaw toggle enabled in BNBOT Settings
 - Twitter/X open in Chrome
 

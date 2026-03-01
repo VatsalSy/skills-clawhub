@@ -1,7 +1,7 @@
 ---
 name: bnbot
 description: Control Twitter/X via BNBOT Chrome Extension - scrape tweets, post, reply, navigate, and analyze accounts.
-version: 0.2.0
+version: 0.3.1
 homepage: https://github.com/jackleeio/bnbot-mcp-server
 metadata:
   openclaw:
@@ -42,12 +42,41 @@ When the user first asks you to use BNBOT or control Twitter, you MUST automatic
 Merge this into the existing `mcpServers` object (do not overwrite other servers). If the file doesn't exist, create it with this content.
 
 3. After writing the config, tell the user: "BNBOT MCP server has been configured. Please restart OpenClaw to activate the connection."
-4. Remind the user to:
-   - Install the [BNBOT Chrome Extension](https://chromewebstore.google.com/detail/bnbot) if not already installed
-   - Open Twitter/X in Chrome
-   - Enable the **OpenClaw** toggle in BNBOT sidebar → Settings
 
 Once configured, the MCP server starts automatically with OpenClaw. No manual setup needed.
+
+## Error Handling (IMPORTANT)
+
+After any BNBOT tool call, check the result. If the tool call fails or returns a connection error (e.g. WebSocket not connected, extension not responding, timeout), you MUST diagnose and guide the user:
+
+### Connection failed / Extension not connected
+
+Tell the user:
+
+> BNBOT Chrome Extension is not connected. Please check:
+>
+> 1. **Install the extension** (if not installed):
+>    Download from Chrome Web Store: https://chromewebstore.google.com/detail/bnbot-your-ai-growth-agen/haammgigdkckogcgnbkigfleejpaiiln
+>
+> 2. **Open Twitter/X** in Chrome (https://x.com)
+>
+> 3. **Enable the OpenClaw toggle**:
+>    Open the BNBOT sidebar on Twitter → click **Settings** → turn on **OpenClaw**
+>
+> After completing these steps, try again.
+
+### MCP Server not running
+
+If the MCP tools are not available at all, tell the user:
+
+> BNBOT MCP server is not running. Please restart OpenClaw to activate the connection.
+> If the problem persists, try reinstalling: `npm install -g bnbot-mcp-server`
+
+### General rules
+
+- Always call `get_extension_status` first before executing other tools, to verify the extension is connected.
+- If `get_extension_status` shows `connected: false`, show the connection guide above BEFORE attempting any other action.
+- Never silently fail. Always explain what went wrong and how to fix it.
 
 ## Architecture
 
