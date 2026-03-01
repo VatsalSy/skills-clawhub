@@ -28,7 +28,7 @@ echo "Installing nodriver..."
 "$VENV_DIR/bin/pip" install --upgrade -r "$SKILL_DIR/requirements.txt"
 
 # Make CLI executable
-chmod +x "$SKILL_DIR/scripts/ghost-browser"
+chmod +x "$SKILL_DIR/scripts/ghost-browser.sh"
 
 echo ""
 echo "=== Setup complete ==="
