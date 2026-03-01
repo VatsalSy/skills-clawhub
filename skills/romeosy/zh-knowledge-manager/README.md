@@ -30,7 +30,7 @@ Transform agent logs into a structured knowledge base. Deterministic core (PREFI
 clawhub install zh-knowledge-manager
 
 # Or manually
-git clone https://github.com/RomeoSY/zh-knowledge-manager.git ~/.openclaw/skills/zh-knowledge-manager
+git clone https://github.com/jgpy/zh-knowledge-manager.git ~/.openclaw/skills/zh-knowledge-manager
 cd ~/.openclaw/skills/zh-knowledge-manager && npm install
 ```
 
