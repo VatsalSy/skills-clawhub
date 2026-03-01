@@ -1,0 +1,11 @@
+{
+  "owner": "thomaszta",
+  "slug": "aap",
+  "displayName": "AAP (Agent Address Protocol)",
+  "latest": {
+    "version": "0.3.3",
+    "publishedAt": 1772358540501,
+    "commit": null
+  },
+  "history": []
+}
