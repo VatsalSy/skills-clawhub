@@ -1,6 +1,21 @@
 ---
 name: alpaca
 description: This skill provides integration with the Alpaca Markets API for trading stocks, options, and cryptocurrencies. Use it when you need to interact with Alpaca's brokerage services programmatically, such as placing orders, fetching account data, managing positions, or retrieving market data for automated trading or portfolio management.
+homepage: https://clawhub.ai/oscraters/alpaca-markets
+metadata:
+  openclaw:
+    requires:
+      env:
+        - ALPACA_API_KEY
+        - ALPACA_API_SECRET
+      optionalEnv:
+        - ALPACA_BASE_URL
+      primaryEnv:
+        - ALPACA_API_KEY
+        - ALPACA_API_SECRET
+      sourceRepository: https://github.com/oscraters/alpaca-markets-skill.git
+      distributionPlatform: clawhub
+      distributionUrl: https://clawhub.ai/oscraters/alpaca-markets
 ---
 
 # Alpaca
@@ -21,6 +36,13 @@ Set environment variables:
 - `ALPACA_API_KEY`
 - `ALPACA_API_SECRET`
 - `ALPACA_BASE_URL` (optional; defaults to paper trading URL)
+
+### Security / Credential Use
+
+- Use paper trading credentials by default.
+- Do not use live trading credentials until you have audited the code path you plan to run.
+- Keep `ALPACA_BASE_URL` unset unless you intentionally need a non-default environment.
+- Consider running the helper scripts in an isolated container or VM during evaluation.
 
 ### Example Usage
 - Place a stock or crypto order: `POST /v2/orders`
@@ -49,4 +71,5 @@ Set environment variables:
 ## Included Files
 - `scripts/alpaca_api.py`: command-line helper for calling Alpaca endpoints with robust error handling and exit codes.
 - `scripts/example.py`: sample script showing account and order calls.
+- `agents/openai.yaml`: Clawhub/OpenClaw interface manifest for display name and default prompt metadata.
 - `references/api_reference.md`: concise endpoint reference and payload examples.
