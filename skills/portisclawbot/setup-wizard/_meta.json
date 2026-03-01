@@ -1,0 +1,11 @@
+{
+  "owner": "portisclawbot",
+  "slug": "setup-wizard",
+  "displayName": "Setup Wizard",
+  "latest": {
+    "version": "1.1.0",
+    "publishedAt": 1772273544393,
+    "commit": null
+  },
+  "history": []
+}
