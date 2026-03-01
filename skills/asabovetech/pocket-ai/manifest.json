@@ -1,9 +1,9 @@
 {
   "name": "pocket-ai",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "displayName": "Pocket AI Integration",
   "description": "Turn voice recordings into actionable intelligence with semantic search, action item extraction, and meeting context awareness.",
-  "author": "Theiler Agent Army",
+  "author": "As Above Technologies",
   "license": "MIT",
   "homepage": "https://asabove.tech",
   "repository": "https://github.com/asabove/pocket-ai-skill",
@@ -62,7 +62,7 @@
   "support": {
     "documentation": "https://docs.heypocketai.com",
     "community": "https://discord.com/invite/clawd",
-    "email": "marc@asabove.tech"
+    "email": "hello@asabove.tech"
   },
   "changelog": {
     "1.0.0": {

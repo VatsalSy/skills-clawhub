@@ -134,4 +134,4 @@ MIT License — use freely, attribution appreciated.
 
 ---
 
-Built by the Theiler Agent Army. Part of the As Above operational intelligence stack.
+Built by the As Above Technologies. Part of the As Above operational intelligence stack.

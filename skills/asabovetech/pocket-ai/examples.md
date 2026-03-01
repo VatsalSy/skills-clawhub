@@ -11,10 +11,10 @@ curl -s -X POST -H "Authorization: Bearer $API_KEY" -H "Content-Type: applicatio
   python3 -c "import sys,json; d=json.load(sys.stdin); [print(f'• {l.split(\"Action item:\")[1].strip()}') for m in d.get('data',{}).get('relevantMemories',[]) for l in m.get('content','').split('\n') if 'Action item:' in l]"
 ```
 
-### 2. What did I discuss about Red Run?
+### 2. What did I discuss about your company?
 ```bash
 curl -s -X POST -H "Authorization: Bearer $API_KEY" -H "Content-Type: application/json" \
-  -d '{"query": "Red Run manufacturing team decisions"}' \
+  -d '{"query": "your company manufacturing team decisions"}' \
   "https://public.heypocketai.com/api/v1/public/search"
 ```
 
@@ -114,7 +114,7 @@ urgent_items = [
 ]
 
 if urgent_items:
-    # Alert Marc about urgent items
+    # Alert user about urgent items
     print("🚨 URGENT ACTION ITEMS:")
     for item in urgent_items:
         print(f"  • {item}")
@@ -122,7 +122,7 @@ if urgent_items:
 
 ### Athena Context Injection
 ```python
-# Before Athena schedules, understand Marc's bandwidth
+# Before Athena schedules, understand user bandwidth
 from pocket_api import PocketAI
 
 pocket = PocketAI()
@@ -131,7 +131,7 @@ profile = pocket.get_user_profile("busy schedule meetings workload")
 # Check for administrative overload
 overload_signals = [p for p in profile if "overload" in p.lower() or "swamped" in p.lower()]
 if overload_signals:
-    print("⚠️ Marc showing signs of overload - schedule carefully")
+    print("⚠️ User showing signs of overload - schedule carefully")
 ```
 
 ### Daily Briefing Generation
@@ -162,7 +162,7 @@ print(briefing)
 ## Common Queries by Category
 
 ### Business Operations
-- `"Red Run entities streamlining strategy"`
+- `"your company entities streamlining strategy"`
 - `"manufacturing team performance issues"`
 - `"intercompany invoices setup"`
 - `"QuickBooks accounting review"`

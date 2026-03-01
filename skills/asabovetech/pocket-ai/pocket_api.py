@@ -10,7 +10,7 @@ Usage:
     pocket = PocketAI()
     
     # Semantic search
-    results = pocket.search("Red Run manufacturing decisions")
+    results = pocket.search("quarterly planning decisions")
     
     # Get action items
     action_items = pocket.get_action_items()

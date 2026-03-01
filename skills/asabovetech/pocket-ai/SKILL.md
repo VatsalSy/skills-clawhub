@@ -2,7 +2,7 @@
 
 **Voice recording transcription, semantic search, and meeting intelligence across all conversations.**
 
-Pocket AI captures Marc's meetings, calls, and thoughts via a wearable device, then transcribes and indexes everything for semantic search.
+Pocket AI captures your meetings, calls, and thoughts via a wearable device, then transcribes and indexes everything for semantic search.
 
 ## Quick Reference
 
@@ -22,7 +22,7 @@ Search across ALL recordings by meaning, not just keywords.
 curl -s -X POST \
   -H "Authorization: Bearer $(cat ~/.config/pocket-ai/api_key)" \
   -H "Content-Type: application/json" \
-  -d '{"query": "Red Run manufacturing decisions"}' \
+  -d '{"query": "your company manufacturing decisions"}' \
   "https://public.heypocketai.com/api/v1/public/search"
 ```
 
@@ -81,7 +81,7 @@ curl -s -H "Authorization: Bearer $(cat ~/.config/pocket-ai/api_key)" \
 ### Business Decisions
 *"What decisions were made about [topic]?"*
 ```json
-{"query": "Red Run manufacturing team restructuring decisions"}
+{"query": "your company manufacturing team restructuring decisions"}
 {"query": "entity streamlining strategy"}
 {"query": "trading system rules discussed"}
 ```
@@ -105,7 +105,7 @@ curl -s -H "Authorization: Bearer $(cat ~/.config/pocket-ai/api_key)" \
 ### Meeting Summaries
 *"What happened in [meeting type]?"*
 ```json
-{"query": "Red Run staff meeting summary"}
+{"query": "your company staff meeting summary"}
 {"query": "financial review discussion"}
 {"query": "geopolitical analysis conversation"}
 ```
@@ -154,8 +154,8 @@ curl -s -H "Authorization: Bearer $(cat ~/.config/pocket-ai/api_key)" \
 ## Integration Points
 
 ### Athena (Family Agent)
-- Query meeting context to understand Marc's bandwidth
-- "Is Marc free?" → Check if recent recordings show heavy commitments
+- Query meeting context to understand your bandwidth
+- "Am I free?" → Check if recent recordings show heavy commitments
 - Feed meeting insights into scheduling decisions
 
 ### Daily Briefings
@@ -174,7 +174,7 @@ curl -s -H "Authorization: Bearer $(cat ~/.config/pocket-ai/api_key)" \
 
 ---
 
-## Tags (Marc's Categories)
+## Tags (Your Categories)
 
 Current tags: `ai`, `business`, `call`, `economy`, `finance`, `game`, `geopolitics`, `hockey`, `outlook`, `personal`, `sales`, `summary`, `test`, `victory`, `weather`, `work`
 
