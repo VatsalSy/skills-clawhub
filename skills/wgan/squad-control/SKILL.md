@@ -1,6 +1,6 @@
 ---
 name: squad-control
-version: 1.1.2
+version: 1.1.3
 homepage: https://squadcontrol.ai
 env:
   SC_API_URL:
@@ -137,22 +137,40 @@ for (const [wsId, wsTasks] of Object.entries(byWorkspace)) {
 
 ### Stuck Task Recovery
 
-Also check for tasks stuck in "working" that have PR deliverables but never transitioned:
+Run two checks every cron cycle:
+
+**Check 1 — Tasks stuck in "working" with a PR deliverable:**
 ```bash
 curl -sL "${SC_API_URL}/api/tasks/list?status=working" -H "x-api-key: ${SC_API_KEY}"
 ```
-
-For each working task where:
-- `deliverables` contains a PR entry, AND
-- `startedAt` is more than 30 minutes ago (or `pickedUpAt` is not set)
-
-→ Auto-rescue: move to review so Hawk can pick it up:
+For each working task where `deliverables` contains a PR entry and `startedAt` is more than 30 minutes ago → auto-rescue by moving to review:
 ```bash
 curl -sL -X POST "${SC_API_URL}/api/tasks/set-review" \
   -H "x-api-key: ${SC_API_KEY}" -H "Content-Type: application/json" \
   -d "{\"taskId\": \"${TASK_ID}\", \"agentId\": \"${ASSIGNED_AGENT_ID}\", \"result\": \"Auto-rescued: sub-agent completed work but did not transition status.\", \"deliverables\": ${EXISTING_DELIVERABLES}}"
 ```
 Post to thread: *"Auto-moved to review — sub-agent completed PR but didn't call set-review."*
+
+**Check 2 — Tasks marked "done" with an unmerged/open PR:**
+```bash
+curl -sL "${SC_API_URL}/api/tasks/list?status=done" -H "x-api-key: ${SC_API_KEY}"
+# Filter to tasks completed in the last 2 hours that have a PR deliverable
+```
+For each recently-done task with a PR deliverable, verify the PR is actually merged:
+```bash
+# Extract owner/repo from workspace.repoUrl
+# Extract PR number from deliverable URL (e.g. https://github.com/org/repo/pull/123 → 123)
+curl -sL -H "Authorization: token ${GITHUB_TOKEN}" \
+  "https://api.github.com/repos/${owner}/${repo}/pulls/${PR_NUMBER}" | grep -o '"merged":[^,]*'
+```
+If `"merged":false` (PR still open) → the agent skipped review. Re-open for Hawk:
+```bash
+# Create a review task for Hawk
+curl -sL -X POST "${SC_API_URL}/api/tasks/create" \
+  -H "x-api-key: ${SC_API_KEY}" -H "Content-Type: application/json" \
+  -d "{\"title\": \"Review PR #${PR_NUMBER}: ${TASK_TITLE}\", \"description\": \"Agent marked task done but PR is still open and unmerged. Please review and merge if approved.\\n\\nPR: ${PR_URL}\", \"assignedAgentId\": \"${REVIEWER_AGENT_ID}\", \"workspaceId\": \"${WORKSPACE_ID}\", \"priority\": \"high\"}"
+```
+Post a warning to the original task thread: *"⚠️ Task was marked done but PR #N is unmerged. Created review task for Hawk."*
 
 ### Review Dispatch
 
@@ -321,10 +339,19 @@ curl -sL -X POST "${SC_API_URL}/api/threads/send" \
 # Do NOT run local deploy commands from this skill prompt.
 # If a manual deploy is required, ask the squad lead to run it in a controlled environment.
 
-## 5. Hand off for review (REQUIRED — do NOT skip)
+## 5. Hand off for review (REQUIRED — NEVER call /complete if you opened a PR)
+
+> ⚠️ CRITICAL: If you created a PR in step 2, you MUST call set-review — not complete.
+> Calling /complete with an open PR bypasses code review entirely. This is a workflow violation.
+> The ONLY time to call /complete directly is when there is NO PR (e.g. a research or docs-only task).
+
+```bash
 curl -sL -X POST "${SC_API_URL}/api/tasks/set-review" \
   -H "x-api-key: ${SC_API_KEY}" -H "Content-Type: application/json" \
   -d '{"taskId": "${TASK_ID}", "agentId": "${AGENT_ID}", "result": "${summary}", "deliverables": [{"type": "pr", "name": "PR #N", "url": "${PR_URL}"}]}'
+```
+
+Verify the API response confirms status changed to "review". If it returns an error, retry once then call /fail with the error details.
 
 ## If anything fails
 curl -sL -X POST "${SC_API_URL}/api/tasks/fail" \
@@ -434,7 +461,7 @@ curl -sL -X POST "${SC_API_URL}/api/tasks/create" \
 ## Common Mistakes
 
 1. **Marking done without doing work** — Always post results to the thread and create a PR (if code task) before marking complete. Empty result + no thread messages = task wasn't really done.
-2. **Sub-agent not calling set-review** — The spawn prompt's "When Done" steps must be followed exactly. A sub-agent that pushes code and creates a PR but never calls `set-review` leaves the task stuck in "working" forever. Use the Stuck Task Recovery check to rescue these.
+2. **Sub-agent calling /complete instead of /complete after opening a PR** — This is the most common workflow violation. If a PR was opened, the ONLY valid next call is `set-review`. Calling `complete` directly skips code review entirely and leaves an unmerged PR dangling. The stuck task recovery check now catches "done" tasks with open PRs and auto-creates a Hawk review task.
 3. **Squad Lead skipping the merge** — When a task is assigned to the Squad Lead and has a PR deliverable, merge the PR to main BEFORE marking complete.
 4. **Not passing SC_API_URL/SC_API_KEY into spawn prompt** — Sub-agents can't call back to Squad Control without these. Always include them in the spawn template.
 5. **Not using workspace.repoUrl** — The pending and pickup responses include `workspace.repoUrl` and `workspace.githubToken`. Use them — don't assume a default repo path.
