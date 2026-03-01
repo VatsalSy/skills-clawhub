@@ -1,172 +1,280 @@
 ---
 name: sergei-mikhailov-tg-channel-reader
 description: Read and summarize posts from Telegram channels via MTProto (Pyrogram or Telethon). Fetch recent messages from public or private channels by time window.
-metadata: {"openclaw": {"emoji": "📡", "requires": {"bins": ["tg-reader"], "env": ["TG_API_ID", "TG_API_HASH"]}, "primaryEnv": "TG_API_HASH"}}
+metadata: {"openclaw": {"emoji": "📡", "requires": {"bins": ["tg-reader", "tg-reader-check"], "env": ["TG_API_ID", "TG_API_HASH"]}, "primaryEnv": "TG_API_HASH"}}
 ---
 
 # tg-channel-reader
 
-Lets your agent read posts from Telegram channels using MTProto (Pyrogram or Telethon).
+Read posts from Telegram channels using MTProto (Pyrogram or Telethon).
 Works with any public channel and private channels the user is subscribed to.
 
-> ⚠️ **Security notice:** This skill requires `TG_API_ID` and `TG_API_HASH` credentials from [my.telegram.org](https://my.telegram.org). The resulting session file grants full access to the Telegram account — store it securely and never share it.
+> **Security notice:** This skill requires `TG_API_ID` and `TG_API_HASH` from [my.telegram.org](https://my.telegram.org). The session file grants full Telegram account access — store it securely and never share it.
 
-## Library Selection
-
-The skill supports two MTProto implementations:
-- **Pyrogram** (default) — modern, actively maintained
-- **Telethon** — alternative, useful if Pyrogram has issues
-
-Users can choose the library via:
-1. **Environment variable** (persistent):
-   ```bash
-   export TG_USE_TELETHON=true
-   ```
-2. **Command flag** (one-time):
-   ```bash
-   tg-reader fetch @channel --since 24h --telethon
-   ```
-
-Direct commands are also available:
-- `tg-reader-pyrogram` — force Pyrogram
-- `tg-reader-telethon` — force Telethon
-
-## Setup & Installation
-
-Full setup instructions are in [README.md](./README.md). Summary:
-
-1. Get Telegram API credentials from https://my.telegram.org → API Development Tools
-2. Set `TG_API_ID` and `TG_API_HASH` as environment variables
-3. Install the skill and its Python dependencies:
-   ```bash
-   npx clawhub@latest install sergei-mikhailov-tg-channel-reader
-   cd ~/.openclaw/workspace/skills/sergei-mikhailov-tg-channel-reader
-   pip install pyrogram tgcrypto telethon && pip install -e .
-   ```
-   On Linux with managed Python (Ubuntu/Debian), use venv instead:
-   ```bash
-   python3 -m venv ~/.venv/tg-reader
-   ~/.venv/tg-reader/bin/pip install pyrogram tgcrypto telethon && ~/.venv/tg-reader/bin/pip install -e .
-   echo 'export PATH="$HOME/.venv/tg-reader/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
-   ```
-4. Authenticate once: `tg-reader auth`
-5. Set session file permissions: `chmod 600 ~/.tg-reader-session.session`
-
-> If the user asks for help with setup, refer them to README.md for full options (env vars, direnv, keychain, etc.).
+---
 
 ## When to Use
 
-Use this skill when the user:
-- Asks to "check", "read", or "monitor" a Telegram channel
-- Wants a digest or summary of recent posts from channels
+- User asks to "check", "read", or "monitor" a Telegram channel
+- Wants a digest or summary of recent posts
 - Asks "what's new in @channel" or "summarize last 24h from @channel"
-- Wants to track multiple channels and compare content
-- Wants to know what a channel is about — use `info` to get title, description, subscriber count
+- Wants to track or compare multiple channels
+- Wants channel info (title, description, subscribers) — use `tg-reader info`
 
-## Before Running — Check Credentials
+---
 
-**Always check credentials before fetching.** Run:
-
-```bash
-tg-reader fetch @durov --since 1h --limit 1
-```
-
-If you see `{"error": "Missing credentials..."}` — stop and guide the user:
-
-1. Tell the user they need a Telegram API key from https://my.telegram.org
-2. Walk them through these exact steps:
-   - Go to https://my.telegram.org and log in with their phone number
-   - Click **"API Development Tools"**
-   - Fill in "App title" (any name) and "Short name" (any short word)
-   - Click **"Create application"**
-   - Copy **App api_id** (a number) and **App api_hash** (32-character string)
-3. Ask user to set credentials. **Use `~/.tg-reader.json` — it works reliably in all environments** including agents and servers that don't load `.bashrc`/`.zshrc`:
-   ```bash
-   cat > ~/.tg-reader.json << 'EOF'
-   {
-     "api_id": their_id,
-     "api_hash": "their_hash"
-   }
-   EOF
-   chmod 600 ~/.tg-reader.json
-   ```
-   Alternatively, env vars (only if running interactively in a shell):
-   ```bash
-   # macOS (zsh)
-   echo 'export TG_API_ID=their_id' >> ~/.zshrc
-   echo 'export TG_API_HASH=their_hash' >> ~/.zshrc
-   source ~/.zshrc
-
-   # Linux (bash)
-   echo 'export TG_API_ID=their_id' >> ~/.bashrc
-   echo 'export TG_API_HASH=their_hash' >> ~/.bashrc
-   source ~/.bashrc
-   ```
-   > **Note:** Agents and servers typically don't load `.bashrc`/`.zshrc`. If credentials are not found after setting env vars, use `~/.tg-reader.json` instead.
-4. Run auth:
-   ```bash
-   tg-reader auth
-   ```
-   - Pyrogram will ask to confirm the phone number — answer `y`
-   - User will receive a code in their Telegram app (message from "Telegram" service chat)
-   - If code doesn't arrive — check all devices where Telegram is open
-5. Set secure permissions on the session file:
-   ```bash
-   chmod 600 ~/.tg-reader-session.session
-   ```
-6. After auth succeeds — retry the original request
-
-## How to Use
+## Quick Start
 
 ```bash
-# Get channel title, description and subscriber count
+# 1. Run pre-flight diagnostic (fast, no Telegram connection)
+tg-reader-check
+
+# 2. Get channel info
 tg-reader info @channel_name
 
-# Fetch last 24h from one channel (default: Pyrogram)
-tg-reader fetch @channel_name --since 24h --format json
+# 3. Fetch recent posts
+tg-reader fetch @channel_name --since 24h
+```
 
-# Use Telethon instead (one-time)
-tg-reader fetch @channel_name --since 24h --telethon
+---
 
-# Fetch last 7 days, up to 200 posts
+## Commands
+
+### `tg-reader-check` — Pre-flight Diagnostic
+
+**Always run before fetching.** Fast offline check — no Telegram connection needed.
+
+```bash
+tg-reader-check
+tg-reader-check --config-file /path/to/config.json
+tg-reader-check --session-file /path/to/session
+```
+
+Returns JSON with `"status": "ok"` or `"status": "error"` plus a `problems` array.
+
+Verifies:
+- Credentials available (env vars or `~/.tg-reader.json`)
+- Session file exists on disk (with size, modification date)
+- At least one MTProto backend installed (Pyrogram or Telethon)
+- Detects stale sessions (config points to older file while a newer one exists)
+
+### `tg-reader info` — Channel Info
+
+```bash
+tg-reader info @channel_name
+```
+
+Returns title, description, subscriber count, and link.
+
+### `tg-reader fetch` — Read Posts
+
+```bash
+# Last 24 hours (default)
+tg-reader fetch @channel_name --since 24h
+
+# Last 7 days, up to 200 posts
 tg-reader fetch @channel_name --since 7d --limit 200
 
-# Fetch multiple channels at once
+# Multiple channels (fetched sequentially with 10s delay between each)
 tg-reader fetch @channel1 @channel2 @channel3 --since 24h
+
+# Custom delay between channels (seconds)
+tg-reader fetch @channel1 @channel2 @channel3 --since 24h --delay 5
+
+# Fetch posts with comments (single channel only, limit auto-drops to 30)
+tg-reader fetch @channel_name --since 7d --comments
+
+# More comments per post, custom delay between posts
+tg-reader fetch @channel_name --since 24h --comments --comment-limit 20 --comment-delay 5
+
+# Skip posts without text (media-only, no caption)
+tg-reader fetch @channel_name --since 24h --text-only
 
 # Human-readable output
 tg-reader fetch @channel_name --since 24h --format text
 
-# Force specific library
-tg-reader-pyrogram fetch @channel_name --since 24h
-tg-reader-telethon fetch @channel_name --since 24h
+# Use Telethon instead of Pyrogram (one-time)
+tg-reader fetch @channel_name --since 24h --telethon
+```
 
-# Explicit config and session paths (for isolated agents / cron jobs)
-tg-reader fetch @channel_name --since 6h \
+### `tg-reader auth` — First-time Authentication
+
+```bash
+tg-reader auth
+```
+
+Creates a session file. Only needed once.
+
+---
+
+## Setup & Installation
+
+Full details in [README.md](./README.md). Quick version:
+
+### Step 1 — Get API Credentials
+
+1. Go to https://my.telegram.org and log in with your phone number
+2. Click **"API Development Tools"**
+3. Fill in "App title" (any name) and "Short name" (any short word)
+4. Click **"Create application"**
+5. Copy **App api_id** (a number) and **App api_hash** (a 32-character string)
+
+### Step 2 — Save Credentials
+
+**Recommended:** use `~/.tg-reader.json` — works in all environments including agents and servers that don't load `.bashrc`/`.zshrc`:
+
+```bash
+cat > ~/.tg-reader.json << 'EOF'
+{
+  "api_id": YOUR_ID,
+  "api_hash": "YOUR_HASH"
+}
+EOF
+chmod 600 ~/.tg-reader.json
+```
+
+**Alternative:** environment variables (only if running interactively):
+
+```bash
+# macOS
+echo 'export TG_API_ID=YOUR_ID' >> ~/.zshrc
+echo 'export TG_API_HASH=YOUR_HASH' >> ~/.zshrc
+source ~/.zshrc
+
+# Linux
+echo 'export TG_API_ID=YOUR_ID' >> ~/.bashrc
+echo 'export TG_API_HASH=YOUR_HASH' >> ~/.bashrc
+source ~/.bashrc
+```
+
+> **Note:** Agents and servers typically don't load shell profiles. If credentials aren't found after setting env vars, use `~/.tg-reader.json` instead.
+
+### Step 3 — Install
+
+```bash
+npx clawhub@latest install sergei-mikhailov-tg-channel-reader
+cd ~/.openclaw/workspace/skills/sergei-mikhailov-tg-channel-reader
+pip install pyrogram tgcrypto telethon && pip install .
+```
+
+On Linux with managed Python (Ubuntu/Debian), use a venv:
+
+```bash
+python3 -m venv ~/.venv/tg-reader
+~/.venv/tg-reader/bin/pip install pyrogram tgcrypto telethon && ~/.venv/tg-reader/bin/pip install .
+echo 'export PATH="$HOME/.venv/tg-reader/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
+```
+
+### Step 4 — Authenticate
+
+```bash
+tg-reader auth
+```
+
+- Pyrogram will ask to confirm the phone number — answer `y`
+- You'll receive a code in your Telegram app (from the "Telegram" service chat)
+- If the code doesn't arrive — check all devices where Telegram is open
+
+### Step 5 — Secure the Session
+
+```bash
+chmod 600 ~/.tg-reader-session.session
+```
+
+---
+
+## Library Selection
+
+Two MTProto backends are supported:
+
+| Backend | Command | Notes |
+|---------|---------|-------|
+| **Pyrogram** (default) | `tg-reader` or `tg-reader-pyrogram` | Modern, actively maintained |
+| **Telethon** | `tg-reader-telethon` | Alternative if Pyrogram has issues |
+
+Switch to Telethon persistently:
+
+```bash
+export TG_USE_TELETHON=true
+```
+
+Or one-time via flag:
+
+```bash
+tg-reader fetch @channel --since 24h --telethon
+```
+
+---
+
+## Scheduled Tasks & Cron
+
+This skill needs network access (MTProto connection to Telegram servers) and a session file. How you configure OpenClaw cron depends on the session target.
+
+> **Important:** When setting up a scheduled task that uses `tg-reader`, tell the user which approach you're using and what it means — so they can make an informed choice.
+
+### Option A — `sessionTarget: "main"` (recommended)
+
+The cron task sends a **reminder** to the main agent session. The agent then runs `tg-reader` in the main environment where the skill, credentials, and session file are already available.
+
+**Pros:** No extra configuration — everything works out of the box.
+**Cons:** Not fully autonomous — the task sends a system event, the agent picks it up and executes. Requires `payload.kind: "systemEvent"` (OpenClaw cron API limitation for main target).
+
+**How to set up:**
+1. Create a cron task with `sessionTarget: "main"` and `payload.kind: "systemEvent"`
+2. In the task description, include the exact `tg-reader` command to run
+3. The agent receives the reminder and executes the command in its main session
+
+### Option B — `sessionTarget: "isolated"` (autonomous, complex setup)
+
+The cron task runs in a **Docker container** — fully autonomous, no agent interaction needed. However, the container starts empty: no skill, no credentials, no session file.
+
+**Pros:** Fully autonomous — runs on schedule without agent involvement.
+**Cons:** Requires Docker setup; session file must be mounted into the container (may not work reliably — session files are tied to the machine and Telegram may invalidate them in a new environment).
+
+**Required configuration in `~/.openclaw/openclaw.json`:**
+
+```json
+{
+  "agents": {
+    "defaults": {
+      "sandbox": {
+        "docker": {
+          "setupCommand": "clawhub install sergei-mikhailov-tg-channel-reader && cd ~/.openclaw/workspace/skills/sergei-mikhailov-tg-channel-reader && pip install pyrogram tgcrypto telethon && pip install .",
+          "env": {
+            "TG_API_ID": "YOUR_ID",
+            "TG_API_HASH": "YOUR_HASH"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+**⚠️ Session file caveat:** The Telegram session file (`~/.tg-reader-session.session`) must also be available inside the container. This may require Docker volume mounting and might not work reliably — Telegram can invalidate sessions when they appear from a different environment. If you encounter `AUTH_KEY_UNREGISTERED` errors in isolated mode, switch to Option A.
+
+### Explicit paths (both options)
+
+When `~/` is not available or points to a different location, use explicit paths:
+
+```bash
+tg-reader-check \
   --config-file /home/user/.tg-reader.json \
   --session-file /home/user/.tg-reader-session
-```
 
-If `tg-reader` command is not found, use:
-```bash
-python3 -m tg_reader_unified fetch @channel_name --since 24h
-```
-
-## Isolated Agents & Cron Jobs
-
-When the skill runs inside an isolated sub-agent (e.g. `sessionTarget: "isolated"` in OpenClaw cron), it may not have access to the user's home directory. Use `--config-file` and `--session-file` to pass explicit paths:
-
-```bash
 tg-reader fetch @channel --since 6h \
   --config-file /home/user/.tg-reader.json \
   --session-file /home/user/.tg-reader-session
 ```
 
-Both flags work with all subcommands (`fetch`, `info`, `auth`) and with both backends (Pyrogram and Telethon).
+Both flags work with all subcommands and both backends.
+
+---
 
 ## Output Format
 
-### info
+### `info`
+
 ```json
 {
   "id": -1001234567890,
@@ -178,7 +286,8 @@ Both flags work with all subcommands (`fetch`, `info`, `auth`) and with both bac
 }
 ```
 
-### fetch
+### `fetch`
+
 ```json
 {
   "channel": "@channel_name",
@@ -192,47 +301,118 @@ Both flags work with all subcommands (`fetch`, `info`, `auth`) and with both bac
       "text": "Post content...",
       "views": 5200,
       "forwards": 34,
-      "link": "https://t.me/channel_name/1234"
+      "link": "https://t.me/channel_name/1234",
+      "has_media": true,
+      "media_type": "MessageMediaType.PHOTO"
     }
   ]
 }
 ```
 
+### `fetch` with `--comments`
+
+```json
+{
+  "channel": "@channel_name",
+  "fetched_at": "2026-02-28T10:00:00Z",
+  "since": "2026-02-27T10:00:00Z",
+  "count": 5,
+  "comments_enabled": true,
+  "comments_available": true,
+  "messages": [
+    {
+      "id": 1234,
+      "text": "Post content...",
+      "has_media": false,
+      "comment_count": 2,
+      "comments": [
+        {
+          "id": 5678,
+          "date": "2026-02-28T09:35:00Z",
+          "text": "Great post!",
+          "from_user": "username123"
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Notes:**
+- `comments_available: false` — channel has no linked discussion group (no comments possible)
+- `comments_error` on a message — rate limit hit for that post's comments
+- `from_user` may be `null` for anonymous comments
+- Images/videos in comments are **not analyzed** — only text is captured
+- Default post limit drops to 30 when `--comments` is active (override with `--limit`)
+
+---
+
 ## After Fetching
 
 1. Parse the JSON output
-2. Filter out empty/media-only posts if text summary is requested
-3. Summarize key themes, top posts by views, notable links
-4. Save summary to `memory/YYYY-MM-DD.md` if user wants to track over time
+2. Posts with images/videos have `has_media: true` and a `media_type` field. Their text is in the `text` field (from the caption). **Do not skip posts just because they have media** — they often contain important text.
+3. Images and videos are **not analyzed** (no OCR/vision) — only the text/caption is returned.
+4. Summarize key themes, top posts by views, notable links
+5. If `comments_enabled: true`, analyze comment sentiment and key themes alongside the main posts
+6. Save summary to `memory/YYYY-MM-DD.md` if user wants to track over time
 
-## Saving Channel List
+### Saving Channel List
 
-Store the user's tracked channels in `TOOLS.md`:
+Store tracked channels in `TOOLS.md`:
+
 ```markdown
 ## Telegram Channels
 - @channel1 — why tracked
 - @channel2 — why tracked
 ```
 
+---
+
 ## Error Handling
 
-- `Missing credentials` → guide user through setup (see above)
-- `FloodWait` → tell user to wait N seconds and retry
-- `ChannelInvalid` → channel doesn't exist or user not subscribed (for private)
-- `tg-reader: command not found` → use `python3 -m tg_reader_unified` instead
-- `AUTH_KEY_UNREGISTERED` → session expired or invalidated; delete session file and re-auth:
-  ```bash
-  rm -f ~/.tg-reader-session.session
-  tg-reader auth
-  ```
-- Auth code not arriving / connection issues → use the verbose debug script:
-  ```bash
-  python3 debug_auth.py
-  ```
-  It shows full MTProto-level logs so you can see exactly where the connection fails.
+Errors include an `error_type` and `action` field to help agents decide what to do automatically.
 
-## Security Notes
+### Channel Errors
+
+| `error_type` | Meaning | `action` |
+|--------------|---------|----------|
+| `access_denied` | Channel is private, you were kicked, or access is restricted | `remove_from_list_or_rejoin` — ask user if they still have access; if not, remove the channel |
+| `banned` | You are banned from this channel | `remove_from_list` — remove the channel, tell the user |
+| `not_found` | Channel doesn't exist or username is wrong | `check_username` — verify the @username with the user |
+| `invite_expired` | Invite link is expired or invalid | `request_new_invite` — ask user for a new invite link |
+| `flood_wait` | Telegram rate limit | `wait_Ns` — waits ≤ 60 s are retried automatically; longer waits return this error |
+| `comments_multi_channel` | `--comments` used with multiple channels | `remove_extra_channels_or_drop_comments` — use one channel at a time |
+
+### System Errors
+
+| Error | Action |
+|-------|--------|
+| `Session file not found` | Run `tg-reader-check` — use the `suggestion` from output |
+| `Missing credentials` | Guide user through Setup (Step 1-2 above) |
+| `tg-reader: command not found` | Use `python3 -m tg_reader_unified` instead |
+| `AUTH_KEY_UNREGISTERED` | Session expired — delete and re-auth (see below) |
+
+### Session Expired
+
+```bash
+rm -f ~/.tg-reader-session.session
+tg-reader auth
+```
+
+### Auth Code Not Arriving
+
+Use the verbose debug script for full MTProto-level logs:
+
+```bash
+python3 debug_auth.py
+```
+
+> **Warning:** `debug_auth.py` deletes existing session files before re-authenticating. It will ask for confirmation first.
+
+---
+
+## Security
 
 - Session file (`~/.tg-reader-session.session`) grants **full account access** — keep it safe
 - Never share or commit `TG_API_HASH` or session files
-- `TG_API_HASH` should be treated as a secret — store in env vars, not in files tracked by git
+- `TG_API_HASH` is a secret — store in env vars or config file, never in git

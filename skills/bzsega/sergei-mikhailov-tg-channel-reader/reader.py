@@ -14,16 +14,95 @@ from pathlib import Path
 
 try:
     from pyrogram import Client
-    from pyrogram.errors import FloodWait, ChannelInvalid, UsernameNotOccupied
+    from pyrogram.errors import (
+        FloodWait,
+        ChannelInvalid,
+        ChannelPrivate,
+        ChannelBanned,
+        ChatForbidden,
+        ChatInvalid,
+        ChatRestricted,
+        PeerIdInvalid,
+        UsernameNotOccupied,
+        UserBannedInChannel,
+        InviteHashExpired,
+        InviteHashInvalid,
+    )
 except ImportError:
     print(json.dumps({"error": "pyrogram not installed. Run: pip install pyrogram tgcrypto"}))
     sys.exit(1)
+
+
+def _channel_error(channel: str, error_type: str, message: str, action: str) -> dict:
+    """Build a structured channel error dict for the agent."""
+    return {
+        "error": message,
+        "error_type": error_type,
+        "channel": channel,
+        "action": action,
+    }
 
 
 # Use Pyrogram's default device identity (Python MTProto client).
 # Spoofing a mobile client causes Telegram to terminate sessions — the
 # behaviour doesn't match and it's detected server-side.
 _DEVICE: dict = {}
+
+
+# ── Session helpers ──────────────────────────────────────────────────────────
+
+def _find_session_files() -> list:
+    """Find .session files in home directory and current working directory."""
+    found = []
+    seen: set = set()
+    dirs_checked: set = set()
+    for d in [Path.home(), Path.cwd()]:
+        d = d.resolve()
+        if d in dirs_checked:
+            continue
+        dirs_checked.add(d)
+        for pattern in ["*.session", ".*.session"]:
+            for f in d.glob(pattern):
+                if f.name.endswith("-journal"):
+                    continue
+                resolved = f.resolve()
+                if resolved in seen:
+                    continue
+                seen.add(resolved)
+                found.append(f)
+    found.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    return found
+
+
+def _validate_session(session_name: str) -> None:
+    """Verify the session file exists; exit with a JSON error and hints if not.
+
+    Both Pyrogram and Telethon store sessions as ``{name}.session``.
+    This check prevents a silent re-auth prompt when the file is missing.
+    """
+    session_file = Path(f"{session_name}.session")
+    if session_file.exists():
+        return
+
+    found = _find_session_files()
+    error: dict = {
+        "error": f"Session file not found: {session_file}",
+        "expected_path": str(session_file),
+        "fix": [
+            "Run 'tg-reader auth' to create a new session",
+            "Or set TG_SESSION=/path/to/existing-session (without .session suffix)",
+            "Or add {\"session\": \"/path/to/session\"} to ~/.tg-reader.json",
+            "Or pass --session-file /path/to/session (without .session suffix)",
+        ],
+    }
+    if found:
+        error["found_sessions"] = [str(f) for f in found[:10]]
+        suggestion = str(found[0]).removesuffix(".session")
+        error["suggestion"] = f"Likely fix: use --session-file {suggestion}"
+
+    print(json.dumps(error, indent=2))
+    sys.exit(1)
+
 
 # ── Config ──────────────────────────────────────────────────────────────────
 
@@ -59,6 +138,10 @@ def get_config(config_file=None, session_file=None):
         }))
         sys.exit(1)
 
+    # Normalize: strip .session suffix if user passed full filename
+    if session_name.endswith(".session"):
+        session_name = session_name[: -len(".session")]
+
     return int(api_id), api_hash, session_name
 
 
@@ -84,54 +167,223 @@ def parse_since(since: str) -> datetime:
         raise ValueError(f"Cannot parse --since value: {since!r}. Use '24h', '7d', or 'YYYY-MM-DD'.")
 
 
-async def fetch_messages(channel: str, since: datetime, limit: int, include_media: bool,
-                         config_file=None, session_file=None):
-    api_id, api_hash, session_name = get_config(config_file, session_file)
+async def _check_discussion_group(app, channel: str) -> bool:
+    """Check whether the channel has a linked discussion group (comments)."""
+    try:
+        chat = await app.get_chat(channel)
+        return chat.linked_chat is not None
+    except Exception:
+        return False
+
+
+async def _fetch_comments(app, channel: str, message_id: int, comment_limit: int) -> list:
+    """Fetch discussion replies (comments) for a single channel post.
+
+    Returns a list of comment dicts. Skips media-only comments (no text).
+    Re-raises FloodWait so the caller can handle retries.
+    """
+    comments = []
+    try:
+        async for reply in app.get_discussion_replies(channel, message_id, limit=comment_limit):
+            text = ""
+            if reply.text:
+                text = reply.text
+            elif reply.caption:
+                text = reply.caption
+            if not text:
+                continue
+            from_user = None
+            if reply.from_user:
+                from_user = reply.from_user.username or str(reply.from_user.id)
+            reply_date = reply.date if reply.date.tzinfo else reply.date.replace(tzinfo=timezone.utc)
+            comments.append({
+                "id": reply.id,
+                "date": reply_date.isoformat(),
+                "text": text,
+                "from_user": from_user,
+            })
+    except FloodWait:
+        raise  # let caller handle retry
+    except Exception:
+        pass  # comments unavailable for this post
+    return comments
+
+
+async def _fetch_channel(app, channel: str, since: datetime, limit: int, text_only: bool,
+                         comments: bool = False, comment_limit: int = 10, comment_delay: float = 3):
+    """Fetch messages from a single channel using an existing Client session."""
+    # Check discussion group availability once (only when comments requested)
+    has_discussion = False
+    if comments:
+        has_discussion = await _check_discussion_group(app, channel)
 
     messages = []
-    async with Client(session_name, api_id=api_id, api_hash=api_hash, **_DEVICE) as app:
-        try:
-            async for msg in app.get_chat_history(channel, limit=limit):
-                msg_date = msg.date if msg.date.tzinfo else msg.date.replace(tzinfo=timezone.utc)
-                if msg_date < since:
-                    break
-                entry = {
-                    "id": msg.id,
-                    "date": msg_date.isoformat(),
-                    "text": msg.text or msg.caption or "",
-                    "views": msg.views,
-                    "forwards": msg.forwards,
-                    "link": f"https://t.me/{channel.lstrip('@')}/{msg.id}",
-                }
-                if include_media and msg.media:
-                    entry["media_type"] = str(msg.media)
-                messages.append(entry)
-        except (ChannelInvalid, UsernameNotOccupied) as e:
-            return {"error": str(e), "channel": channel}
-        except FloodWait as e:
-            return {"error": f"FloodWait: retry after {e.value}s", "channel": channel}
+    try:
+        msg_index = 0
+        async for msg in app.get_chat_history(channel, limit=limit):
+            msg_date = msg.date if msg.date.tzinfo else msg.date.replace(tzinfo=timezone.utc)
+            if msg_date < since:
+                break
+            # Pyrogram: text for plain messages, caption for media messages
+            text = ""
+            if msg.text:
+                text = msg.text
+            elif msg.caption:
+                text = msg.caption
 
-    return {
+            # --text-only: skip posts that have no text at all
+            if text_only and not text:
+                continue
+
+            entry = {
+                "id": msg.id,
+                "date": msg_date.isoformat(),
+                "text": text,
+                "views": msg.views,
+                "forwards": msg.forwards,
+                "link": f"https://t.me/{channel.lstrip('@')}/{msg.id}",
+                "has_media": msg.media is not None,
+            }
+            if msg.media:
+                entry["media_type"] = str(msg.media)
+
+            # Fetch comments for this post
+            if comments and has_discussion:
+                if msg_index > 0:
+                    await asyncio.sleep(comment_delay)
+                try:
+                    post_comments = await _fetch_comments(app, channel, msg.id, comment_limit)
+                    entry["comment_count"] = len(post_comments)
+                    entry["comments"] = post_comments
+                except FloodWait as e:
+                    if e.value <= _FLOOD_WAIT_MAX:
+                        await asyncio.sleep(e.value)
+                        try:
+                            post_comments = await _fetch_comments(app, channel, msg.id, comment_limit)
+                            entry["comment_count"] = len(post_comments)
+                            entry["comments"] = post_comments
+                        except Exception:
+                            entry["comment_count"] = 0
+                            entry["comments"] = []
+                    else:
+                        entry["comment_count"] = 0
+                        entry["comments"] = []
+                        entry["comments_error"] = f"Rate limited: retry after {e.value}s"
+
+            messages.append(entry)
+            msg_index += 1
+    except (ChannelPrivate, ChatForbidden, ChatRestricted) as e:
+        return _channel_error(
+            channel, "access_denied",
+            f"Channel is private or access denied: {e}",
+            "remove_from_list_or_rejoin",
+        )
+    except (ChannelBanned, UserBannedInChannel) as e:
+        return _channel_error(
+            channel, "banned",
+            f"Banned from channel: {e}",
+            "remove_from_list",
+        )
+    except (ChannelInvalid, ChatInvalid, PeerIdInvalid, UsernameNotOccupied) as e:
+        return _channel_error(
+            channel, "not_found",
+            f"Channel not found or username is incorrect: {e}",
+            "check_username",
+        )
+    except KeyError as e:
+        # Pyrogram raises KeyError from resolve_peer / get_peer_by_username
+        # when the username doesn't exist in Telegram's database
+        return _channel_error(
+            channel, "not_found",
+            f"Username not found: {e}",
+            "check_username",
+        )
+    except (InviteHashExpired, InviteHashInvalid) as e:
+        return _channel_error(
+            channel, "invite_expired",
+            f"Invite link expired or invalid: {e}",
+            "request_new_invite",
+        )
+    except FloodWait as e:
+        return _channel_error(
+            channel, "flood_wait",
+            f"Rate limited: retry after {e.value}s",
+            f"wait_{e.value}s",
+        )
+    except Exception as e:
+        return _channel_error(
+            channel, "unexpected",
+            f"Unexpected error: {e}",
+            "report_to_user",
+        )
+
+    result = {
         "channel": channel,
         "fetched_at": datetime.now(timezone.utc).isoformat(),
         "since": since.isoformat(),
         "count": len(messages),
         "messages": messages,
     }
+    if comments:
+        result["comments_enabled"] = True
+        result["comments_available"] = has_discussion
+    return result
 
 
-async def fetch_multiple(channels: list, since: datetime, limit: int, include_media: bool,
-                         config_file=None, session_file=None):
-    tasks = [fetch_messages(ch, since, limit, include_media, config_file, session_file)
-             for ch in channels]
-    results = await asyncio.gather(*tasks)
-    return list(results)
+_FLOOD_WAIT_MAX = 60  # auto-retry only if wait is <= this many seconds
+
+
+async def fetch_messages(channel: str, since: datetime, limit: int, text_only: bool,
+                         config_file=None, session_file=None,
+                         comments: bool = False, comment_limit: int = 10, comment_delay: float = 3):
+    api_id, api_hash, session_name = get_config(config_file, session_file)
+    _validate_session(session_name)
+    async with Client(session_name, api_id=api_id, api_hash=api_hash, **_DEVICE) as app:
+        return await _fetch_channel(app, channel, since, limit, text_only,
+                                    comments=comments, comment_limit=comment_limit,
+                                    comment_delay=comment_delay)
+
+
+async def fetch_multiple(channels: list, since: datetime, limit: int, text_only: bool,
+                         config_file=None, session_file=None, delay: float = 10):
+    """Fetch messages from multiple channels sequentially with delays.
+
+    Channels are fetched one at a time to avoid Telegram FloodWait.
+    If a FloodWait <= 60s is hit, the request is retried once automatically.
+    """
+    api_id, api_hash, session_name = get_config(config_file, session_file)
+    _validate_session(session_name)
+
+    results = []
+    async with Client(session_name, api_id=api_id, api_hash=api_hash, **_DEVICE) as app:
+        for i, channel in enumerate(channels):
+            result = await _fetch_channel(app, channel, since, limit, text_only)
+
+            # Auto-retry on FloodWait if wait is reasonable
+            if (isinstance(result, dict) and result.get("error_type") == "flood_wait"):
+                wait_action = result.get("action", "")
+                try:
+                    wait_seconds = int(wait_action.replace("wait_", "").replace("s", ""))
+                except (ValueError, AttributeError):
+                    wait_seconds = 0
+                if 0 < wait_seconds <= _FLOOD_WAIT_MAX:
+                    await asyncio.sleep(wait_seconds)
+                    result = await _fetch_channel(app, channel, since, limit, text_only)
+
+            results.append(result)
+
+            # Delay between channels (skip after the last one)
+            if i < len(channels) - 1:
+                await asyncio.sleep(delay)
+
+    return results
 
 
 # ── Channel info ─────────────────────────────────────────────────────────────
 
 async def fetch_info(channel: str, config_file=None, session_file=None):
     api_id, api_hash, session_name = get_config(config_file, session_file)
+    _validate_session(session_name)
     async with Client(session_name, api_id=api_id, api_hash=api_hash) as app:
         try:
             chat = await app.get_chat(channel)
@@ -143,8 +395,36 @@ async def fetch_info(channel: str, config_file=None, session_file=None):
                 "members_count": chat.members_count,
                 "link": f"https://t.me/{chat.username}" if chat.username else None,
             }
-        except (ChannelInvalid, UsernameNotOccupied) as e:
-            return {"error": str(e), "channel": channel}
+        except (ChannelPrivate, ChatForbidden, ChatRestricted) as e:
+            return _channel_error(
+                channel, "access_denied",
+                f"Channel is private or access denied: {e}",
+                "remove_from_list_or_rejoin",
+            )
+        except (ChannelBanned, UserBannedInChannel) as e:
+            return _channel_error(
+                channel, "banned",
+                f"Banned from channel: {e}",
+                "remove_from_list",
+            )
+        except (ChannelInvalid, ChatInvalid, PeerIdInvalid, UsernameNotOccupied) as e:
+            return _channel_error(
+                channel, "not_found",
+                f"Channel not found or username is incorrect: {e}",
+                "check_username",
+            )
+        except KeyError as e:
+            return _channel_error(
+                channel, "not_found",
+                f"Username not found: {e}",
+                "check_username",
+            )
+        except Exception as e:
+            return _channel_error(
+                channel, "unexpected",
+                f"Unexpected error: {e}",
+                "report_to_user",
+            )
 
 
 # ── Auth setup ───────────────────────────────────────────────────────────────
@@ -179,7 +459,16 @@ def main():
     fetch_p.add_argument("channels", nargs="+", help="Channel usernames e.g. @durov")
     fetch_p.add_argument("--since", default="24h", help="Time window: 24h, 7d, 2w, or YYYY-MM-DD")
     fetch_p.add_argument("--limit", type=int, default=100, help="Max posts per channel (default 100)")
-    fetch_p.add_argument("--media", action="store_true", help="Include media type info")
+    fetch_p.add_argument("--text-only", action="store_true",
+                        help="Skip posts that have no text (media-only without caption)")
+    fetch_p.add_argument("--delay", type=float, default=10,
+                        help="Seconds to wait between channels (default 10)")
+    fetch_p.add_argument("--comments", action="store_true",
+                        help="Fetch comments for each post (single channel only)")
+    fetch_p.add_argument("--comment-limit", type=int, default=10,
+                        help="Max comments per post (default 10)")
+    fetch_p.add_argument("--comment-delay", type=float, default=3,
+                        help="Seconds between comment fetches per post (default 3)")
     fetch_p.add_argument("--format", choices=["json", "text"], default="json")
 
     # info
@@ -209,10 +498,28 @@ def main():
             print(json.dumps({"error": str(e)}))
             sys.exit(1)
 
+        # Validate --comments constraints
+        if args.comments:
+            if len(args.channels) > 1:
+                print(json.dumps({
+                    "error": "--comments can only be used with a single channel",
+                    "action": "remove_extra_channels_or_drop_comments",
+                }))
+                sys.exit(1)
+
+        # Lower default limit when fetching comments (token economy)
+        limit = args.limit
+        if args.comments and limit == 100:
+            limit = 30
+
         if len(args.channels) == 1:
-            result = asyncio.run(fetch_messages(args.channels[0], since_dt, args.limit, args.media, cf, sf))
+            result = asyncio.run(fetch_messages(
+                args.channels[0], since_dt, limit, args.text_only, cf, sf,
+                comments=args.comments, comment_limit=args.comment_limit,
+                comment_delay=args.comment_delay))
         else:
-            result = asyncio.run(fetch_multiple(args.channels, since_dt, args.limit, args.media, cf, sf))
+            result = asyncio.run(fetch_multiple(args.channels, since_dt, limit, args.text_only, cf, sf,
+                                                delay=args.delay))
 
         if args.format == "json":
             print(json.dumps(result, ensure_ascii=False, indent=2))
@@ -227,6 +534,11 @@ def main():
                 for msg in ch_result["messages"]:
                     print(f"\n[{msg['date']}] {msg['link']}")
                     print(msg["text"][:500] + ("..." if len(msg["text"]) > 500 else ""))
+                    if "comments" in msg and msg["comments"]:
+                        print(f"  [{msg['comment_count']} comments]")
+                        for c in msg["comments"]:
+                            user = c.get("from_user") or "anonymous"
+                            print(f"    @{user}: {c['text'][:200]}")
 
 
 if __name__ == "__main__":
