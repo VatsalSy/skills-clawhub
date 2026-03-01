@@ -1,6 +1,6 @@
 ---
 name: vitavault
-description: VitaVault iOS app integration - analyze Apple Health exports (JSON, CSV, AI-ready text) with your AI agent. Works with any iPhone, no Mac required. Scan lab results, track medications, view health trends, and get AI-powered insights.
+description: VitaVault iOS app integration - sync Apple Health data directly to your AI agent. Auto-setup webhook, token generation, and HTTPS exposure. Works with any iPhone, no Mac required.
 license: Apache-2.0
 compatibility: Any OpenClaw agent. Pairs with VitaVault iOS app (free on App Store).
 metadata:
@@ -11,136 +11,167 @@ metadata:
 
 # VitaVault - Your Health, Decoded
 
-AI agent skill for working with [VitaVault](https://vitavault.io) health data exports from iOS.
+Sync Apple Health data from [VitaVault](https://vitavault.io) iOS app directly to your OpenClaw agent. No shared servers, no middleman - data flows phone to your agent only.
 
-> **No Mac required.** VitaVault is a free iOS app that syncs your Apple Health data to your AI agent automatically. Install it from [TestFlight](https://testflight.apple.com/join/A4G27HBt) (beta) or the App Store (coming soon).
+> **No Mac required.** Install VitaVault from [TestFlight](https://testflight.apple.com/join/A4G27HBt) (beta) or the App Store.
 
-## Auto-Sync with OpenClaw
+## Agent Setup Guide (DO THIS WHEN USER SAYS "set up VitaVault")
 
-VitaVault automatically syncs health data to the cloud every time you open the app. Your OpenClaw agent can query it anytime.
+When your user asks to set up VitaVault sync, follow these steps automatically. Don't ask the user to do the technical parts - handle it yourself and hand them the URL + token at the end.
 
-### Setup
+### Step 1: Generate a sync token
 
-Set your sync token as an environment variable:
 ```bash
-export VITAVAULT_SYNC_TOKEN="your-token-here"
+# Generate a secure random token
+python3 -c "import secrets; print(secrets.token_hex(32))" > ~/.config/vitavault/sync-token
+mkdir -p ~/.config/vitavault
+TOKEN=$(cat ~/.config/vitavault/sync-token)
+echo "Token: $TOKEN"
 ```
 
-### Query Scripts
+### Step 2: Start the webhook
 
 ```bash
-# Get latest health snapshot
-python3 scripts/query.py summary
+VITAVAULT_SYNC_TOKEN="$TOKEN" nohup python3 scripts/webhook.py --host 0.0.0.0 --port 8787 > /tmp/vitavault-webhook.log 2>&1 &
+```
 
-# Get raw JSON
+The webhook listens for health data POSTs and saves snapshots to `~/vitavault/data/`.
+
+### Step 3: Expose it over HTTPS
+
+The VitaVault iOS app requires HTTPS (iOS App Transport Security). You MUST expose the webhook over HTTPS. Detect what's available and use the first option that works:
+
+**Option A: Tailscale Funnel (recommended if Tailscale is installed)**
+```bash
+# Check if Tailscale is available
+tailscale status 2>/dev/null
+# If yes, expose via Funnel:
+sudo tailscale funnel --bg --set-path /vitavault http://127.0.0.1:8787
+# Your URL will be: https://<your-tailscale-hostname>/vitavault
+tailscale funnel status  # to see the URL
+```
+
+**Option B: Cloudflare Tunnel (if cloudflared is installed)**
+```bash
+cloudflared tunnel --url http://localhost:8787
+# Gives you a temporary https://*.trycloudflare.com URL
+# For permanent: set up a named tunnel with a custom domain
+```
+
+**Option C: VPS with a domain + reverse proxy (nginx/caddy)**
+If the host already has a domain with HTTPS (nginx, caddy, etc.), add a reverse proxy rule:
+```nginx
+location /vitavault {
+    proxy_pass http://127.0.0.1:8787;
+}
+```
+URL would be: `https://yourdomain.com/vitavault`
+
+**Option D: ngrok (quick testing)**
+```bash
+ngrok http 8787
+# Gives you a temporary https://*.ngrok-free.app URL
+```
+
+### Step 4: Verify it works
+
+```bash
+curl -s https://YOUR-URL/health
+# Should return: {"ok": true}
+```
+
+### Step 5: Give the user their credentials
+
+Tell your user:
+
+> **Open VitaVault on your iPhone -> Settings -> OpenClaw**
+>
+> **Webhook URL:** `https://YOUR-URL`
+> **Sync Token:** `<the token you generated>`
+>
+> Paste both in and tap Connect.
+
+That's it. Once connected, VitaVault auto-syncs health data every time the app opens.
+
+### Step 6: Make it persistent (recommended)
+
+The webhook should survive reboots. Create a systemd service:
+
+```bash
+cat > /tmp/vitavault-webhook.service << 'EOF'
+[Unit]
+Description=VitaVault Webhook Receiver
+After=network.target
+
+[Service]
+Type=simple
+User=$USER
+Environment=VITAVAULT_SYNC_TOKEN=<TOKEN>
+ExecStart=/usr/bin/python3 /path/to/skills/vitavault/scripts/webhook.py --host 127.0.0.1 --port 8787
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+# Adjust paths and token, then:
+sudo cp /tmp/vitavault-webhook.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now vitavault-webhook
+```
+
+## Querying Health Data
+
+Once data is syncing, use these scripts to read it:
+
+```bash
+# Latest snapshot summary
+python3 scripts/summary.py
+
+# Raw latest JSON
 python3 scripts/query.py latest
 
-# Get past week
+# Last 7 days
 python3 scripts/query.py week
 
-# Get specific date range
+# Date range
 python3 scripts/query.py range 2026-02-01 2026-02-28
 ```
 
-### API Endpoints (for custom integrations)
+Data is stored locally at `~/vitavault/data/` as timestamped JSON files.
 
-All endpoints require `Authorization: Bearer <token>` header.
+## What You Can Do With the Data
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/v1/health/latest` | Most recent health snapshot |
-| GET | `/v1/health/range?start=YYYY-MM-DD&end=YYYY-MM-DD` | Health data for date range |
-| GET | `/v1/status` | API health check (no auth) |
+Once synced, your agent can:
+- Track trends in steps, sleep, HRV, resting HR, blood oxygen
+- Compare current week vs prior week
+- Detect unusual drops/spikes and flag risks
+- Build morning health briefings
+- Generate doctor appointment summaries
+- Suggest habit changes based on actual data
 
-Base URL: `https://vitavault-api.brandon-f00.workers.dev`
+## Working with Manual Exports
 
-## What is VitaVault?
-
-VitaVault is a privacy-first iOS health app that:
-- Reads 48+ health data types from Apple Health (steps, sleep, heart rate, HRV, blood oxygen, weight, and more)
-- Scans lab results with AI and explains them in plain English
-- Tracks medications with smart reminders
-- Generates doctor visit prep reports
-- Exports data in 3 formats: JSON, CSV, and AI-ready text
-- All data stays on-device - nothing is uploaded to any server
-
-## When to Use This Skill
-
-- User shares a VitaVault health export (JSON, CSV, or AI-ready text)
-- User asks about their Apple Health data
-- User wants health trend analysis or recommendations
-- User asks about lab results or medication tracking
-- User wants to prepare for a doctor visit
-
-## Working with VitaVault Exports
+Users can also export data manually from VitaVault (no webhook needed):
 
 ### AI-Ready Format (Plain Text)
-The easiest format - pre-formatted for AI analysis. Users export from VitaVault and paste directly.
-
-Example:
-```
-HEALTH SUMMARY - Last 7 Days
-
-Steps: 43,133 total (6,162/day avg)
-Sleep: 6h 42m last night, 7.1h weekly avg
-Heart Rate: 72 bpm avg, 62 bpm resting
-HRV: 30ms avg
-Blood Oxygen: 97% avg
-Weight: 185.4 lbs
-Active Calories: 4,645 total (616/day avg)
-Exercise: 142 min total
-```
+Pre-formatted for AI analysis. Users export from VitaVault and paste directly.
 
 ### JSON Format
-Structured data for programmatic analysis:
-```json
-{
-  "exportDate": "2026-02-17T12:00:00Z",
-  "period": "7d",
-  "metrics": {
-    "steps": { "total": 43133, "dailyAverage": 5719, "unit": "steps" },
-    "sleep": { "lastNight": 6.7, "weeklyAverage": 7.1, "unit": "hours" },
-    "heartRate": { "average": 72, "resting": 62, "unit": "bpm" },
-    "hrv": { "average": 30, "unit": "ms" },
-    "bloodOxygen": { "average": 97, "unit": "%" },
-    "weight": { "latest": 185.4, "unit": "lbs" },
-    "activeCalories": { "dailyAverage": 542, "unit": "kcal" }
-  }
-}
-```
+Structured data with nested metrics, dates, and units.
 
 ### CSV Format
-One row per day, opens in Excel/Sheets:
-```csv
-date,steps,sleep_hours,resting_hr,hrv_ms,weight_lbs,calories
-2026-02-17,8012,6.7,62,28,185.4,642
-2026-02-16,5891,7.2,61,33,185.2,589
-```
+One row per day, opens in Excel/Google Sheets.
 
-## Analysis Prompts
-
-When a user shares VitaVault data, you can:
-
-1. **Trend Analysis** - Identify patterns in sleep, activity, heart rate
-2. **Risk Flags** - Flag concerning metrics (low HRV, poor sleep consistency, elevated resting HR)
-3. **Recommendations** - Actionable health suggestions based on data
-4. **Doctor Prep** - Generate a summary report for medical appointments
-5. **Lab Interpretation** - Explain lab values in context with health metrics
-6. **Goal Tracking** - Compare current metrics against user goals
-
-## Example Interaction
-
-User: "Here's my VitaVault export, what should I focus on?"
-
-Good response pattern:
-1. Acknowledge the data received
+When a user shares an export:
+1. Acknowledge the data
 2. Highlight 2-3 key observations (positive and concerning)
 3. Give 3 specific, actionable recommendations
 4. Offer to dig deeper into any metric
 
-## Privacy Note
+## Privacy
 
-VitaVault processes all health data on-device. Exports are user-initiated only. When users share exports with their AI agent, remind them this is their choice and the data is being processed by the AI provider.
+VitaVault sync data flows directly: **iPhone -> your OpenClaw agent**. No shared backend, no central relay, no third-party storage. Data is saved on your agent's host at `~/vitavault/data/` and nowhere else.
 
 ## Links
 

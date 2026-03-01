@@ -7,7 +7,7 @@ Usage:
     python3 query.py summary             # Get latest + formatted summary
 
 Environment:
-    VITAVAULT_API_URL   - API base URL (default: https://vitavault-api.brandon-f00.workers.dev)
+    VITAVAULT_API_URL   - API base URL (required - set to your private API endpoint)
     VITAVAULT_SYNC_TOKEN - Bearer token for authentication
 """
 
@@ -18,7 +18,11 @@ from urllib.request import Request, urlopen
 from urllib.error import HTTPError
 from datetime import datetime, timedelta
 
-API_URL = os.environ.get("VITAVAULT_API_URL", "https://vitavault-api.brandon-f00.workers.dev")
+API_URL = os.environ.get("VITAVAULT_API_URL", "")
+if not API_URL:
+    print("Error: VITAVAULT_API_URL environment variable is required.", file=sys.stderr)
+    print("Set it to your private VitaVault API endpoint.", file=sys.stderr)
+    sys.exit(1)
 TOKEN = os.environ.get("VITAVAULT_SYNC_TOKEN", "")
 
 
