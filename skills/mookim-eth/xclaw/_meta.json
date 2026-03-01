@@ -3,9 +3,15 @@
   "slug": "xclaw",
   "displayName": "xclaw",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1772096864532,
-    "commit": "https://github.com/openclaw/skills/commit/b67b27d9c34a46f6666ab837fb6a401bb054c70d"
+    "version": "1.0.5",
+    "publishedAt": 1772344519649,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1772096864532,
+      "commit": "https://github.com/openclaw/skills/commit/b67b27d9c34a46f6666ab837fb6a401bb054c70d"
+    }
+  ]
 }

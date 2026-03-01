@@ -26,12 +26,18 @@ function requestXClaw(path, method, body) {
             res.on('end', () => {
                 if (res.statusCode >= 200 && res.statusCode < 300) {
                     try {
-                        resolve(JSON.parse(data));
+                        const parsed = JSON.parse(data);
+                        // If API returns a standard error object
+                        if (parsed && parsed.status === false) {
+                            reject(new Error(parsed.msg || parsed.errMsg || "API Error"));
+                        } else {
+                            resolve(parsed);
+                        }
                     } catch (e) {
                         resolve(data);
                     }
                 } else {
-                    reject(new Error(`API Error ${res.statusCode}: ${data}`));
+                    reject(new Error(`HTTP ${res.statusCode}: ${data}`));
                 }
             });
         });
@@ -42,16 +48,19 @@ function requestXClaw(path, method, body) {
 }
 
 function slimTweets(rawData, limit = 15) {
-    const items = Array.isArray(rawData) ? rawData : (rawData.items || []);
+    if (!rawData) return [];
+    // Handle both array response and { tweets: [] } response
+    const items = Array.isArray(rawData) ? rawData : (rawData.tweets || rawData.items || []);
     return items.slice(0, limit).map(item => {
         const t = item.tweet || item;
+        const info = item.info || t.info || {};
         return {
             rank: item.rank || 'N/A',
-            author: t.profile ? t.profile.name : (t.username || 'Unknown'),
-            handle: t.profile ? t.profile.username : (t.username || 'Unknown'),
-            summary: t.ai ? t.ai.summary_cn : (t.text ? t.text.substring(0, 150) : 'No content'),
+            author: t.profile ? t.profile.name : (t.username || 'KOL'),
+            summary: t.ai ? t.ai.summary_cn : (info.html ? info.html.replace(/<[^>]*>?/gm, '').substring(0, 150) : (t.text ? t.text.substring(0, 150) : 'No content')),
             engagement: t.statistic ? `❤️${t.statistic.likes} 🔁${t.statistic.retweet_count}` : 'N/A',
-            link: t.link
+            time: t.create_time || t.created_at,
+            link: t.link || `https://x.com/i/status/${t.id}`
         };
     });
 }
@@ -74,22 +83,52 @@ async function main() {
                 trending: slimTweets(rawData, 20)
             }, null, 2));
 
-        } else if (command === 'analyze') {
-            const username = args[1].replace('@', '');
+        } else if (command === 'analyze' || command === 'crawl') {
+            const username = args[1] ? args[1].replace('@', '').trim() : null;
+            if (!username) throw new Error("Username/Handle is required.");
+
+            console.log(`[XClaw] Deep searching for: @${username}...`);
+            
             let result;
             try {
-                result = await requestXClaw('/tweet/kol_tweets', 'POST', { username });
-                if (!result.items || result.items.length === 0) throw new Error("EMPTY");
+                // 1. Try internal tracked KOL database first (requires handle)
+                result = await requestXClaw('/tweet/kol_tweets', 'POST', { handle: username, maxResults: 20 });
+                if (!Array.isArray(result) || result.length === 0) throw new Error("NOT_IN_KOL_DB");
             } catch (e) {
-                result = await requestXClaw('/tweet/user_tweets', 'POST', { username });
+                // If it's a real API error (like credit limit), rethrow it
+                if (e.message.includes("credits") || e.message.includes("HTTP 401")) throw e;
+
+                // 2. Fallback: Real-time crawl (requires user_id)
+                console.log(`[XClaw] @${username} not in KOL DB. Fetching User ID...`);
+                const profile = await requestXClaw('/user/profile_by_handle', 'POST', { handle: username });
+                if (profile && profile.id) {
+                    console.log(`[XClaw] Launching REAL-TIME CRAWL for UID: ${profile.id}...`);
+                    result = await requestXClaw('/tweet/user_tweets', 'POST', { user_id: profile.id, maxResults: 20 });
+                } else {
+                    throw new Error(`User @${username} not found.`);
+                }
             }
+            
             console.log(JSON.stringify({
-                info: `Analysis for @${username}`,
+                info: `Intelligence for @${username}`,
                 tweets: slimTweets(result, 15)
             }, null, 2));
 
+        } else if (command === 'ghost' || command === 'deleted') {
+            const handle = args[1] ? args[1].replace('@', '').trim() : null;
+            if (!handle) throw new Error("Handle is required.");
+
+            console.log(`[XClaw] Sniffing deleted tweets for: @${handle}...`);
+            const result = await requestXClaw('/tweet/deleted_tweets', 'POST', { handle: handle });
+            console.log(JSON.stringify({
+                info: `Ghost Analysis (Deleted Tweets) for @${handle}`,
+                deleted_tweets: slimTweets(result, 10)
+            }, null, 2));
+
         } else if (command === 'detail') {
-            const tweetId = args[1].includes('/') ? args[1].split('/').pop().split('?')[0] : args[1];
+            const tweetId = args[1] ? (args[1].includes('/') ? args[1].split('/').pop().split('?')[0] : args[1]) : null;
+            if (!tweetId) throw new Error("Tweet URL or ID is required.");
+
             const res = await requestXClaw('/tweet/tweet_detail', 'POST', { tweet_id: tweetId });
             console.log(JSON.stringify(res, null, 2));
 
@@ -103,17 +142,17 @@ async function main() {
             const rawData = await requestXClaw('/tweet/hot_tweets', 'POST', payload);
             const top5 = slimTweets(rawData, 5);
             console.log(JSON.stringify({
-                instruction: `Based on these Top 5 viral topics in ${group} (${tag || 'all'}), create 3 diverse tweet drafts (Tech, Sentiment, Alpha). Include original links for quoting.`,
-                data_source: `CryptoHunt Real-time Hot Tweets (${hours}h)`,
+                instruction: `Based on these Top 5 viral topics, create 3 diverse tweet drafts.`,
                 topics: top5
             }, null, 2));
 
         } else {
-            console.log("Usage: node xclaw.js <hot|analyze|detail|draft> <params>");
+            console.log("Usage: node xclaw.js <hot|analyze|ghost|detail|draft> <params>");
         }
     } catch (error) {
-        console.error("Failed:", error.message);
-        process.exit(1);
+        // Output clean error for the Agent
+        console.log(JSON.stringify({ error: error.message }, null, 2));
+        process.exit(0); // Exit with 0 so the Agent can read the JSON error
     }
 }
 
