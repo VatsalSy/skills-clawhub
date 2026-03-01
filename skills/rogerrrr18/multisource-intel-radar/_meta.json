@@ -3,9 +3,15 @@
   "slug": "multisource-intel-radar",
   "displayName": "Multisource Intel Radar",
   "latest": {
-    "version": "0.1.0",
-    "publishedAt": 1772162210783,
-    "commit": "https://github.com/openclaw/skills/commit/f0462f127c7ea6e33c49fddefc7c9b09fd33debc"
+    "version": "0.1.1",
+    "publishedAt": 1772248496814,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.1.0",
+      "publishedAt": 1772162210783,
+      "commit": "https://github.com/openclaw/skills/commit/f0462f127c7ea6e33c49fddefc7c9b09fd33debc"
+    }
+  ]
 }

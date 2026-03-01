@@ -14,10 +14,11 @@ Create a founder-grade signal system: less junk, more decisions.
 
 ## Output Contract
 Always output:
-1. **Top 3 must-read signals** (one-line why + one action)
-2. **Top 5 watchlist items**
+1. **Top 3 must-read signals** (one-line why + one action + clickable source link)
+2. **Top 5 watchlist items** (with source link)
 3. **Dropped noise summary** (what got filtered and why)
-4. **Next experiment** (one concrete growth/ops move)
+4. **Filter transparency** (counts + rates: scanned -> matched -> shortlisted -> top3)
+5. **Next experiment** (one concrete growth/ops move)
 
 ## Workflow
 
@@ -29,6 +30,11 @@ Always output:
 - Run `scripts/build_digest.py` with keyword whitelist
 - Time window default: last 48h
 - Keep only items that match whitelist in title/summary
+- For Xiaohongshu: do browser search (not watchlist-dependent), using keyword combos like:
+  - 创业 AI 增长
+  - AI 产品 复盘
+  - 增长运营 案例
+  Then append top findings with profile/note links.
 
 ### Step 3) Score items
 Use this weighted scoring:
