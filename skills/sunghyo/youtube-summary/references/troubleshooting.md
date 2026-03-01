@@ -5,26 +5,34 @@ Use `--json` when possible to get structured errors.
 ## Quick checks
 
 - Node.js 18+ installed
+- `youtube2md` installed on PATH (recommended pinned install: `npm i -g youtube2md@1.0.1`)
 - `python3` available (required for `prepare.py` transcript text output)
-- Runtime mode check:
-  - default runtime install mode → `npx` available
-  - strict local mode (`YOUTUBE2MD_NO_RUNTIME_INSTALL=1`) → `youtube2md` available on PATH
-  - explicit command mode (`YOUTUBE2MD_BIN=...`) → command/path is executable
 - URL is a valid YouTube link
 - `OPENAI_API_KEY` set for full mode
-- Runner uses fixed package target: `youtube2md@1.0.1`
+- Legacy env override is not set:
+  - `YOUTUBE2MD_BIN`
 
 ## Common failures and fixes
 
-### 1) `npx` not found (runtime install mode)
+### 1) `youtube2md` not found
 
 Fix:
-- Install Node.js 18+
-- Verify with `npx --version`
-- Or switch to strict local mode:
-  - `YOUTUBE2MD_NO_RUNTIME_INSTALL=1` and ensure `youtube2md` exists on PATH
+- Install pinned binary:
+  - `npm i -g youtube2md@1.0.1`
+- Verify with:
+  - `youtube2md --help`
 
-### 2) `python3` not found (extract mode text prep)
+### 2) Legacy override env rejected
+
+Symptom:
+- Runner exits with an error about `YOUTUBE2MD_BIN`.
+
+Fix:
+- Unset the env var and rerun:
+  - `unset YOUTUBE2MD_BIN`
+- Keep using local installed `youtube2md` binary on PATH.
+
+### 3) `python3` not found (extract mode text prep)
 
 Symptom:
 - Extract JSON is created but `.txt` transcript is missing
@@ -34,7 +42,7 @@ Fix:
 - Verify with `python3 --version`
 - Re-run extract mode so `prepare.py` can generate `.txt`
 
-### 3) Full mode without API key
+### 4) Full mode without API key
 
 Symptom:
 - OpenAI auth error / missing key
@@ -45,7 +53,7 @@ Fix:
   - `YOUTUBE2MD_ALLOW_EXTRACT_FALLBACK=0`
 - If you want full summary output, set `OPENAI_API_KEY` and rerun full mode.
 
-### 4) Transcript unavailable
+### 5) Transcript unavailable
 
 Symptom:
 - Captions not available and fallback also fails
@@ -54,27 +62,27 @@ Fix:
 - Retry later / try another video
 - For Whisper fallback paths, ensure `OPENAI_API_KEY` is set
 
-### 5) OpenAI rate limit
+### 6) OpenAI rate limit
 
 Fix:
 - Retry after backoff
 - Optionally use a different model (`--model`)
 
-### 6) Output file missing / write failure
+### 7) Output file missing / write failure
 
 Fix:
 - Provide explicit writable path:
   - Full: `scripts/run_youtube2md.sh <url> full ./summaries/custom.md`
   - Extract: `scripts/run_youtube2md.sh <url> extract ./summaries/custom.json`
 
-### 7) Package trust / version policy
+### 8) Package trust / version policy
 
 Symptom:
-- Security policy blocks runtime installs or unreviewed npm execution
+- Security policy blocks unreviewed package installs
 
 Fix:
-- Keep fixed package target (`youtube2md@1.0.1`) unless a reviewed version bump is intentionally applied in the script.
-- For stricter controls, disable runtime install (`YOUTUBE2MD_NO_RUNTIME_INSTALL=1`) or set trusted binary path (`YOUTUBE2MD_BIN`).
+- Use pinned install: `npm i -g youtube2md@1.0.1`
+- Prefer vetted internal mirrors or vendored artifacts in strict environments.
 - See `references/security.md` for installation-time risk decisions.
 
 ## Structured error codes (`--json`)

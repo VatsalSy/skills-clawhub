@@ -1,6 +1,10 @@
 ---
 name: youtube-summary
 description: Summarize YouTube videos into structured Markdown with youtube2md, including chaptered notes, timestamp links, and key takeaways. Use when the user provides one or more YouTube URLs and asks for summaries, study notes, language-specific summaries, transcript extraction, or machine-readable JSON output.
+env:
+  - name: OPENAI_API_KEY
+    required: false
+    description: Enables full summarization mode. When set, transcript content is sent to OpenAI. Omit to use extract-only mode with local summarization.
 ---
 
 # YouTube Summary (youtube2md)
@@ -10,13 +14,15 @@ Use the official `youtube2md` CLI behavior from the repository.
 ## Runtime + security prerequisites
 
 - Require **Node.js 18+**.
-- Require `npx` when using runtime npm execution mode (default).
+- Require preinstalled `youtube2md` on PATH.
+  - Recommended pinned install: `npm i -g youtube2md@1.0.1`
 - Require **python3** for transcript text preparation (`prepare.py`) in extract mode.
-- Default runner is **hard-pinned** to `youtube2md@1.0.1` (not overridable by env flags).
-- For stricter environments, disable runtime npm downloads with `YOUTUBE2MD_NO_RUNTIME_INSTALL=1` and provide a preinstalled `youtube2md` binary (or set `YOUTUBE2MD_BIN`).
+- Default runner uses local `youtube2md` executable only.
+- Runtime npm execution (`npx`) is intentionally not supported in this skill.
+- The `YOUTUBE2MD_BIN` environment variable override is rejected by the runner.
 - `OPENAI_API_KEY` enables full summarization mode; transcript/content may be sent to OpenAI through youtube2md’s workflow.
   - For sensitive content, omit `OPENAI_API_KEY` and use extract mode.
-- In sensitive environments, audit the upstream `youtube2md` package and dependencies before enabling runtime downloads.
+- In sensitive environments, audit the upstream `youtube2md` package and dependencies before installation or version bumps.
 
 See `references/security.md` before first-time install/enable.
 
@@ -42,12 +48,10 @@ See `references/security.md` before first-time install/enable.
      - `YOUTUBE2MD_JSON=1 scripts/run_youtube2md.sh <url> full`
      - `YOUTUBE2MD_JSON=1 scripts/run_youtube2md.sh <url> extract`
    - Runtime controls:
-     - Package target is fixed to `youtube2md@1.0.1`
-     - Disable runtime npm download: `YOUTUBE2MD_NO_RUNTIME_INSTALL=1`
-     - Use explicit local command/path: `YOUTUBE2MD_BIN=<cmd-or-path>`
+     - Use only locally installed `youtube2md` executable.
+     - Do not use runtime npm execution (`npx`) for this skill.
    - Direct CLI equivalent:
-     - Runtime install path: `npx --yes youtube2md@1.0.1 --url <url> [--out <path>] [--lang <language>] [--model <model>]`
-     - Preinstalled binary path: `youtube2md --url <url> [--out <path>] [--lang <language>] [--model <model>]`
+     - `youtube2md --url <url> [--out <path>] [--lang <language>] [--model <model>]`
      - Add `--extract-only` for transcript-only mode.
 
 4. Verify output
@@ -78,6 +82,11 @@ See `references/security.md` before first-time install/enable.
   - Full mode: `./summaries/<video_id>.md`
   - Extract mode: `./summaries/<video_id>.json`
   - Local runner post-process (extract): `./summaries/<video_id>.txt` via `prepare.py`
+
+## Packaging hygiene
+
+- Do not publish generated outputs (e.g., `summaries/*.json`, `summaries/*.txt`) inside the skill folder.
+- Keep only source files (`SKILL.md`, `scripts/`, `references/`, helpers) in release artifacts.
 
 ## Resources
 

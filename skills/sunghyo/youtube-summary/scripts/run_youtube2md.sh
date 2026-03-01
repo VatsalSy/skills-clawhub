@@ -14,42 +14,29 @@ set -euo pipefail
 #   run_youtube2md.sh "https://youtu.be/VIDEO_ID" extract ./summaries/video.json
 #
 # Optional env flags:
-#   YOUTUBE2MD_JSON=1               add --json for machine-readable success/error output
-#   YOUTUBE2MD_STDOUT=1             add --stdout (do not write file)
-#   YOUTUBE2MD_OUT_DIR              add --out-dir <dir>
+#   YOUTUBE2MD_JSON=1                 add --json for machine-readable success/error output
+#   YOUTUBE2MD_STDOUT=1               add --stdout (do not write file)
+#   YOUTUBE2MD_OUT_DIR                add --out-dir <dir>
 #   YOUTUBE2MD_ALLOW_EXTRACT_FALLBACK=1 (default) auto-switch full -> extract when OPENAI_API_KEY is missing
-#   YOUTUBE2MD_NO_RUNTIME_INSTALL=0 when set to 1, do not use npx install; require local youtube2md binary
-#   YOUTUBE2MD_BIN=<cmd/path>       explicit youtube2md command to run (bypasses npx)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SKILL_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 PREPARE_PY="$SKILL_DIR/prepare.py"
-YOUTUBE2MD_PACKAGE="youtube2md@1.0.1"
-YOUTUBE2MD_NO_RUNTIME_INSTALL="${YOUTUBE2MD_NO_RUNTIME_INSTALL:-0}"
-YOUTUBE2MD_BIN="${YOUTUBE2MD_BIN:-}"
 
 run_youtube2md_cli() {
   local -a cli_args=("$@")
+  local youtube2md_path
 
-  if [[ -n "$YOUTUBE2MD_BIN" ]]; then
-    if ! command -v "$YOUTUBE2MD_BIN" >/dev/null 2>&1; then
-      echo "ERROR: YOUTUBE2MD_BIN command not found: $YOUTUBE2MD_BIN"
-      return 12
-    fi
-    "$YOUTUBE2MD_BIN" "${cli_args[@]}"
+  youtube2md_path="$(type -P youtube2md || true)"
+
+  if [[ -n "$youtube2md_path" && -x "$youtube2md_path" ]]; then
+    "$youtube2md_path" "${cli_args[@]}"
     return $?
   fi
 
-  if [[ "$YOUTUBE2MD_NO_RUNTIME_INSTALL" == "1" ]]; then
-    if ! command -v youtube2md >/dev/null 2>&1; then
-      echo "ERROR: youtube2md is required on PATH when YOUTUBE2MD_NO_RUNTIME_INSTALL=1"
-      return 13
-    fi
-    youtube2md "${cli_args[@]}"
-    return $?
-  fi
-
-  npx --yes "$YOUTUBE2MD_PACKAGE" "${cli_args[@]}"
+  echo "ERROR: youtube2md executable is required on PATH."
+  echo "Install once: npm i -g youtube2md@1.0.1"
+  return 13
 }
 
 extract_video_id() {
@@ -89,17 +76,16 @@ OUTPUT_PATH="${3:-}"
 LANGUAGE="${4:-}"
 MODEL="${5:-}"
 
+# Security hardening: reject binary override to avoid arbitrary command/path execution.
+if [[ -n "${YOUTUBE2MD_BIN:-}" ]]; then
+  echo "ERROR: YOUTUBE2MD_BIN override is not supported for security reasons."
+  exit 14
+fi
+
 if [[ -z "$URL" ]]; then
   echo "ERROR: missing YouTube URL"
   echo "Usage: run_youtube2md.sh <youtube_url> [mode] [output_path] [language] [model]"
   exit 2
-fi
-
-if [[ -z "$YOUTUBE2MD_BIN" && "$YOUTUBE2MD_NO_RUNTIME_INSTALL" != "1" ]]; then
-  if ! command -v npx >/dev/null 2>&1; then
-    echo "ERROR: npx is required unless YOUTUBE2MD_NO_RUNTIME_INSTALL=1 or YOUTUBE2MD_BIN is set."
-    exit 3
-  fi
 fi
 
 if [[ "$MODE" != "full" && "$MODE" != "extract" ]]; then
