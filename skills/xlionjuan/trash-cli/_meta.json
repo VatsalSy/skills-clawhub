@@ -3,11 +3,16 @@
   "slug": "trash-cli",
   "displayName": "Trash Cli",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1772181680210,
-    "commit": "https://github.com/openclaw/skills/commit/82fc7cf2beab43d45c74094ab933262a93b067d2"
+    "version": "1.0.5",
+    "publishedAt": 1772239866500,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1772181680210,
+      "commit": "https://github.com/openclaw/skills/commit/82fc7cf2beab43d45c74094ab933262a93b067d2"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1772059056195,

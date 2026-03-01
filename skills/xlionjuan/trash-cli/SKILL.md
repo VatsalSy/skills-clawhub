@@ -1,9 +1,31 @@
 ---
 name: trash-cli
-version: 1.0.3
+version: 1.0.5
 description: "Use trash-cli to safely delete files by moving them to the system trash instead of permanently removing them. This prevents accidental data loss and allows file recovery. Use instead of rm when you want recoverable deletion."
-homepage: https://github.com/andreafrancia/trash-cli
-metadata: {"emoji":"🗑️","install":[{"id":"brew","kind":"brew","formula":"trash-cli"},{"id":"pip","kind":"pip","package":"trash-cli"}]}
+metadata:
+  {
+    "openclaw":
+      {
+        "emoji": "🗑️",
+        "requires": { "bins": ["trash-put", "trash-list", "trash-restore", "trash-empty", "trash-rm"] },
+        "install":
+          [
+            {
+              "id": "brew",
+              "kind": "brew",
+              "formula": "trash-cli",
+              "bins": ["trash-put", "trash-list", "trash-restore", "trash-empty", "trash-rm"],
+              "label": "Install trash-cli (brew)",
+            },
+            {
+              "id": "pip",
+              "kind": "pip",
+              "package": "trash-cli",
+              "label": "Install trash-cli (pip)",
+            }
+          ]
+      }
+  }
 ---
 
 # trash-cli
