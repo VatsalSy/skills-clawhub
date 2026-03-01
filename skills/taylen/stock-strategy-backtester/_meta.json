@@ -3,11 +3,16 @@
   "slug": "stock-strategy-backtester",
   "displayName": "Stock Strategy Backtester",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1772006359062,
-    "commit": "https://github.com/openclaw/skills/commit/7f76c1cec353316163c4103fd79073b350e9c543"
+    "version": "1.0.4",
+    "publishedAt": 1772275087911,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1772006359062,
+      "commit": "https://github.com/openclaw/skills/commit/7f76c1cec353316163c4103fd79073b350e9c543"
+    },
     {
       "version": "1.0.2",
       "publishedAt": 1771988707012,

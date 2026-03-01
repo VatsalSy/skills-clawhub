@@ -39,9 +39,7 @@ python scripts/backtest_strategy.py \
   --rsi-entry 30 \
   --rsi-exit 55 \
   --commission-bps 5 \
-  --slippage-bps 2 \
-  --output-json /path/to/result.json \
-  --output-trades /path/to/trades.csv
+  --slippage-bps 2
 ```
 
 ## Workflow
@@ -105,9 +103,6 @@ python scripts/backtest_strategy.py \
 - `metrics`
 - `config`
 - `trades`
-- Optional files:
-- `--output-json`: full result JSON
-- `--output-trades`: trade-by-trade CSV
 
 ## Analysis Guardrails
 
