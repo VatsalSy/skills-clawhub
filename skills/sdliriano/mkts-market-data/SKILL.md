@@ -67,6 +67,8 @@ curl -s -H "X-API-Key: $MKTS_API_KEY" https://mkts.io/api/v1/asset/AAPL/live
 curl -s -H "X-API-Key: $MKTS_API_KEY" "https://mkts.io/api/v1/asset/bitcoin/live?type=crypto"
 ```
 
+For stocks/ETFs, the response includes extended-hours fields when available: `marketState` (PRE, REGULAR, POST, CLOSED), `preMarketPrice`, `preMarketChange`, `preMarketChangePercent`, `preMarketTime`, `postMarketPrice`, `postMarketChange`, `postMarketChangePercent`, `postMarketTime`. Times are Unix timestamps in milliseconds. Fields are `null` when the market is not in that session or for asset types that trade 24/7 (crypto).
+
 ### Top Movers
 Get top gainers and losers:
 ```bash
@@ -163,6 +165,34 @@ curl -s -H "X-API-Key: $MKTS_API_KEY" "https://mkts.io/api/v1/earnings?week=next
 Query params: `symbols` (comma-separated, max 20) OR `week` (current|next). Only stocks and ETFs — crypto/commodities are not supported.
 
 Returns `{ earnings }` array. Each record has `symbol`, `name`, `earningsDate`, `earningsDates`, `epsEstimate`, `epsActual`, `revenueEstimate`, `surprisePercent`, and `recentQuarters` (array of `{ date, actual, estimate }`).
+
+### Stock/ETF Details (Fundamentals)
+Get comprehensive company data: profile, financials, earnings, analyst consensus, ownership, insider activity, SEC filings, and ETF holdings:
+```bash
+# Stock fundamentals
+curl -s -H "X-API-Key: $MKTS_API_KEY" https://mkts.io/api/v1/asset/AAPL/details
+
+# ETF details (includes top holdings and sector weightings)
+curl -s -H "X-API-Key: $MKTS_API_KEY" https://mkts.io/api/v1/asset/SPY/details
+```
+
+Stocks and ETFs only — crypto, commodities, and forex are not supported. Real-time Yahoo Finance call with 60s cache (counts against live rate limits).
+
+Returns a rich object with: `symbol`, `name`, `description`, `website`, `industry`, `sector`, `employees`, `headquarters`, `executives`, `trailingPE`, `forwardPE`, `dividendYield`, `beta`, `fiftyTwoWeekHigh`, `fiftyTwoWeekLow`, `targetPrice`, `recommendationKey`, `numberOfAnalysts`, `totalRevenue`, `revenueGrowth`, `grossMargins`, `operatingMargins`, `profitMargins`, `ebitda`, `returnOnAssets`, `returnOnEquity`, `totalCash`, `totalDebt`, `debtToEquity`, `freeCashflow`, `operatingCashflow`, `currentRatio`, `earningsGrowth`, `revenuePerShare`, `earningsQuarterly`, `earningsYearly`, `forwardEstimates`, `insidersPercentHeld`, `institutionsPercentHeld`, `topInstitutionalHolders`, `insiderTransactions`, `netSharePurchaseActivity`, `recommendationTrend`, `upgradeDowngradeHistory`, `calendarEvents`, `secFilings`. ETFs additionally include `fundFamily`, `category`, and `topHoldings` (holdings array, sector weightings, equity holdings ratios).
+
+### Options Chain
+Get the options chain for a stock or ETF (calls, puts, open interest, implied volatility, expirations):
+```bash
+# Default (nearest expiration)
+curl -s -H "X-API-Key: $MKTS_API_KEY" https://mkts.io/api/v1/asset/AAPL/options
+
+# Specific expiration
+curl -s -H "X-API-Key: $MKTS_API_KEY" "https://mkts.io/api/v1/asset/AAPL/options?expiration=2026-03-21"
+```
+
+Stocks and ETFs only — crypto, commodities, and forex are not supported. Real-time Yahoo Finance call with 60s cache (counts against live rate limits).
+
+Returns `symbol`, `expirations` (array of available dates), `selectedExpiration`, `lastPrice`, `calls`, `puts`, and `summary` (totalCallOI, totalPutOI, putCallRatio, totalCallVolume, totalPutVolume). Each contract has `strike`, `lastPrice`, `bid`, `ask`, `change`, `percentChange`, `volume`, `openInterest`, `impliedVolatility`, `inTheMoney`, `expiration`, `contractSymbol`.
 
 ### Portfolio Card Image
 Generate a shareable 1200×630 PNG card showing portfolio summary:
@@ -355,4 +385,6 @@ POST body: `{ "q": "your question" }` (max 500 chars). Returns `{ query, action,
 - Use `/v1/portfolio/card` to generate a shareable portfolio image — pipe to a file with `-o card.png`
 - Use `/v1/news?symbol=AAPL` to get news specifically about an asset — searches all feeds by symbol and company name
 - Use `/v1/macro` for a quick macro dashboard — BTC, ETH, S&P 500, Nasdaq, Gold, Oil, DXY, VIX, and 10Y in one call
+- Use `/v1/asset/{symbol}/details` for deep fundamental analysis — earnings, analyst targets, insider activity, SEC filings, and ETF holdings in one call
+- Use `/v1/asset/{symbol}/options` for derivatives analysis — get the full options chain with calls, puts, OI, IV, and all available expirations. Combine with `/v1/asset/{symbol}/live` for delta-neutral strategies
 - Use `POST /v1/ask` for complex natural language queries — it parses intent and routes to the right data. Requires API key, counts against AI daily limit
