@@ -1,0 +1,11 @@
+{
+  "owner": "san-npm",
+  "slug": "aleph-vm-replication",
+  "displayName": "OpenClaw cloud self-deployment",
+  "latest": {
+    "version": "1.0.2",
+    "publishedAt": 1772198545763,
+    "commit": null
+  },
+  "history": []
+}
