@@ -1,0 +1,11 @@
+{
+  "owner": "ngm9",
+  "slug": "llms-txt-generator",
+  "displayName": "LLMs.txt Generator",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1772262732675,
+    "commit": null
+  },
+  "history": []
+}
