@@ -13,7 +13,7 @@ FILES = [
 ]
 
 p = argparse.ArgumentParser()
-p.add_argument('--root', required=True, help='Memory directory path, e.g. /path/to/workspace/memory')
+p.add_argument('--root', required=True)
 args = p.parse_args()
 
 root = Path(args.root)
