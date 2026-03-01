@@ -1,0 +1,11 @@
+{
+  "owner": "allenfancy-gan",
+  "slug": "ima-video-ai",
+  "displayName": "IMA Studio Video Generation",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1772300526392,
+    "commit": null
+  },
+  "history": []
+}
