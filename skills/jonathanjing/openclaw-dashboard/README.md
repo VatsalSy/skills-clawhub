@@ -1,99 +1,82 @@
-# OpenClaw Dashboard (Public)
+# OpenClaw Dashboard
 
-Mobile-first operations dashboard for OpenClaw, focused on sessions, costs, cron, watchdog, and day-to-day operations.
+A single-file operations dashboard for [OpenClaw](https://github.com/openclaw/openclaw) — monitor sessions, costs, cron jobs, and watchdog status from one clean UI.
 
-This public repository is sanitized and simplified for sharing.
+![Dashboard](https://img.shields.io/badge/OpenClaw-Dashboard-7c5cfc?style=flat-square) ![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)
 
-## Install via ClawHub
+## What's Inside
 
-```bash
-clawhub install openclaw-dashboard
-cd ~/.openclaw/workspace/skills/openclaw-dashboard
-cp env.example .env
-node api-server.js
-```
+- **Sessions** — live view of all active agent sessions with model, token usage, cost, and model-fit scoring
+- **Cost Analysis** — per-session and per-cron cost breakdown, daily trends, fixed vs. variable cost split
+- **Cron Jobs** — all scheduled jobs with last run status, duration, and per-job model selector
+- **Watchdog** — gateway health status, failure count, and incident timeline
+- **Operations** — backup, update, and system control actions with audit log
 
-Then open http://localhost:18791
-
-## Quick Start (from source)
+## Quick Start
 
 ```bash
 git clone https://github.com/JonathanJing/openclaw-dashboard.git
 cd openclaw-dashboard
-cp env.example .env
-# edit .env with your own values
+cp .env.example .env
+# edit .env — set OPENCLAW_AUTH_TOKEN at minimum
 node api-server.js
 ```
 
-Then open:
+Open `http://localhost:18791/` in your browser.
 
-- `http://localhost:18791/`
+> The dashboard requires a running OpenClaw gateway on the same machine. It reads session logs, cron runs, and watchdog state from `~/.openclaw/`.
 
-## Required Configuration
+## Configuration
 
-Default install has no hard key requirement.
+All settings via environment variables. Copy `.env.example` to `.env` to get started.
 
-- `OPENCLAW_AUTH_TOKEN` is **optional but recommended** for protected/local-auth usage.
-- `gateway.authToken` is treated as optional capability context in skill metadata.
+### Core
 
-Use `env.example` (ClawHub package) or `.env.example` (source checkout) for optional overrides.
+| Variable | Default | Description |
+|---|---|---|
+| `OPENCLAW_AUTH_TOKEN` | *(none)* | Auth token for dashboard access. Strongly recommended. |
+| `DASHBOARD_HOST` | `127.0.0.1` | Bind address. Keep localhost unless you use a tunnel (e.g. Tailscale). |
+| `DASHBOARD_PORT` | `18791` | Port to serve on. |
+| `DASHBOARD_CORS_ORIGINS` | *(loopback only)* | Comma-separated allowed origins for CORS. |
 
-## Compliance Defaults (Important)
+### Opt-in Features (disabled by default)
 
-This public package now ships with restricted defaults:
-- Dashboard binds to localhost by default (`DASHBOARD_HOST=127.0.0.1`)
-- No automatic loading of `~/.openclaw/keys.env` unless `OPENCLAW_LOAD_KEYS_ENV=1`
-- Provider org audit endpoint disabled unless `OPENCLAW_ENABLE_PROVIDER_AUDIT=1`
-- Config file view endpoint (`/ops/config`) disabled unless `OPENCLAW_ENABLE_CONFIG_ENDPOINT=1`
-- Absolute-path attachment copy mode disabled unless `OPENCLAW_ALLOW_ATTACHMENT_FILEPATH_COPY=1`
-- Even when enabled, attachment copy only allows repo-local paths by default
-- Extra source paths require explicit flags: `OPENCLAW_ALLOW_ATTACHMENT_COPY_FROM_TMP=1`, `OPENCLAW_ALLOW_ATTACHMENT_COPY_FROM_WORKSPACE=1`, and/or `OPENCLAW_ALLOW_ATTACHMENT_COPY_FROM_OPENCLAW_HOME=1`
-- User-scoped systemctl restart disabled unless `OPENCLAW_ENABLE_SYSTEMCTL_RESTART=1`
-- Frontend no longer sends auth token in query parameters for API calls
-- Cron/task text sent to hooks is sanitized and treated as untrusted payload
-- Mutating operations are disabled unless `OPENCLAW_ENABLE_MUTATING_OPS=1` and request is from localhost
-- `server-monitor.html` now uses integrated authenticated `/metrics` endpoint
-
-These defaults reduce accidental secret ingestion and over-broad local file access.
-
-## Core Files
-
-- `api-server.js`: backend API and operations logic
-- `agent-dashboard.html`: single-file frontend UI
-- `SKILL.md`: repository-level agent instructions
+| Variable | What it enables |
+|---|---|
+| `OPENCLAW_LOAD_KEYS_ENV=1` | Load `~/.openclaw/keys.env` on startup |
+| `OPENCLAW_ENABLE_PROVIDER_AUDIT=1` | Fetch usage from OpenAI/Anthropic org APIs |
+| `OPENCLAW_ENABLE_CONFIG_ENDPOINT=1` | Expose `/ops/config` endpoint |
+| `OPENCLAW_ENABLE_MUTATING_OPS=1` | Enable backup, update, and model-change actions |
+| `OPENCLAW_ENABLE_SYSTEMCTL_RESTART=1` | Allow user-scoped systemctl restart |
+| `OPENCLAW_ALLOW_ATTACHMENT_FILEPATH_COPY=1` | Enable absolute-path attachment copy |
 
 ## Security Notes
 
-- No real tokens should be committed.
-- Keep secrets in local environment files only.
-- Rotate tokens immediately if exposure is suspected.
+- Dashboard binds to `localhost` by default — not exposed to the network
+- Auth token is passed via HttpOnly cookie, not URL query params
+- All child process calls use `execFileSync` with args array (no shell interpolation)
+- Mutating operations require both `OPENCLAW_ENABLE_MUTATING_OPS=1` and a localhost request
+- No tokens or keys should be committed to version control
 
-## VirusTotal Compliance
+If you expose the dashboard beyond localhost (e.g. via Tailscale Funnel), always set `OPENCLAW_AUTH_TOKEN`.
 
-Run a pre-release hash and upload workflow before publishing:
+## Files
 
-```bash
-shasum -a 256 api-server.js agent-dashboard.html SKILL.md README.md env.example > vt-hashes.txt
-```
-
-Then submit these hashes/files to VirusTotal and attach the report IDs to your release notes.  
-If any file is flagged, block release and investigate before publishing.
+| File | Description |
+|---|---|
+| `agent-dashboard.html` | Single-file frontend (~2,900 lines) |
+| `api-server.js` | Backend API server (~3,300 lines) |
+| `SKILL.md` | Agent instructions for OpenClaw |
+| `.env.example` | Environment variable template |
 
 ## Publish to ClawHub
-
-This repository is prepared as a ClawHub skill package with root-level `SKILL.md`.
 
 ```bash
 clawhub publish . \
   --slug openclaw-dashboard \
   --name "OpenClaw Dashboard" \
-  --version 1.0.9 \
-  --changelog "Risk-surface reduction: localhost bind default, no token-in-query API usage, tighter attachment copy defaults, and integrated /metrics endpoint."
+  --version 1.0.6
 ```
-
-If your local version changes, update both:
-- `SKILL.md` frontmatter `version`
-- `clawhub publish --version`
 
 ## License
 
