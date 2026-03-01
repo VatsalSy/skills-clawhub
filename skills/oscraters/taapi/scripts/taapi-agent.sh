@@ -5,6 +5,8 @@ BASE_URL="${TAAPI_BASE_URL:-https://api.taapi.io}"
 SECRET="${TAAPI_SECRET:-}"
 DEFAULT_RETRIES="${TAAPI_RETRIES:-3}"
 DEFAULT_TIMEOUT="${TAAPI_TIMEOUT:-30}"
+ALLOW_UNOFFICIAL_BASE_URL="${TAAPI_ALLOW_UNOFFICIAL_BASE_URL:-0}"
+OFFICIAL_BASE_URL="https://api.taapi.io"
 
 usage() {
   cat <<'EOF'
@@ -23,6 +25,8 @@ Commands:
 Global options:
   --secret VALUE         Override TAAPI_SECRET
   --base-url URL         Override API base URL (default: https://api.taapi.io)
+  --allow-unofficial-base-url
+                         Allow sending requests to a non-default base URL
   --retries N            Retry count for transient errors (default: 3)
   --timeout SECONDS      Curl timeout (default: 30)
   --json                 Force JSON output (default)
@@ -55,8 +59,36 @@ die() {
   exit 1
 }
 
+warn() {
+  echo "warning: $*" >&2
+}
+
 need_cmd() {
   command -v "$1" >/dev/null 2>&1 || die "missing required command: $1"
+}
+
+normalize_url() {
+  local url="$1"
+  while [[ "$url" == */ ]]; do
+    url="${url%/}"
+  done
+  printf '%s' "$url"
+}
+
+validate_base_url() {
+  BASE_URL="$(normalize_url "$BASE_URL")"
+  local official
+  official="$(normalize_url "$OFFICIAL_BASE_URL")"
+
+  if [[ "$BASE_URL" == "$official" ]]; then
+    return 0
+  fi
+
+  if [[ "$ALLOW_UNOFFICIAL_BASE_URL" != "1" ]]; then
+    die "refusing unofficial base URL: $BASE_URL (set TAAPI_ALLOW_UNOFFICIAL_BASE_URL=1 or pass --allow-unofficial-base-url to override)"
+  fi
+
+  warn "using unofficial TAAPI base URL $BASE_URL; TAAPI secrets and payloads will be sent to that endpoint"
 }
 
 urlencode() {
@@ -177,6 +209,7 @@ do_direct() {
       --opt) opts+=("${2:-}"); shift 2 ;;
       --secret) SECRET="${2:-}"; shift 2 ;;
       --base-url) BASE_URL="${2:-}"; shift 2 ;;
+      --allow-unofficial-base-url) ALLOW_UNOFFICIAL_BASE_URL="1"; shift ;;
       --retries) retries="${2:-}"; shift 2 ;;
       --timeout) timeout="${2:-}"; shift 2 ;;
       --json) output_mode="json"; shift ;;
@@ -194,6 +227,7 @@ do_direct() {
   if [[ "$type" == "crypto" ]]; then
     [[ -n "$exchange" ]] || die "--exchange is required for crypto direct requests"
   fi
+  validate_base_url
 
   local query=("symbol=$symbol" "interval=$interval" "type=$type")
   if [[ -n "$exchange" ]]; then
@@ -218,6 +252,7 @@ do_bulk() {
       --payload-file) payload_file="${2:-}"; shift 2 ;;
       --secret) SECRET="${2:-}"; shift 2 ;;
       --base-url) BASE_URL="${2:-}"; shift 2 ;;
+      --allow-unofficial-base-url) ALLOW_UNOFFICIAL_BASE_URL="1"; shift ;;
       --retries) retries="${2:-}"; shift 2 ;;
       --timeout) timeout="${2:-}"; shift 2 ;;
       --json) output_mode="json"; shift ;;
@@ -235,7 +270,11 @@ do_bulk() {
   # Replace placeholder in payload if present.
   if [[ -n "$SECRET" ]]; then
     payload="${payload//TAAPI_SECRET/$SECRET}"
+  elif [[ "$payload" == *"TAAPI_SECRET"* ]]; then
+    die "missing secret (set TAAPI_SECRET or use --secret before posting placeholder payloads)"
   fi
+
+  validate_base_url
 
   local body
   body="$(http_with_retries "POST" "$BASE_URL/bulk" "$payload" "$retries" "$timeout")"
@@ -258,6 +297,7 @@ do_multi() {
       --opt) opts+=("${2:-}"); shift 2 ;;
       --secret) SECRET="${2:-}"; shift 2 ;;
       --base-url) BASE_URL="${2:-}"; shift 2 ;;
+      --allow-unofficial-base-url) ALLOW_UNOFFICIAL_BASE_URL="1"; shift ;;
       --retries) retries="${2:-}"; shift 2 ;;
       --timeout) timeout="${2:-}"; shift 2 ;;
       --json) output_mode="json"; shift ;;
@@ -271,6 +311,7 @@ do_multi() {
   [[ -n "$symbols" ]] || die "missing --symbols"
   [[ -n "$intervals" ]] || die "missing --intervals"
   [[ -n "$indicators" ]] || die "missing --indicators"
+  validate_base_url
 
   local indicators_json='[]'
   local indicator

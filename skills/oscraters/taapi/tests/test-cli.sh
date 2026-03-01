@@ -55,6 +55,9 @@ expect_fail_contains "unknown command fails" "unknown command" "$CLI" wat
 expect_fail_contains "direct missing secret" "missing secret" "$CLI" direct --indicator rsi --exchange binance --symbol BTC/USDT --interval 1h
 expect_fail_contains "direct crypto missing exchange" "--exchange is required" env TAAPI_SECRET=dummy "$CLI" direct --indicator rsi --symbol BTC/USDT --interval 1h
 expect_fail_contains "bulk missing payload file" "missing --payload-file" env TAAPI_SECRET=dummy "$CLI" bulk
+expect_fail_contains "bulk placeholder payload requires secret" "missing secret" "$CLI" bulk --payload-file "$ROOT_DIR/examples/bulk-single-construct.json"
+expect_fail_contains "unofficial base URL requires explicit opt-in" "refusing unofficial base URL" env TAAPI_SECRET=dummy "$CLI" direct --indicator rsi --exchange binance --symbol BTC/USDT --interval 1h --base-url https://example.com
+expect_fail_contains "unofficial base URL warns when opted in" "using unofficial TAAPI base URL" env TAAPI_SECRET=dummy "$CLI" direct --indicator rsi --exchange binance --symbol BTC/USDT --interval 1h --base-url https://example.com --allow-unofficial-base-url --retries 0 --timeout 1
 
 if command -v jq >/dev/null 2>&1; then
   expect_fail_contains "multi missing symbols" "missing --symbols" env TAAPI_SECRET=dummy "$CLI" multi --intervals 1h --indicators rsi

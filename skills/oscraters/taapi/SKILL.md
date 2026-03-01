@@ -1,6 +1,7 @@
 ---
 name: taapi
 description: Use this skill to fetch TAAPI.IO indicator data for crypto or stocks, including fast single-indicator requests and bulk/multi-construct queries for agentic trading workflows.
+metadata: {"openclaw":{"homepage":"https://taapi.io/","requires":{"bins":["curl"],"env":["TAAPI_SECRET"]},"primaryEnv":"TAAPI_SECRET"}}
 ---
 
 # OpenClaw TAAPI Skill
@@ -46,6 +47,15 @@ Primary docs:
 - https://taapi.io/documentation/rate-limits/
 - https://taapi.io/indicators/
 
+## Security And Runtime Requirements
+
+- This skill is an open-source wrapper around the commercial TAAPI.IO API. Live requests require a TAAPI.IO account secret.
+- Set `TAAPI_SECRET` only in the current shell session. Prefer `export TAAPI_SECRET=...` over persistent/global shell files, and prefer the env var over `--secret` so the secret is less exposed in process listings.
+- `curl` is required for all live requests.
+- `jq` is only required for the `multi` command. `direct`, `bulk`, and CI-safe argument tests work without it.
+- The default and audited endpoint is `https://api.taapi.io`. Overriding `TAAPI_BASE_URL` is an advanced escape hatch and should only be used deliberately. Sending requests to another host can expose your secret and request payloads to that endpoint.
+- `tests/smoke-live.sh` sends real network requests with your live secret. Use a revocable secret and avoid running it outside an isolated session.
+
 ## Quick Start
 
 Use the local helper:
@@ -64,7 +74,14 @@ bash scripts/taapi-agent.sh direct \
 # 3) Bulk query from JSON payload
 bash scripts/taapi-agent.sh bulk --payload-file examples/bulk-single-construct.json
 
-# 4) Live smoke tests (requires real TAAPI_SECRET and network access)
+# 4) Multi-construct query (requires jq)
+bash scripts/taapi-agent.sh multi \
+  --exchange binance \
+  --symbols BTC/USDT,ETH/USDT \
+  --intervals 15m,1h \
+  --indicators rsi,supertrend
+
+# 5) Live smoke tests (requires real TAAPI_SECRET and network access)
 bash tests/smoke-live.sh
 ```
 
@@ -90,7 +107,7 @@ bash scripts/taapi-agent.sh bulk --payload-file examples/bulk-multi-constructs.j
 ```
 
 ### `multi`
-Build multi-construct payload from flags (for `/bulk`):
+Build multi-construct payload from flags (for `/bulk`). Requires `jq`:
 ```bash
 bash scripts/taapi-agent.sh multi \
   --exchange binance \
@@ -107,6 +124,7 @@ bash scripts/taapi-agent.sh multi \
 - Prefer `bulk` for multi-indicator evaluations on the same construct.
 - Prefer `multi` for cross-symbol/timeframe batching when plan supports constructs.
 - For stocks, include `--type stocks` and omit `--exchange` if not required by your setup.
+- Treat `TAAPI_BASE_URL` overrides as a deliberate deviation from the default OpenClaw-audited path. If you must override it, use a session-scoped `TAAPI_ALLOW_UNOFFICIAL_BASE_URL=1` as an explicit acknowledgement.
 
 ## Resources
 
@@ -116,7 +134,8 @@ Bash CLI with:
 - bulk POST using payload files
 - multi-construct payload generation
 - retries for transient failures and 429 rate limits
-- optional `jq` formatting, raw/json output modes
+- opt-in guardrails for unofficial base URLs
+- optional `jq` formatting, with `jq` required only for `multi`
 
 ### `examples/`
 Ready-to-run payloads:
