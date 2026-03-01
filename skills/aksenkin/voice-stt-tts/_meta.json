@@ -1,0 +1,11 @@
+{
+  "owner": "aksenkin",
+  "slug": "voice-stt-tts",
+  "displayName": "Voice messaging setup",
+  "latest": {
+    "version": "1.0.3",
+    "publishedAt": 1772348571338,
+    "commit": null
+  },
+  "history": []
+}
