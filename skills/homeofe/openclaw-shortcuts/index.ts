@@ -32,6 +32,19 @@ export default function register(api: any) {
     }
   }
 
+  function readPackageVersion(repoDir: string): string | null {
+    try {
+      const pj = path.join(resolvedWorkspace, repoDir, "package.json");
+      if (!fs.existsSync(pj)) return null;
+      const raw = fs.readFileSync(pj, "utf-8");
+      const j = JSON.parse(raw);
+      const v = String(j?.version ?? "").trim();
+      return v || null;
+    } catch {
+      return null;
+    }
+  }
+
 
   api.registerCommand({
     name: "shortcuts",
@@ -157,22 +170,33 @@ export default function register(api: any) {
         return { text: `No git projects found under ${resolvedWorkspace}.` };
       }
 
-      const lines: string[] = [];
-      lines.push(`Projects (${projects.length}):`);
+      const rows: Array<{ name: string; ver: string; vis: string }> = [];
 
-      // Best-effort enrichment with GitHub visibility.
-      // If gh is not authenticated or no origin is set, show (unknown).
       for (const p of projects) {
+        const ver = readPackageVersion(p) ?? "-";
         const slug = readOriginRepoSlug(p);
         if (!slug) {
-          // Local-only project (no GitHub origin, or non-GitHub remote)
           const anyRemote = hasAnyRemote(p);
-          lines.push(`- ${p} (${anyRemote ? "⬜ remote" : "⬜ local"})`);
+          rows.push({ name: p, ver, vis: anyRemote ? "⬜ remote" : "⬜ local" });
           continue;
         }
         const vis = await getGithubVisibility(slug);
-        lines.push(`- ${p} (${fmtVis(vis)})`);
+        rows.push({ name: p, ver, vis: fmtVis(vis) });
       }
+
+      // Format in a code block to avoid text salad on proportional fonts
+      const nameW = Math.min(40, Math.max(...rows.map((r) => r.name.length)));
+      const verW = Math.min(10, Math.max(...rows.map((r) => r.ver.length)));
+
+      const lines: string[] = [];
+      lines.push(`Projects (${projects.length}):`);
+      lines.push("```text");
+      for (const r of rows) {
+        const n = r.name.padEnd(nameW, " ");
+        const v = ("v" + r.ver).padEnd(verW + 1, " ");
+        lines.push(`${n}  ${v}  ${r.vis}`);
+      }
+      lines.push("```");
 
       return { text: lines.join("\n") };
     },

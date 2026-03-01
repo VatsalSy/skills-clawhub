@@ -1,6 +1,6 @@
 {
-  "name": "openclaw-shortcuts",
-  "version": "0.2.5",
+  "name": "@elvatis_com/openclaw-shortcuts",
+  "version": "0.2.6",
   "private": true,
   "type": "module",
   "openclaw": { "extensions": ["./index.ts"] }

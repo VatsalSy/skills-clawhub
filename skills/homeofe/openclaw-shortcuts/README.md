@@ -1,6 +1,13 @@
 # openclaw-shortcuts
 
-Enhanced `/shortcuts` command for OpenClaw.
+Enhanced `/shortcuts` and `/projects` commands for OpenClaw.
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `/shortcuts` | Show local shortcuts and helper commands (config-driven, generic by default) |
+| `/projects` | List all local git repos in the workspace with version and GitHub visibility |
 
 ## Security note
 
