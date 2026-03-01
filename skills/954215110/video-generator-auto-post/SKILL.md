@@ -29,7 +29,7 @@ Generate AI videos locally and publish them to social media platforms automatica
 ### Hardware
 - **GPU:** NVIDIA RTX 3060 12GB or better (recommended)
 - **RAM:** 16GB+ system memory
-- **Storage:** 50GB+ free space for models and outputs
+- **Storage:** 50GB+ free space on D: drive (recommended)
 
 ### Software
 - **ComfyUI Desktop** - Install from https://comfyui.org
@@ -54,14 +54,23 @@ In ComfyUI Manager, install:
 - **AnimateDiff**
 - **ModelScope Text-to-Video**
 
-### Step 3: Configure Output Paths
+### Step 3: Configure Output Paths (D: Drive)
+
+**Recommended:** Store videos on D: drive to save C: space
 
 Edit `comfyui/settings.json`:
 ```json
 {
-  "output_directory": "C:/Users/YourName/Videos/AI-Generated",
+  "output_directory": "D:/AI-Video-Studio/outputs",
+  "model_path": "D:/AI-Video-Studio/models",
+  "workflow_path": "D:/AI-Video-Studio/workflows",
   "auto_save": true
 }
+```
+
+**Or use command line:**
+```bash
+ComfyUI.exe --output-directory "D:/AI-Video-Studio/outputs" --model-path "D:/AI-Video-Studio/models"
 ```
 
 ### Step 4: Generate Your First Video
