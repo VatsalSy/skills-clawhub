@@ -1,0 +1,11 @@
+{
+  "owner": "haroexplorium",
+  "slug": "explorium-lead-enrichment",
+  "displayName": "lead-contact-enrichment-agent",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772264433823,
+    "commit": null
+  },
+  "history": []
+}
