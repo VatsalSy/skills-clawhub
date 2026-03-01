@@ -3,9 +3,15 @@
   "slug": "claweb",
   "displayName": "ClaWeb Messaging",
   "latest": {
-    "version": "0.3.22",
-    "publishedAt": 1772210615083,
-    "commit": "https://github.com/openclaw/skills/commit/01e2bedef309b72dfac531faa6ca67fd89577a74"
+    "version": "0.3.23",
+    "publishedAt": 1772276952746,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.3.22",
+      "publishedAt": 1772210615083,
+      "commit": "https://github.com/openclaw/skills/commit/01e2bedef309b72dfac531faa6ca67fd89577a74"
+    }
+  ]
 }
