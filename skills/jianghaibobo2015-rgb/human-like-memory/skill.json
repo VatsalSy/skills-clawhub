@@ -2,10 +2,10 @@
   "name": "human-like-memory",
   "displayName": "Human-Like Memory",
   "description": "This skill provides long-term memory capabilities for conversations. Use this skill when the user wants to recall past conversations, save important information to memory, search memories, or when context from previous interactions would be helpful.",
-  "version": "0.3.2",
+  "version": "0.4.1",
   "author": {
     "name": "hanlaomo",
-    "url": "https://multiego.me"
+    "url": "https://human-like.me"
   },
   "license": "Apache-2.0",
   "keywords": [
@@ -26,15 +26,15 @@
       "description": "API Key for Human-Like Memory service",
       "required": true,
       "placeholder": "mp_xxxxxxxxxxxxxx",
-      "helpUrl": "https://multiego.me",
-      "helpText": "Get your API Key from https://multiego.me"
+      "helpUrl": "https://human-like.me",
+      "helpText": "Get your API Key from https://human-like.me"
     },
     "HUMAN_LIKE_MEM_BASE_URL": {
       "type": "string",
       "description": "Base URL for Memory API",
       "required": false,
-      "default": "https://multiego.me",
-      "placeholder": "https://multiego.me"
+      "default": "https://human-like.me",
+      "placeholder": "https://human-like.me"
     },
     "HUMAN_LIKE_MEM_USER_ID": {
       "type": "string",
@@ -59,6 +59,11 @@
       "type": "boolean",
       "description": "Save memories asynchronously",
       "default": true
+    },
+    "saveTriggerTurns": {
+      "type": "number",
+      "description": "Number of conversation turns before auto-save (saveMaxTurns = saveTriggerTurns × 2)",
+      "default": 5
     }
   },
   "triggers": [
