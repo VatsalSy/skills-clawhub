@@ -1,64 +1,164 @@
 ---
-name: "geo-llms-txt"
-version: "1.0.0"
-description: "Generate, validate, and optimize llms.txt files for AI crawler accessibility. Helps AI platforms like ChatGPT, Perplexity, and Gemini understand your site structure. No API required — methodology by GEOly AI (geoly.ai)."
-tags: ["geo", "llms-txt", "ai-crawl", "technical-seo", "latest"]
+name: geo-llms-txt
+description: Generate, validate, and optimize llms.txt files for AI crawler accessibility. Creates structured markdown files that help AI platforms (ChatGPT, Perplexity, Gemini, Claude) understand site structure and prioritize content for citation. Use whenever the user mentions creating an llms.txt file, optimizing llms.txt, making their site AI-crawler friendly, helping AI understand their website, building AI-readable site documentation, or wants to improve visibility in AI search engines.
 ---
 
 # llms.txt File Builder
 
 > Methodology by **GEOly AI** (geoly.ai) — GEO infrastructure for the AI search era.
 
-## What This Skill Does
+Generate well-structured `llms.txt` files to help AI platforms understand and cite your content.
 
-Generates a well-structured `llms.txt` file for any website.
-The `llms.txt` standard helps AI platforms (ChatGPT, Perplexity, Gemini, Claude) understand a site's content structure and which pages to prioritize for citation.
+## Quick Start
 
-## When to Trigger
+Generate an llms.txt file for any website:
 
-- "Create an llms.txt file for [domain]"
-- "Optimize our llms.txt"
-- "What should our llms.txt contain?"
-- "Help AI crawlers understand our website"
-- "Build an llms.txt from our sitemap"
+```bash
+python scripts/generate_llms_txt.py <domain> [--output llms.txt]
+```
 
-## llms.txt Standard Format
+Example:
+```bash
+python scripts/generate_llms_txt.py example.com --output llms.txt
+```
 
-[Brand Name]
-[One-sentence brand description. Be clear, specific, and factual.]
+## What is llms.txt?
 
-[2–3 paragraph overview of what the brand/product does, who it's for, and what makes it unique. Write for AI comprehension, not SEO.]
+The llms.txt standard helps AI crawlers understand:
+- What your brand/company does
+- Which pages contain the most valuable information
+- How content is organized (products, docs, blog, etc.)
+- Where to find key facts and data
 
-Key Pages
-Page Title: [One-line description of what this page covers]
-Page Title: [One-line description]
-Products / Services
-Product Name: [What it does and who it's for]
-Documentation
-Doc Title: [What this doc explains]
-Blog / Resources
-Article Title: [Key insight or topic covered]
-About
-About Us: [Company background, founding, mission]
-Contact: [How to reach the team]
+**Full standard details:** See [references/standard.md](references/standard.md)
 
-## Instructions
+## Standard Format
 
-1. Ask user for: brand name, domain, core product/service description
-2. Request list of 10–20 most important URLs (or fetch sitemap if available)
-3. For each URL, write a concise one-line description (what AI will learn from it)
-4. Draft the brand overview paragraph: factual, entity-rich, no marketing fluff
-5. Organize links into logical sections: Key Pages → Products → Docs → Blog → About
-6. Validate format: proper Markdown, no broken links, no duplicate entries
-7. Output final file ready to place at `https://[domain]/llms.txt`
+```markdown
+# [Brand Name]
+
+> [One-sentence brand description]
+
+[2-3 paragraph overview: what you do, who it's for, key differentiators]
+
+## Key Pages
+
+- [Page Title](URL): One-line description
+- [Page Title](URL): One-line description
+
+## Products / Services
+
+- [Product Name](URL): What it does and who it's for
+
+## Documentation
+
+- [Doc Title](URL): What this doc explains
+
+## Blog / Resources
+
+- [Article Title](URL): Key insight or topic covered
+
+## About
+
+- [About Us](URL): Company background and mission
+- [Contact](URL): How to reach the team
+```
+
+## Generation Methods
+
+### Method 1: From Sitemap (Automated)
+
+```bash
+python scripts/generate_llms_txt.py example.com --from-sitemap
+```
+
+Automatically fetches sitemap.xml, analyzes each page, and generates descriptions.
+
+### Method 2: Interactive (Guided)
+
+```bash
+python scripts/generate_llms_txt.py example.com --interactive
+```
+
+Prompts you for brand info and key URLs, then drafts descriptions.
+
+### Method 3: From URL List
+
+```bash
+python scripts/generate_llms_txt.py example.com --urls urls.txt
+```
+
+Where `urls.txt` contains one URL per line.
+
+## Validation
+
+Validate an existing llms.txt file:
+
+```bash
+python scripts/validate_llms_txt.py llms.txt
+```
+
+Checks for:
+- Proper markdown structure
+- Valid URLs
+- No duplicate entries
+- Optimal link count (15-40 pages)
+- Factual tone (not promotional)
 
 ## Quality Criteria
 
-| Criterion | Good | Bad |
-|-----------|------|-----|
+| Aspect | Good | Bad |
+|--------|------|-----|
 | Brand description | "GEOly AI is a GEO monitoring platform tracking brand visibility across ChatGPT, Perplexity, Gemini." | "We are the best AI SEO tool ever!" |
 | Page descriptions | "Explains how to set up MCP integration with Claude Desktop" | "Our awesome docs page" |
-| Link count | 15–40 curated, high-value pages | Dumping entire sitemap (500+ URLs) |
+| Link count | 15–40 curated pages | 500+ URLs (sitemap dump) |
 | Tone | Factual, entity-focused | Promotional, keyword-stuffed |
+| Structure | Clear sections by content type | Flat list or random order |
 
-## Output Format
+## Output Formats
+
+- **Markdown** (default): Ready-to-deploy llms.txt
+- **JSON**: Structured data for programmatic use
+- **HTML**: Styled preview for stakeholder review
+
+## Advanced Usage
+
+### Custom Sections
+
+```bash
+python scripts/generate_llms_txt.py example.com \
+  --sections "Products,API Reference,Case Studies,Changelog"
+```
+
+### Exclude Patterns
+
+```bash
+python scripts/generate_llms_txt.py example.com \
+  --exclude "/admin/,/private/,/draft/"
+```
+
+### Multi-language Support
+
+```bash
+python scripts/generate_llms_txt.py example.com \
+  --language zh-CN \
+  --output llms-zh.txt
+```
+
+## Deployment
+
+Once generated, place the file at:
+```
+https://[your-domain]/llms.txt
+```
+
+Ensure it:
+- Returns HTTP 200
+- Is accessible without authentication
+- Has `Content-Type: text/plain` or `text/markdown`
+
+## See Also
+
+- Full standard specification: [references/standard.md](references/standard.md)
+- Quality guidelines: [references/quality-guide.md](references/quality-guide.md)
+- Examples gallery: [references/examples.md](references/examples.md)
