@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { detectHardBlockFlags, aggregateVotes, updateReputations, makeIdempotencyKey, resolveStatePath } from '../src/index.mjs';
+import { detectHardBlockFlags, aggregateVotes, updateReputations, makeIdempotencyKey, resolveStatePath, invoke } from '../src/index.mjs';
 
 test('taxonomy detects hard blocks', ()=>{
   const f = detectHardBlockFlags('we guarantee results and share ssn');
@@ -33,4 +33,15 @@ test('resolveStatePath hashes absolute paths under safe root', ()=>{
   const out = resolveStatePath({ stateRoot: '.consensus-test', statePath: '/tmp/a/b/state.json' });
   assert.equal(out.includes('/tmp/a/b/state.json'), false);
   assert.equal(out.includes('/_abs/'), true);
+});
+
+test('invoke returns NO_HANDLER when no handler passed', async ()=>{
+  const out = await invoke({ a: 1 });
+  assert.equal(out.error.code, 'NO_HANDLER');
+});
+
+test('invoke delegates when opts.handler provided', async ()=>{
+  const out = await invoke({ a: 1 }, { handler: async (input)=>({ ok: true, input }) });
+  assert.equal(out.ok, true);
+  assert.equal(out.input.a, 1);
 });
