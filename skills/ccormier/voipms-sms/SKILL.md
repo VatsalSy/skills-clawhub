@@ -1,6 +1,6 @@
 ---
 name: voipms-sms
-description: OpenClaw skill for sending and retrieving SMS messages via the VoIP.ms API.
+description: OpenClaw skill for sending and retrieving SMS messages via the VoIP.ms API (no Bitwarden dependency).
 ---
 
 # VoIP.ms SMS Skill
@@ -49,13 +49,12 @@ python3 scripts/get_sms.py --did "15551234567" --days 7
 
 ## Required Credentials
 
-Set these environment variables before running either script. Since passwords should not be hardcoded or passed in raw chat commands, use the Bitwarden vault to retrieve them on the fly. 
-
-Ensure the vault contains two entries: `api-voipms-username` and `api-voipms-password`.
+Set these environment variables before running either script. The Python scripts will read them directly.
+Please create a sub-account/dedicated VoIP.ms API account that only has SMS permissions rather than using your main admin credentials.
 
 Example:
 
 ```bash
-export VOIPMS_API_USERNAME=$(rbw get api-voipms-username)
-export VOIPMS_API_PASSWORD=$(rbw get api-voipms-password)
+export VOIPMS_API_USERNAME="my_api_username"
+export VOIPMS_API_PASSWORD="my_api_password"
 ```
