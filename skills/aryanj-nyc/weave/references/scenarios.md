@@ -88,10 +88,12 @@ Expected behavior:
 - if `weave --help` fails with command-not-found, return install guidance:
 
 ```bash
-curl -fsSL --proto '=https' --tlsv1.2 https://www.weavecash.com/install.sh | bash
+go install github.com/AryanJ-NYC/weave-cash/apps/cli/cmd/weave@latest
+weave --help
 ```
 
-- do not auto-execute install command
+- if Go is not available, direct user to official install docs (no pipe-to-shell commands)
+- do not auto-execute install commands
 
 ## Manual Prompt Test Matrix
 

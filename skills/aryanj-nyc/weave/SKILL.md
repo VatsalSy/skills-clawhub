@@ -7,12 +7,22 @@ metadata:
     requires:
       bins:
         - weave
+    install:
+      - kind: go
+        module: github.com/AryanJ-NYC/weave-cash/apps/cli/cmd/weave
+        bins:
+          - weave
     emoji: "🧶"
     homepage: "https://www.weavecash.com"
   clawdbot:
     requires:
       bins:
         - weave
+    install:
+      - kind: go
+        module: github.com/AryanJ-NYC/weave-cash/apps/cli/cmd/weave
+        bins:
+          - weave
     emoji: "🧶"
     homepage: "https://www.weavecash.com"
 ---
@@ -55,19 +65,20 @@ weave --help
 weave tokens
 ```
 
-3. If `weave` is missing, instruct install (do not auto-run):
+3. If `weave` is missing, provide compliant install guidance and ask before running:
 
 ```bash
-curl -fsSL --proto '=https' --tlsv1.2 https://www.weavecash.com/install.sh | bash
+go install github.com/AryanJ-NYC/weave-cash/apps/cli/cmd/weave@latest
+weave --help
 ```
 
-Inspectable install flow:
+If Go is unavailable, direct the user to official installation docs and avoid remote shell one-liners.
 
-```bash
-curl -fsSL --proto '=https' --tlsv1.2 -o /tmp/weave-install.sh https://www.weavecash.com/install.sh
-less /tmp/weave-install.sh
-bash /tmp/weave-install.sh
-```
+## Compliant Install Policy
+
+- Prefer `metadata.openclaw.install` / `metadata.clawdbot.install` package-manager installs.
+- Never suggest remote download commands piped directly to a shell interpreter.
+- Detect and instruct; do not auto-install dependencies without explicit user approval.
 
 ## Token And Network Selection
 
