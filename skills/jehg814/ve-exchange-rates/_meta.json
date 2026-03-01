@@ -1,13 +1,18 @@
 {
   "owner": "jehg814",
   "slug": "ve-exchange-rates",
-  "displayName": "Ve Exchange Rates",
+  "displayName": "Venezuela Exchange Rates",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1771171727181,
-    "commit": "https://github.com/openclaw/skills/commit/3f31041b27a4520971543e288b6169e1ece70320"
+    "version": "1.1.0",
+    "publishedAt": 1772295874455,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1771171727181,
+      "commit": "https://github.com/openclaw/skills/commit/3f31041b27a4520971543e288b6169e1ece70320"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1770294547031,
