@@ -1,0 +1,11 @@
+{
+  "owner": "httencn",
+  "slug": "news-aggregator",
+  "displayName": "News Aggregator",
+  "latest": {
+    "version": "1.0.3",
+    "publishedAt": 1771925644779,
+    "commit": null
+  },
+  "history": []
+}
