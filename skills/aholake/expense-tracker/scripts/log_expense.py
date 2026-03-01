@@ -4,6 +4,7 @@ Log daily expenses to markdown files organized by month.
 """
 
 import json
+import shutil
 import argparse
 from datetime import datetime
 from pathlib import Path
@@ -20,6 +21,17 @@ def get_expense_file(year_month: str, workspace_path: str = None) -> Path:
     expenses_dir.mkdir(exist_ok=True)
     
     return expenses_dir / f"{year_month}.md"
+
+
+def backup_expense_file(file_path: Path):
+    """Backup expense file to ~/Documents/expenses_backup/ before modifying."""
+    if not file_path.exists():
+        return  # Nothing to backup
+    backup_dir = Path.home() / "Documents" / "expenses_backup"
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    backup_path = backup_dir / file_path.name
+    shutil.copy2(file_path, backup_path)
+    print(f"📦 Backup saved: {backup_path}")
 
 
 def init_expense_file(file_path: Path, year_month: str):
@@ -41,6 +53,9 @@ def log_expense(amount: float, category: str, description: str = "", tags: str =
     year_month = date[:7]  # YYYY-MM
     file_path = get_expense_file(year_month, workspace_path)
     
+    # Backup before modifying
+    backup_expense_file(file_path)
+
     # Initialize file if it doesn't exist
     if not file_path.exists():
         init_expense_file(file_path, year_month)

@@ -122,6 +122,19 @@ python3 scripts/log_expense.py summary 2026-01 --json > jan.json
 python3 scripts/log_expense.py summary 2026-02 --json > feb.json
 ```
 
+## Auto Backup
+
+Before every write, the script automatically backs up the current expense file to:
+
+```
+~/Documents/expenses_backup/YYYY-MM.md
+```
+
+- Backup runs **before** any modification (safe even if write fails)
+- If the file doesn't exist yet (first entry of the month), backup is skipped
+- Backup is overwritten each time with the latest pre-write snapshot
+- This protects against accidental `rm -rf` or corruption of the workspace
+
 ## Tips
 
 - **Batch logging**: User can tell you multiple expenses at once, log them all
