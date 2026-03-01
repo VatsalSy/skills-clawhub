@@ -1,0 +1,11 @@
+{
+  "owner": "xavjer",
+  "slug": "openclaw-self-hosted-whisper",
+  "displayName": "K8s Self Hosted Whisper Api",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1772369257985,
+    "commit": null
+  },
+  "history": []
+}
