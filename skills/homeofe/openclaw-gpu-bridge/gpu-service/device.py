@@ -19,7 +19,7 @@ def get_device() -> torch.device:
         logger.info(f"GPU detected: {name}")
         return torch.device("cuda")
 
-    logger.warning("No GPU detected — falling back to CPU (inference will be slow)")
+    logger.warning("No GPU detected - falling back to CPU (inference will be slow)")
     return torch.device("cpu")
 
 

@@ -1,4 +1,4 @@
-// GPU Bridge — Tool implementations
+// GPU Bridge - Tool implementations
 
 import { GpuBridgeClient } from "./client.js";
 import type { GpuBridgeConfig } from "./types.js";

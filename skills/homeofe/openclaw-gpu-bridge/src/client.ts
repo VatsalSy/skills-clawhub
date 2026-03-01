@@ -1,4 +1,4 @@
-// GPU Bridge — HTTP Client with multi-host load balancing/failover
+// GPU Bridge - HTTP Client with multi-host load balancing/failover
 
 import type {
   GpuBridgeConfig,
@@ -13,12 +13,24 @@ import type {
   StatusResponse,
 } from "./types.js";
 
+const DEFAULT_MAX_BATCH_SIZE = 100;
+const DEFAULT_MAX_TEXT_LENGTH = 10000;
+const MAX_503_RETRIES = 3;
+
+export class InputValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "InputValidationError";
+  }
+}
+
 interface RuntimeHost {
   id: string;
   url: string;
   name: string;
   apiKey?: string;
   healthy: boolean;
+  consecutive503s: number;
   lastError?: string;
   lastInfo?: InfoResponse;
   lastCheckedAt?: number;
@@ -30,12 +42,16 @@ export class GpuBridgeClient {
   private roundRobinIndex = 0;
   private strategy: LoadBalancingStrategy;
   private healthCheckIntervalMs: number;
+  private maxBatchSize: number;
+  private maxTextLength: number;
 
   constructor(config: GpuBridgeConfig) {
     this.hosts = this.normalizeHosts(config);
     this.timeout = (config.timeout ?? 45) * 1000;
     this.strategy = config.loadBalancing ?? "round-robin";
     this.healthCheckIntervalMs = (config.healthCheckIntervalSeconds ?? 30) * 1000;
+    this.maxBatchSize = config.limits?.maxBatchSize ?? DEFAULT_MAX_BATCH_SIZE;
+    this.maxTextLength = config.limits?.maxTextLength ?? DEFAULT_MAX_TEXT_LENGTH;
 
     const timer = setInterval(() => {
       void this.runHealthChecks();
@@ -63,6 +79,7 @@ export class GpuBridgeClient {
       name: host.name ?? `gpu-${i + 1}`,
       apiKey: host.apiKey ?? config.apiKey,
       healthy: true,
+      consecutive503s: 0,
     }));
   }
 
@@ -73,31 +90,60 @@ export class GpuBridgeClient {
     };
 
     const timeoutMs = path === "/health" ? 5000 : this.timeout;
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-    try {
-      const res = await fetch(`${host.url}${path}`, {
-        ...options,
-        headers: { ...headers, ...(options?.headers as Record<string, string> | undefined) },
-        signal: controller.signal,
-      });
+    for (let attempt = 0; attempt <= MAX_503_RETRIES; attempt += 1) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-      if (!res.ok) {
-        const body = await res.text().catch(() => "");
-        throw new Error(`GPU host ${host.name} ${path} returned ${res.status}: ${body}`);
+      try {
+        const res = await fetch(`${host.url}${path}`, {
+          ...options,
+          headers: { ...headers, ...(options?.headers as Record<string, string> | undefined) },
+          signal: controller.signal,
+        });
+
+        if (res.status === 503) {
+          host.consecutive503s += 1;
+          const retryAfter = res.headers.get("Retry-After");
+
+          if (retryAfter && attempt < MAX_503_RETRIES) {
+            const delaySec = parseInt(retryAfter, 10);
+            const delayMs = (Number.isNaN(delaySec) ? 5 : delaySec) * 1000;
+            await new Promise((resolve) => setTimeout(resolve, delayMs));
+            continue;
+          }
+
+          // Exhausted retries or no Retry-After header - mark unhealthy
+          host.healthy = false;
+          host.lastError = `GPU host ${host.name} returned 503 after ${host.consecutive503s} consecutive attempt(s)`;
+          throw new Error(host.lastError);
+        }
+
+        if (!res.ok) {
+          const body = await res.text().catch(() => "");
+          throw new Error(`GPU host ${host.name} ${path} returned ${res.status}: ${body}`);
+        }
+
+        host.healthy = true;
+        host.lastError = undefined;
+        host.consecutive503s = 0;
+        return (await res.json()) as T;
+      } catch (error) {
+        // Only mark unhealthy for non-503 errors (503 handling is above)
+        if (!(error instanceof Error && error.message.includes("returned 503"))) {
+          host.healthy = false;
+          host.lastError = error instanceof Error ? error.message : String(error);
+        }
+        if (attempt === MAX_503_RETRIES || !(error instanceof Error && error.message.includes("returned 503"))) {
+          throw error;
+        }
+      } finally {
+        clearTimeout(timer);
       }
-
-      host.healthy = true;
-      host.lastError = undefined;
-      return (await res.json()) as T;
-    } catch (error) {
-      host.healthy = false;
-      host.lastError = error instanceof Error ? error.message : String(error);
-      throw error;
-    } finally {
-      clearTimeout(timer);
     }
+
+    // Should not reach here, but satisfies TypeScript
+    throw new Error(`GPU host ${host.name} ${path} failed after ${MAX_503_RETRIES} retries`);
   }
 
   private getHealthyHosts(): RuntimeHost[] {
@@ -170,6 +216,21 @@ export class GpuBridgeClient {
     }));
   }
 
+  private validateTexts(texts: string[], fieldName: string): void {
+    if (texts.length > this.maxBatchSize) {
+      throw new InputValidationError(
+        `${fieldName} array length ${texts.length} exceeds max batch size of ${this.maxBatchSize}`
+      );
+    }
+    for (let i = 0; i < texts.length; i += 1) {
+      if (texts[i].length > this.maxTextLength) {
+        throw new InputValidationError(
+          `${fieldName}[${i}] length ${texts[i].length} exceeds max text length of ${this.maxTextLength}`
+        );
+      }
+    }
+  }
+
   async health(): Promise<HealthResponse> {
     return this.requestWithFailover<HealthResponse>("/health");
   }
@@ -179,6 +240,8 @@ export class GpuBridgeClient {
   }
 
   async bertscore(req: BertScoreRequest): Promise<BertScoreResponse> {
+    this.validateTexts(req.candidates, "candidates");
+    this.validateTexts(req.references, "references");
     return this.requestWithFailover<BertScoreResponse>("/bertscore", {
       method: "POST",
       body: JSON.stringify(req),
@@ -186,6 +249,7 @@ export class GpuBridgeClient {
   }
 
   async embed(req: EmbedRequest): Promise<EmbedResponse> {
+    this.validateTexts(req.texts, "texts");
     return this.requestWithFailover<EmbedResponse>("/embed", {
       method: "POST",
       body: JSON.stringify(req),

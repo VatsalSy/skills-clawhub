@@ -1,4 +1,4 @@
-"""FastAPI GPU service — BERTScore + Embeddings (v0.2)."""
+"""FastAPI GPU service - BERTScore + Embeddings (v0.2)."""
 
 import asyncio
 import logging
@@ -76,12 +76,12 @@ async def lifespan(app: FastAPI):
         device=str(device),
         lang="en",
     )
-    logger.info(f"BERTScore warm ready ({time.time()-t0:.1f}s) — {_vram_mb()}")
+    logger.info(f"BERTScore warm ready ({time.time()-t0:.1f}s) - {_vram_mb()}")
 
     logger.info(f"Warming default embed model: {DEFAULT_EMBED_MODEL} ...")
     t0 = time.time()
     app.state.embed_cache[DEFAULT_EMBED_MODEL] = SentenceTransformer(DEFAULT_EMBED_MODEL, device=str(device))
-    logger.info(f"Embed warm ready ({time.time()-t0:.1f}s) — {_vram_mb()}")
+    logger.info(f"Embed warm ready ({time.time()-t0:.1f}s) - {_vram_mb()}")
 
     logger.info("=" * 55)
     logger.info("  OpenClaw GPU Bridge ready!")
@@ -111,7 +111,7 @@ async def _get_bertscorer(request: Request, model_type: str):
     if model_type in cache:
         return cache[model_type]
 
-    logger.info(f"[model-load] Loading BERTScore model on-demand: {model_type} — {_vram_mb()}")
+    logger.info(f"[model-load] Loading BERTScore model on-demand: {model_type} - {_vram_mb()}")
     t0 = time.time()
     scorer = await asyncio.to_thread(
         request.app.state.BERTScorer,
@@ -120,7 +120,7 @@ async def _get_bertscorer(request: Request, model_type: str):
         lang="en",
     )
     cache[model_type] = scorer
-    logger.info(f"[model-load] BERTScore model ready in {time.time()-t0:.2f}s: {model_type} — {_vram_mb()}")
+    logger.info(f"[model-load] BERTScore model ready in {time.time()-t0:.2f}s: {model_type} - {_vram_mb()}")
     return scorer
 
 
@@ -129,7 +129,7 @@ async def _get_embedder(request: Request, model_name: str):
     if model_name in cache:
         return cache[model_name]
 
-    logger.info(f"[model-load] Loading embed model on-demand: {model_name} — {_vram_mb()}")
+    logger.info(f"[model-load] Loading embed model on-demand: {model_name} - {_vram_mb()}")
     t0 = time.time()
     embedder = await asyncio.to_thread(
         request.app.state.SentenceTransformer,
@@ -137,7 +137,7 @@ async def _get_embedder(request: Request, model_name: str):
         device=str(request.app.state.device),
     )
     cache[model_name] = embedder
-    logger.info(f"[model-load] Embed model ready in {time.time()-t0:.2f}s: {model_name} — {_vram_mb()}")
+    logger.info(f"[model-load] Embed model ready in {time.time()-t0:.2f}s: {model_name} - {_vram_mb()}")
     return embedder
 
 
@@ -186,7 +186,7 @@ async def bertscore(req: BertScoreRequest, request: Request):
     try:
         await asyncio.wait_for(semaphore.acquire(), timeout=1.0)
     except asyncio.TimeoutError as exc:
-        raise HTTPException(503, "GPU busy — retry later", headers={"Retry-After": "5"}) from exc
+        raise HTTPException(503, "GPU busy - retry later", headers={"Retry-After": "5"}) from exc
 
     job_id = str(uuid.uuid4())
     request.app.state.active_jobs[job_id] = {
@@ -201,7 +201,7 @@ async def bertscore(req: BertScoreRequest, request: Request):
     try:
         scorer = await _get_bertscorer(request, req.model_type or DEFAULT_BERTSCORE_MODEL)
         n = len(req.candidates)
-        logger.info(f"[bertscore] job={job_id} start {n} pair(s), model={req.model_type} — {_vram_mb()}")
+        logger.info(f"[bertscore] job={job_id} start {n} pair(s), model={req.model_type} - {_vram_mb()}")
         t0 = time.time()
 
         P, R, F1 = await asyncio.to_thread(scorer.score, req.candidates, req.references)
@@ -209,7 +209,7 @@ async def bertscore(req: BertScoreRequest, request: Request):
 
         elapsed = time.time() - t0
         avg_f1 = sum(F1.tolist()) / len(F1)
-        logger.info(f"[bertscore] job={job_id} done in {elapsed:.2f}s — avg F1={avg_f1:.4f} — {_vram_mb()}")
+        logger.info(f"[bertscore] job={job_id} done in {elapsed:.2f}s - avg F1={avg_f1:.4f} - {_vram_mb()}")
 
         return BertScoreResponse(
             precision=P.tolist(),
@@ -227,7 +227,7 @@ async def embed(req: EmbedRequest, request: Request):
     try:
         await asyncio.wait_for(semaphore.acquire(), timeout=1.0)
     except asyncio.TimeoutError as exc:
-        raise HTTPException(503, "GPU busy — retry later", headers={"Retry-After": "5"}) from exc
+        raise HTTPException(503, "GPU busy - retry later", headers={"Retry-After": "5"}) from exc
 
     job_id = str(uuid.uuid4())
     request.app.state.active_jobs[job_id] = {
@@ -242,7 +242,7 @@ async def embed(req: EmbedRequest, request: Request):
     try:
         embedder = await _get_embedder(request, req.model or DEFAULT_EMBED_MODEL)
         n = len(req.texts)
-        logger.info(f"[embed] job={job_id} start {n} text(s), model={req.model} — {_vram_mb()}")
+        logger.info(f"[embed] job={job_id} start {n} text(s), model={req.model} - {_vram_mb()}")
         t0 = time.time()
 
         batch_size = max(1, int(os.environ.get("GPU_EMBED_BATCH", "32")))
@@ -254,7 +254,7 @@ async def embed(req: EmbedRequest, request: Request):
             vectors.append(vecs)
             progress = idx / len(chunks)
             request.app.state.active_jobs[job_id]["progress"] = progress
-            logger.info(f"[embed] job={job_id} batch {idx}/{len(chunks)} ({progress*100:.0f}%) — {_vram_mb()}")
+            logger.info(f"[embed] job={job_id} batch {idx}/{len(chunks)} ({progress*100:.0f}%) - {_vram_mb()}")
 
         import numpy as np
 
@@ -262,7 +262,7 @@ async def embed(req: EmbedRequest, request: Request):
         elapsed = time.time() - t0
         dims = int(merged.shape[1]) if merged.size else 0
 
-        logger.info(f"[embed] job={job_id} done in {elapsed:.2f}s — {dims}d vectors — {_vram_mb()}")
+        logger.info(f"[embed] job={job_id} done in {elapsed:.2f}s - {dims}d vectors - {_vram_mb()}")
         return EmbedResponse(
             embeddings=merged.tolist(),
             model=req.model or DEFAULT_EMBED_MODEL,

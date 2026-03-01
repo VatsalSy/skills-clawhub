@@ -1,4 +1,4 @@
-// @elvatis/openclaw-gpu-bridge — Plugin entry
+// @elvatis/openclaw-gpu-bridge - Plugin entry
 
 import { createTools } from "./tools.js";
 import type { GpuBridgeConfig } from "./types.js";

@@ -1,4 +1,4 @@
-// GPU Bridge — Shared TypeScript types
+// GPU Bridge - Shared TypeScript types
 
 export type LoadBalancingStrategy = "round-robin" | "least-busy";
 
@@ -6,6 +6,13 @@ export interface GpuHostConfig {
   url: string;
   name?: string;
   apiKey?: string;
+}
+
+export interface InputLimits {
+  /** Max number of items per batch (candidates, references, texts). Default: 100 */
+  maxBatchSize?: number;
+  /** Max character length per individual text. Default: 10000 */
+  maxTextLength?: number;
 }
 
 export interface GpuBridgeConfig {
@@ -24,6 +31,9 @@ export interface GpuBridgeConfig {
     embed?: string;
     bertscore?: string;
   };
+
+  /** Configurable limits to prevent GPU OOM on large batches */
+  limits?: InputLimits;
 }
 
 // --- Responses ---

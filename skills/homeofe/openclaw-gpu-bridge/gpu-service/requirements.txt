@@ -1,15 +1,15 @@
 # GPU Service dependencies
 #
-# ⚠️  IMPORTANT — Install PyTorch FIRST with the correct CUDA index URL:
+# ⚠️  IMPORTANT - Install PyTorch FIRST with the correct CUDA index URL:
 #
-#   Python 3.11 / 3.12 — Windows or Linux (NVIDIA CUDA 12.1):
+#   Python 3.11 / 3.12 - Windows or Linux (NVIDIA CUDA 12.1):
 #     pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
 #
-#   Python 3.13 — Windows or Linux (NVIDIA CUDA 12.4+):
+#   Python 3.13 - Windows or Linux (NVIDIA CUDA 12.4+):
 #     pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
 #     Note: cu121 has no cp313 wheels. Use cu124 or newer for Python 3.13.
 #
-#   Linux (AMD ROCm 5.7 — future):
+#   Linux (AMD ROCm 5.7 - future):
 #     pip install torch torchvision --index-url https://download.pytorch.org/whl/rocm5.7
 #
 #   CPU only (not recommended for production):
@@ -20,7 +20,7 @@
 #
 # Python 3.13 notes:
 #   - torch>=2.5.0 is the first release with official Python 3.13 support.
-#   - The cu121 index does NOT include cp313 wheels — use cu124+ for Python 3.13.
+#   - The cu121 index does NOT include cp313 wheels - use cu124+ for Python 3.13.
 #   - If you see distutils errors, run: pip install setuptools --upgrade
 
 setuptools>=75.0

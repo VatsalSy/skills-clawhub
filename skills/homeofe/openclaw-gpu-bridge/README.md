@@ -36,12 +36,12 @@ OpenClaw plugin to offload ML tasks (BERTScore + embeddings) to one or many remo
       "hosts": [
         {
           "name": "rtx-2080ti",
-          "url": "http://192.168.177.3:8765",
+          "url": "http://your-gpu-host:8765",
           "apiKey": "gpu-key-1"
         },
         {
           "name": "rtx-3090",
-          "url": "http://192.168.177.4:8765",
+          "url": "http://your-second-gpu-host:8765",
           "apiKey": "gpu-key-2"
         }
       ],
@@ -63,7 +63,7 @@ OpenClaw plugin to offload ML tasks (BERTScore + embeddings) to one or many remo
 {
   "plugins": {
     "@elvatis_com/openclaw-gpu-bridge": {
-      "serviceUrl": "http://192.168.177.3:8765",
+      "serviceUrl": "http://your-gpu-host:8765",
       "apiKey": "gpu-key",
       "timeout": 45
     }
@@ -102,6 +102,8 @@ Additional models are loaded on-demand and cached in memory.
 - `API_KEY`: require `X-API-Key` for all endpoints except `/health`
 - `GPU_MAX_CONCURRENT`: max parallel jobs (default `2`)
 - `GPU_EMBED_BATCH`: embedding chunk size for progress logging (default `32`)
+- `GPU_MAX_BATCH_SIZE`: max items per batch (default `100`)
+- `GPU_MAX_TEXT_LENGTH`: max character length per text (default `10000`)
 - `MODEL_BERTSCORE`: default warm model for BERTScore
 - `MODEL_EMBED`: default warm model for embeddings
 - `TORCH_DEVICE`: force device (`cuda`, `cpu`, `cuda:1`)

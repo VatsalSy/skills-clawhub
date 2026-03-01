@@ -2,7 +2,7 @@
   "id": "openclaw-gpu-bridge",
   "name": "GPU Bridge",
   "description": "Offload GPU-intensive ML tasks (BERTScore, embeddings) to one or multiple remote GPU machines",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "configSchema": {
     "type": "object",
     "additionalProperties": false,
@@ -27,7 +27,9 @@
               "description": "Optional API key for this host"
             }
           },
-          "required": ["url"]
+          "required": [
+            "url"
+          ]
         }
       },
       "serviceUrl": {
@@ -54,7 +56,10 @@
       },
       "loadBalancing": {
         "type": "string",
-        "enum": ["round-robin", "least-busy"],
+        "enum": [
+          "round-robin",
+          "least-busy"
+        ],
         "default": "round-robin",
         "description": "Host selection strategy"
       },
@@ -75,16 +80,22 @@
         }
       }
     },
-    "anyOf": [
-      { "required": ["hosts"] },
-      { "required": ["serviceUrl"] },
-      { "required": ["url"] }
-    ]
+    "description": "Configuration is optional. If no hosts/serviceUrl/url is set, tools will fail with a clear 'not configured' error instead of blocking plugin install."
   },
   "uiHints": {
-    "serviceUrl": { "label": "GPU Service URL (legacy)", "placeholder": "http://192.168.1.100:8765" },
-    "apiKey": { "label": "API Key", "sensitive": true },
-    "timeout": { "label": "Timeout (seconds)" },
-    "loadBalancing": { "label": "Load balancing" }
+    "serviceUrl": {
+      "label": "GPU Service URL (legacy)",
+      "placeholder": "http://192.168.1.100:8765"
+    },
+    "apiKey": {
+      "label": "API Key",
+      "sensitive": true
+    },
+    "timeout": {
+      "label": "Timeout (seconds)"
+    },
+    "loadBalancing": {
+      "label": "Load balancing"
+    }
   }
 }

@@ -1,6 +1,10 @@
 """Pydantic request/response models."""
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+import os
+
+MAX_BATCH_SIZE = int(os.environ.get("GPU_MAX_BATCH_SIZE", "100"))
+MAX_TEXT_LENGTH = int(os.environ.get("GPU_MAX_TEXT_LENGTH", "10000"))
 
 
 class BertScoreRequest(BaseModel):
@@ -8,6 +12,20 @@ class BertScoreRequest(BaseModel):
     references: list[str]
     lang: str = "en"
     model_type: str = "microsoft/deberta-xlarge-mnli"
+
+    @field_validator("candidates", "references")
+    @classmethod
+    def validate_batch_size(cls, v: list[str], info) -> list[str]:
+        if len(v) > MAX_BATCH_SIZE:
+            raise ValueError(
+                f"{info.field_name} array length {len(v)} exceeds max batch size of {MAX_BATCH_SIZE}"
+            )
+        for i, text in enumerate(v):
+            if len(text) > MAX_TEXT_LENGTH:
+                raise ValueError(
+                    f"{info.field_name}[{i}] length {len(text)} exceeds max text length of {MAX_TEXT_LENGTH}"
+                )
+        return v
 
 
 class BertScoreResponse(BaseModel):
@@ -20,6 +38,20 @@ class BertScoreResponse(BaseModel):
 class EmbedRequest(BaseModel):
     texts: list[str]
     model: str = "all-MiniLM-L6-v2"
+
+    @field_validator("texts")
+    @classmethod
+    def validate_texts(cls, v: list[str]) -> list[str]:
+        if len(v) > MAX_BATCH_SIZE:
+            raise ValueError(
+                f"texts array length {len(v)} exceeds max batch size of {MAX_BATCH_SIZE}"
+            )
+        for i, text in enumerate(v):
+            if len(text) > MAX_TEXT_LENGTH:
+                raise ValueError(
+                    f"texts[{i}] length {len(text)} exceeds max text length of {MAX_TEXT_LENGTH}"
+                )
+        return v
 
 
 class EmbedResponse(BaseModel):

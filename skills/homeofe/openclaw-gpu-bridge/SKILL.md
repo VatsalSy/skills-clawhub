@@ -41,12 +41,12 @@ OpenClaw plugin to offload ML tasks (BERTScore + embeddings) to one or many remo
       "hosts": [
         {
           "name": "rtx-2080ti",
-          "url": "http://192.168.177.3:8765",
+          "url": "http://your-gpu-host:8765",
           "apiKey": "gpu-key-1"
         },
         {
           "name": "rtx-3090",
-          "url": "http://192.168.177.4:8765",
+          "url": "http://your-second-gpu-host:8765",
           "apiKey": "gpu-key-2"
         }
       ],
@@ -68,7 +68,7 @@ OpenClaw plugin to offload ML tasks (BERTScore + embeddings) to one or many remo
 {
   "plugins": {
     "@elvatis_com/openclaw-gpu-bridge": {
-      "serviceUrl": "http://192.168.177.3:8765",
+      "serviceUrl": "http://your-gpu-host:8765",
       "apiKey": "gpu-key",
       "timeout": 45
     }
