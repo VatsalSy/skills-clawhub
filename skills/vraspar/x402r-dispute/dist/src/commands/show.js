@@ -31,7 +31,7 @@ export function registerShowCommand(program) {
         .option("-p, --payment-json <json>", "Payment info JSON (uses saved state if omitted)")
         .option("-n, --nonce <nonce>", "Nonce")
         .action(async (options) => {
-        const { publicClient, addresses, operatorAddress } = initReadOnly();
+        const { publicClient, addresses, operatorAddress } = await initReadOnly();
         const paymentInfo = getPaymentInfo(options);
         const nonce = getNonce(options);
         const client = new X402rClient({

@@ -9,6 +9,7 @@ export interface PaymentState {
     paymentHash: string;
     timestamp: string;
     networkId: string;
+    merchantPrivateKey?: string;
 }
 export declare function savePaymentState(state: PaymentState): void;
 export declare function loadPaymentState(): PaymentState | null;

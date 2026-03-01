@@ -6,7 +6,7 @@ import { createPublicClient, createWalletClient, http, } from "viem";
 import { baseSepolia, base, sepolia } from "viem/chains";
 import { privateKeyToAccount } from "viem/accounts";
 import { resolveAddresses } from "@x402r/core";
-import { getConfig } from "./config.js";
+import { getConfigWithDiscovery } from "./config.js";
 const CHAINS = {
     84532: baseSepolia,
     8453: base,
@@ -14,9 +14,10 @@ const CHAINS = {
 };
 /**
  * Initialize CLI: validates config, creates viem clients.
+ * Auto-discovers operator and network from arbiter if not set locally.
  */
-export function initCli() {
-    const config = getConfig();
+export async function initCli() {
+    const config = await getConfigWithDiscovery();
     if (!config.privateKey) {
         console.error("Error: Private key not configured.");
         console.error("Run: x402r config --key 0x...");
@@ -35,7 +36,8 @@ export function initCli() {
         console.error(`Unsupported chain ID: ${chainId} (network: ${config.networkId})`);
         process.exit(1);
     }
-    const transport = http(config.rpcUrl);
+    const rpcUrl = config.rpcUrl?.startsWith("http") ? config.rpcUrl : undefined;
+    const transport = http(rpcUrl);
     const publicClient = createPublicClient({ chain, transport });
     const walletClient = createWalletClient({ account, chain, transport });
     return {
@@ -50,9 +52,10 @@ export function initCli() {
 }
 /**
  * Read-only setup — no private key required.
+ * Auto-discovers operator and network from arbiter if not set locally.
  */
-export function initReadOnly() {
-    const config = getConfig();
+export async function initReadOnly() {
+    const config = await getConfigWithDiscovery();
     const addresses = resolveAddresses(config.networkId);
     const chainId = addresses.chainId;
     const chain = CHAINS[chainId];
@@ -60,7 +63,8 @@ export function initReadOnly() {
         console.error(`Unsupported chain ID: ${chainId}`);
         process.exit(1);
     }
-    const publicClient = createPublicClient({ chain, transport: http(config.rpcUrl) });
+    const rpcUrl = config.rpcUrl?.startsWith("http") ? config.rpcUrl : undefined;
+    const publicClient = createPublicClient({ chain, transport: http(rpcUrl) });
     return {
         publicClient,
         networkId: config.networkId,

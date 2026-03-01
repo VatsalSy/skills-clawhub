@@ -1,12 +1,32 @@
 /**
  * CLI configuration — loads from ~/.x402r/config.json, .env, and env vars.
- * Priority: env vars > .env > config file > defaults
+ * Priority: env vars > .env > config file > arbiter auto-discovery > defaults
  */
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
 const CONFIG_DIR = path.join(os.homedir(), ".x402r");
 const CONFIG_FILE = path.join(CONFIG_DIR, "config.json");
+/** Cache so we only fetch once per CLI invocation */
+let arbiterContractsCache = null;
+/**
+ * Fetch operator address, network, and RPC from the arbiter's /api/contracts endpoint.
+ */
+export async function fetchArbiterContracts(arbiterUrl) {
+    if (arbiterContractsCache)
+        return arbiterContractsCache;
+    try {
+        const res = await fetch(`${arbiterUrl}/api/contracts`, { signal: AbortSignal.timeout(5000) });
+        if (!res.ok)
+            return null;
+        const data = (await res.json());
+        arbiterContractsCache = data;
+        return data;
+    }
+    catch {
+        return null;
+    }
+}
 /**
  * Load config from ~/.x402r/config.json
  */
@@ -48,24 +68,49 @@ export function getConfig() {
         privateKey: process.env.PRIVATE_KEY || file.privateKey,
         operatorAddress: process.env.OPERATOR_ADDRESS || file.operatorAddress,
         arbiterUrl: process.env.ARBITER_URL || file.arbiterUrl || "http://localhost:3000",
-        networkId: process.env.NETWORK_ID || file.networkId || "eip155:84532",
-        rpcUrl: process.env.RPC_URL || file.rpcUrl || "https://sepolia.base.org",
-        pinataApiKey: process.env.PINATA_API_KEY || file.pinataApiKey,
-        pinataSecretKey: process.env.PINATA_SECRET_KEY || file.pinataSecretKey,
+        courtUrl: process.env.COURT_URL || file.courtUrl,
+        networkId: process.env.NETWORK_ID || file.networkId || "eip155:11155111",
+        rpcUrl: process.env.RPC_URL || file.rpcUrl,
+        pinataJwt: process.env.PINATA_JWT || file.pinataJwt,
     };
+}
+/**
+ * Get resolved config with auto-discovery from arbiter.
+ * Falls back to local config if arbiter is unreachable.
+ */
+export async function getConfigWithDiscovery() {
+    const config = getConfig();
+    // If operator or network are already set locally, skip discovery
+    if (config.operatorAddress && config.networkId !== "eip155:11155111") {
+        return config;
+    }
+    const contracts = await fetchArbiterContracts(config.arbiterUrl);
+    if (contracts) {
+        if (!config.operatorAddress && contracts.operatorAddress) {
+            config.operatorAddress = contracts.operatorAddress;
+        }
+        if (contracts.chainId) {
+            config.networkId = `eip155:${contracts.chainId}`;
+        }
+        if (!config.rpcUrl && contracts.rpcUrl) {
+            config.rpcUrl = contracts.rpcUrl;
+        }
+    }
+    return config;
 }
 /**
  * Print current config (masked key)
  */
-export function printConfig() {
-    const config = getConfig();
+export async function printConfig() {
+    const config = await getConfigWithDiscovery();
     console.log("\n=== x402r CLI Config ===");
     console.log("  Private Key:", config.privateKey ? `${config.privateKey.slice(0, 6)}...${config.privateKey.slice(-4)}` : "(not set)");
     console.log("  Operator:", config.operatorAddress || "(not set)");
     console.log("  Arbiter URL:", config.arbiterUrl);
+    console.log("  Court URL:", config.courtUrl || "(not set)");
     console.log("  Network:", config.networkId);
-    console.log("  RPC URL:", config.rpcUrl);
-    console.log("  Pinata API Key:", config.pinataApiKey ? `${config.pinataApiKey.slice(0, 8)}...` : "(not set)");
+    console.log("  RPC URL:", config.rpcUrl || "(chain default)");
+    console.log("  Pinata JWT:", config.pinataJwt ? `${config.pinataJwt.slice(0, 12)}...` : "(not set)");
     console.log(`\n  Config file: ${CONFIG_FILE}`);
 }
 //# sourceMappingURL=config.js.map

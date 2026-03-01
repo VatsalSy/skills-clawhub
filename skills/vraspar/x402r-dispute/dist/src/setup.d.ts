@@ -16,9 +16,11 @@ export interface CliSetup {
 }
 /**
  * Initialize CLI: validates config, creates viem clients.
+ * Auto-discovers operator and network from arbiter if not set locally.
  */
-export declare function initCli(): CliSetup;
+export declare function initCli(): Promise<CliSetup>;
 /**
  * Read-only setup — no private key required.
+ * Auto-discovers operator and network from arbiter if not set locally.
  */
-export declare function initReadOnly(): Pick<CliSetup, "publicClient" | "networkId" | "addresses" | "arbiterUrl" | "operatorAddress">;
+export declare function initReadOnly(): Promise<Pick<CliSetup, "publicClient" | "networkId" | "addresses" | "arbiterUrl" | "operatorAddress">>;

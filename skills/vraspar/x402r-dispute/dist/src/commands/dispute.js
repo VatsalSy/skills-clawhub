@@ -1,7 +1,9 @@
 /**
  * dispute command — All-in-one: requestRefund + pin evidence + submitEvidence
  */
+import { keccak256, encodePacked } from "viem";
 import { X402rClient } from "@x402r/client";
+import { computePaymentInfoHash } from "@x402r/core";
 import { initCli } from "../setup.js";
 import { getPaymentInfo, saveDisputeState } from "../state.js";
 import { pinToIpfs } from "../ipfs.js";
@@ -16,7 +18,7 @@ export function registerDisputeCommand(program) {
         .option("-n, --nonce <nonce>", "Nonce (default: 0)", "0")
         .option("-a, --amount <amount>", "Refund amount (default: full payment amount)")
         .action(async (reason, options) => {
-        const { publicClient, walletClient, addresses, operatorAddress } = initCli();
+        const { publicClient, walletClient, addresses, operatorAddress } = await initCli();
         const paymentInfo = getPaymentInfo(options);
         const nonce = BigInt(options.nonce);
         const amount = options.amount ? BigInt(options.amount) : paymentInfo.maxAmount;
@@ -48,6 +50,8 @@ export function registerDisputeCommand(program) {
                 console.log("  Refund requested:", txHash);
                 console.log("  Waiting for confirmation...");
                 await publicClient.waitForTransactionReceipt({ hash: txHash });
+                // Brief delay to ensure state propagation on testnet RPCs
+                await new Promise(resolve => setTimeout(resolve, 3000));
                 console.log("  Confirmed.");
             }
         }
@@ -88,21 +92,35 @@ export function registerDisputeCommand(program) {
             console.error("  Failed to pin evidence:", error instanceof Error ? error.message : error);
             process.exit(1);
         }
-        // Step 3: Submit evidence on-chain
+        // Step 3: Submit evidence on-chain (skip if payer already submitted)
         console.log("\n[3/3] Submitting evidence on-chain...");
         let evidenceTxHash;
         try {
-            const { txHash } = await client.submitEvidence(paymentInfo, nonce, cid);
-            evidenceTxHash = txHash;
-            console.log("  Evidence submitted:", txHash);
+            const existing = await client.getAllEvidence(paymentInfo, nonce);
+            const alreadySubmitted = existing.some((e) => e.submitter.toLowerCase() === paymentInfo.payer.toLowerCase());
+            if (alreadySubmitted) {
+                console.log("  Evidence already submitted for this dispute — skipping");
+            }
+            else {
+                const { txHash } = await client.submitEvidence(paymentInfo, nonce, cid);
+                evidenceTxHash = txHash;
+                console.log("  Evidence submitted:", txHash);
+                console.log("  Waiting for confirmation...");
+                await publicClient.waitForTransactionReceipt({ hash: txHash });
+                console.log("  Confirmed.");
+            }
         }
         catch (error) {
             console.error("  Failed to submit evidence:", error instanceof Error ? error.message : error);
             process.exit(1);
         }
+        // Compute compositeKey for dashboard link
+        const paymentHash = computePaymentInfoHash(addresses.chainId, addresses.escrowAddress, paymentInfo);
+        const compositeKey = keccak256(encodePacked(["bytes32", "uint256"], [paymentHash, nonce]));
         // Save dispute state
         saveDisputeState({
             nonce: nonce.toString(),
+            compositeKey,
             refundTxHash,
             evidenceTxHash,
             evidenceCid: cid,
@@ -114,8 +132,16 @@ export function registerDisputeCommand(program) {
         if (evidenceTxHash)
             console.log("  Evidence Tx:", evidenceTxHash);
         console.log("  Evidence CID:", cid);
+        console.log("  Composite Key:", compositeKey);
         console.log("\n  State saved to ~/.x402r/last-dispute.json");
         console.log("  Run 'x402r status' to check dispute status");
+        // Print dashboard link if arbiter URL is configured
+        const { getConfig } = await import("../config.js");
+        const config = getConfig();
+        if (config.arbiterUrl) {
+            const dashboardBase = config.arbiterUrl.replace(/\/arbiter\/?$/, "");
+            console.log(`  Dashboard: ${dashboardBase}/dispute/${compositeKey}`);
+        }
     });
 }
 //# sourceMappingURL=dispute.js.map
