@@ -164,7 +164,13 @@ async function listBuddies() {
 }
 
 async function ask() {
-  const question = args.find(a => !a.startsWith('--'));
+  // Find question: first non-flag arg that isn't a value for a flag
+  // This allows both: ask "question" --buddy x  AND  ask --buddy x "question"
+  const flagValues = new Set();
+  args.forEach((a, i) => {
+    if (a.startsWith('--') && i + 1 < args.length) flagValues.add(args[i + 1]);
+  });
+  const question = args.find(a => !a.startsWith('--') && !flagValues.has(a));
   const buddyId = getArg('buddy');
   const timeout = parseInt(getArg('timeout') || '120') * 1000;
 
