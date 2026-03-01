@@ -1,0 +1,11 @@
+{
+  "owner": "meikowo",
+  "slug": "edge-browser",
+  "displayName": "Edge Browser",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772373859708,
+    "commit": null
+  },
+  "history": []
+}
