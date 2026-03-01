@@ -1,0 +1,11 @@
+{
+  "owner": "oscraters",
+  "slug": "iex-cloud",
+  "displayName": "IEX Cloud CLI",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1772293747459,
+    "commit": null
+  },
+  "history": []
+}
