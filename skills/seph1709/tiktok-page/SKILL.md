@@ -1,6 +1,6 @@
 ---
 name: tiktok-page
-description: "Requires: powershell/pwsh. Reads ~/.config/tiktok-page/credentials.json (TIKTOK_ACCESS_TOKEN, TIKTOK_CLIENT_KEY, TIKTOK_CLIENT_SECRET, TIKTOK_OPEN_ID). Interact with any TikTok account feature via the TikTok Content Posting API (open.tiktokapis.com/v2) - post videos, list videos, account info, comments. Access tokens expire every 24h - refresh using TIKTOK_REFRESH_TOKEN. Grant token minimal permissions only. No data forwarded to third parties; all calls go to open.tiktokapis.com only."
+description: "TikTok manager: post videos, list content & check account stats. Requires: powershell/pwsh. Reads ~/.config/tiktok-page/credentials.json (TIKTOK_ACCESS_TOKEN, TIKTOK_REFRESH_TOKEN, TIKTOK_CLIENT_KEY, TIKTOK_CLIENT_SECRET, TIKTOK_OPEN_ID). Tokens expire every 24h — auto-refresh via TIKTOK_REFRESH_TOKEN. Grant minimal permissions only. Rotate immediately if host is compromised. No data forwarded; all calls go to open.tiktokapis.com only."
 metadata: {"openclaw":{"emoji":"[tt]","requires":{"anyBins":["powershell","pwsh"]}}}
 ---
 
@@ -274,6 +274,7 @@ If a scope is missing:
 
 - Always load credentials first. If missing, guide OAuth2 setup from STEP 1.
 - Only use TIKTOK_ACCESS_TOKEN for API calls. TIKTOK_CLIENT_SECRET is for token refresh only.
+- Rotate TIKTOK_REFRESH_TOKEN and TIKTOK_ACCESS_TOKEN immediately if the host is ever compromised.
 - Never write extra fields to the credentials file.
 - All API calls go to open.tiktokapis.com only. No external forwarding, no third-party services.
 - Construct API calls inline from user intent — do not look for script files.
