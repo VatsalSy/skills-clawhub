@@ -87,7 +87,7 @@ python3 send_email.py password
 cd $CLAWD/skills/send-email/scripts
 
 # 配置 SMTP 服务器（中国移动邮箱默认配置）
-python3 send_email.py smtp --host smtp.gd.chinamobile.com --port 587
+python3 send_email.py smtp --host smtp.gd.chinamobile.com --port 465 --no-tls
 
 # 配置发件人名称
 python3 send_email.py sender --name "Your Name"
@@ -104,8 +104,8 @@ python3 send_email.py config
 | 配置项 | 值 |
 |-------|-----|
 | SMTP 服务器 | smtp.gd.chinamobile.com |
-| 端口 | 587 |
-| TLS | ✅ |
+| 端口 | 465 (SSL) |
+| TLS | ❌ (使用 SSL) |
 | 默认邮箱 | user@gd.chinamobile.com |
 
 **重要提示：** 如果使用 Gmail，需要生成「应用专用密码」（App Password），而不是使用账户密码。
@@ -203,8 +203,8 @@ python3 send_email.py send \
 {
   "smtp": {
     "host": "smtp.gd.chinamobile.com",
-    "port": 587,
-    "use_tls": true
+    "port": 465,
+    "use_tls": false
   },
   "sender": {
     "name": "Your Name"
@@ -222,7 +222,7 @@ python3 send_email.py send \
 
 2. **不要传递密钥：** 发送邮件时**不要**使用 `--email` 或 `--password` 参数，这些信息会自动从 keyring 读取。这是为了保护密钥安全。
 
-3. **中国移动邮箱：** 默认配置为 `smtp.gd.chinamobile.com:587`，默认发件人邮箱为 `user@gd.chinamobile.com`。
+3. **中国移动邮箱：** 默认配置为 `smtp.gd.chinamobile.com:465`（SSL），默认发件人邮箱为 `user@gd.chinamobile.com`。
 
 4. **HTML 邮件：** 使用 HTML 格式时，建议添加内联样式以确保兼容性
 
@@ -236,7 +236,7 @@ python3 send_email.py send \
 
 ```
 1. 首次配置（中国移动邮箱）：
-   - python send_email.py smtp --host smtp.gd.chinamobile.com --port 587
+   - python send_email.py smtp --host smtp.gd.chinamobile.com --port 465 --no-tls
    - python send_email.py sender --name "Your Name"
    - python send_email.py username --save --email your-email@gd.chinamobile.com
    - python send_email.py password --save  ← 输入密码

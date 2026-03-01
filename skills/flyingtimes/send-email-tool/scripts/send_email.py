@@ -165,8 +165,8 @@ class EmailConfig:
             default_config = {
                 "smtp": {
                     "host": "smtp.gd.chinamobile.com",
-                    "port": 587,
-                    "use_tls": True
+                    "port": 465,
+                    "use_tls": False
                 },
                 "sender": {
                     "name": "中国移动用户"
