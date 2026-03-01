@@ -1,0 +1,11 @@
+{
+  "owner": "wang-junjian",
+  "slug": "gpu-deploy",
+  "displayName": "Gpu Deploy",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1772307331035,
+    "commit": null
+  },
+  "history": []
+}
