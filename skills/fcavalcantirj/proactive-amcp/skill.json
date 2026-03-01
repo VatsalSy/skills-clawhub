@@ -1,8 +1,8 @@
 {
   "name": "proactive-amcp",
   "displayName": "Proactive AMCP",
-  "version": "1.0.0",
-  "description": "Proactive immortal — behavior hooks kick in · IPFS soul · Solvr collective · self-heals on boot",
+  "version": "1.0.4",
+  "description": "Proactive immortal — behavior ontology hooks kick in · IPFS soul · Solvr collective · self-heals on boot · self-watchdog 🏴‍☠️",
   "homepage": "https://github.com/fcavalcantirj/proactive-amcp",
   "requiredEnvVars": [
     {
