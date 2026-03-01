@@ -29,7 +29,7 @@ PHONE=$(ravi get phone --json | jq -r '.phone_number')
 # 2. Fill the signup form with $EMAIL, $PHONE, and identity name
 
 # 3. Generate and store a password
-CREDS=$(ravi passwords create example.com --username "$EMAIL" --json)
+CREDS=$(ravi vault create example.com --username "$EMAIL" --json)
 PASSWORD=$(echo "$CREDS" | jq -r '.password')
 # Use $PASSWORD in the signup form
 
@@ -43,11 +43,11 @@ ravi inbox email --unread --json # Check for email verification
 
 ```bash
 # Find stored credentials
-ENTRY=$(ravi passwords list --json | jq -r '.[] | select(.domain == "example.com")')
-UUID=$(echo "$ENTRY" | jq -r '.id')
+ENTRY=$(ravi vault list --json | jq -r '.[] | select(.domain == "example.com")')
+UUID=$(echo "$ENTRY" | jq -r '.uuid')
 
 # Get decrypted credentials
-CREDS=$(ravi passwords get "$UUID" --json)
+CREDS=$(ravi vault get "$UUID" --json)
 USERNAME=$(echo "$CREDS" | jq -r '.username')
 PASSWORD=$(echo "$CREDS" | jq -r '.password')
 # Use $USERNAME and $PASSWORD to log in
@@ -75,3 +75,14 @@ ravi inbox email "$THREAD_ID" --json | jq -r '.messages[].text_content' | grep -
 - **Store credentials immediately** — create a passwords entry during signup so you don't lose the password.
 - **Identity name for forms** — always use the identity name, not the owner name.
 - **Rate limits apply to sending** — 60 emails/hour, 500/day. See `ravi-email-send` skill for details.
+- **Email quality matters** — if you need to send an email during a workflow (e.g., contacting support), see **ravi-email-writing** for formatting and anti-spam tips.
+
+## Related Skills
+
+- **ravi-identity** — Get your email, phone, and identity name for form fields
+- **ravi-inbox** — Read OTPs, verification codes, and confirmation emails
+- **ravi-email-send** — Send emails during workflows (support requests, confirmations)
+- **ravi-email-writing** — Write professional emails that avoid spam filters
+- **ravi-passwords** — Store and retrieve website credentials after signup
+- **ravi-vault** — Store API keys obtained during service registration
+- **ravi-feedback** — Report login flow issues or suggest workflow improvements
