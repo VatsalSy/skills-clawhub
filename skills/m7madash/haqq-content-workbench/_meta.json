@@ -3,11 +3,16 @@
   "slug": "haqq-content-workbench",
   "displayName": "Haqq Content Workbench",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1771927084822,
-    "commit": "https://github.com/openclaw/skills/commit/ecd3e53d6820e24747d9eebfe0c5a71e3cf81fc6"
+    "version": "1.0.4",
+    "publishedAt": 1772305310078,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1771927084822,
+      "commit": "https://github.com/openclaw/skills/commit/ecd3e53d6820e24747d9eebfe0c5a71e3cf81fc6"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1771658940999,
