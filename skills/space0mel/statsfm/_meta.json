@@ -1,11 +1,17 @@
 {
   "owner": "space0mel",
   "slug": "statsfm",
-  "displayName": "stats.fm",
+  "displayName": "statsfm",
   "latest": {
-    "version": "2.3.7",
-    "publishedAt": 1771961101036,
-    "commit": "https://github.com/openclaw/skills/commit/31493af5e94348b94c8f8417c4f4878ff5fbad57"
+    "version": "2.4.2",
+    "publishedAt": 1772324953464,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "2.3.7",
+      "publishedAt": 1771961101036,
+      "commit": "https://github.com/openclaw/skills/commit/31493af5e94348b94c8f8417c4f4878ff5fbad57"
+    }
+  ]
 }
