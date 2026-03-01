@@ -1,0 +1,11 @@
+{
+  "owner": "wisediag",
+  "slug": "wiseocr",
+  "displayName": "WiseOCR",
+  "latest": {
+    "version": "1.0.16",
+    "publishedAt": 1772340202044,
+    "commit": null
+  },
+  "history": []
+}
