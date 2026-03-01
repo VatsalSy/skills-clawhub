@@ -1,6 +1,6 @@
 ---
 name: consensus-persona-generator
-description: Generate and persist reusable persona panels (persona_set artifacts) for consensus decision workflows. This skill initializes lightweight multi-agent disagreement with weighted reputations so downstream guards can make auditable, policy-governed decisions.
+description: Generate and persist reusable persona panels (persona_set artifacts) for consensus decision workflows. This skill initializes evaluator diversity for downstream guards; ongoing reputation updates are owned by consensus-persona-engine.
 homepage: https://github.com/kaicianflone/consensus-persona-generator
 source: https://github.com/kaicianflone/consensus-persona-generator
 metadata:
@@ -14,7 +14,7 @@ metadata:
 ## What this skill does
 
 - creates N distinct decision personas (role, bias, risk posture, voting style)
-- assigns initial reputation spread for weighted arbitration
+- assigns initial reputation baselines for weighted arbitration (ongoing updates handled by consensus-persona-engine)
 - persists a versioned `persona_set` artifact to board state
 - reuses compatible persona sets when possible to reduce churn
 
@@ -26,11 +26,12 @@ Most agent pipelines fail because one model self-approves its own output. This s
 
 Stack position:
 
-`consensus-tools -> consensus-interact pattern -> consensus-persona-generator -> domain guards`
+`consensus-tools -> consensus-interact pattern -> consensus-persona-generator -> domain guards -> consensus-persona-engine`
 
 - **consensus-tools**: board/job/submission ledger substrate
 - **consensus-interact**: board-native orchestration contract
 - **persona-generator**: lightweight multi-agent initialization layer
+- **persona-engine**: reputation update and persona lifecycle state transition layer
 
 ## Inputs / outputs (automation-friendly)
 
@@ -48,9 +49,10 @@ Stack position:
 ## Runtime, credentials, and network behavior
 
 - runtime binaries: `node`, `tsx`
-- network calls: none in the guard decision path itself
+- network calls: none in the shipped deterministic/local generator path
 - conditional network behavior: if a run needs persona generation and your persona-generator backend uses an external LLM, that backend may perform outbound API calls
-- credentials: `OPENAI_API_KEY` (or equivalent provider key) may be required **only** for persona generation in LLM-backed setups; if `persona_set_id` is provided, guards can run without LLM credentials
+- credentials: none required for the shipped deterministic/local generator path
+- optional credentials: if you replace `src/llm.mjs` with an external provider-backed implementation, that implementation may require provider API keys
 - filesystem writes: board/state artifacts under the configured consensus state path
 
 ## Dependency trust model
@@ -81,4 +83,4 @@ This skill exposes a canonical entrypoint:
 
 - `invoke(input, opts?) -> Promise<OutputJson | ErrorJson>`
 
-`invoke()` starts the guard flow, which then executes persona evaluation and consensus-interact-contract board operations (via shared guard-core wrappers where applicable).
+`invoke()` initializes or reuses persona sets and executes board operations via shared guard-core wrappers. It does not perform ongoing reputation mutation; that belongs to consensus-persona-engine.
