@@ -1,7 +1,7 @@
 ---
 name: vibe-notionbot
 description: Interact with Notion workspaces using official API - manage pages, databases, blocks, users, and comments
-version: 0.6.0
+version: 0.8.0
 allowed-tools: Bash(vibe-notionbot:*)
 metadata:
   openclaw:
@@ -30,7 +30,7 @@ This package ships two CLIs. Pick the right one based on your situation:
 | Identity | Acts as the user | Acts as a bot |
 | Setup | Zero — credentials extracted automatically | Manual — create Integration at notion.so/my-integrations |
 | Database rows | `add-row`, `update-row` | Create via `page create --database` |
-| View management | `view-get`, `view-update` | Not supported |
+| View management | `view-get`, `view-update`, `view-list`, `view-add`, `view-delete` | Not supported |
 | Workspace listing | Supported | Not supported |
 | Stability | Private API — may break on Notion changes | Official versioned API — stable |
 
@@ -105,6 +105,9 @@ vibe-notionbot page create --parent <parent_id> --title "My Doc" --markdown '# H
 # Create a page with markdown from a file
 vibe-notionbot page create --parent <parent_id> --title "My Doc" --markdown-file ./content.md
 
+# Create a page with markdown containing local images (auto-uploaded to Notion)
+vibe-notionbot page create --parent <parent_id> --title "My Doc" --markdown-file ./doc-with-images.md
+
 # Update page properties
 vibe-notionbot page update <page_id> --set "Status=In Progress" --set "Priority=High"
 
@@ -163,11 +166,30 @@ vibe-notionbot block append <parent_id> --markdown '# Hello\n\nThis is **bold** 
 # Append markdown from a file
 vibe-notionbot block append <parent_id> --markdown-file ./content.md
 
+# Append markdown with local images (auto-uploaded to Notion)
+vibe-notionbot block append <parent_id> --markdown-file ./doc-with-images.md
+
+# Append nested markdown (indented lists become nested children blocks)
+vibe-notionbot block append <parent_id> --markdown '- Parent item\n  - Child item\n    - Grandchild item'
+
+# Append blocks after a specific block (positional insertion)
+vibe-notionbot block append <parent_id> --after <block_id> --markdown '# Inserted after specific block'
+vibe-notionbot block append <parent_id> --after <block_id> --content '[{"type": "paragraph", "paragraph": {"rich_text": [{"type": "text", "text": {"content": "Inserted after"}}]}}]'
+
+# Append blocks before a specific block
+vibe-notionbot block append <parent_id> --before <block_id> --markdown '# Inserted before specific block'
+
 # Update a block's content
 vibe-notionbot block update <block_id> --content '{"paragraph": {"rich_text": [{"type": "text", "text": {"content": "Updated content"}}]}}'
 
 # Delete (archive) a block
 vibe-notionbot block delete <block_id>
+
+# Upload a file as a block (image or file block)
+vibe-notionbot block upload <parent_id> --file ./image.png --pretty
+vibe-notionbot block upload <parent_id> --file ./document.pdf --pretty
+vibe-notionbot block upload <parent_id> --file ./image.png --after <block_id> --pretty
+vibe-notionbot block upload <parent_id> --file ./image.png --before <block_id> --pretty
 ```
 
 ### User Commands
@@ -208,6 +230,9 @@ vibe-notionbot search "Notes" --page-size 10 --start-cursor <cursor>
 vibe-notionbot comment list --page <page_id>
 vibe-notionbot comment list --page <page_id> --page-size 10 --start-cursor <cursor>
 
+# List inline comments on a specific block
+vibe-notionbot comment list --block <block_id>
+
 # Create a comment on a page
 vibe-notionbot comment create "This is a comment" --page <page_id>
 
@@ -230,7 +255,7 @@ vibe-notionbot batch '<operations_json>'
 vibe-notionbot batch --file ./operations.json '[]'
 ```
 
-**Supported actions** (10 total):
+**Supported actions** (11 total):
 
 | Action | Description |
 |--------|-------------|
@@ -244,6 +269,7 @@ vibe-notionbot batch --file ./operations.json '[]'
 | `database.create` | Create a database |
 | `database.update` | Update database title or schema |
 | `database.delete-property` | Delete a database property |
+| `block.upload` | Upload a file as an image or file block |
 
 **Operation format**: Each operation is an object with `action` plus the same fields you'd pass to the individual command handler. Example with mixed actions:
 
@@ -362,5 +388,5 @@ If you already know the user's preferred package runner, use it directly instead
 
 - Supports Notion API version 2022-06-28.
 - Does not support OAuth (token only).
-- Does not support file uploads in v1.
+- ~~Does not support file uploads in v1.~~ File uploads are now supported via `block upload`.
 - Page property updates are limited to simple key=value pairs unless using raw JSON.
