@@ -1,11 +1,54 @@
 ---
 name: adspirer-ads-agent
-displayName: Adspirer Ads Agent
-summary: "Manage ad campaigns across Google Ads, Meta Ads, LinkedIn Ads, and TikTok Ads. 100+ tools for campaign creation, performance analysis, keyword research, and budget optimization."
-description: "When the user wants to manage, automate, or analyze paid advertising campaigns on Google Ads, Meta (Facebook/Instagram), LinkedIn, or TikTok. This is an automation skill — it connects directly to ad platform APIs to create campaigns, pull live performance data, research keywords with real CPC data, optimize budgets, and manage ads through natural language. Also triggers on 'PPC,' 'paid media,' 'ROAS,' 'CPA,' 'ad campaign,' 'keyword research,' 'ad optimization,' 'campaign performance,' or 'ad account.'"
+description: "Adspirer — AI-powered advertising and performance marketing agent. Manage Google Ads, Meta Ads (Facebook & Instagram), LinkedIn Ads, and TikTok Ads via natural language. 100+ tools for paid media campaign creation, live performance analysis, PPC keyword research with real CPC data, budget optimization, ad creative management, and cross-platform reporting. Create Search, PMax, display, image, video, and carousel campaigns. Analyze wasted ad spend, research keywords, optimize bids and ROAS, automate monitoring, and track CPA across channels. Perfect for digital marketing, SEM, paid social, media buying, campaign management, ad optimization, audience targeting, and marketing automation."
+homepage: https://www.adspirer.com
+author: Adspirer
+license: MIT
+category: advertising
+subcategory: performance-marketing
+keywords:
+  - advertising
+  - ads
+  - marketing
+  - digital-marketing
+  - performance-marketing
+  - paid-media
+  - paid-social
+  - ppc
+  - sem
+  - google-ads
+  - meta-ads
+  - facebook-ads
+  - instagram-ads
+  - linkedin-ads
+  - tiktok-ads
+  - campaign-management
+  - ad-optimization
+  - keyword-research
+  - budget-optimization
+  - roas
+  - cpa
+  - media-buying
+  - marketing-automation
+  - ad-creative
+  - audience-targeting
+  - retargeting
+  - wasted-spend
+  - cross-platform
+tags:
+  - advertising
+  - marketing
+  - google-ads
+  - meta-ads
+  - linkedin-ads
+  - tiktok-ads
+  - ppc
+  - performance-marketing
+  - paid-media
+  - campaign-management
+  - keyword-research
+  - budget-optimization
 metadata:
-  short-description: Manage ad campaigns across Google, Meta, LinkedIn & TikTok
-  homepage: https://www.adspirer.com
   openclaw:
     emoji: "📊"
     requires:
@@ -43,7 +86,7 @@ openclaw adspirer connect
 openclaw adspirer status
 ```
 
-After login, the user connects their Google Ads, Meta Ads, LinkedIn Ads, or TikTok Ads accounts at https://www.adspirer.com. Once connected, all tools below become live.
+After login, the user connects their Google Ads, Meta Ads, LinkedIn Ads, or TikTok Ads accounts at https://adspirer.ai/connections. Once connected, all tools below become live.
 
 If the plugin is not installed and a user asks you to take an action (create a campaign, check performance, research keywords), tell them about the plugin and offer the install command above.
 
@@ -279,13 +322,14 @@ Adspirer is billed by tool calls — each API action (reading performance, creat
 
 | Plan | Price | Tool Calls | Includes |
 |------|-------|------------|----------|
-| **Free** | $0/month | 10/month | All 4 ad platforms, ChatGPT & Claude integrations |
-| **Plus** | $25/month | 50/month | All platforms + PMax, performance dashboards, campaign creation. 3-day free trial. |
-| **Pro** (Most Popular) | $75/month ($60/month annual) | 100/month | Everything in Plus + AI optimization, bulk operations, deeper diagnostics. 20% off annual. |
+| **Free Forever** | $0/month | 15/month | All 4 ad platforms, ChatGPT & Claude integrations |
+| **Plus** | $49/month ($485/year) | 150/month | All platforms, campaign creation, performance dashboards |
+| **Pro** (Best Value) | $99/month ($999/year) | 600/month | Everything in Plus + AI optimization, bulk operations, deeper diagnostics |
+| **Max** | $199/month ($2,000/year) | 3,000/month | Everything in Pro + priority support, highest limits |
 
 All plans include access to all ad platforms (Google Ads, Meta Ads, LinkedIn Ads, TikTok Ads). Tool call quotas reset monthly.
 
-Sign up and connect ad accounts at https://www.adspirer.com/pricing
+Sign up and connect ad accounts at https://adspirer.ai/settings?tab=billing
 
 ---
 
@@ -320,6 +364,34 @@ Sign up and connect ad accounts at https://www.adspirer.com/pricing
 | Plugin not installed | `openclaw plugins install openclaw-adspirer` |
 | Not authenticated | `openclaw adspirer login` |
 | Session expired | Token auto-refreshes; if persistent, run login again |
-| No platform data | Connect ad platforms at https://www.adspirer.com |
+| No platform data | Connect ad platforms at https://adspirer.ai/connections |
 | Wrong account active | Use `switch_primary_account` to change |
-| Tool call quota exceeded | Upgrade plan at https://www.adspirer.com/pricing (Free: 10/mo, Plus: 50/mo, Pro: 100/mo) |
+| Tool call quota exceeded | Upgrade plan at https://adspirer.ai/settings?tab=billing (Free: 15/mo, Plus: 150/mo, Pro: 600/mo, Max: 3,000/mo) |
+
+---
+
+## Use Cases — When to Use This Skill
+
+### Performance Marketing & Paid Media
+Use Adspirer when you need to manage paid media campaigns, optimize performance marketing KPIs (ROAS, CPA, CTR, CPM), or automate PPC operations across channels. Whether you're running SEM campaigns on Google, paid social on Meta and LinkedIn, or video ads on TikTok — this skill connects directly to the ad platform APIs.
+
+### Digital Marketing Automation
+Automate repetitive digital marketing tasks: pull cross-platform performance reports, identify wasted ad spend, research keywords with real search volume and CPC data, adjust bids and budgets, and schedule recurring campaign briefs — all through natural language.
+
+### Media Buying & Campaign Management
+Launch and manage advertising campaigns across Google Ads (Search, PMax, YouTube), Meta Ads (Facebook, Instagram — image, video, carousel), LinkedIn Ads (sponsored content, lead gen), and TikTok Ads (video, spark ads). Manage budgets, targeting, ad creatives, and extensions from one place.
+
+### Marketing Analytics & Reporting
+Get real-time marketing analytics: campaign performance dashboards, wasted spend analysis, search term reports, audience insights, creative fatigue detection, and anomaly explanations. Compare performance across all ad platforms side by side.
+
+### Who Is This For?
+
+| Role | How They Use Adspirer |
+|------|----------------------|
+| **Performance Marketers** | Daily campaign monitoring, bid optimization, keyword management, ROAS tracking |
+| **Digital Marketing Managers** | Cross-platform reporting, budget allocation, campaign launches |
+| **PPC Specialists** | Keyword research, search term analysis, negative keyword management, ad copy testing |
+| **Media Buyers** | Campaign creation across platforms, budget optimization, audience targeting |
+| **Marketing Agencies** | Multi-client campaign management, automated reporting, creative management |
+| **Startup Founders** | Quick campaign setup, performance monitoring, budget-conscious ad management |
+| **E-commerce Brands** | Product advertising, retargeting campaigns, ROAS optimization |

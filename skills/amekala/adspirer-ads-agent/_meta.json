@@ -1,13 +1,18 @@
 {
   "owner": "amekala",
   "slug": "adspirer-ads-agent",
-  "displayName": "Openclaw Skill",
+  "displayName": "Adspirer Ads Agent",
   "latest": {
-    "version": "1.2.1",
-    "publishedAt": 1771782621666,
-    "commit": "https://github.com/openclaw/skills/commit/28cdf984621fd3e5c68d3c58d6e63c07cce28c0f"
+    "version": "1.5.0",
+    "publishedAt": 1772304486938,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.2.1",
+      "publishedAt": 1771782621666,
+      "commit": "https://github.com/openclaw/skills/commit/28cdf984621fd3e5c68d3c58d6e63c07cce28c0f"
+    },
     {
       "version": "1.1.0",
       "publishedAt": 1771476207034,
