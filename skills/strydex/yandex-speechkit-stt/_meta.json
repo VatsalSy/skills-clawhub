@@ -1,0 +1,11 @@
+{
+  "owner": "strydex",
+  "slug": "yandex-speechkit-stt",
+  "displayName": "Yandex Speechkit STT via Telegram Gateway",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772294296306,
+    "commit": null
+  },
+  "history": []
+}
