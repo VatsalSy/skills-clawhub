@@ -3,9 +3,15 @@
   "slug": "consensus-support-reply-guard",
   "displayName": "consensus-support-reply-guard",
   "latest": {
-    "version": "1.1.5",
-    "publishedAt": 1772156755371,
-    "commit": "https://github.com/openclaw/skills/commit/250dd495e9b38a32e75d351e2c4b2dc713aa7612"
+    "version": "1.1.10",
+    "publishedAt": 1772343219886,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.1.5",
+      "publishedAt": 1772156755371,
+      "commit": "https://github.com/openclaw/skills/commit/250dd495e9b38a32e75d351e2c4b2dc713aa7612"
+    }
+  ]
 }

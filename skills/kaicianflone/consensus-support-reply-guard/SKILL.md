@@ -4,7 +4,7 @@ description: Risk-aware support response governance with persona-weighted consen
 homepage: https://github.com/kaicianflone/consensus-support-reply-guard
 source: https://github.com/kaicianflone/consensus-support-reply-guard
 metadata:
-  {"openclaw": {"requires": {"bins": ["node", "tsx"], "env": ["OPENAI_API_KEY"]}}}
+  {"openclaw": {"requires": {"bins": ["node", "tsx"]}}}
 ---
 
 # consensus-support-reply-guard
@@ -25,7 +25,7 @@ Support replies are high-frequency and brand-critical. This skill prevents overc
 
 ## Ecosystem role
 
-Composes with persona generation + consensus board state so support quality improves through persistent decision memory.
+Composes with consensus board state using explicit vote inputs and deterministic guard decisions.
 
 ## Ideal scenarios
 
@@ -36,22 +36,14 @@ Composes with persona generation + consensus board state so support quality impr
 
 ## Runtime, credentials, and network behavior
 
-## Credential declaration (registry + runtime)
-
-- declared env: `OPENAI_API_KEY`
-- requirement is **conditional**: only needed when persona generation is configured to use an OpenAI-backed LLM provider
-- no API key is required when you pass an existing `persona_set_id` and skip generation
-
-
 - runtime binaries: `node`, `tsx`
 - network calls: none in the guard decision path itself
-- conditional network behavior: if a run needs persona generation and your persona-generator backend uses an external LLM, that backend may perform outbound API calls
-- credentials: `OPENAI_API_KEY` (or equivalent provider key) may be required **only** for persona generation in LLM-backed setups; if `persona_set_id` is provided, guards can run without LLM credentials
+- credentials: none required
 - filesystem writes: board/state artifacts under the configured consensus state path
 
 ## Dependency trust model
 
-- `consensus-guard-core` and `consensus-persona-generator` are first-party consensus packages
+- `consensus-guard-core` is the first-party consensus package used in guard execution
 - versions are semver-pinned in `package.json` for reproducible installs
 - this skill does not request host-wide privileges and does not mutate other skills
 
@@ -77,10 +69,10 @@ This skill exposes a canonical entrypoint:
 
 - `invoke(input, opts?) -> Promise<OutputJson | ErrorJson>`
 
-`invoke()` starts the guard flow, which then executes persona evaluation and consensus-interact-contract board operations (via shared guard-core wrappers where applicable).
+`invoke()` starts the guard flow and executes deterministic policy evaluation with board operations via shared guard-core wrappers.
 
 ## external_agent mode
 
 Guards support two modes:
-- `mode="persona"` (default): guard loads/generates persona_set and runs internal persona voting.
-- `mode="external_agent"`: caller supplies `external_votes[]` from real agents; guard performs deterministic aggregation, policy checks, and board decision writes without requiring persona harness.
+- `mode="external_agent"`: caller supplies `external_votes[]` from agents/humans/models for deterministic aggregation.
+- `mode="persona"`: requires an existing `persona_set_id`; guard will not generate persona sets internally.
