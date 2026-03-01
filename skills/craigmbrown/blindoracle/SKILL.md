@@ -1,7 +1,7 @@
 ---
 name: blindoracle
 display_name: BlindOracle - Privacy-First Agent Infrastructure
-version: 1.0.0
+version: 1.0.1
 author: Craig M. Brown
 homepage: https://craigmbrown.com/blindoracle
 license: Proprietary
@@ -114,4 +114,4 @@ All payments via HTTP 402 (x402) micropayment protocol on Base L2 (chain ID 8453
 ## Support
 
 - Homepage: https://craigmbrown.com/blindoracle
-- Repository: https://github.com/craigmbrown/chainlink-prediction-markets-mcp-enhanced
+- Repository: https://github.com/craigmbrown/blindoracle-docs

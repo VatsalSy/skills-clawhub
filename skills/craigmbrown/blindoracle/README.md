@@ -8,7 +8,7 @@ Private forecasting, settlement, credential verification, and cross-rail transfe
 
 ```bash
 # Add to your OpenClaw Gateway
-openclaw add-skill https://github.com/craigmbrown/chainlink-prediction-markets-mcp-enhanced --brand privacy
+openclaw add-skill blindoracle
 
 # Verify installation
 openclaw list | grep blindoracle
@@ -182,7 +182,7 @@ All operations protected by CaMel 4-Layer Security:
 ## Support
 
 - **Homepage**: https://craigmbrown.com/blindoracle
-- **Repository**: https://github.com/craigmbrown/chainlink-prediction-markets-mcp-enhanced
+- **Repository**: https://github.com/craigmbrown/blindoracle-docs
 
 ---
 
