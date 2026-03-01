@@ -6,7 +6,7 @@
 
 set -euo pipefail
 
-OPENCORTEX_VERSION="3.5.12"
+OPENCORTEX_VERSION="3.5.18"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Flags
@@ -118,16 +118,32 @@ if command -v openclaw &>/dev/null; then
     ' 2>/dev/null || true
   }
 
+  # Helper: extract current message for a cron ID from JSON
+  get_cron_msg() {
+    local cron_id="$1"
+    echo "$CRON_JSON" | tr '\n' ' ' | grep -oP "\"id\":\\s*\"${cron_id}\"[^}]*\"message\":\\s*\"[^\"]*\"" | grep -oP '"message":\s*"\K[^"]*' || true
+  }
+
   DAILY_ID=$(get_cron_id "Daily Memory Distillation")
   WEEKLY_ID=$(get_cron_id "Weekly Synthesis")
 
   if [ -n "$DAILY_ID" ]; then
-    if [ "$DRY_RUN" = "true" ]; then
+    CURRENT_DAILY_MSG=$(get_cron_msg "$DAILY_ID")
+    # Check if model override exists (anything other than "default" or empty)
+    DAILY_MODEL=$(echo "$CRON_JSON" | tr '\n' ' ' | grep -oP "\"id\":\\s*\"${DAILY_ID}\"[^}]*\"model\":\\s*\"[^\"]*\"" | grep -oP '"model":\s*"\K[^"]*' || true)
+    DAILY_HAS_MODEL=false
+    if [ -n "$DAILY_MODEL" ] && [ "$DAILY_MODEL" != "default" ]; then
+      DAILY_HAS_MODEL=true
+    fi
+    if [ "$CURRENT_DAILY_MSG" = "$DAILY_MSG" ] && [ "$DAILY_HAS_MODEL" = false ]; then
+      echo "   ⏭️  'Daily Memory Distillation' already current"
+      SKIPPED=$((SKIPPED + 1))
+    elif [ "$DRY_RUN" = "true" ]; then
       echo "   [DRY RUN] Would update 'Daily Memory Distillation' (id: $DAILY_ID) message"
       UPDATED=$((UPDATED + 1))
     else
-      openclaw cron edit "$DAILY_ID" --message "$DAILY_MSG" 2>/dev/null \
-        && echo "   ✅ Updated 'Daily Memory Distillation' cron message" \
+      openclaw cron edit "$DAILY_ID" --message "$DAILY_MSG" --model "default" 2>/dev/null \
+        && echo "   ✅ Updated 'Daily Memory Distillation' cron (message + cleared model override)" \
         && UPDATED=$((UPDATED + 1)) \
         || echo "   ⚠️  Could not update 'Daily Memory Distillation' — run manually: openclaw cron edit $DAILY_ID --message '...'"
     fi
@@ -137,12 +153,21 @@ if command -v openclaw &>/dev/null; then
   fi
 
   if [ -n "$WEEKLY_ID" ]; then
-    if [ "$DRY_RUN" = "true" ]; then
+    CURRENT_WEEKLY_MSG=$(get_cron_msg "$WEEKLY_ID")
+    WEEKLY_MODEL=$(echo "$CRON_JSON" | tr '\n' ' ' | grep -oP "\"id\":\\s*\"${WEEKLY_ID}\"[^}]*\"model\":\\s*\"[^\"]*\"" | grep -oP '"model":\s*"\K[^"]*' || true)
+    WEEKLY_HAS_MODEL=false
+    if [ -n "$WEEKLY_MODEL" ] && [ "$WEEKLY_MODEL" != "default" ]; then
+      WEEKLY_HAS_MODEL=true
+    fi
+    if [ "$CURRENT_WEEKLY_MSG" = "$WEEKLY_MSG" ] && [ "$WEEKLY_HAS_MODEL" = false ]; then
+      echo "   ⏭️  'Weekly Synthesis' already current"
+      SKIPPED=$((SKIPPED + 1))
+    elif [ "$DRY_RUN" = "true" ]; then
       echo "   [DRY RUN] Would update 'Weekly Synthesis' (id: $WEEKLY_ID) message"
       UPDATED=$((UPDATED + 1))
     else
-      openclaw cron edit "$WEEKLY_ID" --message "$WEEKLY_MSG" 2>/dev/null \
-        && echo "   ✅ Updated 'Weekly Synthesis' cron message" \
+      openclaw cron edit "$WEEKLY_ID" --message "$WEEKLY_MSG" --model "default" 2>/dev/null \
+        && echo "   ✅ Updated 'Weekly Synthesis' cron (message + cleared model override)" \
         && UPDATED=$((UPDATED + 1)) \
         || echo "   ⚠️  Could not update 'Weekly Synthesis' — run manually: openclaw cron edit $WEEKLY_ID --message '...'"
     fi
@@ -150,33 +175,6 @@ if command -v openclaw &>/dev/null; then
     echo "   ⏭️  'Weekly Synthesis' cron not found — run install.sh to create it"
     SKIPPED=$((SKIPPED + 1))
   fi
-  # Check for model overrides (can't clear via CLI, provide manual instructions)
-  echo ""
-  echo "   Checking for cron model overrides..."
-  HAS_MODEL_OVERRIDE=false
-  for CRON_NAME in "Daily Memory Distill" "Weekly Synthesis"; do
-    CRON_ID=$(get_cron_id "$CRON_NAME")
-    [ -z "$CRON_ID" ] && continue
-    CRON_DETAIL=$(openclaw cron list --json 2>/dev/null || echo "[]")
-    CRON_MODEL=$(echo "$CRON_DETAIL" | tr ',' '\n' | tr '{' '\n' | tr '}' '\n' | sed 's/^ *//' | awk -v id="$CRON_ID" '
-      /^"id"/ || /^"_id"/ { gsub(/[" ]/, ""); split($0, a, ":"); cur_id=a[2] }
-      /^"model"/ && cur_id == id { gsub(/[" ]/, ""); split($0, a, ":"); print a[2]; exit }
-    ' 2>/dev/null || true)
-    if [ -n "$CRON_MODEL" ] && [ "$CRON_MODEL" != "null" ]; then
-      echo "   ⚠️  '$CRON_NAME' ($CRON_ID) has model override: $CRON_MODEL"
-      HAS_MODEL_OVERRIDE=true
-    fi
-  done
-  if [ "$HAS_MODEL_OVERRIDE" = true ]; then
-    echo ""
-    echo "   OpenClaw CLI has no --clear-model flag. To remove model overrides manually:"
-    echo "   1. Open the TUI: openclaw"
-    echo "   2. Go to Cron Jobs → select the job → edit → clear the model field"
-    echo "   (The override is harmless if it matches your gateway default model.)"
-  else
-    echo "   ✅ No model overrides found"
-  fi
-
 else
   echo "   ⚠️  openclaw CLI not found — skipping cron updates"
   SKIPPED=$((SKIPPED + 1))
@@ -1473,14 +1471,9 @@ if [ -n "$MEM_DB" ]; then
   echo "   ✅ Memory search index found (${DB_SIZE}KB)"
   SKIPPED=$((SKIPPED + 1))
 else
-  echo "   ⚠️  No memory search index found."
-  echo "   Memory search needs an embedding provider. OpenClaw auto-detects from API keys:"
-  echo "     • OpenAI:  set OPENAI_API_KEY or models.providers.openai.apiKey"
-  echo "     • Gemini:  set GEMINI_API_KEY or models.providers.google.apiKey"
-  echo "     • Voyage:  set VOYAGE_API_KEY or models.providers.voyage.apiKey"
-  echo "     • Mistral: set MISTRAL_API_KEY or models.providers.mistral.apiKey"
-  echo "     • Local:   set agents.defaults.memorySearch.local.modelPath to a GGUF file"
-  echo "   Once configured, restart the gateway: openclaw gateway restart"
+  echo "   ℹ️  No memory search index found (optional)."
+  echo "   OpenCortex works fine without it — memory files are still searchable by the agent."
+  echo "   For improved semantic search, configure an embedding provider in OpenClaw:"
   echo "   Docs: https://docs.openclaw.ai/concepts/memory"
 fi
 echo ""
