@@ -1,0 +1,11 @@
+{
+  "owner": "guifav",
+  "slug": "qa-gate-gcp",
+  "displayName": "QA Gate Google Cloud Platform",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1772046593064,
+    "commit": null
+  },
+  "history": []
+}
