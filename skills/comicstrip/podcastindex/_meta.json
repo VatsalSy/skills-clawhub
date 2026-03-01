@@ -1,0 +1,11 @@
+{
+  "owner": "comicstrip",
+  "slug": "podcastindex",
+  "displayName": "PodcastIndex",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772307327275,
+    "commit": null
+  },
+  "history": []
+}
