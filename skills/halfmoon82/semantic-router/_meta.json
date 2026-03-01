@@ -3,11 +3,16 @@
   "slug": "semantic-router",
   "displayName": "Semantic Router",
   "latest": {
-    "version": "1.2.3",
-    "publishedAt": 1771860322228,
-    "commit": "https://github.com/openclaw/skills/commit/33458003b1e0bf8c9eee20f22a48e466b6e65b09"
+    "version": "2.0.0",
+    "publishedAt": 1772279979312,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.2.3",
+      "publishedAt": 1771860322228,
+      "commit": "https://github.com/openclaw/skills/commit/33458003b1e0bf8c9eee20f22a48e466b6e65b09"
+    },
     {
       "version": "1.2.0",
       "publishedAt": 1771859654737,

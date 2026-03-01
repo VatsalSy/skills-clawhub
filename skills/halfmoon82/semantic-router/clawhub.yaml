@@ -1,0 +1,47 @@
+name: semantic-router
+description: Auto-routing skill with configurable model pools and task type matching. Features interactive setup wizard for customizing pools to your available models and task types.
+version: 2.0.0
+author: halfmoon82
+tags:
+  - semantic
+  - routing
+  - model-pools
+  - task-classification
+  - fallback
+  - configuration
+homepage: https://clawhub.ai/halfmoon82/semantic-router
+license: MIT
+
+# ClawHub publishing info
+clawhub:
+  category: core
+  featured: true
+  verified: true
+  url: https://clawhub.ai/halfmoon82/semantic-router
+  
+# Dependencies
+dependencies:
+  - python3
+  - json
+
+# Installation instructions
+install: |
+  1. Clone to ~/.openclaw/workspace/skills/semantic-router/
+  2. Run setup wizard: python3 scripts/setup_wizard.py
+  3. Configure message injector in openclaw.json
+  4. Restart OpenClaw Gateway
+
+# Usage examples
+examples:
+  - command: python3 scripts/setup_wizard.py
+    description: Interactive pool configuration wizard
+  - command: python3 scripts/semantic_check.py "your message" "current_pool"
+    description: Run semantic check with auto-routing
+  - command: python3 scripts/semantic_check.py --fallback model1 model2 model3
+    description: Manual fallback chain
+
+# Changelog
+changelog: |
+  v2.0.0 - Added interactive setup wizard
+  v1.2.3 - Improved fallback chain handling
+  v1.0.0 - Initial release with three-pool architecture

@@ -1,6 +1,32 @@
+---
+name: semantic-router
+description: Auto-routing skill with configurable model pools and task type matching. Includes interactive setup wizard for customizing pools to your available models.
+version: 2.0.0
+author: halfmoon82
+tags: [semantic, routing, model-pools, task-classification, fallback]
+---
+
 # Semantic Router
 
-Auto-routing skill with configurable model pools and task type matching. Triggers on: (1) user wants to set up model routing, (2) semantic check, (3) task type classification, (4) building an automatic routing system, (5) customizing model pools.
+**ClawHub**: https://clawhub.ai/halfmoon82/semantic-router  
+**Version**: 2.0.0
+
+Auto-routing skill with configurable model pools and task type matching. Includes interactive setup wizard for customizing pools to your available models.
+
+## 🆕 Setup Wizard (New in v2.0)
+
+Configure your model pools interactively:
+
+```bash
+# Run the setup wizard
+python3 ~/.openclaw/workspace/skills/semantic-router/scripts/setup_wizard.py
+```
+
+**Wizard Steps:**
+1. **Define Task Types** - Specify your main task categories
+2. **Scan Available Models** - Automatically detect your configured models
+3. **Get Smart Recommendations** - AI-suggested pool configurations
+4. **Customize & Confirm** - Modify and approve your setup
 
 ## Quick Start
 
