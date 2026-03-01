@@ -1,0 +1,11 @@
+{
+  "owner": "sendwealth",
+  "slug": "nano-agentguard",
+  "displayName": "AgentGuard by Nano",
+  "latest": {
+    "version": "0.4.0",
+    "publishedAt": 1772376026784,
+    "commit": null
+  },
+  "history": []
+}
