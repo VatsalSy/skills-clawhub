@@ -1,0 +1,11 @@
+{
+  "owner": "pgeraghty",
+  "slug": "detect-file-type-skill",
+  "displayName": "Detect File Type Skill",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1772138797101,
+    "commit": null
+  },
+  "history": []
+}
