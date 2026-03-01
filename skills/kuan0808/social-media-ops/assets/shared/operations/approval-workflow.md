@@ -45,7 +45,7 @@ Route approval items to the correct brand topic. See `shared/operations/channel-
 2. Agents must tag all external-facing content with `[PENDING APPROVAL]`.
 3. Approval is per-item — bulk approval is allowed when user says "approve all".
 4. Stale approvals (>48h without response) should be flagged by Leader.
-5. Revisions get one re-draft. If the second draft is also rejected, escalate to Leader for discussion with user.
+5. Maximum 2 attempts total (original + 1 revision). If the revision is also rejected, escalate to Leader for discussion with user.
 6. **Multi-agent rework**: When content goes through review + rework loops across multiple agents, the final output still requires explicit user approval before any external action. Rework between agents does not bypass this workflow.
 7. **Route approvals to the correct brand topic** — never send one brand's approvals to another brand's topic.
 
@@ -57,6 +57,16 @@ The user can use these shortcuts in conversation:
 - `revise: [feedback]` — request changes with specific feedback
 - `reject` / `kill it` / `nah` — reject the most recent pending item
 - `show queue` — list all pending approval items
+
+## Reviewer Integration
+
+- **Leader-initiated**: Leader invokes Reviewer at its discretion (campaign launches, high-stakes content, rework failures, etc.)
+- **Owner-requested**: Owner explicitly asks for a review — Leader must invoke Reviewer
+- Reviewer provides `[APPROVE]` or `[REVISE]`
+- Leader evaluates Reviewer feedback as a peer, not as a directive
+- Leader may override Reviewer (must document reason in daily notes)
+- Maximum 2 review rounds per task
+- After review, Leader includes a brief review summary in the response (what was flagged, action taken, verdict)
 
 ---
 

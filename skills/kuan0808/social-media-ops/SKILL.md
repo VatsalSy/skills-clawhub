@@ -26,11 +26,15 @@ This skill sets up a complete AI-powered social media operations team on OpenCla
 - **Brand isolation** with per-brand channels, content guidelines, and asset directories
 - **Cron automation** for daily memory consolidation and weekly KB review
 
+## Optional Dependencies
+
+- **Image generation tool for Designer agent**: The Designer agent requires an image generation tool installed in its `workspace-designer/skills/` directory to produce images. Recommended: `nano-banana-pro` (Gemini-based, free tier). Without it, Designer produces text visual briefs only and cannot generate images.
+
 ## Prerequisites
 
 Before installing, ensure:
 
-1. OpenClaw is installed and `openclaw onboard` has been completed
+1. OpenClaw v2026.2.26+ is installed and `openclaw onboard` has been completed
 2. At least one auth profile exists (e.g., Anthropic API key)
 3. The `~/.openclaw/` directory exists
 
@@ -73,17 +77,38 @@ The full team:
 | Engineer | Technical integrations, automation |
 | Reviewer | Independent quality review |
 
-**Model assignment** — Use the model already configured in the user's auth profile (`agents.defaults.model.primary`). All agents default to the same model. This keeps setup simple.
-
-After auto-configuring, optionally ask:
-
-> "All 7 agents will use your configured model. Would you like to add a different model provider for the Reviewer agent to get an independent perspective? (You can always change this later.)"
-
-If the user says yes, collect the alternative provider. If no, move on.
+**Model** — All agents inherit the model configured during `openclaw onboard` (at `agents.defaults.model`). No per-agent model setup is needed.
 
 > **Advanced note:** If you later want to run a leaner team, re-run `scaffold.sh --agents leader,content,designer,engineer` to scaffold a subset.
 
-### Step 3: Telegram Setup
+### Step 3: Run Scaffold
+
+Execute the setup scripts to create all directories and files first:
+
+```bash
+# 1. Create directories, copy templates, set up symlinks
+bash scripts/scaffold.sh \
+  --skill-dir "$(pwd)"
+
+# 2. Merge agent configuration into openclaw.json
+node scripts/patch-config.js \
+  --config ~/.openclaw/openclaw.json
+```
+
+The scaffold creates:
+- Agent workspace directories with SOUL.md, AGENTS.md, MEMORY.md
+- Shared knowledge base with all template files
+- Symlinks from each workspace to shared/
+- Sub-skills (instance-setup, brand-manager) in Leader's skills/
+- Cron job definitions
+
+The config patcher merges into openclaw.json:
+- Agent definitions with model assignments and tool restrictions
+- A2A session configuration
+- QMD memory paths (**only if QMD is installed** — otherwise skipped with a suggestion)
+- Internal hooks
+
+### Step 4: Telegram Setup
 
 This step uses a **guided flow** — do not ask the user for raw chat IDs or thread IDs.
 
@@ -99,17 +124,16 @@ This step uses a **guided flow** — do not ask the user for raw chat IDs or thr
 
 #### Phase B: Choose Channel Mode
 
-Present the options in this order (DM+Topics first):
+Present the options in this order (Group+Topics first):
 
-1. **DM+Topics (recommended)** — Simplest setup, no group needed
-   - Each brand gets its own topic thread inside the bot's DM
-   - Best for solo operators managing multiple brands
-   - Requires enabling Thread Mode on the bot (guided below)
-
-2. **Group+Topics** — For multi-person teams
+1. **Group+Topics (recommended)** — Best for most setups
    - Brands are topic threads inside a Telegram supergroup
-   - Multiple team members can participate
+   - Works for both solo operators and multi-person teams
    - Requires a supergroup with Topics enabled
+
+2. **DM+Topics** — Private alternative, no group needed
+   - Each brand gets its own topic thread inside the bot's DM
+   - Requires enabling Thread Mode on the bot (guided below)
 
 3. **DM-simple** — Minimal, no brand isolation
    - Single DM conversation with the bot
@@ -142,6 +166,7 @@ Present the options in this order (DM+Topics first):
      --name "Operations"
    ```
 4. Write the resulting thread ID into `shared/operations/channel-map.md`
+5. Update `cron/jobs.json` — replace `{{OPERATIONS_CHANNEL}}` with the actual Operations channel address (format: `chatId:threadId`, e.g., `123456789:7`)
 
 **If Group+Topics:**
 
@@ -162,6 +187,7 @@ Present the options in this order (DM+Topics first):
      --name "Operations"
    ```
 5. Write the resulting thread ID into `shared/operations/channel-map.md`
+6. Update `cron/jobs.json` — replace `{{OPERATIONS_CHANNEL}}` with the actual Operations channel address (format: `chatId:threadId`, e.g., `-100XXXXXXXXXX:7`)
 
 **If DM-simple:**
 
@@ -175,36 +201,9 @@ Present the options in this order (DM+Topics first):
 2. Agent reads the group chat ID from the incoming message context
 3. Write chat ID into channel config — done
 
-### Step 4: Run Scaffold
-
-Execute the setup scripts:
-
-```bash
-# 1. Create directories, copy templates, set up symlinks
-bash scripts/scaffold.sh \
-  --skill-dir "$(pwd)"
-
-# 2. Merge agent configuration into openclaw.json
-node scripts/patch-config.js \
-  --config ~/.openclaw/openclaw.json
-```
-
-The scaffold creates:
-- Agent workspace directories with SOUL.md, SECURITY.md, MEMORY.md
-- Shared knowledge base with all template files
-- Symlinks from each workspace to shared/
-- Sub-skills (instance-setup, brand-manager) in Leader's skills/
-- Cron job definitions
-
-The config patcher merges into openclaw.json:
-- Agent definitions with model assignments and tool restrictions
-- A2A session configuration
-- QMD memory paths
-- Internal hooks
-
 ### Step 5: Instance Setup + First Brand
 
-After scaffolding, run the sub-skills:
+After scaffolding and Telegram configuration, run the sub-skills:
 
 1. **Instance Setup** (`instance-setup` skill)
    - Owner name and timezone
@@ -230,16 +229,20 @@ After scaffolding, run the sub-skills:
    openclaw gateway restart
    ```
 
-2. **Verify the installation:**
-   - [ ] All agent workspaces created with SOUL.md and SECURITY.md
-   - [ ] shared/ directory populated with templates
-   - [ ] Symlinks from each workspace to shared/ are valid
-   - [ ] openclaw.json contains all agent definitions
-   - [ ] A2A configuration is set (tools.agentToAgent.enabled: true)
-   - [ ] Cron jobs are configured
-   - [ ] Gateway restarts successfully
+2. **Run diagnostics:**
+   ```
+   openclaw doctor
+   ```
+   This validates: agent config, DM allowlist inheritance, session health, model availability, and workspace integrity.
+
+3. **Additional checks:**
    - [ ] Leader responds to messages
    - [ ] `sessions_send` to at least one agent succeeds
+
+**Optional: Enable QMD semantic memory**
+
+If `patch-config.js` reported "qmd binary not found" during Step 3, agents will use file-based memory (which works fine). To enable enhanced semantic search:
+- Say **"Set up QMD"** to run the `qmd-setup` sub-skill, which guides you through installation and configuration.
 
 **Suggested first tasks after setup:**
 1. Fill in your brand profile: `shared/brands/{brand_id}/profile.md`
@@ -248,6 +251,16 @@ After scaffolding, run the sub-skills:
 4. Set up posting schedule: fill in `shared/operations/posting-schedule.md`
 
 ## Post-Installation
+
+### Secrets Management (Optional)
+
+For centralized API key management instead of scattered env vars:
+```
+openclaw secrets audit      # Check for plaintext secrets in config
+openclaw secrets configure  # Set up secret entries
+openclaw secrets apply      # Activate secrets
+openclaw secrets reload     # Hot-reload without gateway restart
+```
 
 ### Adding More Brands
 
@@ -258,9 +271,9 @@ Use the `brand-manager` sub-skill:
 
 ### Customizing Agents
 
-Each agent's behavior is defined in their SOUL.md:
-- `workspace/SOUL.md` — Leader behavior, routing rules, quality gates
-- `workspace-{agent}/SOUL.md` — Specialist behavior and constraints
+Each agent's behavior is defined in two files:
+- **SOUL.md** — Persona, philosophy, boundaries, safety rules
+- **AGENTS.md** — Operating procedures, data handling, brand scope, tools
 
 Modify these files to tune agent behavior for your specific needs.
 
@@ -270,6 +283,8 @@ The 3-layer memory system works automatically:
 - **MEMORY.md** — Long-term curated memory (auto-updated by cron)
 - **memory/YYYY-MM-DD.md** — Daily activity logs
 - **shared/** — Permanent knowledge base (grows over time)
+
+**Optional enhancement:** Install QMD for semantic search across the knowledge base. Use the `qmd-setup` sub-skill or install manually (`bun install -g @tobilu/qmd`).
 
 See `references/memory-system.md` for detailed documentation.
 
@@ -296,13 +311,21 @@ After installation, the following structure is created:
 ~/.openclaw/
 ├── openclaw.json                    # Updated with agent configs
 ├── workspace/                       # Leader
-│   ├── SOUL.md, AGENTS.md, HEARTBEAT.md, IDENTITY.md, SECURITY.md
+│   ├── SOUL.md, AGENTS.md, HEARTBEAT.md, IDENTITY.md
 │   ├── memory/, skills/, assets/
-│   └── shared -> ../shared/
+│   └── shared/                      # Real directory (shared KB lives here)
+│       ├── INSTANCE.md              # Instance configuration
+│       ├── brand-registry.md        # Brand registry
+│       ├── system-guide.md, brand-guide.md, compliance-guide.md
+│       ├── team-roster.md
+│       ├── brands/{id}/profile.md   # Per-brand profiles
+│       ├── domain/{id}-industry.md  # Industry knowledge
+│       ├── operations/              # Ops guides
+│       └── errors/solutions.md      # Error KB
 ├── workspace-researcher/            # Researcher
-│   ├── SOUL.md, SECURITY.md, MEMORY.md
+│   ├── SOUL.md, AGENTS.md, MEMORY.md
 │   ├── memory/, skills/
-│   └── shared -> ../shared/
+│   └── shared -> ../workspace/shared/
 ├── workspace-content/               # Content Strategist
 │   └── (same structure)
 ├── workspace-designer/              # Visual Designer
@@ -312,17 +335,8 @@ After installation, the following structure is created:
 ├── workspace-engineer/              # Engineer
 │   └── (same structure)
 ├── workspace-reviewer/              # Reviewer (minimal, read-only)
-│   ├── SOUL.md, SECURITY.md
-│   └── shared -> ../shared/
-├── shared/                          # Shared knowledge base
-│   ├── INSTANCE.md                  # Instance configuration
-│   ├── brand-registry.md            # Brand registry
-│   ├── system-guide.md, brand-guide.md, compliance-guide.md
-│   ├── team-roster.md
-│   ├── brands/{id}/profile.md       # Per-brand profiles
-│   ├── domain/{id}-industry.md      # Industry knowledge
-│   ├── operations/                  # Ops guides
-│   └── errors/solutions.md          # Error KB
+│   ├── SOUL.md, AGENTS.md
+│   └── shared -> ../workspace/shared/
 └── cron/jobs.json                   # Scheduled tasks
 ```
 
@@ -340,3 +354,4 @@ After installation, the following structure is created:
 |-------|---------|
 | `instance-setup` | Configure owner info, language, bot identity |
 | `brand-manager` | Add, edit, archive brands |
+| `qmd-setup` | Install and configure QMD semantic search memory (optional) |

@@ -4,32 +4,18 @@
 
 **Symptom:** `ENETUNREACH` when connecting to Telegram API or other services
 **Cause:** Node.js 22's Happy Eyeballs (`autoSelectFamily`) prefers IPv6, but the machine's IPv6 connectivity may be broken
-**Solution:**
-1. Create a DNS monkey-patch file that forces IPv4:
-   ```javascript
-   // ipv4-fix.js
-   const dns = require('dns');
-   const origLookup = dns.lookup;
-   dns.lookup = function(hostname, options, callback) {
-     if (typeof options === 'function') {
-       callback = options;
-       options = {};
-     }
-     options = Object.assign({}, typeof options === 'number' ? { family: options } : options, { family: 4 });
-     return origLookup.call(dns, hostname, options, callback);
-   };
-   ```
-2. Set `NODE_OPTIONS="-r /path/to/ipv4-fix.js"` in your shell profile
-3. For persistence across reboots, use a LaunchAgent (macOS) or systemd service (Linux)
-**Prevention:** If the machine gains working IPv6 in the future, remove the fix
+
+**Solution (OpenClaw v2026.2.24+):**
+OpenClaw now natively prioritizes IPv4 for Telegram media fetches and patches Node 22's undici dispatcher with `autoSelectFamily` IPv4 fallback. No manual workaround needed.
+
+Run `openclaw doctor` to verify connectivity.
 
 ## Gateway Won't Start
 
 **Symptom:** `openclaw gateway start` fails or hangs
 **Checks:**
 1. Is the port already in use? Check with `lsof -i :18789`
-2. Are environment variables set? Check `NODE_OPTIONS`
-3. Is the config valid? Run `openclaw config validate`
+2. Is the config valid? Run `openclaw config validate`
 4. Check logs at `~/.openclaw/logs/`
 
 ## Agent Not Responding
@@ -70,12 +56,38 @@
 3. Wait 5 minutes for auto-reindex
 4. Check that shared/ symlinks are valid in each workspace
 
+## Exec Fails for Designer/Engineer (Permission Denied)
+
+**Symptom:** Designer's image generation or Engineer's CLI tools fail with exec approval errors
+**Cause:** v2026.2.24+ restricts safe-bin trusted directories to `/bin` and `/usr/bin` only
+**Solution:** Add tool paths to `openclaw.json`:
+```json
+"tools": {
+  "exec": {
+    "safeBinTrustedDirs": ["/bin", "/usr/bin", "/opt/homebrew/bin", "/usr/local/bin"]
+  }
+}
+```
+Then `openclaw gateway restart`.
+
+## Stale Sessions / Missing Transcripts
+
+**Symptom:** `openclaw doctor` reports missing transcript files
+**Solution:** Run `openclaw sessions cleanup --fix-missing` to prune orphaned entries.
+
+## DM Allowlist Not Working After Upgrade
+
+**Symptom:** Bot stops responding to DMs after upgrading
+**Cause:** v2026.2.26 enforces strict DM allowlist inheritance across account+parent config
+**Solution:** Run `openclaw doctor` — it now validates DM allowlist inheritance logic.
+
 ## Common Error Patterns
 
 | Error | Likely Cause | Quick Fix |
 |-------|-------------|-----------|
-| `ENETUNREACH` | IPv6 not working | Apply IPv4 fix (see above) |
+| `ENETUNREACH` | IPv6 not working | Native fix in v2026.2.24+; run `openclaw doctor` |
 | `401 Unauthorized` | Invalid/expired API token | Rotate the token |
 | `429 Too Many Requests` | Rate limited | Wait and retry; consider using fallback model |
 | `ENOENT: no such file` | Missing workspace file | Re-run scaffold.sh |
 | `timeout` | Agent task took too long | Simplify the brief or increase timeout |
+| `exec approval denied` | Safe-bin trusted dirs missing tool path | Add path to `tools.exec.safeBinTrustedDirs` |

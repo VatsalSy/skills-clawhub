@@ -12,61 +12,53 @@ The system includes 7 specialized agents organized in a star topology:
 | Designer | Visual Designer | Art direction, image generation, visual briefs |
 | Operator | Ops Coordinator | Browser automation, platform UI operations |
 | Engineer | Full-Stack Engineer | Code, automation, API integration, CLI tools |
-| Reviewer | Quality Reviewer | Independent cross-model quality assessment |
+| Reviewer | Quality Reviewer | Independent quality assessment |
 
 ## Detailed Profiles
 
 ### Leader
 - **Access**: Full workspace, Telegram binding, sessions_send to all agents
-- **Restrictions**: No exec, no browser
+- **Restrictions**: No exec, no apply_patch, no browser
 - **Unique abilities**: Only agent with owner access; owns shared/ writes; manages approval queue
-- **Model recommendation**: High-reasoning model (e.g., Opus)
 
 ### Researcher
 - **Access**: Own workspace, shared/ (read), web search/fetch
 - **Restrictions**: No exec, no browser, no code execution
 - **Output**: Structured briefs with confidence levels and sources
-- **Model recommendation**: High-reasoning model (e.g., Opus)
 
 ### Content
 - **Access**: Own workspace, shared/ (read), web search
 - **Restrictions**: No exec, no code editing, no browser, no publishing
 - **Output**: Platform-formatted content with variations, tagged [PENDING APPROVAL]
-- **Model recommendation**: Fast capable model (e.g., Sonnet)
 
 ### Designer
-- **Access**: Own workspace, shared/ (read), web search, image generation tools
-- **Restrictions**: No exec, no code editing, no browser, no publishing
+- **Access**: Own workspace, shared/ (read), web search, image generation tools, exec (image generation — requires `tools.exec.safeBinTrustedDirs` to include tool binary paths)
+- **Restrictions**: No code editing, no browser, no publishing
 - **Output**: Visual briefs + generated images, tagged [PENDING APPROVAL]
 - **Workflow**: Brief-first — always writes a structured brief before generating
-- **Model recommendation**: Fast capable model (e.g., Sonnet)
 
 ### Operator
 - **Access**: Own workspace, shared/ (read), browser (CDP + screen automation)
 - **Restrictions**: No exec, no code editing
 - **Output**: Execution confirmations with screenshots, extracted data
-- **Model recommendation**: Fast capable model (e.g., Sonnet)
 
 ### Engineer
-- **Access**: Own workspace + exec, shared/ (read + errors/ write)
+- **Access**: Own workspace + exec (requires `tools.exec.safeBinTrustedDirs` for non-system paths), shared/ (read + errors/ write)
 - **Restrictions**: No browser
 - **Output**: Working code with tests, tagged [PENDING REVIEW]
-- **Model recommendation**: Fast capable model (e.g., Sonnet)
 
 ### Reviewer
 - **Access**: Read-only everywhere, web fetch for fact-checking
 - **Restrictions**: No write, no exec, no edit, no browser — fully sandboxed
 - **Output**: Structured verdicts ([APPROVE] or [REVISE])
-- **Unique**: Deliberately uses a different model family for independent perspective
-- **Model recommendation**: Different provider than main agents (for independence)
 
 ## Tools Denied Matrix
 
 | Tool | Leader | Researcher | Content | Designer | Operator | Engineer | Reviewer |
 |------|--------|-----------|---------|----------|----------|----------|----------|
-| exec | X | X | X | X | X | - | X |
-| edit | - | - | - | - | X | - | X |
-| apply_patch | - | - | X | X | X | - | X |
+| exec | X | X | X | - | X | - | X |
+| edit | - | X | X | X | X | - | X |
+| apply_patch | X | X | X | X | X | - | X |
 | write | - | - | - | - | - | - | X |
 | browser | X | X | X | X | - | X | X |
 

@@ -42,6 +42,16 @@ The social-media-ops system uses a strict **star topology** with persistent A2A 
 | Context preservation | Full — survives across tasks and feedback loops |
 | Compaction handling | Agent sends `[CONTEXT_LOST]`; Leader re-sends from SCRATCH.md |
 
+## Maintenance Commands (v2026.2.26+)
+
+| Command | Purpose |
+|---------|---------|
+| `openclaw agents bindings` | View agent-to-channel route bindings |
+| `openclaw agents bind/unbind` | Manage agent routing |
+| `openclaw sessions cleanup --fix-missing` | Prune stale session entries |
+| `openclaw secrets audit` | Check for plaintext secrets |
+| `openclaw doctor` | Validate config, DM allowlist, sessions |
+
 ## Request Lifecycle
 
 ```
@@ -64,11 +74,16 @@ Owner sends message → Leader receives → Analyzes intent →
 Each agent has its own workspace directory. The shared knowledge base is symlinked in:
 
 ```
-workspace-{agent}/
-├── SOUL.md              # Agent personality, behavior, instructions
-├── SECURITY.md          # Access controls and restrictions
+workspace/                           # Leader
+├── SOUL.md, AGENTS.md, HEARTBEAT.md, IDENTITY.md
+├── memory/, skills/, assets/
+└── shared/                          # Real directory (shared KB lives here)
+
+workspace-{agent}/                   # Sub-agents
+├── SOUL.md              # Agent persona, tone, and boundaries
+├── AGENTS.md            # Operating instructions and behavioral rules
 ├── MEMORY.md            # Agent-specific long-term memory
 ├── memory/              # Agent-specific daily notes
 ├── skills/              # Agent-specific skill packages
-└── shared -> ../shared/ # Symlink to shared KB
+└── shared -> ../workspace/shared/   # Symlink to Leader's shared KB
 ```

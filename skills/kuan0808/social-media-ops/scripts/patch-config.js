@@ -3,21 +3,24 @@
  * patch-config.js — Merge social-media-ops agent configuration into openclaw.json
  *
  * Usage:
- *   node patch-config.js --config ~/.openclaw/openclaw.json --agents all --models '{...}'
+ *   node patch-config.js --config ~/.openclaw/openclaw.json
  *   node patch-config.js --config ~/.openclaw/openclaw.json --agents leader,content,designer,engineer
  *   node patch-config.js --dry-run --config ~/.openclaw/openclaw.json
  *
  * Options:
- *   --config PATH     Path to openclaw.json (required)
- *   --agents LIST     Comma-separated agent list (default: all)
- *   --models JSON     Model mapping as JSON string
- *   --base-dir DIR    OpenClaw root directory (default: ~/.openclaw)
- *   --dry-run         Print changes without writing
- *   --help            Show help
+ *   --config PATH         Path to openclaw.json (required)
+ *   --agents LIST         Comma-separated agent list (default: all 7)
+ *   --base-dir DIR        OpenClaw root directory (default: ~/.openclaw)
+ *   --ops-channel ID      Operations channel ID for cron job delivery (overrides auto-detection)
+ *   --skip-qmd            Skip QMD memory setup even if available
+ *   --force-qmd           Enable QMD memory even if binary not detected
+ *   --dry-run             Print changes without writing
+ *   --help                Show help
  */
 
 const fs = require("fs");
 const path = require("path");
+const { execSync } = require("child_process");
 
 // ── Defaults ──────────────────────────────────────────────────────────
 
@@ -31,23 +34,11 @@ const DEFAULT_AGENTS = [
   "reviewer",
 ];
 
-const DEFAULT_MODELS = {
-  leader: "anthropic/claude-opus-4-6",
-  researcher: "anthropic/claude-opus-4-6",
-  content: "anthropic/claude-sonnet-4-5-20250514",
-  designer: "anthropic/claude-sonnet-4-5-20250514",
-  operator: "anthropic/claude-sonnet-4-5-20250514",
-  engineer: "anthropic/claude-sonnet-4-5-20250514",
-  reviewer: "anthropic/claude-sonnet-4-5-20250514",
-};
-
-const DEFAULT_FALLBACK = "anthropic/claude-sonnet-4-5-20250514";
-
 const AGENT_TOOL_DENY = {
-  leader: ["exec", "browser"],
-  researcher: ["exec", "browser"],
-  content: ["exec", "apply_patch", "browser"],
-  designer: ["exec", "apply_patch", "browser"],
+  leader: ["exec", "apply_patch", "browser"],
+  researcher: ["exec", "edit", "apply_patch", "browser"],
+  content: ["exec", "edit", "apply_patch", "browser"],
+  designer: ["edit", "apply_patch", "browser"],
   operator: ["exec", "edit", "apply_patch"],
   engineer: ["browser"],
   reviewer: ["exec", "edit", "apply_patch", "write", "browser"],
@@ -69,8 +60,9 @@ function parseArgs(argv) {
   const args = {
     config: null,
     agents: DEFAULT_AGENTS,
-    models: { ...DEFAULT_MODELS },
-    baseDir: path.join(process.env.HOME || "~", ".openclaw"),
+    baseDir: path.join(process.env.HOME || require("os").homedir(), ".openclaw"),
+    skipQmd: false,
+    forceQmd: false,
     dryRun: false,
   };
 
@@ -82,11 +74,14 @@ function parseArgs(argv) {
       case "--agents":
         args.agents = argv[++i].split(",").map((s) => s.trim());
         break;
-      case "--models":
-        Object.assign(args.models, JSON.parse(argv[++i]));
-        break;
       case "--base-dir":
         args.baseDir = argv[++i];
+        break;
+      case "--skip-qmd":
+        args.skipQmd = true;
+        break;
+      case "--force-qmd":
+        args.forceQmd = true;
         break;
       case "--dry-run":
         args.dryRun = true;
@@ -94,7 +89,7 @@ function parseArgs(argv) {
       case "--help":
       case "-h":
         console.log(
-          "Usage: node patch-config.js --config <path> [--agents <list>] [--models <json>] [--base-dir <dir>] [--dry-run]"
+          "Usage: node patch-config.js --config <path> [--agents <list>] [--base-dir <dir>] [--ops-channel <id>] [--skip-qmd] [--force-qmd] [--dry-run]"
         );
         process.exit(0);
       default:
@@ -115,6 +110,17 @@ function parseArgs(argv) {
   }
 
   return args;
+}
+
+// ── QMD Detection ────────────────────────────────────────────────────
+
+function isQmdAvailable() {
+  try {
+    execSync("which qmd", { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // ── Deep Merge ────────────────────────────────────────────────────────
@@ -147,10 +153,7 @@ function buildAgentEntry(agentId, args) {
     id: agentId,
     name: AGENT_NAMES[agentId] || agentId,
     workspace: path.join(args.baseDir, wsDir),
-    model: {
-      primary: args.models[agentId] || DEFAULT_MODELS[agentId] || DEFAULT_FALLBACK,
-      fallbacks: [DEFAULT_FALLBACK],
-    },
+    // No model key — inherits from agents.defaults.model (set during onboard)
     tools: {
       deny: AGENT_TOOL_DENY[agentId] || [],
     },
@@ -166,11 +169,6 @@ function buildAgentEntry(agentId, args) {
   // Reviewer gets sandbox
   if (agentId === "reviewer") {
     entry.sandbox = { mode: "non-main", scope: "session" };
-  }
-
-  // Remove fallback if it's the same as primary
-  if (entry.model.fallbacks[0] === entry.model.primary) {
-    entry.model.fallbacks = [];
   }
 
   return entry;
@@ -191,7 +189,14 @@ function patchConfig(config, args) {
     compaction: { mode: "safeguard" },
     maxConcurrent: 4,
     subagents: { maxConcurrent: 8 },
+    heartbeat: { directPolicy: "allow" },
   });
+
+  // ── Clean stale fields from defaults ──
+  // These cause an implicit "Main" agent alongside the explicit Leader.
+  // The default agent is determined by agents.list[].default, not agents.defaults.workspace.
+  delete patched.agents.defaults.workspace;
+  delete patched.agents.defaults.models;
 
   // ── Build agent list ──
   const existingList = patched.agents.list || [];
@@ -218,25 +223,57 @@ function patchConfig(config, args) {
   patched.tools.sessions = { visibility: "all" };
   console.log("[SET]  tools.agentToAgent");
 
+  // v2026.2.24+ restricts safe-bin trusted dirs to /bin, /usr/bin only.
+  // Designer and Engineer need Homebrew paths for exec (uv run, CLI tools).
+  if (!patched.tools.exec) patched.tools.exec = {};
+  if (!patched.tools.exec.safeBinTrustedDirs) {
+    patched.tools.exec.safeBinTrustedDirs = [
+      "/bin",
+      "/usr/bin",
+      "/opt/homebrew/bin",
+      "/usr/local/bin",
+    ];
+    console.log(
+      "[SET]  tools.exec.safeBinTrustedDirs (Homebrew paths for Designer/Engineer exec)"
+    );
+  }
+
   // ── Set session configuration ──
   if (!patched.session) patched.session = {};
   patched.session.agentToAgent = { maxPingPongTurns: 3 };
+  if (!patched.session.parentForkMaxTokens) {
+    patched.session.parentForkMaxTokens = 100000;
+  }
   console.log("[SET]  session.agentToAgent.maxPingPongTurns: 3");
+  console.log("[SET]  session.parentForkMaxTokens: 100000");
 
-  // ── Set memory / QMD paths ──
-  patched.memory = deepMerge(patched.memory || {}, {
-    backend: "qmd",
-    qmd: {
-      includeDefaultMemory: true,
-      paths: [
-        { path: "memory", name: "daily-notes", pattern: "**/*.md" },
-        { path: "skills", name: "agent-skills", pattern: "**/*.md" },
-        { path: "shared", name: "shared-knowledge", pattern: "**/*.md" },
-      ],
-      update: { interval: "5m" },
-    },
-  });
-  console.log("[SET]  memory.qmd paths");
+  // ── Set memory (QMD if available, skip if not) ──
+  if (args.skipQmd) {
+    console.log("[SKIP] QMD memory (--skip-qmd flag)");
+  } else if (args.forceQmd || isQmdAvailable()) {
+    patched.memory = deepMerge(patched.memory || {}, {
+      backend: "qmd",
+      qmd: {
+        includeDefaultMemory: true,
+        paths: [
+          { path: "memory", name: "daily-notes", pattern: "**/*.md" },
+          { path: "skills", name: "agent-skills", pattern: "**/*.md" },
+          { path: "shared", name: "shared-knowledge", pattern: "**/*.md" },
+        ],
+        update: { interval: "5m" },
+      },
+    });
+    if (args.forceQmd) {
+      console.log("[SET]  memory.qmd paths (--force-qmd)");
+    } else {
+      console.log("[SET]  memory.qmd paths (qmd detected)");
+    }
+  } else {
+    console.log("[SKIP] QMD memory (qmd binary not found)");
+    console.log("[TIP]  For enhanced semantic search memory, install QMD:");
+    console.log("       bun install -g @tobilu/qmd");
+    console.log("       Then re-run this script, or use the qmd-setup skill.");
+  }
 
   // ── Set hooks ──
   patched.hooks = deepMerge(patched.hooks || {}, {
@@ -267,6 +304,111 @@ function patchConfig(config, args) {
   });
 
   return patched;
+}
+
+// ── Cron Merge ────────────────────────────────────────────────────────
+
+function patchCron(args) {
+  const skillDir = path.dirname(__dirname);
+  const cronTemplatePath = path.join(skillDir, "assets", "config", "cron-jobs.json");
+
+  if (!fs.existsSync(cronTemplatePath)) {
+    console.log("[SKIP] No cron-jobs.json template found in assets/config/");
+    return;
+  }
+
+  const cronDir = path.join(args.baseDir, "cron");
+  const cronPath = path.join(cronDir, "jobs.json");
+
+  // Read template
+  const template = JSON.parse(fs.readFileSync(cronTemplatePath, "utf8"));
+  const templateJobs = template.jobs || [];
+
+  if (templateJobs.length === 0) {
+    console.log("[SKIP] Cron template has no jobs");
+    return;
+  }
+
+  // Read existing cron jobs (or start fresh)
+  let existing = { version: 1, jobs: [] };
+  if (fs.existsSync(cronPath)) {
+    existing = JSON.parse(fs.readFileSync(cronPath, "utf8"));
+  }
+  const existingIds = new Set((existing.jobs || []).map((j) => j.id));
+
+  // Resolve operations channel placeholder
+  let opsChannel = null;
+
+  // Check CLI arg
+  const opsIdx = process.argv.indexOf("--ops-channel");
+  if (opsIdx !== -1 && process.argv[opsIdx + 1]) {
+    opsChannel = process.argv[opsIdx + 1];
+  }
+
+  // Fallback: read from openclaw.json groups config
+  if (!opsChannel && args.config && fs.existsSync(args.config)) {
+    try {
+      const config = JSON.parse(fs.readFileSync(args.config, "utf8"));
+      const groups = config?.channels?.telegram?.groups;
+      if (Array.isArray(groups) && groups.length > 0) {
+        opsChannel = groups[0].chatId || groups[0].id || null;
+      }
+    } catch {}
+  }
+
+  // Merge missing jobs
+  const newJobs = [];
+  for (const job of templateJobs) {
+    if (!existingIds.has(job.id)) {
+      // Replace placeholder in delivery channel
+      const jobCopy = JSON.parse(JSON.stringify(job));
+      if (opsChannel) {
+        const raw = JSON.stringify(jobCopy);
+        const replaced = raw.replace(/\{\{OPERATIONS_CHANNEL\}\}/g, opsChannel);
+        newJobs.push(JSON.parse(replaced));
+      } else {
+        newJobs.push(jobCopy);
+        if (JSON.stringify(jobCopy).includes("{{OPERATIONS_CHANNEL}}")) {
+          console.log(
+            "[WARN] Cron job contains {{OPERATIONS_CHANNEL}} placeholder. Use --ops-channel or configure channels.telegram.groups in openclaw.json."
+          );
+        }
+      }
+      console.log(`[ADD]  Cron job: ${job.id}`);
+    } else {
+      console.log(`[SKIP] Cron job: ${job.id} (already exists)`);
+    }
+  }
+
+  if (newJobs.length === 0) {
+    console.log("[OK]   All cron jobs already present");
+    return;
+  }
+
+  const merged = {
+    ...existing,
+    jobs: [...(existing.jobs || []), ...newJobs],
+  };
+
+  if (args.dryRun) {
+    console.log("[DRY RUN] Would write cron/jobs.json:");
+    console.log(JSON.stringify(merged, null, 2));
+    return;
+  }
+
+  // Backup existing cron file
+  if (fs.existsSync(cronPath)) {
+    const backupPath = cronPath + ".backup-" + Date.now();
+    fs.copyFileSync(cronPath, backupPath);
+    console.log(`[OK]   Cron backup: ${backupPath}`);
+  }
+
+  if (!fs.existsSync(cronDir)) {
+    fs.mkdirSync(cronDir, { recursive: true });
+  }
+
+  fs.writeFileSync(cronPath, JSON.stringify(merged, null, 2) + "\n");
+  console.log(`[OK]   Written: ${cronPath}`);
 }
 
 // ── Main ──────────────────────────────────────────────────────────────
@@ -309,8 +451,19 @@ function main() {
     console.log(`[OK]   Written: ${args.config}`);
   }
 
+  // Merge cron jobs
+  console.log("");
+  patchCron(args);
+
   console.log("\n[OK]   Config patching complete");
-  console.log("\nNext: openclaw gateway restart");
+  console.log("\nNext steps:");
+  console.log("  1. openclaw gateway restart");
+  console.log(
+    "  2. openclaw doctor           (validate config + DM allowlist inheritance)"
+  );
+  console.log(
+    "  3. openclaw secrets audit    (optional: check for plaintext secrets)"
+  );
 }
 
 main();

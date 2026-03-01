@@ -1,5 +1,7 @@
 # Compliance Guide
 
+> **Status: Not yet configured** — Run /instance_setup to populate this file.
+
 _Add your target market's regulatory requirements below. Organized by market._
 
 ## [Your Market]

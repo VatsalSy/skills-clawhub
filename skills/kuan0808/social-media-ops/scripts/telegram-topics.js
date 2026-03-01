@@ -13,11 +13,18 @@
  *
  * Output: JSON mapping of topic names to thread IDs
  *   { "Operations": 7, "Brand1": 3, "Brand2": 4 }
+ *
+ * Security note: Prefer --config over --token to avoid exposing the token in
+ * process listings (ps aux).
  */
 
 const https = require("https");
 const fs = require("fs");
 const path = require("path");
+
+// ── Constants ────────────────────────────────────────────────────────
+
+const RATE_LIMIT_DELAY_MS = 300;
 
 // ── Argument Parsing ─────────────────────────────────────────────────
 
@@ -137,10 +144,19 @@ function callTelegramAPI(token, method, params) {
       });
     });
 
+    req.setTimeout(15000, () => {
+      req.destroy();
+      reject(new Error("Telegram API request timed out"));
+    });
+
     req.on("error", reject);
     req.write(payload);
     req.end();
   });
+}
+
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
 }
 
 async function createForumTopic(token, chatId, name, retries = 2) {
@@ -157,17 +173,6 @@ async function createForumTopic(token, chatId, name, retries = 2) {
 
       // Handle specific errors with guidance
       const desc = result.description || "";
-
-      if (
-        desc.includes("CHAT_NOT_MODIFIED") ||
-        desc.includes("TOPIC_NOT_MODIFIED")
-      ) {
-        // Topic might already exist — not a fatal error
-        console.error(
-          `[WARN] Topic "${name}" may already exist: ${desc}`
-        );
-        return null;
-      }
 
       if (desc.includes("PEER_ID_INVALID") || desc.includes("chat not found")) {
         console.error(`[ERROR] Chat ID ${chatId} is invalid or bot cannot access it.`);
@@ -212,13 +217,23 @@ async function createForumTopic(token, chatId, name, retries = 2) {
         process.exit(1);
       }
 
-      // Retryable error
+      // Handle rate limiting
+      if (result.error_code === 429) {
+        const retryAfter = result.parameters?.retry_after || 5;
+        console.error(
+          `[WARN] Rate limited. Waiting ${retryAfter}s before retrying...`
+        );
+        await sleep(retryAfter * 1000);
+        continue;
+      }
+
+      // Other retryable error
       if (attempt < retries) {
         const delay = (attempt + 1) * 1000;
         console.error(
           `[WARN] Attempt ${attempt + 1} failed: ${desc}. Retrying in ${delay}ms...`
         );
-        await new Promise((r) => setTimeout(r, delay));
+        await sleep(delay);
         continue;
       }
 
@@ -230,7 +245,7 @@ async function createForumTopic(token, chatId, name, retries = 2) {
         console.error(
           `[WARN] Network error: ${err.message}. Retrying in ${delay}ms...`
         );
-        await new Promise((r) => setTimeout(r, delay));
+        await sleep(delay);
         continue;
       }
       console.error(`[ERROR] Network error creating topic "${name}": ${err.message}`);
@@ -258,13 +273,20 @@ async function main() {
   const chatId = args.chat;
   const result = {};
 
-  for (const name of args.names) {
+  for (let i = 0; i < args.names.length; i++) {
+    const name = args.names[i];
+
+    // Rate-limit delay between API calls (skip before first call)
+    if (i > 0) {
+      await sleep(RATE_LIMIT_DELAY_MS);
+    }
+
     const topic = await createForumTopic(token, chatId, name);
     if (topic) {
       result[name] = topic.message_thread_id;
       console.error(`[OK] Created topic "${name}" → thread ID ${topic.message_thread_id}`);
     } else {
-      console.error(`[SKIP] Topic "${name}" — could not create (may already exist)`);
+      console.error(`[SKIP] Topic "${name}" — could not create`);
     }
   }
 

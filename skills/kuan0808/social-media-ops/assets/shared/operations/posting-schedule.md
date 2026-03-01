@@ -1,5 +1,7 @@
 # Posting Schedule
 
+> **Status: Not yet configured** — Run /instance_setup to populate this file.
+
 Define when each brand posts, on which platforms, and at what frequency.
 
 ---

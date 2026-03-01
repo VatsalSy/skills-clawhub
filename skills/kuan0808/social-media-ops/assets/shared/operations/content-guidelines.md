@@ -1,5 +1,7 @@
 # Content Guidelines
 
+> **Status: Not yet configured** — Run /instance_setup to populate this file.
+
 Fill in each section to define your content rules. These guidelines apply across all brands unless overridden in brand-specific files.
 
 ---

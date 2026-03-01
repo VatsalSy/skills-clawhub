@@ -11,6 +11,7 @@ BASE_DIR="${HOME}/.openclaw"
 AGENTS="leader,researcher,content,designer,operator,engineer,reviewer"
 SKILL_DIR=""
 QUIET=false
+DRY_RUN=false
 
 # ── Usage ─────────────────────────────────────────────────────────────
 
@@ -22,6 +23,7 @@ Options:
   --base-dir DIR      OpenClaw root directory (default: ~/.openclaw)
   --skill-dir DIR     Path to this skill's directory (required)
   --quiet             Suppress progress messages
+  --dry-run           Print what would be created without writing
   -h, --help          Show this help
 
 Advanced:
@@ -43,6 +45,7 @@ while [[ $# -gt 0 ]]; do
     --agents)     AGENTS="$2";     shift 2 ;;
     --skill-dir)  SKILL_DIR="$2";  shift 2 ;;
     --quiet)      QUIET=true;      shift   ;;
+    --dry-run)    DRY_RUN=true;    shift   ;;
     -h|--help)    usage ;;
     *)            echo "[ERROR] Unknown option: $1"; exit 1 ;;
   esac
@@ -70,7 +73,73 @@ ok()   { log "[OK]   $1"; }
 skip() { log "[SKIP] $1"; }
 info() { log "[INFO] $1"; }
 
+# Copy a file only if the destination does not exist
+# Usage: copy_if_missing <src> <dst> <label>
+copy_if_missing() {
+  local src="$1" dst="$2" label="$3"
+  if [[ ! -f "$src" ]]; then
+    return
+  fi
+  if [[ -f "$dst" ]]; then
+    skip "$label (already exists)"
+    return
+  fi
+  if [[ "$DRY_RUN" == true ]]; then
+    log "[DRY]  $label"
+    return
+  fi
+  cp "$src" "$dst"
+  ok "$label"
+}
+
+# Copy a directory only if the destination does not exist
+# Usage: copy_dir_if_missing <src> <dst> <label>
+copy_dir_if_missing() {
+  local src="$1" dst="$2" label="$3"
+  if [[ ! -d "$src" ]]; then
+    return
+  fi
+  if [[ -d "$dst" ]]; then
+    skip "$label (already exists)"
+    return
+  fi
+  if [[ "$DRY_RUN" == true ]]; then
+    log "[DRY]  $label"
+    return
+  fi
+  cp -r "$src" "$dst"
+  ok "$label"
+}
+
+# Copy file, overwriting if exists (backup if content differs)
+# For skill-managed files (SOUL.md, AGENTS.md, etc.)
+# Usage: copy_with_backup <src> <dst> <label>
+copy_with_backup() {
+  local src="$1" dst="$2" label="$3"
+  if [[ ! -f "$src" ]]; then
+    return
+  fi
+  if [[ "$DRY_RUN" == true ]]; then
+    log "[DRY]  $label"
+    return
+  fi
+  if [[ -f "$dst" ]]; then
+    if diff -q "$src" "$dst" > /dev/null 2>&1; then
+      skip "$label (already up to date)"
+      return
+    fi
+    cp "$dst" "${dst}.bak"
+    log "[BAK]  ${label}.bak"
+  fi
+  cp "$src" "$dst"
+  ok "$label"
+}
+
 ASSETS="$SKILL_DIR/assets"
+
+if [[ "$DRY_RUN" == true ]]; then
+  info "DRY RUN — no files will be created or modified"
+fi
 
 # Parse agent list into array
 IFS=',' read -ra AGENT_LIST <<< "$AGENTS"
@@ -130,39 +199,20 @@ for agent in "${AGENT_LIST[@]}"; do
 
   # Create workspace directory
   mkdir -p "$ws_path"
-  mkdir -p "$ws_path/memory"
 
-  # Copy SOUL.md
-  if [[ -f "$ASSETS/$asset_src/SOUL.md" ]]; then
-    if [[ ! -f "$ws_path/SOUL.md" ]]; then
-      cp "$ASSETS/$asset_src/SOUL.md" "$ws_path/SOUL.md"
-      ok "$ws_dir/SOUL.md"
-    else
-      skip "$ws_dir/SOUL.md (already exists)"
-    fi
+  # Create memory directory (skip for reviewer — read-only agent)
+  if [[ "$agent" != "reviewer" ]]; then
+    mkdir -p "$ws_path/memory"
   fi
 
-  # Copy SECURITY.md
-  if [[ -f "$ASSETS/$asset_src/SECURITY.md" ]]; then
-    if [[ ! -f "$ws_path/SECURITY.md" ]]; then
-      cp "$ASSETS/$asset_src/SECURITY.md" "$ws_path/SECURITY.md"
-      ok "$ws_dir/SECURITY.md"
-    else
-      skip "$ws_dir/SECURITY.md (already exists)"
-    fi
-  fi
+  # Copy skill-managed files (overwrite with backup if content differs)
+  copy_with_backup "$ASSETS/$asset_src/SOUL.md" "$ws_path/SOUL.md" "$ws_dir/SOUL.md"
+  copy_with_backup "$ASSETS/$asset_src/AGENTS.md" "$ws_path/AGENTS.md" "$ws_dir/AGENTS.md"
 
   # Leader-specific files
   if [[ "$agent" == "leader" ]]; then
-    for file in AGENTS.md HEARTBEAT.md IDENTITY.md; do
-      if [[ -f "$ASSETS/workspace/$file" ]]; then
-        if [[ ! -f "$ws_path/$file" ]]; then
-          cp "$ASSETS/workspace/$file" "$ws_path/$file"
-          ok "$ws_dir/$file"
-        else
-          skip "$ws_dir/$file (already exists)"
-        fi
-      fi
+    for file in HEARTBEAT.md IDENTITY.md; do
+      copy_with_backup "$ASSETS/workspace/$file" "$ws_path/$file" "$ws_dir/$file"
     done
 
     # Create skills directory for leader
@@ -172,14 +222,15 @@ for agent in "${AGENT_LIST[@]}"; do
     mkdir -p "$ws_path/assets/shared"
   fi
 
-  # Create skills directory for non-leader agents
-  if [[ "$agent" != "leader" ]]; then
+  # Create skills directory for non-leader agents (skip for reviewer — read-only agent)
+  if [[ "$agent" != "leader" && "$agent" != "reviewer" ]]; then
     mkdir -p "$ws_path/skills"
   fi
 
   # Create MEMORY.md if it doesn't exist (skip for reviewer)
   if [[ "$agent" != "reviewer" && ! -f "$ws_path/MEMORY.md" ]]; then
-    echo "# MEMORY.md — $(echo "$agent" | sed 's/./\U&/')" > "$ws_path/MEMORY.md"
+    agent_cap="$(printf '%s' "$agent" | cut -c1 | tr '[:lower:]' '[:upper:]')$(printf '%s' "$agent" | cut -c2-)"
+    echo "# MEMORY.md — $agent_cap" > "$ws_path/MEMORY.md"
     echo "" >> "$ws_path/MEMORY.md"
     echo "_Curated long-term memory. Updated during daily consolidation and significant events._" >> "$ws_path/MEMORY.md"
     ok "$ws_dir/MEMORY.md (initialized)"
@@ -190,11 +241,15 @@ done
 
 info "Setting up shared knowledge base..."
 
-SHARED="$BASE_DIR/shared"
+SHARED="$BASE_DIR/workspace/shared"
 mkdir -p "$SHARED/brands/_template"
 mkdir -p "$SHARED/domain/_template"
 mkdir -p "$SHARED/operations"
 mkdir -p "$SHARED/errors"
+
+# ── Step 3.5: Create Shared Media Directory ──────────────────────────
+mkdir -p "$BASE_DIR/media/generated"
+ok "media/generated (shared image output)"
 
 # Copy shared KB templates (only if they don't exist)
 shared_files=(
@@ -206,31 +261,16 @@ shared_files=(
 )
 
 for file in "${shared_files[@]}"; do
-  if [[ -f "$ASSETS/shared/$file" && ! -f "$SHARED/$file" ]]; then
-    cp "$ASSETS/shared/$file" "$SHARED/$file"
-    ok "shared/$file"
-  elif [[ -f "$SHARED/$file" ]]; then
-    skip "shared/$file (already exists)"
-  fi
+  copy_if_missing "$ASSETS/shared/$file" "$SHARED/$file" "shared/$file"
 done
 
 # Copy brand templates
 for file in profile.md content-guidelines.md; do
-  if [[ -f "$ASSETS/shared/brands/_template/$file" && ! -f "$SHARED/brands/_template/$file" ]]; then
-    cp "$ASSETS/shared/brands/_template/$file" "$SHARED/brands/_template/$file"
-    ok "shared/brands/_template/$file"
-  elif [[ -f "$SHARED/brands/_template/$file" ]]; then
-    skip "shared/brands/_template/$file (already exists)"
-  fi
+  copy_if_missing "$ASSETS/shared/brands/_template/$file" "$SHARED/brands/_template/$file" "shared/brands/_template/$file"
 done
 
 # Copy domain template
-if [[ -f "$ASSETS/shared/domain/_template/industry.md" && ! -f "$SHARED/domain/_template/industry.md" ]]; then
-  cp "$ASSETS/shared/domain/_template/industry.md" "$SHARED/domain/_template/industry.md"
-  ok "shared/domain/_template/industry.md"
-elif [[ -f "$SHARED/domain/_template/industry.md" ]]; then
-  skip "shared/domain/_template/industry.md (already exists)"
-fi
+copy_if_missing "$ASSETS/shared/domain/_template/industry.md" "$SHARED/domain/_template/industry.md" "shared/domain/_template/industry.md"
 
 # Copy operations templates
 ops_files=(
@@ -242,21 +282,11 @@ ops_files=(
 )
 
 for file in "${ops_files[@]}"; do
-  if [[ -f "$ASSETS/shared/operations/$file" && ! -f "$SHARED/operations/$file" ]]; then
-    cp "$ASSETS/shared/operations/$file" "$SHARED/operations/$file"
-    ok "shared/operations/$file"
-  elif [[ -f "$SHARED/operations/$file" ]]; then
-    skip "shared/operations/$file (already exists)"
-  fi
+  copy_if_missing "$ASSETS/shared/operations/$file" "$SHARED/operations/$file" "shared/operations/$file"
 done
 
 # Copy errors template
-if [[ -f "$ASSETS/shared/errors/solutions.md" && ! -f "$SHARED/errors/solutions.md" ]]; then
-  cp "$ASSETS/shared/errors/solutions.md" "$SHARED/errors/solutions.md"
-  ok "shared/errors/solutions.md"
-elif [[ -f "$SHARED/errors/solutions.md" ]]; then
-  skip "shared/errors/solutions.md (already exists)"
-fi
+copy_if_missing "$ASSETS/shared/errors/solutions.md" "$SHARED/errors/solutions.md" "shared/errors/solutions.md"
 
 # ── Step 4: Create Symlinks to shared/ ────────────────────────────────
 
@@ -267,13 +297,19 @@ for agent in "${AGENT_LIST[@]}"; do
   ws_path="$BASE_DIR/$ws_dir"
   link_path="$ws_path/shared"
 
+  # Leader already has shared/ as real directory — skip
+  if [[ "$agent" == "leader" ]]; then
+    skip "$ws_dir/shared (real directory — no symlink needed)"
+    continue
+  fi
+
   if [[ -L "$link_path" ]]; then
     skip "$ws_dir/shared (symlink already exists)"
   elif [[ -d "$link_path" ]]; then
     skip "$ws_dir/shared (directory exists — not overwriting)"
   else
-    ln -s "$SHARED" "$link_path"
-    ok "$ws_dir/shared -> ../shared/"
+    ln -s "$BASE_DIR/workspace/shared" "$link_path"
+    ok "$ws_dir/shared -> ../workspace/shared/"
   fi
 done
 
@@ -282,27 +318,14 @@ done
 info "Installing sub-skills..."
 
 LEADER_SKILLS="$BASE_DIR/workspace/skills"
-mkdir -p "$LEADER_SKILLS"
-
-# instance-setup
-if [[ -d "$ASSETS/skills/instance-setup" ]]; then
-  if [[ ! -d "$LEADER_SKILLS/instance-setup" ]]; then
-    cp -r "$ASSETS/skills/instance-setup" "$LEADER_SKILLS/instance-setup"
-    ok "skills/instance-setup"
-  else
-    skip "skills/instance-setup (already exists)"
-  fi
+if [[ "$DRY_RUN" != true ]]; then
+  mkdir -p "$LEADER_SKILLS"
 fi
 
-# brand-manager
-if [[ -d "$ASSETS/skills/brand-manager" ]]; then
-  if [[ ! -d "$LEADER_SKILLS/brand-manager" ]]; then
-    cp -r "$ASSETS/skills/brand-manager" "$LEADER_SKILLS/brand-manager"
-    ok "skills/brand-manager"
-  else
-    skip "skills/brand-manager (already exists)"
-  fi
-fi
+SUB_SKILLS=(instance-setup brand-manager qmd-setup)
+for skill in "${SUB_SKILLS[@]}"; do
+  copy_dir_if_missing "$ASSETS/skills/$skill" "$LEADER_SKILLS/$skill" "skills/$skill"
+done
 
 # ── Step 6: Copy Cron Jobs ────────────────────────────────────────────
 
@@ -316,7 +339,7 @@ if [[ -f "$ASSETS/config/cron-jobs.json" ]]; then
     cp "$ASSETS/config/cron-jobs.json" "$CRON_DIR/jobs.json"
     ok "cron/jobs.json"
   else
-    skip "cron/jobs.json (already exists — will be merged by patch-config)"
+    skip "cron/jobs.json (already exists — run /instance_setup to reconfigure)"
   fi
 fi
 
