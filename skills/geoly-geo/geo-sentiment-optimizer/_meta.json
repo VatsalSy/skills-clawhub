@@ -1,0 +1,11 @@
+{
+  "owner": "geoly-geo",
+  "slug": "geo-sentiment-optimizer",
+  "displayName": "Brand Sentiment Optimizer",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772265701953,
+    "commit": null
+  },
+  "history": []
+}
