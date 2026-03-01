@@ -3,9 +3,15 @@
   "slug": "consensus-permission-escalation-guard",
   "displayName": "consensus-permission-escalation-guard",
   "latest": {
-    "version": "0.1.6",
-    "publishedAt": 1772343207263,
-    "commit": "https://github.com/openclaw/skills/commit/4ecd641c0b83f9e227e478a7de7747e2486bbcff"
+    "version": "0.1.7",
+    "publishedAt": 1772375466781,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.1.6",
+      "publishedAt": 1772343207263,
+      "commit": "https://github.com/openclaw/skills/commit/4ecd641c0b83f9e227e478a7de7747e2486bbcff"
+    }
+  ]
 }
