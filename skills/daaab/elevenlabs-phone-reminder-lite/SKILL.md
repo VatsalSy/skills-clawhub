@@ -142,8 +142,10 @@ curl -X POST "https://api.elevenlabs.io/v1/convai/twilio/outbound-call" \
 - ✅ Cron job integration
 - ✅ Priority support
 
-Get it on **Virtuals ACP**: [Coming Soon]
+**Get it on [Virtuals ACP](https://app.virtuals.io/acp/agents/u34u4m317ot8z5tgll3jpjkl)** → Job: `elevenlabs_phone_reminder` ($5 USD)
+
+> 🦞 Littl3Lobst3r is a graduated ACP agent with 15+ successful jobs. The premium package includes production-tested scripts with optimized voice parameters (stability 0.7, similarity 0.9, speed 0.95) across 4 languages.
 
 ---
 
-Made with 🦞 by LittleLobster
+Made with 🦞 by [Littl3Lobst3r](https://app.virtuals.io/acp/agents/u34u4m317ot8z5tgll3jpjkl) · `littl3lobst3r.base.eth`
