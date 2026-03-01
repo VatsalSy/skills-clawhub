@@ -1,6 +1,6 @@
 ---
-name: wisediag-medocr
-description: "PDF OCR — Convert PDF to Markdown via WiseDiag cloud API. Supports table recognition, multi-column layouts, and high-accuracy text extraction. Usage: Upload a PDF and say Use WiseOCR to OCR this."
+name: wiseocr
+description: "PDF OCR — Convert PDF to Markdown via WiseDiag cloud API (requires WISEDIAG_API_KEY). Files are uploaded to WiseDiag servers for processing. Supports table recognition, multi-column layouts, and high-accuracy text extraction."
 registry:
   homepage: https://github.com/wisediag/WiseOCR
   author: wisediag
@@ -36,7 +36,7 @@ pip install -r requirements.txt
 
 ## 🔑 API Key Setup (Required)
 
-**Get your API key:** 👉 [https://console.wisediag.com/apiKeyManage](https://s.wisediag.com/xsu9x0jq)
+**Get your API key:** 👉 https://console.wisediag.com/apiKeyManage
 
 The API key MUST be set as an environment variable. The script reads it automatically.
 
@@ -46,7 +46,7 @@ export WISEDIAG_API_KEY=your_api_key
 
 ## How to Process a PDF (Step-by-Step)
 
-**NEVER call any API or HTTP endpoint directly. ONLY use the script below.**
+**Always use the provided script** — it handles authentication, upload, retry, and output saving.
 
 Step 1: Set the API key (if not already set):
 
@@ -82,7 +82,7 @@ The Markdown result is saved to `~/.openclaw/workspace/WiseOCR/{name}.md` automa
 ## Data Privacy
 
 **What happens to your files:**
-1. Files are uploaded to WiseDiag's OCR API
+1. Files are uploaded to WiseDiag's OCR API (`https://openapi.wisediag.com/v1/ocr/pdf`)
 2. Files are processed on WiseDiag servers
 3. Processing results are returned to you
 4. Files are not permanently stored on WiseDiag servers

@@ -1,6 +1,6 @@
 ---
-name: wisediag-medocr
-description: "PDF OCR — Convert PDF to Markdown with high-accuracy OCR, table recognition and text extraction. Usage: Upload a PDF and say Use WiseOCR to OCR this."
+name: wiseocr
+description: "PDF OCR — Convert PDF to Markdown via WiseDiag cloud API (requires WISEDIAG_API_KEY). Files are uploaded to WiseDiag servers for processing. Supports table recognition, multi-column layouts, and high-accuracy text extraction."
 registry:
   homepage: https://github.com/wisediag/WiseOCR
   author: wisediag
@@ -47,7 +47,7 @@ pip install -r requirements.txt
 ## 🔑 API Key Setup (Required)
 
 **Get your API key:**
-👉 [https://console.wisediag.com/apiKeyManage](https://s.wisediag.com/xsu9x0jq)
+👉 https://console.wisediag.com/apiKeyManage
 
 ```bash
 # Temporary (current terminal session)
@@ -60,7 +60,7 @@ source ~/.zshrc
 
 ## CLI Usage
 
-**You MUST use the provided script to process files. Do NOT call any API or HTTP endpoint directly.**
+**Use the provided script to process files** — it handles authentication, upload, retry logic, and output saving.
 
 ```bash
 cd scripts
@@ -95,11 +95,13 @@ The Markdown result is saved to `~/.openclaw/workspace/WiseOCR/{name}.md` automa
 Make sure you've set the environment variable correctly. Run `echo $WISEDIAG_API_KEY` to check.
 
 **"Authentication failed" error:**
-Your API key may be invalid or expired. Visit [https://console.wisediag.com/apiKeyManage](https://s.wisediag.com/xsu9x0jq) to check or regenerate your key.
+Your API key may be invalid or expired. Visit https://console.wisediag.com/apiKeyManage to check or regenerate your key.
 
 ## Data Privacy
 
-Files are sent to WiseDiag's OCR API for processing and are not permanently stored. Results are returned directly to you.
+Files are sent to WiseDiag's OCR API (`https://openapi.wisediag.com/v1/ocr/pdf`) for processing and are not permanently stored. Results are returned directly to you.
+
+**Service documentation:** https://openapi.wisediag.com/docs
 
 ## License
 
