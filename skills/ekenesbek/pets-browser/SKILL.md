@@ -27,33 +27,73 @@ clawhub install pets-browser
 
 This installs Chromium via Playwright automatically. No separate browser download needed.
 
-On first install, the agent receives credentials:
-- `agentId` (stable subscription identity)
-- `agentSecret` (auth secret, rotatable)
-- `recoveryCode` (fallback for secret rotation)
+**Important (Linux/Docker):** If Chromium fails to launch with missing library errors (e.g. `libnspr4.so`), install system dependencies:
 
-**Important:** Show these credentials to the user and ask them to save them. They are needed for transfer/recovery.
+```bash
+npx playwright install-deps chromium
+# or manually:
+apt-get update && apt-get install -y libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libpango-1.0-0 libpangocairo-1.0-0 libcairo2 libasound2
+```
+
+## First-Run Onboarding
+
+`launchBrowser()` is **zero-config** — it auto-registers a new agent and saves credentials if none exist.
+
+However, on first use the agent SHOULD check if the user already has credentials to avoid creating duplicate agents:
+
+### Step 1: Check for existing credentials
+
+```javascript
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
+const CREDS_FILE = path.join(os.homedir(), '.pets-browser', 'agent-credentials.json');
+let hasCreds = false;
+try { hasCreds = Boolean(JSON.parse(fs.readFileSync(CREDS_FILE, 'utf-8')).agentId); } catch {}
+```
+
+If credentials exist on disk → skip to Step 3 (just launch).
+
+### Step 2: Ask the user
+
+Ask the user: **"Do you have existing Pets Browser credentials (agentId:agentSecret), or should I create new ones?"**
+
+- If user provides credentials → save them to `CREDS_FILE`:
+```javascript
+const [agentId, agentSecret] = userInput.split(':');
+fs.mkdirSync(path.dirname(CREDS_FILE), { recursive: true, mode: 0o700 });
+fs.writeFileSync(CREDS_FILE, JSON.stringify({ agentId, agentSecret, createdAt: new Date().toISOString() }, null, 2), { mode: 0o600 });
+```
+- If user says "new" or "no" → skip to Step 3. `launchBrowser()` will auto-register.
+
+### Step 3: Launch
+
+```javascript
+const { launchBrowser } = require('pets-browser/scripts/browser');
+const { browser, page } = await launchBrowser({ country: 'us' });
+```
+
+That's it. No env vars needed. `launchBrowser()` will:
+1. Find credentials on disk (or auto-register a new agent with the API)
+2. Fetch managed proxy + CAPTCHA keys
+3. Launch stealth Chromium with residential proxy
+
+After first launch, show credentials to user:
+```javascript
+const creds = JSON.parse(fs.readFileSync(CREDS_FILE, 'utf-8'));
+console.log(`agentId: ${creds.agentId}`);
+console.log(`agentSecret: ${creds.agentSecret}`);
+// Ask user to save these for future use / transfer
+```
 
 ## Agent Credentials & Subscription
 
-### First launch
+### Trial model
 
-On the first `launchBrowser()` call, a **2-hour free trial** starts. Show credentials to the user:
-
-```
-Your Pets Browser agentId: 7f7fd615-61c7-447a-b26b-80c6a6c9e2d4
-Your Pets Browser agentSecret: <secret>
-Your Pets Browser recoveryCode: <recovery-code>
-Save these credentials — you need them to transfer or recover this subscription.
-Free trial: 2 hours from first launch.
-```
-
-### Trial expires
-
-When the 2-hour trial runs out, `getCredentials()` returns `upgradeUrl`. Show it to the user:
+On the first `launchBrowser()` call, a **2-hour free trial** starts. After expiry, `getCredentials()` returns `upgradeUrl`. Show it to the user:
 
 ```
-Trial expired. Subscribe to continue: https://buy.polar.sh/xxx?metadata[agentId]=...
+Trial expired. Subscribe to continue: <upgradeUrl>
 Or set your own proxy/CAPTCHA keys (BYO mode).
 ```
 
@@ -66,25 +106,21 @@ Subscription activates automatically within seconds (webhook). No manual steps n
 To transfer/recover on another agent, provide the same `agentId + agentSecret` during install.
 Backend rule: one `subscriptionId` can be linked to only one `agentId` at a time.
 
-To rotate a compromised secret, keep the same `agentId` and issue a new `agentSecret` (authorized by current secret or recovery code).
+To rotate a compromised secret, keep the same `agentId` and issue a new `agentSecret` (authorized by current secret or recovery code). Old secret is invalidated immediately.
 
-Old secret is invalidated immediately after rotation.
+## Setup modes
 
-## Setup
+### Option A: Managed credentials (default, recommended)
 
-### Option A: Managed credentials (subscription)
-
-Set these environment variables to get proxy + CAPTCHA keys from our API:
+The onboarding flow above sets everything up automatically. Environment variables used:
 
 ```bash
-PB_API_URL=https://api.petsbrowser.dev/pets-browser/v1
-# Preferred:
+PB_API_URL=https://api.clawpets.io/pets-browser/v1
+# Set automatically by onboarding, or manually:
 PB_AGENT_TOKEN=PB1.<agentId>.<agentSecret>
-# Or:
+# Or separately:
 PB_AGENT_ID=<agent-uuid>
 PB_AGENT_SECRET=<agent-secret>
-# Optional fallback for rotation:
-PB_AGENT_RECOVERY_CODE=<recovery-code>
 ```
 
 The skill will automatically fetch Decodo proxy credentials and 2captcha API key on launch.

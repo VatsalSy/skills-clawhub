@@ -24,23 +24,61 @@ const readline = require('readline');
 
 const CREDENTIALS_DIR = path.join(os.homedir(), '.pets-browser');
 const CREDENTIALS_FILE = path.join(CREDENTIALS_DIR, 'agent-credentials.json');
+const DEFAULT_API_URL = 'https://api.clawpets.io/pets-browser/v1';
 
 const AGENT_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const AGENT_SECRET_RE = /^[A-Za-z0-9_-]{32,200}$/;
 const RECOVERY_CODE_RE = /^[A-Za-z0-9_-]{20,200}$/;
 
+function installChromiumDeps() {
+  console.log('[pets-browser] Installing Chromium system dependencies...');
+  try {
+    // Try playwright's built-in deps installer first (needs root/sudo)
+    execSync('npx playwright install-deps chromium', {
+      stdio: 'inherit',
+      timeout: 120_000,
+    });
+    console.log('[pets-browser] System dependencies installed.');
+    return;
+  } catch (_) {}
+
+  // Fallback: install essential libs directly via apt-get
+  const libs = [
+    'libnss3', 'libnspr4',
+    'libatk1.0-0', 'libatk-bridge2.0-0',
+    'libcups2', 'libdrm2',
+    'libxkbcommon0', 'libxcomposite1', 'libxdamage1', 'libxfixes3', 'libxrandr2',
+    'libgbm1',
+    'libpango-1.0-0', 'libpangocairo-1.0-0', 'libcairo2',
+    'libasound2',
+  ].join(' ');
+  try {
+    execSync(`apt-get update -qq && apt-get install -y --no-install-recommends ${libs}`, {
+      stdio: 'inherit',
+      timeout: 120_000,
+    });
+    console.log('[pets-browser] System dependencies installed via apt-get.');
+  } catch (_) {
+    console.warn('[pets-browser] WARNING: Could not install system dependencies.');
+    console.warn('  Run manually: apt-get install -y ' + libs);
+  }
+}
+
 function installChromium() {
   console.log('[pets-browser] Installing Chromium...');
   try {
-    execSync('npx playwright install chromium --with-deps', {
+    execSync('npx playwright install chromium', {
       stdio: 'inherit',
       timeout: 300_000,
     });
-    console.log('[pets-browser] Chromium installed successfully.');
+    console.log('[pets-browser] Chromium binary installed.');
   } catch (_) {
     console.error('[pets-browser] WARNING: Chromium install failed. You may need to run manually:');
-    console.error('  npx playwright install chromium --with-deps');
+    console.error('  npx playwright install chromium');
   }
+
+  // Install system libraries (libnspr4, libnss3, etc.)
+  installChromiumDeps();
 }
 
 function generateAgentId() {
@@ -189,7 +227,7 @@ async function promptForExistingCredentials() {
 }
 
 async function rotateSecretWithApi(credentials) {
-  const apiUrl = process.env.PB_API_URL;
+  const apiUrl = process.env.PB_API_URL || DEFAULT_API_URL;
   if (!apiUrl || !credentials.recoveryCode) {
     return false;
   }
@@ -219,12 +257,7 @@ async function rotateSecretWithApi(credentials) {
 }
 
 async function registerWithApi(credentials) {
-  const apiUrl = process.env.PB_API_URL;
-  if (!apiUrl) {
-    console.log('[pets-browser] No PB_API_URL set - skipping API registration.');
-    console.log('  Set PB_API_URL to enable managed proxies and CAPTCHA solving.');
-    return;
-  }
+  const apiUrl = process.env.PB_API_URL || DEFAULT_API_URL;
 
   const url = `${apiUrl.replace(/\/$/, '')}/agents/register`;
 
