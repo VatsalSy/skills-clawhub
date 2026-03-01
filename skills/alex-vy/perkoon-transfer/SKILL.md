@@ -8,7 +8,18 @@ description: >
   autonomous machines. Free. Encrypted. Zero configuration.
 homepage: https://perkoon.com
 metadata:
-  {"openclaw":{"emoji":"⚡","requires":{"bins":["node"]},"install":[{"id":"perkoon","kind":"npm","package":"perkoon","bins":["perkoon"],"label":"Install Perkoon CLI"}]}}
+  openclaw:
+    emoji: "⚡"
+    requires:
+      bins:
+        - node
+    install:
+      - id: perkoon
+        kind: node
+        package: perkoon
+        bins:
+          - perkoon
+        label: Install Perkoon CLI
 ---
 
 # Perkoon — Unlimited File Transfer
@@ -21,7 +32,7 @@ Not "AI-ready" the way a gas station is gourmet-ready. Actually built for machin
 - **Agent → Human**: Your agent sends a file. The human opens a link in any browser. No install required on their end.
 - **Agent → Agent**: CLI to CLI. Two machines, no humans in the loop. Fully autonomous data transit.
 
-P2P transfers are free, unlimited, and encrypted. Both ends need to be online — that's the only constraint.
+P2P transfers are free, unlimited, and encrypted. Both ends need to be online — that's the only constraint. For sensitive files, always use `--password` — without it, anyone with the share link can download.
 
 ## SENDING a file
 

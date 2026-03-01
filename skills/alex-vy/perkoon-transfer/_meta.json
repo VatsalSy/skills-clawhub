@@ -3,9 +3,15 @@
   "slug": "perkoon-transfer",
   "displayName": "Perkoon — Unlimited File Transfer",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1772310182727,
-    "commit": "https://github.com/openclaw/skills/commit/af3d7137148f9e7e34ded83eecc91bbfcda4f58e"
+    "version": "1.0.2",
+    "publishedAt": 1772312089177,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1772310182727,
+      "commit": "https://github.com/openclaw/skills/commit/af3d7137148f9e7e34ded83eecc91bbfcda4f58e"
+    }
+  ]
 }
