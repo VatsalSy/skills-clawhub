@@ -196,3 +196,71 @@ Each platform has its own reference file with full implementation details:
 | **Clanker v4** | Base, Arbitrum, Mainnet, Unichain, Abstract, Monad, BSC | [references/clanker.md](./references/clanker.md) |
 | **Flaunch** | Base | [references/flaunch.md](./references/flaunch.md) |
 | **Pump.fun** | Solana | [references/pumpfun.md](./references/pumpfun.md) |
+
+---
+
+## Direct Mode Step-by-Step
+
+### Step 1: Choose a Platform
+
+| Target Chain | Platform | Reference File |
+|-------------|----------|---------------|
+| Base | Clanker (recommended) or Flaunch | [references/clanker.md](./references/clanker.md) or [references/flaunch.md](./references/flaunch.md) |
+| Arbitrum, Mainnet, Unichain, Abstract, Monad, BSC | Clanker | [references/clanker.md](./references/clanker.md) |
+| Solana | Pump.fun | [references/pumpfun.md](./references/pumpfun.md) |
+
+Clanker vs Flaunch on Base:
+- **Clanker:** Uniswap V4 pool, sniper protection, stable token pairing (USDC), multi-chain support
+- **Flaunch:** 30-minute fair launch period, custom fee split managers, bonding curve model
+
+### Step 2: Walk Through the Implementation
+
+Use the platform reference file to understand each piece:
+
+1. **Setup** — imports, client initialization, wallet configuration. See platform's official docs for secure key loading.
+2. **Fee configuration** — set 100% of fees to your wallet. This is why you chose Direct Mode.
+3. **Launch function** — deployment code with token name, symbol, metadata, fee recipients, platform-specific options.
+4. **Fee management** — claim, check unclaimed, update recipient patterns for post-launch.
+5. **Unsigned transaction output** — for EVM (Clanker, Flaunch), use `encodeFunctionData` to produce calldata for any wallet. For Solana (Pump.fun), see bot wallet signing pattern.
+
+### Wallet Integration
+
+For EVM launches, the reference files show patterns for producing unsigned transaction objects:
+
+```json
+{
+  "to": "0xContractAddress",
+  "data": "0xEncodedCalldata",
+  "value": "0",
+  "chainId": 8453,
+  "gas": "500000"
+}
+```
+
+Compatible with any wallet: Lobster, AgentWallet, base-wallet, evm-wallet, MetaMask, or any signer that accepts raw transaction objects.
+
+For Solana (Pump.fun), the signing model is different — see [references/pumpfun.md](./references/pumpfun.md).
+
+### Step 3: Configure Fee Recipients (100% to You)
+
+**Clanker:** `rewards.recipients` with your wallet at `bps: 10_000` (100%).
+
+**Flaunch:** Deploy `AddressFeeSplitManager` with your wallet at `share: 100_00000` (100%).
+
+**Pump.fun:** `create_fee_sharing_config` + `update_fee_shares` with your wallet at `10000` BPS (100%).
+
+### Step 4: Test Before Going Live
+
+- Deploy with a fresh wallet holding minimal funds (gas only)
+- Verify with a Quick Intel scan
+- Confirm fee recipients on block explorer
+- Test the claim flow
+
+### Step 5: Post-Launch Fee Management
+
+| Operation | Reference Section |
+|-----------|------------------|
+| Check unclaimed fees | Platform reference → "Check Unclaimed" |
+| Claim creator fees | Platform reference → "Claim" |
+| Update fee recipient | Platform reference → "Update Recipient" |
+| Verify token security | Quick Intel scan |

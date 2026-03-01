@@ -25,14 +25,15 @@ import {
   encodeAbiParameters,
   formatEther,
 } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
 import { base } from "viem/chains";
 
-// Replace with your key-loading logic — see Security section
-const account = privateKeyToAccount("0x_YOUR_LAUNCH_WALLET_PRIVATE_KEY");
+// Initialize viem clients for Base
+// See viem docs for wallet/account setup: https://viem.sh/docs/clients/wallet
+const publicClient = createPublicClient({ chain: base, transport: http("YOUR_RPC_URL") });
+const walletClient = createWalletClient({ account: yourAccount, chain: base, transport: http("YOUR_RPC_URL") });
 ```
 
-> **Security:** Use a dedicated launch wallet funded with minimal ETH for gas. The private key should be loaded from a secrets manager, not from plaintext config. See the [Security section in REFERENCE.md](../REFERENCE.md) for details.
+> **Wallet setup:** Use viem's account abstractions to load your signing account securely. See the [viem documentation](https://viem.sh/docs/accounts/local) for options. Use a dedicated launch wallet — see the [Security section in REFERENCE.md](../REFERENCE.md).
 
 You'll also need the Flaunch contract ABIs:
 - `FlaunchZap` — the main launch contract
@@ -40,6 +41,10 @@ You'll also need the Flaunch contract ABIs:
 - `AddressFeeSplitManager` — the fee distribution contract
 
 These are available from the Flaunch docs or by reading the verified contracts on Basescan.
+
+### Code Pattern Note
+
+The code examples below use `walletClient.writeContract()` for direct execution. To generate unsigned calldata instead (for passing to a separate wallet skill or signer), replace `walletClient.writeContract({ address, abi, functionName, args })` with `encodeFunctionData({ abi, functionName, args })` and return it as an unsigned transaction object with the contract `address` as the `to` field.
 
 ---
 

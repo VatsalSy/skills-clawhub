@@ -23,31 +23,16 @@ import {
   POOL_POSITIONS,
   WETH_ADDRESSES,
 } from "clanker-sdk";
-import { createPublicClient, createWalletClient, http } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
-import { base } from "viem/chains";
 
-// Replace with your key-loading logic — see Security section
-const account = privateKeyToAccount("0x_YOUR_LAUNCH_WALLET_PRIVATE_KEY");
-
-const publicClient = createPublicClient({
-  chain: base,
-  transport: http("YOUR_RPC_URL"),
-});
-
-const walletClient = createWalletClient({
-  account,
-  chain: base,
-  transport: http("YOUR_RPC_URL"),
-});
-
+// Initialize Clanker with your viem clients
+// See viem docs for wallet/account setup: https://viem.sh/docs/clients/wallet
 const clanker = new Clanker({
-  publicClient,
-  wallet: walletClient,
+  publicClient,  // viem publicClient for your target chain
+  wallet: walletClient,  // viem walletClient with your signing account
 });
 ```
 
-> **Security:** Use a dedicated launch wallet funded with minimal ETH for gas. The private key should be loaded from a secrets manager (AWS Secrets Manager, GCP Secret Manager, etc.), not from a plaintext `.env` file in production. See the [Security section in REFERENCE.md](../REFERENCE.md) for details.
+> **Wallet setup:** Use viem's `createPublicClient` and `createWalletClient` to initialize your clients. For wallet account setup (loading keys securely), see the [viem documentation](https://viem.sh/docs/accounts/local). Use a dedicated launch wallet — see the [Security section in REFERENCE.md](../REFERENCE.md).
 
 ---
 

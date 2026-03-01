@@ -33,14 +33,13 @@ import {
   getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
 
-// Replace with your key-loading logic — see Security section
+// Initialize connection and load your bot wallet keypair
+// See Solana docs for secure key management: https://solana.com/docs/clients/javascript
 const connection = new Connection("YOUR_SOLANA_RPC_URL", "confirmed");
-const botWallet = Keypair.fromSecretKey(
-  Buffer.from(JSON.parse("YOUR_LAUNCH_WALLET_PRIVATE_KEY_ARRAY"))
-);
+const botWallet = loadYourKeypairSecurely(); // Load from secrets manager — see Security section
 ```
 
-> **Security: Bot Wallet Model.** The code patterns below show how Pump.fun's Solana integration works. If you implement Direct Mode for Solana in your own application: use a dedicated wallet funded with only ~0.05 SOL for gas, never your main wallet. Store the key in a secrets manager, never in plaintext. This wallet signs launch and fee-sharing transactions but should never hold significant value. See the [Security section in REFERENCE.md](../REFERENCE.md) for details.
+> **Security: Bot Wallet Model.** The code patterns below show how Pump.fun's Solana integration works. Solana requires a signing keypair (unlike EVM where you can generate unsigned calldata). Use a dedicated wallet funded with only ~0.05 SOL for gas, never your main wallet. See the [Security section in REFERENCE.md](../REFERENCE.md) and the [Solana key management docs](https://solana.com/docs/clients/javascript) for secure loading patterns.
 
 ---
 
@@ -184,7 +183,8 @@ transaction.add(createInstruction);
 const { blockhash } = await connection.getLatestBlockhash("confirmed");
 transaction.recentBlockhash = blockhash;
 transaction.feePayer = botWallet.publicKey;
-transaction.sign(botWallet, mintKeypair); // Both must sign
+// Sign with both the bot wallet and mint keypair, then send
+// See Solana docs: https://solana.com/docs/clients/javascript#transactions
 
 const txHash = await connection.sendRawTransaction(transaction.serialize(), {
   skipPreflight: false,
