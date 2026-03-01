@@ -1,8 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { spawn } from "node:child_process";
+import { recordEvent, type MetricEvent, DEFAULT_METRICS_FILE } from "./metrics.js";
 
-function expandHome(p: string): string {
+export function expandHome(p: string): string {
   if (!p) return p;
   if (p === "~") return os.homedir();
   if (p.startsWith("~/")) return path.join(os.homedir(), p.slice(2));
@@ -13,14 +15,27 @@ type PluginCfg = {
   enabled?: boolean;
   modelOrder?: string[];
   cooldownMinutes?: number;
+  unavailableCooldownMinutes?: number;
+  debugLogging?: boolean;
+  debugLogSampleRate?: number;
   stateFile?: string;
   patchSessionPins?: boolean;
   notifyOnSwitch?: boolean;
   // If true, automatically skip github-copilot/* models unless copilot-proxy is enabled.
   requireCopilotProxyForCopilotModels?: boolean;
+  // If true (default), run `openclaw gateway restart` after patching the session model so the
+  // gateway picks up the change without waiting for a manual restart.
+  restartOnSwitch?: boolean;
+  // Delay in milliseconds before issuing the gateway restart (default: 3000).
+  // Gives the current turn time to finish before the gateway is restarted.
+  restartDelayMs?: number;
+  // If true (default), record failover events to a JSONL metrics log.
+  metricsEnabled?: boolean;
+  // Path to the JSONL metrics log file.
+  metricsFile?: string;
 };
 
-type LimitState = {
+export type LimitState = {
   // key: model id OR provider id (we keep it simple with model ids)
   limited: Record<
     string,
@@ -32,29 +47,64 @@ type LimitState = {
   >;
 };
 
-function nowSec() {
+export function nowSec() {
   return Math.floor(Date.now() / 1000);
 }
 
-function getNextMidnightPT(): number {
+export function getNextMidnightPT(): number {
+  // Use Intl.DateTimeFormat to determine the current PT calendar date,
+  // then find the exact UTC timestamp for midnight of the next PT day.
+  // America/Los_Angeles is always UTC-7 (PDT) or UTC-8 (PST).
+  // We try both offsets and verify which one actually lands on midnight
+  // when formatted back in PT - this correctly handles DST transitions
+  // where today's offset differs from tomorrow's.
   const now = new Date();
-  // Pacific Time is UTC-8 (PST) or UTC-7 (PDT).
-  // Simplified: use UTC-8 for safety (slightly later reset is safer).
-  const utcNow = now.getTime();
-  const ptOffset = -8 * 60 * 60 * 1000;
-  const ptTime = new Date(utcNow + ptOffset);
+  const fmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Los_Angeles",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+  const parts = fmt.formatToParts(now);
+  const get = (type: string) =>
+    parts.find((p) => p.type === type)?.value ?? "0";
+  const ptYear = parseInt(get("year"), 10);
+  const ptMonth = parseInt(get("month"), 10);
+  const ptDay = parseInt(get("day"), 10);
 
-  ptTime.setUTCHours(24, 0, 0, 0); // next midnight in PT (represented in shifted UTC)
-  return Math.floor((ptTime.getTime() - ptOffset) / 1000);
+  // Tomorrow's calendar midnight as a naive UTC timestamp (no offset applied).
+  // Date.UTC handles month/year rollover automatically (e.g. day 32 -> next month).
+  const tomorrowNaiveMs = Date.UTC(ptYear, ptMonth - 1, ptDay + 1, 0, 0, 0, 0);
+
+  // Try both possible PT offsets; the correct one produces hour 0 (or 24) in PT.
+  for (const offsetHours of [8, 7]) {
+    const candidate = tomorrowNaiveMs + offsetHours * 3_600_000;
+    const cParts = fmt.formatToParts(new Date(candidate));
+    const cHour = parseInt(
+      cParts.find((p) => p.type === "hour")?.value ?? "99",
+      10
+    );
+    // hour12:false may report midnight as "00" or "24" depending on the engine.
+    if (cHour === 0 || cHour === 24) {
+      return Math.floor(candidate / 1000);
+    }
+  }
+
+  // Unreachable for America/Los_Angeles, but safe fallback using PST (UTC-8).
+  return Math.floor((tomorrowNaiveMs + 8 * 3_600_000) / 1000);
 }
 
-function getNextMidnightUTC(): number {
+export function getNextMidnightUTC(): number {
   const now = new Date();
   now.setUTCHours(24, 0, 0, 0);
   return Math.floor(now.getTime() / 1000);
 }
 
-function parseWaitTime(err: string): number | undefined {
+export function parseWaitTime(err: string): number | undefined {
   // Common patterns: "Try again in 4m30s", "after 12:00 UTC", "retry after 60 seconds"
   const s = err.toLowerCase();
   
@@ -75,7 +125,7 @@ function parseWaitTime(err: string): number | undefined {
   return undefined;
 }
 
-function calculateCooldown(provider: string, err?: string, defaultMinutes = 60): number {
+export function calculateCooldown(provider: string, err?: string, defaultMinutes = 60): number {
   if (!err) return defaultMinutes * 60;
   
   // 1. Try to parse specific wait time from error
@@ -106,7 +156,7 @@ function calculateCooldown(provider: string, err?: string, defaultMinutes = 60):
 }
 
 
-function isRateLimitLike(err?: string): boolean {
+export function isRateLimitLike(err?: string): boolean {
   if (!err) return false;
   const s = err.toLowerCase();
   return (
@@ -118,7 +168,7 @@ function isRateLimitLike(err?: string): boolean {
   );
 }
 
-function isAuthOrScopeLike(err?: string): boolean {
+export function isAuthOrScopeLike(err?: string): boolean {
   if (!err) return false;
   const s = err.toLowerCase();
   // OpenAI: "Missing scopes: api.responses.write" etc.
@@ -132,7 +182,19 @@ function isAuthOrScopeLike(err?: string): boolean {
   );
 }
 
-function loadState(statePath: string): LimitState {
+export function isTemporarilyUnavailableLike(err?: string): boolean {
+  if (!err) return false;
+  const s = err.toLowerCase();
+  return (
+    s.includes("plugin is in cooldown") ||
+    s.includes("in cooldown") ||
+    s.includes("temporarily unavailable") ||
+    s.includes("service unavailable") ||
+    s.includes("copilot-proxy")
+  );
+}
+
+export function loadState(statePath: string): LimitState {
   try {
     const raw = fs.readFileSync(statePath, "utf-8");
     const parsed = JSON.parse(raw);
@@ -144,12 +206,28 @@ function loadState(statePath: string): LimitState {
   }
 }
 
-function saveState(statePath: string, state: LimitState) {
-  fs.mkdirSync(path.dirname(statePath), { recursive: true });
-  fs.writeFileSync(statePath, JSON.stringify(state, null, 2));
+/**
+ * Write a file atomically: write to a .tmp sibling first, then rename
+ * over the target. This prevents corruption if the process crashes mid-write.
+ * Creates parent directories if they do not exist.
+ */
+export function atomicWriteFile(filePath: string, data: string): void {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  const tmpPath = filePath + ".tmp";
+  try {
+    fs.writeFileSync(tmpPath, data);
+    fs.renameSync(tmpPath, filePath);
+  } catch (err) {
+    try { fs.unlinkSync(tmpPath); } catch {}
+    throw err;
+  }
 }
 
-function firstAvailableModel(order: string[], state: LimitState): string | undefined {
+export function saveState(statePath: string, state: LimitState) {
+  atomicWriteFile(statePath, JSON.stringify(state, null, 2));
+}
+
+export function firstAvailableModel(order: string[], state: LimitState): string | undefined {
   const t = nowSec();
   for (const m of order) {
     const lim = state.limited[m];
@@ -167,7 +245,7 @@ function patchSessionModel(sessionKey: string, model: string, logger: any) {
     if (!data[sessionKey]) return false;
     const prev = data[sessionKey].model;
     data[sessionKey].model = model;
-    fs.writeFileSync(sessionsPath, JSON.stringify(data, null, 0));
+    atomicWriteFile(sessionsPath, JSON.stringify(data, null, 0));
     logger?.info?.(`[model-failover] Patched session ${sessionKey} model: ${prev} -> ${model}`);
     return true;
   } catch (e: any) {
@@ -199,6 +277,26 @@ function isModelConfigured(gatewayCfg: any, modelId: string): boolean {
   return configured !== undefined;
 }
 
+export const DEFAULT_MODEL_ORDER = [
+  // Tier 1: Flagships
+  "openai-codex/gpt-5.3-codex",
+  "anthropic/claude-opus-4-6",
+  "github-copilot/claude-sonnet-4.6",
+  "google-gemini-cli/gemini-3-pro-preview",
+  // Tier 2: Strong/Balanced
+  "anthropic/claude-sonnet-4-6",
+  "openai-codex/gpt-5.2",
+  "google-gemini-cli/gemini-2.5-pro",
+  // Tier 3: Search/Specific
+  "perplexity/sonar-deep-research",
+  "perplexity/sonar-pro",
+  // Tier 4: Fast/Fallback
+  "google-gemini-cli/gemini-2.5-flash",
+  "google-gemini-cli/gemini-3-flash-preview",
+];
+
+export const DEFAULT_STATE_FILE = "~/.openclaw/workspace/memory/model-ratelimits.json";
+
 export default function register(api: any) {
   const cfg = (api.pluginConfig ?? {}) as PluginCfg;
   if (cfg.enabled === false) {
@@ -208,45 +306,78 @@ export default function register(api: any) {
 
   const modelOrder = (cfg.modelOrder && cfg.modelOrder.length > 0)
     ? cfg.modelOrder
-    : [
-      // Tier 1: Flagships
-      "openai-codex/gpt-5.3-codex",
-      "anthropic/claude-opus-4-6",
-      "github-copilot/claude-sonnet-4.6",
-      "google-gemini-cli/gemini-3-pro-preview",
-      // Tier 2: Strong/Balanced
-      "anthropic/claude-sonnet-4-6",
-      "openai-codex/gpt-5.2",
-      "google-gemini-cli/gemini-2.5-pro",
-      // Tier 3: Search/Specific
-      "perplexity/sonar-deep-research",
-      "perplexity/sonar-pro",
-      // Tier 4: Fast/Fallback
-      "google-gemini-cli/gemini-2.5-flash",
-      "google-gemini-cli/gemini-3-flash-preview"
-    ]; 
+    : DEFAULT_MODEL_ORDER; 
 
   const cooldownMinutes = cfg.cooldownMinutes ?? 300;
-  const statePath = expandHome(cfg.stateFile ?? "~/.openclaw/workspace/memory/model-ratelimits.json");
+  const unavailableCooldownMinutes = cfg.unavailableCooldownMinutes ?? 15;
+  const debugLogging = cfg.debugLogging === true;
+  const debugLogSampleRate = Math.max(0, Math.min(1, Number(cfg.debugLogSampleRate ?? 1)));
+  const statePath = expandHome(cfg.stateFile ?? DEFAULT_STATE_FILE);
   const patchPins = cfg.patchSessionPins !== false;
   const notifyOnSwitch = cfg.notifyOnSwitch !== false;
 
-  const gatewayCfg = loadGatewayConfig(api);
   const requireCopilotProxy = cfg.requireCopilotProxyForCopilotModels !== false;
-  const copilotEnabled = !requireCopilotProxy || isCopilotProxyEnabled(gatewayCfg);
+  const restartOnSwitch = cfg.restartOnSwitch !== false;
+  const restartDelayMs = cfg.restartDelayMs ?? 3000;
+  const metricsEnabled = cfg.metricsEnabled !== false;
+  const metricsPath = expandHome(cfg.metricsFile ?? DEFAULT_METRICS_FILE);
+  const sessionForcedModel = new Map<string, string>();
+
+  function emitMetric(event: MetricEvent) {
+    if (!metricsEnabled) return;
+    try {
+      recordEvent(metricsPath, event);
+    } catch (e: any) {
+      api.logger?.warn?.(`[model-failover] Failed to write metrics: ${e?.message ?? String(e)}`);
+    }
+  }
+
+  let restartPending = false;
+  function scheduleGatewayRestart() {
+    if (!restartOnSwitch || restartPending) return;
+    restartPending = true;
+    setTimeout(() => {
+      restartPending = false;
+      try {
+        const p = spawn("openclaw", ["gateway", "restart"], { detached: true, stdio: "ignore" });
+        p.unref();
+        api.logger?.info?.("[model-failover] Gateway restart issued to apply session model patch.");
+      } catch (e: any) {
+        api.logger?.warn?.(`[model-failover] Gateway restart failed: ${e?.message ?? String(e)}`);
+      }
+    }, restartDelayMs);
+  }
+
+  function isCopilotEnabledNow(): boolean {
+    const gatewayCfg = loadGatewayConfig(api);
+    return !requireCopilotProxy || isCopilotProxyEnabled(gatewayCfg);
+  }
 
   function effectiveOrder(): string[] {
+    const gatewayCfg = loadGatewayConfig(api);
+    const copilotEnabled = !requireCopilotProxy || isCopilotProxyEnabled(gatewayCfg);
+
     // Filter out models that are obviously not usable.
-    return modelOrder.filter((m) => {
+    const filtered = modelOrder.filter((m) => {
       if (m.startsWith("github-copilot/") && !copilotEnabled) return false;
       // Only try models that exist in agents.defaults.models when config is available.
       if (gatewayCfg && !isModelConfigured(gatewayCfg, m)) return false;
       return true;
     });
+
+    // If config shape is different and filter removed everything, keep original order as a safe fallback.
+    return filtered.length > 0 ? filtered : modelOrder;
   }
 
+  function debugLog(message: string) {
+    if (!debugLogging) return;
+    if (debugLogSampleRate < 1 && Math.random() > debugLogSampleRate) return;
+    api.logger?.info?.(`[model-failover][debug] ${message}`);
+  }
+
+  const initialCopilotEnabled = isCopilotEnabledNow();
   api.logger?.info?.(
-    `[model-failover] enabled. copilotProxy=${copilotEnabled ? "on" : "off"}. order=${effectiveOrder().join(" -> ")}`
+    `[model-failover] enabled. copilotProxy=${initialCopilotEnabled ? "on" : "off"}. order=${effectiveOrder().join(" -> ")}`
   );
 
   function getPinnedModel(sessionKey?: string): string | undefined {
@@ -271,27 +402,58 @@ export default function register(api: any) {
     if (!chosen) return;
 
     const forceOverride = (cfg as any).forceOverride === true;
+    const sessionKey = ctx?.sessionKey as string | undefined;
+    if (sessionKey) {
+      const forced = sessionForcedModel.get(sessionKey);
+      if (forced && order.includes(forced)) {
+        const forcedLimit = state.limited[forced];
+        const forcedLimited = !!forcedLimit && forcedLimit.nextAvailableAt > nowSec();
+        if (!forcedLimited) {
+          debugLog(`session=${sessionKey} override=${forced} reason=immediate-failover-cache`);
+          return { modelOverride: forced };
+        }
+        sessionForcedModel.delete(sessionKey);
+        debugLog(`session=${sessionKey} cleared-stale-forced-model=${forced}`);
+      }
+    }
+
     const pinned = getPinnedModel(ctx?.sessionKey);
 
     if (forceOverride) {
+      debugLog(`session=${ctx?.sessionKey ?? "n/a"} override=${chosen} reason=forceOverride`);
       return { modelOverride: chosen };
     }
 
     if (!pinned) {
       // no pin info; be conservative and don't override
+      debugLog(`session=${ctx?.sessionKey ?? "n/a"} no-override reason=no-pinned-model`);
       return;
+    }
+
+    const copilotEnabled = isCopilotEnabledNow();
+    const pinnedUnavailable =
+      !order.includes(pinned) ||
+      (pinned.startsWith("github-copilot/") && !copilotEnabled);
+
+    if (pinnedUnavailable && chosen !== pinned) {
+      debugLog(`session=${ctx?.sessionKey ?? "n/a"} override=${chosen} reason=pinned-unavailable pinned=${pinned}`);
+      return { modelOverride: chosen };
     }
 
     const lim = state.limited[pinned];
     const isLimited = !!lim && lim.nextAvailableAt > nowSec();
     if (!isLimited) {
+      debugLog(`session=${ctx?.sessionKey ?? "n/a"} no-override reason=pinned-available pinned=${pinned}`);
       return;
     }
 
     // pinned is limited -> switch to next available
     if (chosen !== pinned) {
+      debugLog(`session=${ctx?.sessionKey ?? "n/a"} override=${chosen} reason=pinned-limited pinned=${pinned}`);
       return { modelOverride: chosen };
     }
+
+    debugLog(`session=${ctx?.sessionKey ?? "n/a"} no-override reason=chosen-equals-pinned pinned=${pinned}`);
   });
 
   // 2) When agent ends with rate limit: mark current model limited + patch session pin.
@@ -301,21 +463,29 @@ export default function register(api: any) {
 
     const isRate = isRateLimitLike(err);
     const isAuth = isAuthOrScopeLike(err);
-    if (!isRate && !isAuth) return;
+    const isUnavailable = isTemporarilyUnavailableLike(err);
+    if (!isRate && !isAuth && !isUnavailable) return;
 
     const currentModel = ctx?.model || ctx?.modelId || undefined;
+    if (typeof currentModel !== "string" || currentModel.length === 0) {
+      api.logger?.warn?.("[model-failover] Could not determine failed model from context; skipping limitation update.");
+      return;
+    }
+
     const state = loadState(statePath);
 
     const hitAt = nowSec();
 
     const order = effectiveOrder();
-    const key = (typeof currentModel === "string" && currentModel.length > 0) ? currentModel : order[0];
+    const key = currentModel;
 
     // Detect provider-wide exhaustion (generic)
     const provider = key.split("/")[0];
 
     // Auth/scope errors shouldn't be retried aggressively.
-    const defaultCooldownMin = isAuth ? Math.max(cooldownMinutes, 12 * 60) : cooldownMinutes;
+    const defaultCooldownMin = isAuth
+      ? Math.max(cooldownMinutes, 12 * 60)
+      : (isUnavailable ? unavailableCooldownMinutes : cooldownMinutes);
     const nextAvail = hitAt + calculateCooldown(provider, err, defaultCooldownMin);
 
     // If it looks like a provider prefix (no spaces, has slash), assume provider-wide block for rate limits
@@ -346,36 +516,75 @@ export default function register(api: any) {
     
     saveState(statePath, state);
 
+    const cooldownSec = nextAvail - hitAt;
+    const errorType: "rate_limit" | "auth_error" | "unavailable" =
+      isAuth ? "auth_error" : (isUnavailable ? "unavailable" : "rate_limit");
+
+    emitMetric({
+      ts: hitAt,
+      type: errorType,
+      model: key,
+      provider,
+      reason: err?.slice(0, 200),
+      cooldownSec,
+      trigger: "agent_end",
+      session: ctx?.sessionKey,
+    });
+
     const fallback = firstAvailableModel(order, state);
+
+    if (ctx?.sessionKey && fallback) {
+      sessionForcedModel.set(ctx.sessionKey, fallback);
+      debugLog(`session=${ctx.sessionKey} queued-failover=${fallback} source=agent_end provider=${provider}`);
+    }
+
+    if (fallback && fallback !== key) {
+      emitMetric({
+        ts: hitAt,
+        type: "failover",
+        model: key,
+        provider,
+        to: fallback,
+        trigger: "agent_end",
+        session: ctx?.sessionKey,
+      });
+    }
 
     if (patchPins && ctx?.sessionKey && fallback) {
       patchSessionModel(ctx.sessionKey, fallback, api.logger);
     }
 
     if (notifyOnSwitch && ctx?.sessionKey && fallback) {
-      const why = isAuth ? "auth/scope error" : "rate limit";
+      const why = isAuth ? "auth/scope error" : (isUnavailable ? "temporary unavailability" : "rate limit");
       api.logger?.warn?.(`[model-failover] ${why} detected. Switched future turns to ${fallback} (sessionKey=${ctx.sessionKey}).`);
     }
+
+    scheduleGatewayRestart();
   });
 
   // 3) If we ever send the raw rate-limit error to a channel, immediately patch the session.
   api.on("message_sent", (event: any, ctx: any) => {
     const content = (event?.content ?? "") as string;
     if (!content) return;
-    if (!isRateLimitLike(content) && !content.includes("API rate limit reached")) return;
+    const isRate = isRateLimitLike(content) || content.includes("API rate limit reached");
+    const isUnavailable = isTemporarilyUnavailableLike(content);
+    if (!isRate && !isUnavailable) return;
 
     const state = loadState(statePath);
     const order = effectiveOrder();
 
-    // Assume current model from context if available, else first in effective order
-    const currentModel = String(ctx?.model || ctx?.modelId || order[0] || modelOrder[0]);
+    // Only limit if we can identify the real current model.
+    const currentModelRaw = ctx?.model || ctx?.modelId;
+    if (typeof currentModelRaw !== "string" || currentModelRaw.length === 0) return;
+    const currentModel = currentModelRaw;
     const provider = currentModel.split("/")[0];
 
     const hitAt = nowSec();
-    const nextAvail = hitAt + calculateCooldown(provider, content, cooldownMinutes);
+    const defaultCooldown = isUnavailable ? unavailableCooldownMinutes : cooldownMinutes;
+    const nextAvail = hitAt + calculateCooldown(provider, content, defaultCooldown);
 
     // Provider-wide block (generic) for observed rate-limit messages
-    const isProviderWide = provider.length > 0;
+    const isProviderWide = isRate && provider.length > 0;
     if (isProviderWide) {
       for (const m of order) {
         if (m.startsWith(provider + "/")) {
@@ -396,9 +605,42 @@ export default function register(api: any) {
 
     saveState(statePath, state);
 
+    const cooldownSec = nextAvail - hitAt;
+    const errorType: "rate_limit" | "unavailable" = isUnavailable ? "unavailable" : "rate_limit";
+
+    emitMetric({
+      ts: hitAt,
+      type: errorType,
+      model: currentModel,
+      provider,
+      reason: content.slice(0, 200),
+      cooldownSec,
+      trigger: "message_sent",
+      session: ctx?.sessionKey,
+    });
+
     const fallback = firstAvailableModel(order, state);
+    if (ctx?.sessionKey && fallback) {
+      sessionForcedModel.set(ctx.sessionKey, fallback);
+      debugLog(`session=${ctx.sessionKey} queued-failover=${fallback} source=message_sent provider=${provider}`);
+    }
+
+    if (fallback && fallback !== currentModel) {
+      emitMetric({
+        ts: hitAt,
+        type: "failover",
+        model: currentModel,
+        provider,
+        to: fallback,
+        trigger: "message_sent",
+        session: ctx?.sessionKey,
+      });
+    }
+
     if (patchPins && ctx?.sessionKey && fallback) {
       patchSessionModel(ctx.sessionKey, fallback, api.logger);
     }
+
+    scheduleGatewayRestart();
   });
 }
