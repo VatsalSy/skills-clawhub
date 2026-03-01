@@ -1,0 +1,11 @@
+{
+  "owner": "fengtality",
+  "slug": "lp-agent",
+  "displayName": "LP Agent",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1772239699576,
+    "commit": null
+  },
+  "history": []
+}
