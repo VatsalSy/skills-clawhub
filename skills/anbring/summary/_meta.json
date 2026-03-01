@@ -1,0 +1,11 @@
+{
+  "owner": "anbring",
+  "slug": "summary",
+  "displayName": "test-summary",
+  "latest": {
+    "version": "0.0.1",
+    "publishedAt": 1772273148699,
+    "commit": null
+  },
+  "history": []
+}
