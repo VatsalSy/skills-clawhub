@@ -1,9 +1,16 @@
+---
+name: agent-chat-ux
+version: 1.5.0
+author: Charles Sears
+description: "Multi-agent UX for OpenClaw Control UI — agent selector, per-agent sessions, session history viewer with search, agent-filtered Sessions tab with friendly names, Create Agent wizard, emoji picker, backend agent CRUD, and auth mode badge."
+---
+
 # agent-chat-ux
 
 **name:** agent-chat-ux  
-**version:** 1.3.0  
+**version:** 1.5.0  
 **author:** Charles Sears  
-**description:** Upgrades the OpenClaw Control UI chat and agent experience — agent selector dropdown in chat, per-agent session filtering, new session button, Create Agent wizard (manual + AI), emoji picker, edit/delete agents inline, agent-specific cron stats, model selector improvements, and backend agent CRUD methods.
+**description:** Multi-agent UX for OpenClaw Control UI — agent selector, per-agent sessions, session history viewer with search, agent-filtered Sessions tab with friendly names, Create Agent wizard, emoji picker, and backend agent CRUD.
 
 ---
 
@@ -129,6 +136,61 @@ New RPC handlers wired into the gateway:
 
 **Auth fix in `agents.wizard`:** Raw HTTP calls to the model API require an `api_key` token, not an OAuth/bearer token. The wizard now falls back to an explicit `api_key` profile (or `ANTHROPIC_API_KEY` env var) when the default resolved auth mode is `oauth` or `token`.
 
+### 11. Session History Viewer (v1.4.0)
+A modal overlay accessible from the **Sessions tab** that displays full conversation history for any session:
+- **Agent dropdown filter** — scope sessions by agent
+- **Session dropdown** — pick a session to view (filtered by agent)
+- **Search bar** — debounced full-text search across message content (case-insensitive)
+- **Role filter chips** — All / User / Assistant / System / Tool
+- **Message timeline** — role icons (👤/🤖/⚙️/🔧), timestamps, and message text
+- **Pagination** — "Load More" with count display (100 messages per page)
+- Click "History" button on any row in the Sessions tab to open
+
+### 12. Sessions Tab Overhaul (v1.4.0)
+The Sessions tab now provides a unified multi-agent experience:
+- **Agent filter dropdown** — filter sessions by agent (populated from `agents.list`)
+- **Friendly session names** — "Main Session", "Cron: pipedream-token-refresh", "discord:#bot-chat" instead of raw keys like `agent:main:cron:cc63fdb3-...`
+- **Agent identity column** — shows agent emoji + identity name (e.g. "🤖 Assistant") using `identity.name` → `name` → `id` fallback chain
+- **Raw key shown as subtitle** — full technical key displayed in smaller muted monospace text below the friendly name
+- **Label column removed** — redundant since the friendly name already incorporates label/displayName
+- **CSS grid layout** — proper column alignment using `grid-template-columns` with proportional widths; headers align precisely with data
+- **Empty state** — clear message when an agent has no sessions
+- **Session count** — total/filtered count shown in the store info line
+- **History button pre-selects** — clicking History on a row opens the modal with agent and session already selected, loading history immediately
+
+### 13. Backend — `sessions.history` RPC (v1.4.0)
+New RPC handler that reads full JSONL transcript files:
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `key` | string | Session key |
+| `limit` | number | Max messages (default 200, max 500) |
+| `offset` | number | Pagination offset |
+| `search` | string | Full-text search filter |
+| `rolesFilter` | string[] | Filter by role(s) |
+
+Returns `{key, sessionId, agentId, total, offset, items[{role, text, timestamp}]}`.
+
+
+### 14. Auth Mode Badge in Chat Controls (v1.5.0)
+A small pill badge appears in the chat controls bar (between the context gauge and the `+` New Session button) showing which auth method was used for the last response:
+
+| Badge | Color | Meaning |
+|-------|-------|---------|
+| **OAuth** | Green | Claude Max OAuth setup token (`sk-ant-oat01-*`) |
+| **API** | Indigo | Direct Anthropic API key |
+| **Fallback** | Orange | OpenAI or other fallback provider |
+
+**How it works:**
+1. After each final chat event, the UI calls a new `auth.status` RPC
+2. The RPC reads `lastGood` from `auth-profiles.json` to determine which profile was last used
+3. The badge updates to reflect that profile's type
+
+**Why this approach:** Simple and reliable — reads `lastGood` from the file already maintained by the auth profile store. No need to thread auth info through the streaming pipeline.
+
+### 15. Pipedream Tab Refreshes on Agent Switch (v1.5.0)
+Previously, switching agents while on the Pipedream sub-tab kept showing the previous agent's data. Now `onSelectAgent` reloads Pipedream (and Zapier) state when their respective sub-tabs are active. Same fix applied to Zapier tab.
+
 ---
 
 ## Files Changed
@@ -141,8 +203,115 @@ New RPC handlers wired into the gateway:
 | `ui/src/ui/views/agents.ts` | Create Agent panel, 103-emoji picker, edit/delete agent UI, always-editable Overview |
 | `ui/src/ui/views/agents-utils.ts` | `buildModelOptionsMulti()` for multi-select fallback model dropdown |
 | `ui/src/ui/views/agents-panels-status-files.ts` | Cron Jobs tab Scheduler card: agent-specific job count + next wake |
-| `ui/src/ui/app-render.ts` | Create/wizard props wiring + edit agent save handler (emoji param, cache eviction) |
-| `ui/src/ui/app.ts` | 19 `@state()` fields: create/wizard (10) + edit/delete agent (9) |
+| `ui/src/ui/app-render.ts` | Create/wizard props wiring + edit agent save handler (emoji param, cache eviction) + session history modal wiring + agent filter for Sessions tab + agent identity name resolution (`identity.name` fallback chain) + History button agent pre-selection |
+| `ui/src/ui/app.ts` | 19 `@state()` fields: create/wizard (10) + edit/delete agent (9) + session history modal (8) + sessions agent filter (1) |
+| `ui/src/ui/app-view-state.ts` | Session history modal + sessions agent filter type definitions |
+| `ui/src/ui/views/sessions.ts` | Overhauled: friendly names, agent identity column, agent filter dropdown, CSS grid layout, History button, Label column removed |
+| `ui/src/ui/views/sessions-history-modal.ts` | **New file:** Session history modal component |
+| `src/gateway/protocol/schema/sessions.ts` | `SessionsHistoryParamsSchema` |
+| `src/gateway/protocol/schema/types.ts` | `SessionsHistoryParams` type export |
+| `src/gateway/protocol/index.ts` | `validateSessionsHistoryParams` + re-exports |
+| `src/gateway/server-methods/sessions.ts` | `sessions.history` RPC handler |
+| `src/agents/pi-embedded-runner/run.ts` | Calls `updateAgentRunContext` with `authProfileId` after profile selection |
+| `src/gateway/server-chat.ts` | Includes `authProfileId` from run context in final chat event payload |
+| `src/gateway/server-methods-list.ts` | Registers `auth.status` as a known RPC method |
+| `src/gateway/server-methods/sessions.ts` | `auth.status` RPC: reads `lastGood` from auth-profiles store |
+| `src/infra/agent-events.ts` | Adds `authProfileId?: string` to `AgentRunContext`; exports `updateAgentRunContext()` |
+| `ui/src/styles/chat/grouped.css` | Auth badge styles for per-message display (OAuth/API/fallback) |
+| `ui/src/styles/chat/layout.css` | `.chat-auth-badge` styles for chat controls bar badge |
+| `ui/src/ui/app-gateway.ts` | Calls `auth.status` after each final chat event; updates `chatAuthMode` state |
+| `ui/src/ui/app-render.helpers.ts` | Renders auth badge in chat controls bar next to context gauge |
+| `ui/src/ui/app-view-state.ts` | Adds `chatAuthMode` field |
+| `ui/src/ui/app.ts` | Adds `@state() chatAuthMode` |
+| `ui/src/ui/chat/grouped-render.ts` | `renderAuthBadge()` helper for per-message badge (passes `group.authProfileId`) |
+| `ui/src/ui/controllers/chat.ts` | Annotates final messages with `_authProfileId` from payload |
+| `ui/src/ui/types/chat-types.ts` | Adds `authProfileId?: string` to `MessageGroup` type |
+| `ui/src/ui/views/chat.ts` | `groupMessages()` propagates `_authProfileId` from messages to group |
+| `ui/src/ui/app-render.ts` | `onSelectAgent` reloads Pipedream/Zapier state when their sub-tabs are active |
+| `ui/src/ui/app-chat.ts` | Removed `CHAT_SESSIONS_ACTIVE_MINUTES` time filter (was 120min, now 0 = show all sessions in chat dropdown) |
+
+---
+
+## UI Design & Styling Reference
+
+This section documents the UI design decisions for anyone installing or extending this skill.
+
+### Sessions Tab Layout
+Uses **CSS grid** (`display: grid`) instead of the default OpenClaw `.table` flex layout for precise column alignment:
+
+```css
+.sessions-grid {
+  grid-template-columns: 2fr 1.2fr 0.6fr 0.8fr 1fr 0.8fr 0.8fr auto;
+  /* Session | Agent | Kind | Updated | Tokens | Thinking | Reasoning | Actions */
+}
+```
+
+- **Headers**: 12px uppercase, letter-spacing 0.5px, `var(--text-muted)` color, bottom border
+- **Rows**: `display: contents` for grid participation, subtle bottom border, hover highlight at 2% white opacity
+- **Session name cell**: Friendly name as bold link (`var(--accent, #6366f1)`), raw key below in 11px muted monospace at 50% opacity
+- **Agent column**: 13px text, emoji + identity name (e.g. "🤖 Assistant")
+- **Selects**: `max-width: 100px` to prevent overflow
+
+### Session History Modal
+Dark overlay modal with the following structure:
+
+```
+┌──────────────────────────────────────────────────┐
+│  Session History                            [✕]  │
+│  [Agent ▼]  [Session ▼]                         │
+│  [🔍 Search...]  [All] [User] [Asst] [Sys] [Tool]│
+│  ─────────────────────────────────────────────── │
+│  👤 User · Feb 23, 10:23 AM                     │
+│  Hello, can you help me?                         │
+│  ─────────────────────────────────────────────── │
+│  🤖 Assistant · Feb 23, 10:23 AM                │
+│  Of course! What do you need?                    │
+│  ─────────────────────────────────────────────── │
+│          [Load More ↓]  Showing 100 of 342       │
+└──────────────────────────────────────────────────┘
+```
+
+**Key CSS variables used:**
+- `var(--bg-card, #1a1a2e)` — modal background
+- `var(--border, #333)` — borders
+- `var(--accent, #6366f1)` — user role color, active chip
+- `var(--text, #e0e0e0)` — message text
+- `var(--border-subtle, rgba(255,255,255,0.06))` — message separators
+
+**Role colors:**
+| Role | Color |
+|------|-------|
+| User | `var(--accent, #6366f1)` (indigo) |
+| Assistant | `#10b981` (emerald) |
+| System | `#f59e0b` (amber) |
+| Tool | `#8b5cf6` (violet) |
+
+**Role icons:** 👤 User, 🤖 Assistant, ⚙️ System, 🔧 Tool, 💬 Other
+
+### Session Name Resolution
+The friendly name fallback chain:
+1. `row.label` (user-set label)
+2. `row.displayName` (server-computed, e.g. "discord:#bot-chat")
+3. Smart key parsing:
+   - `*:main` → "Main Session"
+   - `*:cron:*:run:*` → "Cron Run"
+   - `*:cron:*` → "Cron Job"
+   - `*:subagent:*` → "Subagent"
+   - `*:openai:*` → "OpenAI Session"
+   - `*:<channel>:direct:<id>` → "Channel · id"
+   - `*:<channel>:group:*` → "Channel Group"
+4. Raw key as fallback
+
+### Agent Identity Resolution
+For the Agent column and dropdowns:
+1. `agent.identity.name` (from IDENTITY.md — e.g. "Assistant")
+2. `agent.name` (from config — e.g. "main")
+3. `agent.id` (raw identifier)
+
+Emoji: `agent.identity.emoji` with "🤖" as fallback.
+
+### Chat Dropdown
+The session dropdown in the chat header shows **all sessions** for the selected agent (no time filter). Previously limited to sessions active within 120 minutes, which hid older Discord channels and other sessions.
 
 ---
 
@@ -171,6 +340,41 @@ git apply ~/.openclaw/workspace/skills/agent-chat-ux/references/server-agents.tx
 ```
 
 If any patch fails due to upstream drift, apply manually using the patch file as a line-by-line reference.
+
+### Step 1b: Apply v1.4.0 patches (Session History + Sessions Tab Overhaul)
+
+```bash
+cd ~/openclaw
+
+# Backend: sessions.history RPC
+git apply ~/.openclaw/workspace/skills/agent-chat-ux/references/v1.4.0/patch-01-sessions-history-rpc.txt
+
+# Sessions tab: friendly names, agent column, agent filter
+git apply ~/.openclaw/workspace/skills/agent-chat-ux/references/v1.4.0/patch-02-sessions-tab-overhaul.txt
+
+# App state + render wiring for history modal
+git apply ~/.openclaw/workspace/skills/agent-chat-ux/references/v1.4.0/patch-03-app-wiring.txt
+
+# New file: session history modal component
+cp ~/.openclaw/workspace/skills/agent-chat-ux/references/v1.4.0/patch-04-sessions-history-modal.ts \
+   ui/src/ui/views/sessions-history-modal.ts
+
+# Chat dropdown: show all sessions (remove 120min active filter)
+git apply ~/.openclaw/workspace/skills/agent-chat-ux/references/v1.4.0/patch-05-chat-sessions-all.txt
+```
+
+
+### Step 1c: Apply v1.5.0 patches (Auth badge + Pipedream agent switch fix)
+
+```bash
+cd ~/openclaw
+
+# Auth badge (auth.status RPC + UI badge in chat controls)
+git apply ~/.openclaw/workspace/skills/agent-chat-ux/references/v1.5.0/patch-auth-badge.txt
+
+# Pipedream/Zapier tab refresh on agent switch
+git apply ~/.openclaw/workspace/skills/agent-chat-ux/references/v1.5.0/patch-pipedream-agent-switch.txt
+```
 
 ### Step 2: Rebuild UI
 
@@ -202,6 +406,10 @@ openclaw gateway restart
 6. **Agents → Overview** — Name, Emoji, Workspace are editable directly; Save button at bottom activates on any change
 7. Change an agent's emoji — after Save it should persist (not revert to the original creation emoji)
 8. **Agents → Cron Jobs** — agents with no cron jobs show `Jobs: 0` / `Next wake: n/a` (not the global gateway count)
+9. **Sessions tab** — sessions show friendly names (e.g. "Main Session") with agent emoji+name column; agent filter dropdown works
+10. **Sessions tab → History button** — opens modal with conversation history, search, and role filter chips
+11. **History modal → Agent filter** — changing agent filters the session dropdown; selecting a session loads its messages
+12. **Chat dropdown** — session dropdown shows ALL sessions for the selected agent (including older Discord channels, OpenAI sessions, etc. — not just recent ones)
 
 ---
 
@@ -221,6 +429,21 @@ openclaw gateway restart
 In Model Selection:
 - **Primary model** — single dropdown
 - **Fallback models** — multi-select (`Ctrl`/`⌘` + click for multiple); these are retried in order when the primary model fails (rate limit, context overflow, etc.)
+
+### Sessions: Viewing History
+1. Go to **Sessions** tab
+2. Optionally filter by agent using the **Agent** dropdown
+3. Click **History** on any session row
+4. The modal opens with the full conversation
+5. **Search** — type to search across all messages (300ms debounce)
+6. **Role chips** — click All/User/Assistant/System/Tool to filter by role
+7. **Load More** — pagination loads 100 messages at a time
+
+### Sessions: Agent-Filtered View
+The Sessions tab now shows:
+- **Session column** — friendly name with raw key as subtitle
+- **Agent column** — emoji + name from agent identity
+- **Agent filter** — dropdown at top to scope the view per-agent
 
 ---
 
@@ -246,6 +469,31 @@ Stored as `model.fallbacks[]` in the agent config. The runtime tries them via `r
 ---
 
 ## Changelog
+
+### 1.5.0 (2026-02-28)
+- **New:** Auth mode badge in chat controls bar — shows OAuth / API / Fallback pill after each response via `auth.status` RPC reading `lastGood` from auth-profiles store
+- **New:** `auth.status` RPC — reads `lastGood` from `loadAuthProfileStore()` and returns `{profileId, mode}` (`oauth` | `api` | `fallback` | `unknown`)
+- **New:** `chatAuthMode` UI state — updates after each final chat event; drives the badge color/label
+- **Fix:** Pipedream tab now refreshes when switching agents (was stuck showing previous agent's External User ID)
+- **Fix:** Zapier tab also refreshes on agent switch (same fix)
+- **Patches:** 2 patch files in `references/v1.5.0/`
+
+### 1.4.0 (2026-02-23)
+- **New:** Session History Viewer — modal overlay with full conversation history, full-text search, role filtering (All/User/Assistant/System/Tool), and pagination (100 messages per page)
+- **New:** `sessions.history` RPC — reads full JSONL transcripts with search, role filtering, and offset/limit pagination
+- **New:** Sessions tab agent filter dropdown — scope view to a single agent
+- **New:** Sessions tab agent identity column — shows emoji + name per row
+- **Overhaul:** Sessions tab now shows friendly display names ("Main Session", "Cron: pipedream-token-refresh") instead of raw keys (`agent:main:main`, `agent:main:cron:cc63fdb3-...`)
+- **Overhaul:** Raw session key shown as muted subtitle under the friendly name for technical reference
+- **New:** Empty state for agent-filtered sessions — clear message when an agent has no sessions
+- **New:** Session count shown in store info line
+- **Replaced:** Verbose + Label columns removed from Sessions tab, replaced by Agent column (better multi-agent UX; label was redundant with friendly name)
+- **Design:** CSS grid layout for Sessions tab — proper column alignment using `grid-template-columns` with proportional widths
+- **Design:** Agent identity resolution uses `identity.name` → config `name` → agent `id` fallback chain (shows "Assistant" not "Main Agent")
+- **Design:** History button pre-selects agent filter and session in modal, loads history immediately
+- **Design:** Raw session key shown as muted monospace subtitle for technical reference
+- **Fix:** Chat session dropdown now shows ALL sessions (removed `CHAT_SESSIONS_ACTIVE_MINUTES` 120min time filter that was hiding older Discord channels and API sessions)
+- **Patches:** 5 patch files in `references/v1.4.0/`
 
 ### 1.3.0 (2026-02-19)
 - **New:** Edit agent inline — name, emoji, workspace always editable in Overview; single bottom Save button activates on any change; no inline Save/Cancel toggle
@@ -275,6 +523,35 @@ Stored as `model.fallbacks[]` in the agent config. The runtime tries them via `r
 - **Fix:** "Agent not found in config" after creation — `loadConfig` now called after `agents.create` in both Manual and Wizard paths
 - **New:** Emoji picker dropdown (60 emojis, 5 categories, live preview) replaces free-text emoji input
 - Patches refreshed with all fixes included
+
+## ⚠️ Known Gotchas
+
+### Model Dropdown Shows Only 2–3 Models (Allowlist Trap)
+
+**Symptom:** The model selector in the Agents config page only shows a tiny handful of models (e.g. 2 Anthropic models) even though many providers are authenticated and `ModelRegistry.getAll()` returns 756+ models.
+
+**Root cause:** `agents.defaults.models` in `~/.openclaw/openclaw.json` acts as a **strict allowlist** in `buildAllowedModelSet()`. When the key is non-empty (any entries present), ONLY those models appear in the dropdown. This gets populated during onboarding when the user selects a default model, and then never cleared.
+
+**Fix:**
+```bash
+# Clear the allowlist so all models are shown
+python3 -c "
+import json
+cfg = json.load(open('/home/charl/.openclaw/openclaw.json'))
+cfg['agents']['defaults']['models'] = {}
+json.dump(cfg, open('/home/charl/.openclaw/openclaw.json', 'w'), indent=2)
+"
+# Then restart the gateway to clear the model catalog cache
+systemctl --user restart openclaw-gateway.service
+```
+
+**Verify:** `openclaw models list | wc -l` — should be 700+ lines.
+
+**Code path:** `models.list` RPC → `loadGatewayModelCatalog()` → `loadModelCatalog()` → `getAll()` (756 models) → `buildAllowedModelSet()` → filters to allowlist if `cfg.agents.defaults.models` is non-empty.
+
+**Note:** This also affects the gateway's in-process model catalog cache (`modelCatalogPromise` at module scope). A gateway restart is required after fixing the config.
+
+---
 
 ### 1.0.0 (2026-02-18)
 - Initial release

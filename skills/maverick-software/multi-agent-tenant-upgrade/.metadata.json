@@ -1,9 +1,9 @@
 {
   "name": "agent-chat-ux",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "author": "Charles Sears",
-  "description": "Agent selector dropdown in chat, per-agent session filtering, new session button, Create Agent wizard (manual + AI), emoji picker, fallback model dropdown, edit/delete agents, agent-specific cron stats, and backend agent CRUD methods for the OpenClaw Control UI.",
-  "tags": ["ui", "agents", "chat", "sessions", "webchat", "models", "wizard"],
+  "description": "Multi-agent UX for OpenClaw Control UI — agent selector, per-agent sessions, session history viewer with search, agent-filtered Sessions tab with friendly names and CSS grid layout, Create Agent wizard, emoji picker, and backend agent CRUD.",
+  "tags": ["ui", "agents", "chat", "sessions", "webchat", "models", "wizard", "history"],
   "openclaw_version": ">=2026.2.18",
   "requires_rebuild": true,
   "rebuild_targets": ["ui", "gateway"],
@@ -15,7 +15,12 @@
     "references/app-render-helpers.txt",
     "references/app-render.txt",
     "references/app-main.txt",
-    "references/server-agents.txt"
+    "references/server-agents.txt",
+    "references/v1.4.0/patch-01-sessions-history-rpc.txt",
+    "references/v1.4.0/patch-02-sessions-tab-overhaul.txt",
+    "references/v1.4.0/patch-03-app-wiring.txt",
+    "references/v1.4.0/patch-04-sessions-history-modal.ts",
+    "references/v1.4.0/patch-05-chat-sessions-all.txt"
   ],
   "openclaw": {
     "emoji": "🤖",
@@ -60,7 +65,7 @@
     }
   },
   "created_at": "2026-02-18",
-  "updated_at": "2026-02-19",
+  "updated_at": "2026-02-23",
   "clawhub_ready": true,
   "fixes": [
     "AI Wizard 401 OAuth auth error",
@@ -69,6 +74,10 @@
     "Removed out-of-scope props and handlers from app-render.txt patch",
     "Hardened LLM output parsing with structural validation and field length caps",
     "Agent emoji reverting after save — agents.update now writes - Emoji: (not - Avatar:) so last-wins IDENTITY.md parsing correctly overrides creation-time emoji",
-    "Cron Jobs tab showed global gateway job count/next-wake for every agent — now shows agent-specific stats only"
+    "Cron Jobs tab showed global gateway job count/next-wake for every agent — now shows agent-specific stats only",
+    "v1.4.0: Session history viewer modal with full-text search, role filtering, and pagination",
+    "v1.4.0: Sessions tab overhauled — friendly display names instead of raw keys, agent name+emoji column, agent filter dropdown",
+    "v1.4.0: New sessions.history RPC for reading full JSONL transcripts with search/pagination",
+    "v1.4.0: Removed Verbose column from Sessions tab (replaced by Agent column for better multi-agent UX)"
   ]
 }
