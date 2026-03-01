@@ -1,83 +1,83 @@
 ---
 name: paper-engineering
-description: 基于“框架层-总结层-正文层”三层架构的自动化论文写作与文献管理助手。严格按照用户指定的目录（`workspace/毕业论文`）组织所有文件。
+description: Automated academic writing assistant based on a three-layer architecture: Framework Layer, Summary Layer, and Body Layer. Organizes all files in a structured project directory.
 version: 1.0.0
-author: 用户定制
-permissions: 文件系统读写、网络访问（用于查找文献）
+author: OpenClaw Community
+permissions: Filesystem read/write, network access (for literature search)
 ---
 
-# 论文工程三层架构助手 (Paper Engineering Assistant)
+# Paper Engineering Assistant
 
-## 1. 技能描述
-本技能旨在自动化执行一套结构化的论文写作流程。该流程将论文分解为**框架层**、**总结层**和**正文层**，并通过严格的同步机制确保三层数据的一致性。核心工作目录为：`workspace/毕业论文`。
+## 1. Skill Description
+This skill automates a structured academic writing workflow based on a three-layer architecture: **Framework Layer**, **Summary Layer**, and **Body Layer**. It maintains data consistency across all layers through automatic synchronization mechanisms. The skill operates within a user-designated project directory (default: `./PaperProject/`).
 
-## 2. 何时使用
-当用户需要系统性地进行学术写作，特别是处理长篇论文（如毕业论文）时，可使用本技能。
-- 用户说：“开始写我的毕业论文。”
-- 用户说：“阅读并结构化处理`文献资料`文件夹里的所有文献。”
-- 用户说：“根据开题报告，生成论文的初步框架。”
-- 用户说：“我已经修改了第二章第一节，请同步更新框架和总结。”
-- 用户说：“帮我查找并下载关于‘绩效管理’的最新文献。”
+## 2. When to Use
+Use this skill when the user needs systematic assistance with academic writing, especially for long-form documents like theses or dissertations.
+- User says: "Start working on my thesis."
+- User says: "Read and structure all literature in the `references` folder."
+- User says: "Generate a preliminary framework based on my research proposal."
+- User says: "I've modified Section 2.1, please sync the framework and summaries."
+- User says: "Find and download recent literature about 'performance management'."
 
-## 3. 核心概念与工作流
-本技能严格遵循用户文档中定义的三层架构：
+## 3. Core Concepts & Workflow
+This skill strictly follows the three-layer architecture:
 
-### **A. 核心三层结构**
-1.  **框架层 (`structs.json`)**：整个论文的地图。是一个JSON数组，描述章、节、段落的树形结构，包含ID、标题、摘要、关键词和关键点。
-2.  **总结层 (`summaries.json`)**：论文内容的数据库。为框架层每个节点提供更详细的总结，并记录相关节点ID以实现内容回溯。
-3.  **正文层 (`./论文正文/`目录)**：具体的写作内容。一个与框架层完全对应的目录和Markdown文件集合，每个文件对应一个写作单元。
+### **A. Core Three-Layer Structure**
+1.  **Framework Layer (`structs.json`)**: The blueprint/map of the entire paper. A JSON array describing the hierarchical structure of chapters, sections, and paragraphs with IDs, titles, abstracts, keywords, and key points.
+2.  **Summary Layer (`summaries.json`)**: The content database. Provides detailed summaries for each framework node and records related node IDs for content traceability.
+3.  **Body Layer (`./document_body/` directory)**: The actual written content. A directory and Markdown file collection that exactly mirrors the framework layer structure, with each file corresponding to a writing unit.
 
-### **B. 工作流程**
-**阶段一：文献阅读与消化**
-1.  **初始化**：在`workspace/毕业论文`目录下，为技能运行创建必要的子目录（如`./论文正文/`， `./已处理文献/`）。
-2.  **处理文献**：
-    - 遍历`文献资料`目录下的每个文献。
-    - 为每个文献创建独立文件夹（以文献名命名），并初始化`information.md`文件，记录元数据（标题、作者、摘要、关键词、下载链接）。
-    - 如果文献文件（如PDF）可获取，则将其**也**按照三层架构进行解析，生成对应的`structs.json`， `summaries.json`和正文文件，保存在该文献文件夹内。这相当于为每篇参考文献建立了“知识库”。
-    - 如果无法下载原文，则仅保存`information.md`。
-3.  **阅读其他材料**：阅读`开题报告`、`学校规范`等非文献材料，理解要求、方向和现有基础。
+### **B. Workflow Stages**
+**Stage 1: Literature Review & Processing**
+1.  **Initialization**: Create necessary subdirectories in the project directory (e.g., `./document_body/`, `./processed_references/`).
+2.  **Process References**:
+    - Iterate through each reference in the `references` directory.
+    - Create a dedicated folder for each reference (named after the reference) and initialize an `information.md` file with metadata (title, author, abstract, keywords, download link).
+    - If the reference file (e.g., PDF) is available, parse it using the same three-layer architecture, generating corresponding `structs.json`, `summaries.json`, and body files stored within that reference's folder. This creates a "knowledge base" for each reference.
+    - If the original text cannot be downloaded, only save the `information.md`.
+3.  **Read Other Materials**: Review non-reference materials like research proposals, institutional guidelines, etc., to understand requirements and existing foundations.
 
-**阶段二：论文写作**
-1.  **生成框架层**：基于研究主题、开题报告和已阅读的文献，生成初始的`structs.json`。如果有优秀的参考论文，可模仿其结构。
-2.  **生成总结层**：根据框架层的每个节点，撰写更详细的总结，形成`summaries.json`。
-3.  **撰写正文层**：依据框架层的结构和总结层的内容，在`./论文正文/`目录下，按`第X章/节X.X 标题.md`的格式，逐一撰写各个部分的详细内容。如果某个段落过长，自动拆分为多个文件（如`节X.X 标题_trunc_1.md`）。
+**Stage 2: Document Writing**
+1.  **Generate Framework Layer**: Create the initial `structs.json` based on the research topic, proposal, and processed references. If an exemplary reference paper exists, its structure can be emulated.
+2.  **Generate Summary Layer**: Write detailed summaries for each framework node, forming `summaries.json`.
+3.  **Write Body Layer**: Based on the framework structure and summary content, write detailed content for each part in the `./document_body/` directory, following the format `Chapter_X/Section_X.X_Title.md`. If a section becomes too long, split it into multiple files (e.g., `Section_X.X_Title_trunc_1.md`).
 
-**阶段三：构建与同步**
-1.  **构建最终论文**：运行一个拼接脚本，读取`./论文正文/`目录下的所有Markdown文件，按照框架层的顺序，合并成一个完整的`毕业论文_终稿.md`文件。此过程是程序化的，不依赖大模型。
-2.  **重点：同步机制**：
-    - **自上而下修改**：当用户或AI修改了`框架层(structs.json)`或`总结层(summaries.json)`，必须触发对应`正文层`文件的重写或更新。
-    - **自下而上修改**：当用户或AI修改了`正文层`的某个文件，必须提取其核心信息，反向更新对应的`总结层`条目和`框架层`摘要。
-    - 此同步是确保论文逻辑一致、避免碎片化的最关键操作，必须在每次修改后执行。
+**Stage 3: Assembly & Synchronization**
+1.  **Assemble Final Document**: Run a concatenation script that reads all Markdown files in `./document_body/` and merges them in the order defined by the framework layer into a complete `thesis_final.md` file. This is a programmatic process, not reliant on AI.
+2.  **Critical: Synchronization Mechanism**:
+    - **Top-down Modification**: When the user or AI modifies the **Framework Layer (`structs.json`)** or **Summary Layer (`summaries.json`)**, the corresponding **Body Layer** files must be rewritten or updated.
+    - **Bottom-up Modification**: When the user or AI modifies a **Body Layer** file, extract its core information to update the corresponding **Summary Layer** entry and **Framework Layer** abstract.
+    - This synchronization is crucial for maintaining logical consistency and preventing fragmentation, and must be executed after each modification.
 
-## 4. 如何使用（操作步骤）
-当用户触发技能时，我将按以下逻辑工作：
+## 4. How to Use (Operating Steps)
+When the user triggers the skill, I will work according to the following logic:
 
-1.  **确认工作目录**：始终将根目录锁定在`workspace/毕业论文`。所有生成的文件都必须放在此目录或其子目录下。
-2.  **执行请求的具体任务**：
-    - **如果是“开始”或“处理文献”**：
-        a. 检查目录结构，列出`文献资料`文件夹中的所有项目。
-        b. 为每个项目执行“文献阅读与消化”流程。
-        c. 生成一份`文献阅读报告.md`，汇总所有文献的核心发现和相互关联。
-    - **如果是“生成框架”**：
-        a. 综合分析开题报告、已处理文献的核心观点和学校规范。
-        b. 在根目录生成或更新`structs.json`（框架层）。
-    - **如果是“撰写正文”**：
-        a. 读取`structs.json`和`summaries.json`。
-        b. 在`./论文正文/`目录下创建对应的文件夹和文件，并开始撰写内容。允许覆盖此目录下的旧文件。
-        c. 撰写每个部分时，会查询`summaries.json`和相关联的文献知识库。
-    - **如果是“同步修改”**：
-        a. 用户指出修改了某个文件（如`./论文正文/第3章/3.1 现状分析.md`）。
-        b. 我首先读取修改后的文件内容，提炼出新摘要和关键点。
-        c. 更新`summaries.json`中对应`section_id`的`section_summary`。
-        d. 更新`structs.json`中对应`section_id`的`abstract`和`key_points`。
-    - **如果是“查找文献”**：
-        a. 根据用户给出的关键词联网搜索。
-        b. 尝试下载PDF到`文献资料`目录。
-        c. 无论下载成功与否，都为其创建文件夹和`information.md`。如果下载成功，则继续执行结构化解析。
-3.  **输出与确认**：每一步操作后，我会明确告知生成了哪些文件，路径是什么，并简要说明内容。
+1.  **Confirm Working Directory**: I will first establish the project root directory. If not specified, I will use the default `./PaperProject/` in the current working directory. All generated files will be placed within this directory or its subdirectories.
+2.  **Execute the Requested Task**:
+    - **If the request is "start" or "process references"**:
+        a. Check the directory structure and list all items in the `references` folder.
+        b. Execute the "Literature Review & Processing" workflow for each item.
+        c. Generate a `literature_review_report.md` summarizing key findings and interconnections.
+    - **If the request is "generate framework"**:
+        a. Comprehensively analyze the research proposal, core insights from processed references, and institutional guidelines.
+        b. Generate or update `structs.json` (Framework Layer) in the project root.
+    - **If the request is "write body"**:
+        a. Read `structs.json` and `summaries.json`.
+        b. Create corresponding folders and files in the `./document_body/` directory and begin writing content. Existing files in this directory may be overwritten.
+        c. While writing each section, query `summaries.json` and the associated reference knowledge bases.
+    - **If the request is "sync modification"**:
+        a. The user indicates which file was modified (e.g., `./document_body/Chapter_3/3.1_Current_Analysis.md`).
+        b. I first read the modified file content, extract a new abstract and key points.
+        c. Update the `section_summary` for the corresponding `section_id` in `summaries.json`.
+        d. Update the `abstract` and `key_points` for the corresponding `section_id` in `structs.json`.
+    - **If the request is "find literature"**:
+        a. Perform a network search based on the user-provided keywords.
+        b. Attempt to download PDFs to the `references` directory.
+        c. Create a folder and `information.md` for each, regardless of download success. If downloaded successfully, proceed with structured parsing.
+3.  **Output & Confirmation**: After each operation, I will clearly state which files were generated, their paths, and briefly describe their content.
 
-## 5. 边界情况处理
-- **目录不存在**：如果`workspace/毕业论文`目录不存在，我会先询问用户是否要创建它。
-- **文献资料为空**：如果`文献资料`文件夹为空，我会提示用户，并询问是否直接进入框架设计阶段，或开始联网查找文献。
-- **开题报告缺失**：如果找不到开题报告，我会基于论文题目和通用学术结构生成一个非常基础的初始框架，并提示用户这需要大量后续修订。
-- **同步冲突**：如果检测到框架层、总结层和正文层对同一部分的描述存在无法自动调和的重⼤矛盾，我会将矛盾点列出，并**暂停自动同步**，请求用户进行人工判断和指示。
+## 5. Edge Cases
+- **Directory Doesn't Exist**: If the project directory doesn't exist, I will ask the user if they want to create it.
+- **References Folder Empty**: If the `references` folder is empty, I will notify the user and ask if they want to proceed directly to framework design or start a network search for literature.
+- **Research Proposal Missing**: If no research proposal is found, I will generate a very basic initial framework based on the paper title and general academic structure, noting that it will require significant revision.
+- **Sync Conflict**: If major, irreconcilable discrepancies are detected between the Framework, Summary, and Body layers for the same section, I will list the conflicts and **pause automatic synchronization**, requesting manual user judgment and instruction.

@@ -3,46 +3,72 @@ import json
 from pathlib import Path
 
 class PaperEngineer:
-    def __init__(self, base_path="/Users/chenkuan/Desktop/毕业论文"):
+    def __init__(self, base_path="./PaperProject"):
         self.base_path = Path(base_path)
         self.structs_path = self.base_path / "structs.json"
         self.summaries_path = self.base_path / "summaries.json"
-        self.body_dir = self.base_path / "论文正文"
+        self.body_dir = self.base_path / "document_body"
+        self.references_dir = self.base_path / "references"
+        self.processed_refs_dir = self.base_path / "processed_references"
 
     def ensure_dirs(self):
-        """确保必要目录存在"""
+        """Ensure necessary directories exist"""
         self.body_dir.mkdir(parents=True, exist_ok=True)
-        (self.base_path / "已处理文献").mkdir(parents=True, exist_ok=True)
+        self.references_dir.mkdir(parents=True, exist_ok=True)
+        self.processed_refs_dir.mkdir(parents=True, exist_ok=True)
+        return f"Project directories initialized at: {self.base_path.absolute()}"
+
+    def get_project_structure(self):
+        """Return the current project structure for context"""
+        structure = {
+            "project_root": str(self.base_path.absolute()),
+            "framework_file": str(self.structs_path) if self.structs_path.exists() else None,
+            "summary_file": str(self.summaries_path) if self.summaries_path.exists() else None,
+            "body_dir": str(self.body_dir) if self.body_dir.exists() else None,
+            "references_count": len(list(self.references_dir.glob("*"))) if self.references_dir.exists() else 0
+        }
+        return structure
 
     def update_summary_from_body(self, section_id: str, new_content: str):
         """
-        当正文层文件被修改后，调用此函数来更新总结层。
-        这是一个简化示例，实际需要更复杂的内容分析。
+        Update the summary layer when a body layer file is modified.
+        This is a simplified example; actual implementation would require more sophisticated content analysis.
         """
         if not self.summaries_path.exists():
-            return "总结层文件不存在，请先初始化。"
+            return "Summary layer file does not exist. Please initialize the project first."
 
         with open(self.summaries_path, 'r', encoding='utf-8') as f:
             summaries = json.load(f)
 
-        # 这里应实现查找对应section_id并更新其section_summary的逻辑
-        # 以及一个简单的内容摘要生成算法
-        # updated = some_summarize_function(new_content)
-        # ...
+        # TODO: Implement logic to find the corresponding section_id
+        # and update its section_summary with a generated summary
+        # This would involve a content summarization function
+        
+        # Placeholder update logic
+        for item in summaries:
+            if item.get("section_id") == section_id:
+                # In practice, you would generate a summary from new_content
+                item["section_summary"] = f"Updated summary for {section_id}"
+                break
 
         with open(self.summaries_path, 'w', encoding='utf-8') as f:
             json.dump(summaries, f, ensure_ascii=False, indent=2)
-        return f"已尝试根据正文更新总结层节点 {section_id}。"
+        
+        return f"Attempted to update summary layer for node: {section_id}"
 
-    # 可以在此添加更多函数，如：generate_framework, parse_pdf, merge_final_draft 等
-
-# 供OpenClaw Gateway调用的主要异步函数
-async def sync_on_body_change(section_id: str, new_content: str):
-    engineer = PaperEngineer()
+# Async functions for OpenClaw Gateway
+async def sync_on_body_change(section_id: str, new_content: str, project_path: str = "./PaperProject"):
+    engineer = PaperEngineer(project_path)
     result = engineer.update_summary_from_body(section_id, new_content)
     return result
 
-async def initialize_project():
-    engineer = PaperEngineer()
-    engineer.ensure_dirs()
-    return f"项目目录已就绪于: {engineer.base_path}"
+async def initialize_project(project_path: str = "./PaperProject"):
+    engineer = PaperEngineer(project_path)
+    result = engineer.ensure_dirs()
+    structure = engineer.get_project_structure()
+    return f"{result}\nCurrent structure: {json.dumps(structure, indent=2)}"
+
+async def get_project_status(project_path: str = "./PaperProject"):
+    engineer = PaperEngineer(project_path)
+    structure = engineer.get_project_structure()
+    return json.dumps(structure, indent=2)
