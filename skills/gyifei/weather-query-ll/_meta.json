@@ -1,0 +1,11 @@
+{
+  "owner": "gyifei",
+  "slug": "weather-query-ll",
+  "displayName": "天气查询小技能",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772282373340,
+    "commit": null
+  },
+  "history": []
+}
