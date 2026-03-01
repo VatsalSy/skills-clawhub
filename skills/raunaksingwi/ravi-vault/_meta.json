@@ -3,9 +3,15 @@
   "slug": "ravi-vault",
   "displayName": "Ravi vault",
   "latest": {
-    "version": "1.5.1",
-    "publishedAt": 1772201557761,
-    "commit": "https://github.com/openclaw/skills/commit/5d8a1f5e331f9a34f19581ebd1e94098f522a889"
+    "version": "1.6.0",
+    "publishedAt": 1772282686190,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.5.1",
+      "publishedAt": 1772201557761,
+      "commit": "https://github.com/openclaw/skills/commit/5d8a1f5e331f9a34f19581ebd1e94098f522a889"
+    }
+  ]
 }
