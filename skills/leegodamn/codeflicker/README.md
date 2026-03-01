@@ -2,6 +2,8 @@
 
 AI programming assistant skill for OpenClaw. Integrates with CodeFlicker CLI by Kuaishou.
 
+**快手员工专用** - 使用 CodeFlicker 进行代码开发，可享受更多模型选择和免费 token 用量。
+
 ## Features
 
 - Install and configure CodeFlicker CLI
@@ -9,6 +11,11 @@ AI programming assistant skill for OpenClaw. Integrates with CodeFlicker CLI by 
 - Configure models (glm-5, claude-haiku-4.5, etc.)
 - Set approval mode (default, autoEdit, yolo)
 - Continue sessions
+- Auto-use from OpenClaw with --cwd support
+- **Workspace** - Git worktree based isolated development
+- **Run** - Natural language to shell command
+- **MCP** - MCP server management
+- **Skills** - Skill management system
 
 ## Installation
 
@@ -23,6 +30,18 @@ git clone https://github.com/LeeGoDamn/codeflicker-skill.git
 ```
 
 ## Usage
+
+### Auto-Use from OpenClaw
+
+When OpenClaw needs to perform development tasks:
+
+```bash
+# Check if flickcli is available
+if which flickcli >/dev/null 2>&1; then
+    # Use flickcli with --cwd
+    flickcli -q --cwd ~/work "开发任务描述"
+fi
+```
 
 ### Check Installation
 
@@ -55,6 +74,22 @@ codeflicker/scripts/config.sh list
 codeflicker/scripts/continue.sh "add unit tests"
 ```
 
+### ⭐ Workspace (Git Worktree)
+
+```bash
+# Create isolated development workspace
+flickcli workspace create --name feature-x
+
+# List workspaces
+flickcli workspace list
+
+# Complete and merge
+flickcli workspace complete
+
+# Delete without merge
+flickcli workspace delete <name>
+```
+
 ## Requirements
 
 - Node.js >= 22
@@ -75,7 +110,13 @@ export npm_config_registry="https://npm.corp.kuaishou.com"
 npm install -g @ks-codeflicker/cli
 ```
 
-### 3. Login with SSO
+### 3. Create workspace directory (recommended)
+
+```bash
+mkdir -p ~/work
+```
+
+### 4. Login with SSO
 
 ```bash
 flickcli /login
