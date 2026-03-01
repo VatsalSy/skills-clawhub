@@ -3,11 +3,16 @@
   "slug": "31third-safe-rebalancer-simple",
   "displayName": "31Third Safe Rebalancer (Simple)",
   "latest": {
-    "version": "0.1.3",
-    "publishedAt": 1771670802698,
-    "commit": "https://github.com/openclaw/skills/commit/d3fb26387756c71485defa16a23b7223a486dac3"
+    "version": "0.1.5",
+    "publishedAt": 1772201031662,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.1.3",
+      "publishedAt": 1771670802698,
+      "commit": "https://github.com/openclaw/skills/commit/d3fb26387756c71485defa16a23b7223a486dac3"
+    },
     {
       "version": "0.1.0",
       "publishedAt": 1771606282550,

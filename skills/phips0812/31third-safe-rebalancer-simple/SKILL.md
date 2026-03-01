@@ -11,6 +11,7 @@ This skill is intentionally minimal for non-technical users.
 Best practice: use only one command / one tool:
 
 - `rebalance_now`
+- `verify_deployment_config` (post-deploy troubleshooting)
 
 If you are unsure, use the help command first:
 
@@ -86,4 +87,57 @@ Partial policy deployment behavior:
 npm run cli -- help
 npm run cli -- rebalance-now
 npm run cli -- rebalance-now --target-entries '[{"tokenAddress":"0x...","allocation":0.5},{"tokenAddress":"0x...","allocation":0.5}]'
+npm run cli -- verify-deployment --troubleshooting-file ./summary.txt
+npm run cli -- verify-deployment --troubleshooting-summary "Safe=0x..."
 ```
+
+## Troubleshooting & Best Practices
+
+If your rebalance fails, check these common issues:
+
+### 1. Verify the deployed contracts vs your environment
+Use the `verify-deployment` tool to verify the deployed contracts against your environment.
+Copy the troubleshooting info from the Safe Policy Deployer (Step 4 or Step 5). It has the following schema:
+
+```
+Safe=0x123...456
+ExecutorModule=0x123...456 | Deployed
+Scheduler=0x123...456
+Registry=0x123...456
+BatchTrade=0xD20c024560ccA40288C05BAB650ac087ae9b0f6e
+FeedRegistry=0x1d4999242A24C8588c4f5dB7dFF1D74Df6bC746A
+CooldownSec=3600
+
+AssetUniversePolicy=0x123...456 | Deployed
+AssetUniverseAssets:
+- USDC | 0x833589fcd6edb6e08f4c7c32d4f71b54bda02913
+- WETH | 0x4200000000000000000000000000000000000006
+
+StaticAllocationPolicy=0x123...456 | Deployed
+StaticAllocationDriftThresholdPercent=0.50%
+StaticAllocationToleranceThresholdPercent=0.50%
+StaticAllocationTargets:
+- USDC | 0x833589fcd6edb6e08f4c7c32d4f71b54bda02913 | AllocationPercent=10.00%
+- WETH | 0x4200000000000000000000000000000000000006 | AllocationPercent=90.00%
+
+SlippagePolicy=0x123...456 | Deployed
+MaxSlippagePercent=0.50%
+```
+
+IMPORTANT: The framework is deployed with a Safe batch transaction. It might happen that an internal transaction runs
+out of gas and fails. The batch transaction itself still succeeds, but not all policies might be deployed. In this case,
+execution of rebalancings might fail.
+
+
+### 2. "Policy failed: to token not allowed"
+Your `AssetUniverse` policy is blocking the trade.
+- **Fix:** Just use tokens that are allowed by the policy for rebalancing.
+
+### 3. "Policy failed: minToReceive below..."
+The trade slippage is too high.
+- **Cause:** Low liquidity for the token pair (common with Aave `aTokens` or wrapped assets on new chains).
+- **Fix:** Try setting maxSlippage and maxPriceImpact lower on the rebalancing calculation call.
+
+### 4. "Missing StaticAllocation policy"
+The script can't find a target allocation on-chain.
+- **Fix:** Run verify-deployment and if policy not deployed on purpose you can rebalance into any allocation within the AssetUniverse.
