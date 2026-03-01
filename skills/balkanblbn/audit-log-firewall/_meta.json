@@ -1,0 +1,11 @@
+{
+  "owner": "balkanblbn",
+  "slug": "audit-log-firewall",
+  "displayName": "Audit Log Firewall",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772333710336,
+    "commit": null
+  },
+  "history": []
+}
