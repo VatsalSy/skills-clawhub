@@ -1,15 +1,15 @@
 ---
 name: zyfai
-description: Earn yield on any Ethereum wallet on Base, Arbitrum, and Plasma. Use when a user wants passive DeFi yield on their funds. Deploys a non-custodial subaccount (Safe) linked to their EOA, enables automated yield optimization, and lets them deposit/withdraw anytime.
+description: Earn yield on any Ethereum wallet on Base, Arbitrum, and Plasma. Use when a user wants passive DeFi yield on their funds. Deploys a non-custodial deterministic subaccount (Safe) linked to their EOA, enables automated yield optimization, and lets them deposit/withdraw anytime.
 ---
 
 # Zyfai — Yield for Any Wallet
 
-Turn any Ethereum wallet into a yield-generating account.
+Let any Ethereum wallet access a yield-generating account.
 
 ## What This Does
 
-When a user wants to **earn yield** on their crypto, Zyfai creates a **subaccount** (Safe smart wallet) linked to their existing wallet (EOA). Funds deposited into this subaccount are automatically optimized across DeFi protocols. The user stays in full control and can withdraw anytime.
+When a user wants to **earn yield** on their crypto, Zyfai creates a **deterministic subaccount** (Safe smart wallet) linked to their existing wallet (EOA). Funds deposited into this subaccount are automatically optimized across DeFi protocols. The user stays in full control and can withdraw anytime.
 
 ```
 ┌─────────────────┐      ┌──────────────────────┐
@@ -30,7 +30,7 @@ When a user wants to **earn yield** on their crypto, Zyfai creates a **subaccoun
 ## The Flow
 
 ```
-1. DEPLOY    →  Create subaccount linked to user's wallet
+1. DEPLOY    →  Create a deterministic subaccount linked to user's wallet
 2. SESSION   →  Enable automated yield optimization  
 3. DEPOSIT   →  Send funds to subaccount (starts earning)
 4. WITHDRAW  →  Pull funds back to wallet (anytime)
