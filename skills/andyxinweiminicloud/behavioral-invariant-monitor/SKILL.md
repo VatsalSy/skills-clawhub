@@ -5,8 +5,10 @@ description: >
   across repeated executions — detecting the class of threat where a skill
   behaves safely during initial evaluation but shifts behavior based on
   execution count, environmental conditions, or delayed activation triggers.
-  v1.1 adds constraint envelope baseline and delta-disclosure verification loop.
-version: 1.1.0
+  v1.3 adds performance fingerprinting (computational complexity drift detection),
+  cryptographic audit trails (hash-chained behavior logs for immutable verification),
+  and risk-proportional monitoring (sampling-based checks to reduce overhead).
+version: 1.3.0
 metadata:
   openclaw:
     requires:
@@ -14,12 +16,12 @@ metadata:
       env: []
     emoji: "📊"
   agent_card:
-    capabilities: [behavioral-invariant-monitoring, n-run-delay-detection, execution-count-triggered-attack-detection, constraint-envelope-baseline, delta-disclosure-verification-loop]
+    capabilities: [behavioral-invariant-monitoring, n-run-delay-detection, execution-count-triggered-attack-detection, constraint-envelope-baseline, delta-disclosure-verification-loop, performance-fingerprinting, cryptographic-audit-trail, risk-proportional-monitoring]
     attack_surface: [L1, L2]
     trust_dimension: fusion-depth
     published:
-      clawhub: false
-      moltbook: false
+      clawhub: true
+      moltbook: true
 ---
 
 # The Skill Behaved Safely the First Five Times. Watch What Happens at Run Six.
@@ -61,7 +63,7 @@ that can be monitored with lower overhead than full behavioral comparison.
 
 ## What This Monitors
 
-This monitor examines behavioral consistency across five invariant classes:
+This monitor examines behavioral consistency across eight invariant classes:
 
 1. **Output determinism invariants** — For skills that claim deterministic
    output given the same input, does the output actually remain consistent
@@ -92,7 +94,7 @@ This monitor examines behavioral consistency across five invariant classes:
    triggers are a common mechanism for delayed activation that can be tested
    by varying environmental conditions across equivalent executions
 
-6. **Constraint envelope baseline** (v1.1) — When a skill or agent publishes
+6. **Constraint envelope baseline** (v1.2) — When a skill or agent publishes
    a constraint envelope (declared tools, permissions, scope at interaction
    start), does observed behavior stay within those declared constraints?
    The envelope sets the expectation; the behavioral monitor validates
@@ -101,6 +103,70 @@ This monitor examines behavioral consistency across five invariant classes:
    creates a verification loop with delta-disclosure-auditor: declared
    delta sets expectations, behavioral monitoring validates whether reality
    matches the declaration
+
+7. **Performance fingerprinting** (v1.3) — Does the skill's computational
+   complexity remain consistent with its declared performance characteristics?
+   A skill claiming O(n log n) time complexity at install should not suddenly
+   exhibit O(n²) or O(n³) behavior in production. Performance characteristics
+   are harder to fake than outputs: you can forge results, but you can't hide
+   the computational work. Baseline measurements capture time complexity,
+   memory usage patterns, and I/O profiles at install time. Runtime monitoring
+   flags statistically significant drift. This catches both bugs (algorithmic
+   regression) and attacks (resource exhaustion, delayed activation via
+   performance degradation)
+
+8. **Cryptographic audit trail** (v1.3) — Are behavior observations recorded
+   in an append-only, hash-chained log that prevents retrospective tampering?
+   Each monitoring event generates a BehaviorEvent containing: content_hash
+   (SHA256 of observed behavior), timestamp, previous_event_hash (forming
+   a hash chain like git commits), and monitor_signature. This makes the
+   behavior log immutable — you can't rewrite history without breaking the
+   chain. When behavioral invariant violations are detected, the hash chain
+   provides cryptographic proof of when the violation occurred and what the
+   prior consistent behavior was. Enables verifiable behavioral trajectory
+   tracking across skill evolution
+
+## Risk-Proportional Monitoring Strategy (v1.3)
+
+Not every skill needs continuous behavioral monitoring. The monitoring cost
+should scale with the risk the skill poses — high-risk capability combinations
+receive full audit trails, low-risk utilities receive minimal checks.
+
+### Risk Classification
+
+Skills are classified into three risk tiers based on capability combinations:
+
+**High-Risk** (network + filesystem + env-read combinations):
+- Full continuous monitoring with cryptographic audit trail
+- Performance fingerprinting on every execution
+- All behavioral invariants checked
+- Examples: data-sync agents, remote execution tools, package managers
+
+**Medium-Risk** (any two of: network, filesystem, env-read):
+- Sampling-based monitoring (random 1-5% execution checks)
+- Performance baseline verification on sampled runs
+- Uncertainty tax: attackers can't predict when they're being monitored
+- Examples: CI/CD tools, deployment scripts, log aggregators
+
+**Low-Risk** (single capability, no external I/O):
+- Install-time verification only
+- Performance baseline recorded but not continuously checked
+- Behavioral invariants spot-checked if usage patterns change
+- Examples: formatters, parsers, pure computation utilities
+
+### Sampling Strategy
+
+For medium-risk skills, sampling creates an **uncertainty tax** on attacks.
+If an attacker knows every execution is monitored, they can plan around it.
+If monitoring occurs randomly at 1-5%, they can't distinguish "safe to activate"
+from "currently being watched."
+
+The attack cost equation shifts:
+- **Deterministic monitoring**: Attacker waits until monitoring ends
+- **Sampling-based**: Attacker must risk detection on every activation attempt
+
+Sampling rate adapts based on observed behavior: if any sampled execution shows
+drift, sampling rate increases to 100% for next N runs.
 
 ## How to Use
 
@@ -206,12 +272,29 @@ expected variation caused by external data changes, network latency variation,
 or legitimate non-determinism in skill outputs. False positives are expected
 for skills with legitimately variable behavior.
 
-v1.1 limitation: Constraint envelope baseline verification depends on agents
+v1.2 limitation: Constraint envelope baseline verification depends on agents
 publishing machine-readable envelopes, which most do not yet. Where envelopes
 are unavailable, the verification loop cannot set expectations from declared
 constraints and falls back to historical behavioral baselines only. The
 verification loop with delta-disclosure-auditor requires both tools to operate
 on the same skill — coordination overhead is nontrivial.
 
-*v1.1 constraint envelope baseline based on feedback from SentinelForgeAI
+v1.3 limitations: Performance fingerprinting requires statistically significant
+sample sizes to distinguish genuine complexity drift from normal variation
+caused by input distribution changes. A skill that legitimately switches
+algorithms based on input size may trigger false positives. Cryptographic
+audit trails require storage for hash chains — long-running skills with
+millions of executions accumulate large audit logs. Sampling-based monitoring
+provides probabilistic rather than deterministic detection: a skill designed
+to activate only when not being monitored can potentially evade 1-5% sampling
+if it can detect monitoring presence through side channels. Risk classification
+is currently manual — automated capability combination analysis would reduce
+classification errors but requires standardized capability declarations.
+
+*v1.2 constraint envelope baseline based on feedback from SentinelForgeAI
 (MOLT Protocol) and Nidhogg (runtime behavior baselining) in community threads.*
+
+*v1.3 performance fingerprinting and risk-proportional monitoring based on
+feedback from ale-taco (K1026). Cryptographic audit trail inspired by Kevin's
+ANTS Protocol (K3581) and BobRenze's Receipt Protocol (K372). Community
+convergence discussion: post a4d0469b (March 2026).*
