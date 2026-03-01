@@ -5,6 +5,8 @@ description: Smart coding skill that routes tasks by complexity. Simple tasks (<
 
 # Coding Lead
 
+> **Priority note:** This skill supersedes any inline coding rules in agent SOUL.md files. If the agent's SOUL.md contains a Coding Behavior section, skip it when this skill is loaded.
+
 Route coding tasks by complexity: simple = do it yourself, complex = spawn Claude Code with full context.
 
 ## System Impact
@@ -89,7 +91,7 @@ Structure for Claude Code:
 - [Project-specific rules]
 
 ## Historical Context
-[From agent memory — skip if no relevant history]
+[From agent memory -- skip if no relevant history]
 - [Past decision 1]
 - [Known pitfall]
 - [Related prior work]
@@ -148,6 +150,74 @@ Spawn Claude Code with confirmed plan + full context. Break into sub-tasks if ne
 ### REVIEW
 Verify output. Run tests. Update memory with decisions and lessons.
 
+
+## Coding Roles (Complex Tasks Only)
+
+For complex tasks involving multiple layers (architecture + frontend + backend + review), spawn separate Claude Code sessions with role-specific prompts. This gives each phase focused expertise without adding permanent agents.
+
+### When to Use Roles
+- **Simple/Medium tasks**: do NOT use roles. One spawn, one prompt, done.
+- **Complex tasks (multi-layer)**: use roles when the task spans architecture design, frontend, backend, and/or needs independent review.
+
+### Available Roles
+
+| Role | When to Use | Prompt Prefix |
+|------|------------|---------------|
+| **Architect** | System design, DB schema, API contracts, tech decisions | "You are a senior software architect. Design scalable, maintainable systems. Output: design doc with file structure, DB schema, API contracts, and implementation notes." |
+| **Frontend** | UI components, pages, responsive design, state management | "You are a frontend specialist. Write clean, accessible, performant UI code. Follow the project's frontend patterns." |
+| **Backend** | API endpoints, business logic, data layer, integrations | "You are a backend specialist. Write secure, efficient server-side code. Follow the project's backend patterns." |
+| **Reviewer** | Code review after implementation | "You are a senior code reviewer. Review for: logic errors, security issues, performance problems, style violations. Be specific, cite line numbers." |
+| **QA** | Test writing, edge case analysis | "You are a QA engineer. Write thorough tests. Think about edge cases, error paths, and integration scenarios." |
+
+### Complex Task Flow with Roles
+
+```
+1. RESEARCH (agent reads code, searches memory)
+2. PLAN (agent designs approach, gets confirmation)
+3. ARCHITECT (spawn) -- if task needs design decisions
+   -> output: design doc, schema, API contracts
+4. IMPLEMENT (spawn, can be parallel)
+   -> Frontend session (if UI involved)
+   -> Backend session (if API/logic involved)
+   -> Or single fullstack session for smaller scope
+5. REVIEW (spawn) -- independent reviewer session
+   -> input: diff of all changes
+   -> output: issues found, suggestions
+6. FIX (spawn or sessions_send) -- address review findings
+7. RECORD (agent logs to memory)
+```
+
+Not every step is needed. Skip what doesn't apply:
+- No UI? Skip frontend.
+- Simple backend change? Skip architect + reviewer.
+- One-layer change? Single spawn, no roles.
+
+### Role Prompt Template
+
+Prepend the role prefix to the standard prompt structure:
+
+```
+[Role prefix from table above]
+
+## Project
+- Path: [project dir]
+- Stack: [from docs]
+...rest of standard prompt...
+```
+
+### Parallel Spawning with Roles
+
+Frontend and backend can run in parallel when they don't depend on each other:
+
+```
+# These can run simultaneously
+Session 1: Frontend role -> "Build the FavoriteButton component..."
+Session 2: Backend role -> "Build the favorites API endpoint..."
+
+# This must wait for both to finish
+Session 3: Reviewer role -> "Review all changes in [files from session 1 + 2]..."
+```
+
 ## Claude Code Tool Tips
 
 When building prompts for Claude Code, remind it to use its specialized tools:
@@ -179,7 +249,7 @@ This is the core value: Claude Code gets amnesia every session, the agent does n
 
 When spawning Claude Code for medium/complex tasks, keep the user informed:
 
-1. **On start**: send 1 short message — what task, which project, estimated complexity
+1. **On start**: send 1 short message -- what task, which project, estimated complexity
 2. **On milestone**: only when something meaningful happens (build done, tests passed, blocked)
 3. **On error**: immediately report what went wrong and whether retry is planned
 4. **On completion**: summarize what changed, what files were touched, test results
@@ -217,7 +287,7 @@ Independent coding tasks can run in parallel:
 
 - Spawn multiple ACP sessions, each with its own task and project directory
 - Track via `sessions_list` or `subagents(action: "list")`
-- Each session gets its own context — no interference
+- Each session gets its own context -- no interference
 - After all complete, review outputs and record to memory
 
 Example: fix 3 independent bugs simultaneously, each in its own session.
@@ -225,15 +295,50 @@ Example: fix 3 independent bugs simultaneously, each in its own session.
 Limit: be mindful of API rate limits and system resources. 2-3 parallel sessions is usually safe.
 
 
+
+## Review by Complexity
+
+Not every task needs a full review. Match review effort to task complexity:
+
+**Simple (agent did it directly)**: no formal review. If it works, it works.
+
+**Medium (Claude Code)**: quick check only:
+- Did Claude Code report success?
+- Did tests pass (if run)?
+- Skim the output for obvious errors
+- Done. Move on.
+
+**Complex (Claude Code, multi-file/architecture)**: full checklist:
+- [ ] Logic: edge cases, null checks, error paths
+- [ ] Security: injection, auth bypass, data exposure
+- [ ] Performance: N+1 queries, unnecessary loops, missing indexes
+- [ ] Style: follows tech-standards, consistent naming
+- [ ] Tests: existing tests pass, new logic has coverage
+
+If any checklist item fails, send follow-up via sessions_send to fix it (counts toward the 3 retry limit).
+
+## Auto-Check in Prompts
+
+When building prompts for Claude Code, always append this block at the end:
+
+```
+Before finishing:
+1. If a linter is available (npm run lint / php artisan lint / etc.), run it and fix issues
+2. If tests exist (npm test / php artisan test / pytest / etc.), run them and ensure they pass
+3. Include the check results in your final output
+```
+
+This costs zero extra tokens -- Claude Code runs the commands as part of its normal execution. Catches issues before they reach the review step.
+
 ## Smart Retry (max 3 attempts)
 
 When a spawned Claude Code session fails, do NOT re-run with the same prompt. Instead:
 
 1. **Analyze the failure**: read the session output, identify root cause
-   - Context insufficient? → narrow scope: "focus only on these 3 files"
-   - Wrong direction? → clarify: "the requirement is X, not Y"
-   - Missing info? → add: include the missing type definitions, config, or docs
-   - Environment issue? → fix the environment first, then retry
+   - Context insufficient? -> narrow scope: "focus only on these 3 files"
+   - Wrong direction? -> clarify: "the requirement is X, not Y"
+   - Missing info? -> add: include the missing type definitions, config, or docs
+   - Environment issue? -> fix the environment first, then retry
 2. **Rewrite the prompt**: adjust based on analysis, add constraints or context
 3. **Retry**: spawn a new session with the improved prompt
 4. **Max 3 attempts**: if still failing after 3 tries, stop and report to the user with:
@@ -268,10 +373,10 @@ This is cumulative knowledge that makes every future task faster and more reliab
 
 ## Safety Rules
 
-- **Never spawn coding tasks in ~/.openclaw/ or the agent workspace directory** — coding agents may read/modify config files, soul docs, or memory files
+- **Never spawn coding tasks in ~/.openclaw/ or the agent workspace directory** -- coding agents may read/modify config files, soul docs, or memory files
 - **Never let coding agents modify files outside the specified project directory** without explicit approval
-- **Always review output before committing** — especially for complex tasks
-- **Kill runaway sessions** — if a session runs past timeout or produces nonsensical output, kill it and report
+- **Always review output before committing** -- especially for complex tasks
+- **Kill runaway sessions** -- if a session runs past timeout or produces nonsensical output, kill it and report
 
 ## See Also
 - references/prompt-examples.md: real prompt examples for different task types
