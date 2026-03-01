@@ -3,9 +3,15 @@
   "slug": "vitavault",
   "displayName": "VitaVault",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1771509973651,
-    "commit": "https://github.com/openclaw/skills/commit/66f4b94390feb299e4c207db51f00670e668ae2b"
+    "version": "1.2.0",
+    "publishedAt": 1772313420246,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1771509973651,
+      "commit": "https://github.com/openclaw/skills/commit/66f4b94390feb299e4c207db51f00670e668ae2b"
+    }
+  ]
 }

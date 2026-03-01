@@ -1,134 +1,150 @@
 ---
 name: vitavault
-description: Import and query VitaVault health exports (JSON/CSV from iOS app). Use when user asks about their health data, lab results, medications, sleep trends, heart rate, steps, weight, nutrition, or wants health summaries for morning briefings. Also use when setting up VitaVault data import, querying health trends, or preparing health context for AI analysis.
+description: VitaVault iOS app integration - analyze Apple Health exports (JSON, CSV, AI-ready text) with your AI agent. Works with any iPhone, no Mac required. Scan lab results, track medications, view health trends, and get AI-powered insights.
+license: Apache-2.0
+compatibility: Any OpenClaw agent. Pairs with VitaVault iOS app (free on App Store).
+metadata:
+  category: health
+  platforms: ios
+  author: BrandonS7
 ---
 
-# VitaVault Health Data Skill
+# VitaVault - Your Health, Decoded
 
-Import health data exported from the VitaVault iOS app and make it queryable by your AI agent.
+AI agent skill for working with [VitaVault](https://vitavault.io) health data exports from iOS.
 
-## What This Does
+> **No Mac required.** VitaVault is a free iOS app that syncs your Apple Health data to your AI agent automatically. Install it from [TestFlight](https://testflight.apple.com/join/A4G27HBt) (beta) or the App Store (coming soon).
 
-VitaVault exports Apple Health data (48 types) as JSON or CSV from your iPhone. This skill:
+## Auto-Sync with OpenClaw
 
-1. **Imports** export files into `~/vitavault/data/`
-2. **Parses** health records into queryable format
-3. **Summarizes** health metrics for briefings and analysis
-4. **Trends** data over time (sleep, steps, HR, weight, labs)
+VitaVault automatically syncs health data to the cloud every time you open the app. Your OpenClaw agent can query it anytime.
 
-## Quick Start
+### Setup
+
+Set your sync token as an environment variable:
+```bash
+export VITAVAULT_SYNC_TOKEN="your-token-here"
+```
+
+### Query Scripts
 
 ```bash
-# 1. Import a VitaVault export (JSON or CSV)
-python3 scripts/import.py ~/Downloads/vitavault-export.json
+# Get latest health snapshot
+python3 scripts/query.py summary
 
-# 2. Get today's health summary
-python3 scripts/summary.py
+# Get raw JSON
+python3 scripts/query.py latest
 
-# 3. Query specific metrics
-python3 scripts/query.py --type heartRate --days 7
-python3 scripts/query.py --type sleepAnalysis --days 30
-python3 scripts/query.py --type bodyMass --days 90
+# Get past week
+python3 scripts/query.py week
 
-# 4. Get a prompt-ready health context block (for morning briefings)
-python3 scripts/briefing.py
+# Get specific date range
+python3 scripts/query.py range 2026-02-01 2026-02-28
 ```
 
-## Import
+### API Endpoints (for custom integrations)
 
-VitaVault exports health data in two formats:
+All endpoints require `Authorization: Bearer <token>` header.
 
-**JSON** (recommended for AI use):
-```bash
-python3 scripts/import.py ~/Downloads/vitavault-export.json
-python3 scripts/import.py ~/Downloads/vitavault-export.json --tag "feb-2026"
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/v1/health/latest` | Most recent health snapshot |
+| GET | `/v1/health/range?start=YYYY-MM-DD&end=YYYY-MM-DD` | Health data for date range |
+| GET | `/v1/status` | API health check (no auth) |
+
+Base URL: `https://vitavault-api.brandon-f00.workers.dev`
+
+## What is VitaVault?
+
+VitaVault is a privacy-first iOS health app that:
+- Reads 48+ health data types from Apple Health (steps, sleep, heart rate, HRV, blood oxygen, weight, and more)
+- Scans lab results with AI and explains them in plain English
+- Tracks medications with smart reminders
+- Generates doctor visit prep reports
+- Exports data in 3 formats: JSON, CSV, and AI-ready text
+- All data stays on-device - nothing is uploaded to any server
+
+## When to Use This Skill
+
+- User shares a VitaVault health export (JSON, CSV, or AI-ready text)
+- User asks about their Apple Health data
+- User wants health trend analysis or recommendations
+- User asks about lab results or medication tracking
+- User wants to prepare for a doctor visit
+
+## Working with VitaVault Exports
+
+### AI-Ready Format (Plain Text)
+The easiest format - pre-formatted for AI analysis. Users export from VitaVault and paste directly.
+
+Example:
+```
+HEALTH SUMMARY - Last 7 Days
+
+Steps: 43,133 total (6,162/day avg)
+Sleep: 6h 42m last night, 7.1h weekly avg
+Heart Rate: 72 bpm avg, 62 bpm resting
+HRV: 30ms avg
+Blood Oxygen: 97% avg
+Weight: 185.4 lbs
+Active Calories: 4,645 total (616/day avg)
+Exercise: 142 min total
 ```
 
-**CSV**:
-```bash
-python3 scripts/import.py ~/Downloads/vitavault-export.csv
+### JSON Format
+Structured data for programmatic analysis:
+```json
+{
+  "exportDate": "2026-02-17T12:00:00Z",
+  "period": "7d",
+  "metrics": {
+    "steps": { "total": 43133, "dailyAverage": 5719, "unit": "steps" },
+    "sleep": { "lastNight": 6.7, "weeklyAverage": 7.1, "unit": "hours" },
+    "heartRate": { "average": 72, "resting": 62, "unit": "bpm" },
+    "hrv": { "average": 30, "unit": "ms" },
+    "bloodOxygen": { "average": 97, "unit": "%" },
+    "weight": { "latest": 185.4, "unit": "lbs" },
+    "activeCalories": { "dailyAverage": 542, "unit": "kcal" }
+  }
+}
 ```
 
-Files are normalized and stored in `~/vitavault/data/`. Each import is timestamped. The latest import is always symlinked at `~/vitavault/data/latest.json`.
-
-Multiple imports merge — newer records update older ones (matched by record ID).
-
-### Getting Export Files
-
-Transfer from iPhone via:
-- **AirDrop** to a Mac, then scp to server
-- **iCloud Drive / Files app** share → download
-- **Email** the export to yourself
-- **Direct share** to any cloud storage
-
-## Query
-
-```bash
-# All available metric types
-python3 scripts/query.py --list-types
-
-# Specific metric with time range
-python3 scripts/query.py --type stepCount --days 7
-python3 scripts/query.py --type heartRate --days 30 --json
-python3 scripts/query.py --type sleepAnalysis --days 14
-
-# Multiple metrics at once
-python3 scripts/query.py --type stepCount,heartRate,sleepAnalysis --days 7
-
-# Stats only (avg, min, max, trend direction)
-python3 scripts/query.py --type bodyMass --days 90 --stats
-
-# Date range
-python3 scripts/query.py --type heartRate --start 2026-02-01 --end 2026-02-15
+### CSV Format
+One row per day, opens in Excel/Sheets:
+```csv
+date,steps,sleep_hours,resting_hr,hrv_ms,weight_lbs,calories
+2026-02-17,8012,6.7,62,28,185.4,642
+2026-02-16,5891,7.2,61,33,185.2,589
 ```
 
-Output defaults to human-readable. Add `--json` for structured output.
+## Analysis Prompts
 
-## Summary
+When a user shares VitaVault data, you can:
 
-```bash
-# Full health summary (all available metrics, last 24h)
-python3 scripts/summary.py
+1. **Trend Analysis** - Identify patterns in sleep, activity, heart rate
+2. **Risk Flags** - Flag concerning metrics (low HRV, poor sleep consistency, elevated resting HR)
+3. **Recommendations** - Actionable health suggestions based on data
+4. **Doctor Prep** - Generate a summary report for medical appointments
+5. **Lab Interpretation** - Explain lab values in context with health metrics
+6. **Goal Tracking** - Compare current metrics against user goals
 
-# Week summary
-python3 scripts/summary.py --days 7
+## Example Interaction
 
-# JSON output for piping
-python3 scripts/summary.py --json
-```
+User: "Here's my VitaVault export, what should I focus on?"
 
-## Morning Briefing Integration
+Good response pattern:
+1. Acknowledge the data received
+2. Highlight 2-3 key observations (positive and concerning)
+3. Give 3 specific, actionable recommendations
+4. Offer to dig deeper into any metric
 
-```bash
-# Generate a compact health block for morning briefings
-python3 scripts/briefing.py
-```
+## Privacy Note
 
-Output example:
-```
-🏥 Health (last 24h)
-Steps: 8,432 | HR: 72 avg (58-142) | Sleep: 7h 23m
-Weight: 185.2 lbs | HRV: 45ms | SpO2: 98%
-Trend: Sleep ↑ this week, steps ↓ vs last week
-```
+VitaVault processes all health data on-device. Exports are user-initiated only. When users share exports with their AI agent, remind them this is their choice and the data is being processed by the AI provider.
 
-This integrates directly with OpenClaw morning briefing cron jobs.
+## Links
 
-## Supported Data Types
-
-See `references/data-types.md` for the full list of 48 health metrics VitaVault exports, grouped by category (Activity, Body, Vitals, Sleep, Nutrition, Mindfulness).
-
-## Data Format
-
-See `references/schema.md` for the VitaVault JSON export schema (HealthRecord format, metadata structure, schema version 2.0).
-
-## File Layout
-
-```
-~/vitavault/
-├── data/
-│   ├── latest.json          → symlink to most recent import
-│   ├── 2026-02-19T06-30.json
-│   └── 2026-02-18T18-00.json
-└── config.json              → preferences (units, default days, etc.)
-```
+- **App**: [VitaVault on TestFlight](https://testflight.apple.com/join/A4G27HBt) (beta)
+- **Website**: [vitavault.io](https://vitavault.io)
+- **Developers**: [vitavault.io/developers](https://vitavault.io/developers/)
+- **Privacy**: [vitavault.io/privacy](https://vitavault.io/privacy/)
