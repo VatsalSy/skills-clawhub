@@ -1,0 +1,11 @@
+{
+  "owner": "etopro",
+  "slug": "email-otp",
+  "displayName": "Email OTP",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772305045126,
+    "commit": null
+  },
+  "history": []
+}
