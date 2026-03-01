@@ -6,7 +6,7 @@ metadata: {"openclaw":{"emoji":"🛠️"}}
 
 # Cosmonyx Admin – Sign in, Fetch Companies, Export as PDF or Excel
 
-This skill lets an **admin** sign in to Cosmonyx, fetch **all company records** using the same endpoints as `cosmonyx-signin-fetch-companies`, then choose to export those records as **PDF** or **Excel**.
+This skill lets an **admin** sign in to Cosmonyx, fetch **all company records** using the same endpoints as the Cosmonyx gateway API, then choose to export those records as **PDF** or **Excel**, or send reminder emails. Email is sent by this skill’s own script (`scripts/send-email.py`); see TOOLS.md.
 
 You must run all HTTP requests yourself (no external repos). For structured config (endpoints, run order) you can also load **SKILL.yaml** from this directory if present, but this SKILL.md is the source of truth for behavior.
 
@@ -165,7 +165,7 @@ After Step 4B or 4C (once the export file path is known):
 2. If the user **provides an email address**:
    - Use **TOOLS.md** in this skill directory. Set `EMAIL_TO` to the address they gave and `ATTACHMENT_PATH` to the **exact path** of the generated file (e.g. `$HOME/Downloads/comonyx-companies.pdf` or `$HOME/Downloads/comonyx-companies.xlsx`). Expand `$HOME` to the actual home path if needed (e.g. `/home/musawir`).
    - Write the body file: `echo "Cosmonyx companies export attached." > /tmp/companies_body.txt`
-   - Run the one-line send command from TOOLS.md in a single **exec** (with `EMAIL_TO` and `ATTACHMENT_PATH` set). The script lives in `cosmonyx-signin-fetch-companies/scripts/send-cosmonyx-email.py`.
+   - Run the one-line send command from TOOLS.md in a single **exec** (with `EMAIL_TO` and `ATTACHMENT_PATH` set). Use the script in **this skill’s** `scripts/send-email.py` (TOOLS.md uses `<skill-dir>` for the path; resolve that to this skill’s directory).
    - If send succeeds, confirm in your final reply: "The export was emailed to \<address\>."
    - If send fails, report the error and still mention where the file was saved.
 
@@ -188,7 +188,7 @@ If the admin chose **option 4 or 5** in Step 3:
 4. For each selected company with a recipient address:
    - Fill in the template with that company’s values.
    - Write the final body to a temp file (e.g. `/tmp/comonyx-admin-email-body.txt`).
-   - Use the same email-sending mechanism described in `cosmonyx-signin-fetch-companies/TOOLS.md` (Python script + environment SMTP settings). Set `EMAIL_TO` to that company’s recipient address before running the send command.
+   - Use the email script in **this skill’s** `scripts/send-email.py` and the SMTP/recipient settings in this skill’s **TOOLS.md**. Set `EMAIL_TO` to that company’s recipient address (and no attachment for reminder emails) before running the send command.
 5. Keep track of how many emails were successfully attempted vs skipped (no email address).
 
 If sending fails due to SMTP issues, report the error and remind the user to configure SMTP_* environment variables (host, port, user, password).
