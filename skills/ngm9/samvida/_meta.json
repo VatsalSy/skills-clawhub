@@ -1,11 +1,17 @@
 {
   "owner": "ngm9",
   "slug": "samvida",
-  "displayName": "Samvida — Agentic Contracts for Your Business",
+  "displayName": "Samvida",
   "latest": {
-    "version": "0.1.0",
-    "publishedAt": 1772263092979,
-    "commit": "https://github.com/openclaw/skills/commit/2516454fc2d8ec2814c9ca84cdba2b20f4f7ddc1"
+    "version": "0.2.2",
+    "publishedAt": 1772269795789,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.1.0",
+      "publishedAt": 1772263092979,
+      "commit": "https://github.com/openclaw/skills/commit/2516454fc2d8ec2814c9ca84cdba2b20f4f7ddc1"
+    }
+  ]
 }
