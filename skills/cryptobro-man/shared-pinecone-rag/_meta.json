@@ -1,0 +1,11 @@
+{
+  "owner": "cryptobro-man",
+  "slug": "shared-pinecone-rag",
+  "displayName": "Shared Pinecone RAG",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1772329732005,
+    "commit": null
+  },
+  "history": []
+}
