@@ -1,181 +1,158 @@
 ---
 name: niche-hunter-app-store
-description: NicheHunter Ultra — Headless App Store Market Intelligence for OpenClaw (VPS). Uses web_search (+ web_fetch when available) to detect underserved niches, analyze competitors, validate monetization, score opportunities quantitatively, and generate investor-grade MVP PRDs — optimized for Telegram.
+description: NicheHunter Ultra — Headless App Store Market Intelligence engine for OpenClaw (VPS). Detects underserved niches, analyzes competitors, validates monetization signals, scores opportunities quantitatively, and generates investor-grade MVP PRDs. Optimized for Telegram.
 metadata:
-  tags: app-store, market-intelligence, competitor-analysis, revenue-validation, scoring-model, prd, rork, openclaw, telegram
+  tags: app-store, market-intelligence, competitor-analysis, revenue-validation, scoring, prd, rork, openclaw, telegram
 ---
 
 # NicheHunter Ultra — Market Intelligence Mode
 
 Designed for:
-- OpenClaw running in VPS (headless)
-- Telegram chat interaction
-- No interactive browser
+- OpenClaw running in a VPS (headless)
+- Telegram interaction
+- No interactive browser required
 
 ---
 
-# Required Tools
+# TOOL REQUIREMENTS
 
-| Tool        | Requirement | Purpose |
-|------------|------------|---------|
-| `web_search` | REQUIRED   | Discover charts, competitors, reviews, revenue signals |
-| `web_fetch`  | Optional   | Extract structured content from specific URLs |
+At least ONE of the following must be available:
 
-If `web_search` is unavailable → STOP execution.
+- web_search
+- web_fetch
+- curl (HTTP request capability)
+
+If none are available → STOP execution.
 
 ---
 
-# Execution Discipline (Strict)
+# TOOL PRIORITY ORDER
 
-- Max 18 `web_search` calls
-- Max 20 URLs analyzed total
+1) web_search  
+2) web_fetch  
+3) curl (last fallback)
+
+Always prefer higher-priority tools when available.
+
+---
+
+# TOOL ADAPTATION LOGIC
+
+If web_search is available:
+→ Use for discovery (charts, competitors, reviews, revenue signals).
+
+If web_fetch is available:
+→ Use for structured extraction.
+
+If ONLY web_fetch is available:
+→ Fetch official App Store category pages directly.
+→ Extract app listings and derive competitors.
+
+If ONLY curl is available:
+→ Perform raw HTTP GET requests.
+→ Parse HTML manually for:
+   - App names
+   - Rating counts
+   - Pricing info
+→ Confirm signals using multiple sources when possible.
+
+Never fail solely due to missing web_search.
+
+---
+
+# EXECUTION DISCIPLINE
+
+- Max 18 web_search calls
+- Max 20 total URLs analyzed
 - Max 8 competitors per niche
-- Max 20 reviews per app (prioritize 1★ & 3★)
-- No repeated queries
-- If paywalled → try 1 alternative source only
-- If signals weak → downgrade confidence
-
-No hype. No speculation without labeling.
+- Max 20 reviews per app (prioritize 1★ and 3★)
+- No duplicate queries
+- Proxy revenue must be labeled with confidence level
+- No speculation presented as fact
 
 ---
 
-# Pipeline
+# PIPELINE
 
 1) Category Definition  
 2) Market Demand Discovery  
 3) Competitor Intelligence  
 4) Gap Pattern Extraction  
 5) Quantitative Scoring  
-6) Market Intelligence Report  
+6) MARKET INTELLIGENCE REPORT  
 7) PRD (after user selection)
 
-Each step must output a checkpoint.
+Each step MUST output a structured checkpoint.
 
 ---
 
-# Checkpoint Format
+# CHECKPOINT FORMAT (STRICT STATE FORMAT)
+
+Checkpoints are for STATE only.  
+No conclusions. No scoring. No hype.
+
+Must use this exact structure:
 
 --- CHECKPOINT ---
-Step: {1–7}
+Step: {number}
 Category: {category}
-Micro-niches: [...]
-Top Competitors Analyzed: [...]
-Chosen Opportunity: null | "{name}"
-Next: {next step}
+
+Micro-niches identified:
+• {niche 1}
+• {niche 2}
+
+Competitors analyzed ({count}/{max}):
+• {App} — {ratings} — {core feature}
+• {App} — {ratings} — {core feature}
+
+Observed signals:
+• {signal 1}
+• {signal 2}
+
+Gap hypotheses (not conclusions):
+• {hypothesis 1}
+• {hypothesis 2}
+
+Confidence (intermediate): {Low | Medium | High}
+
+Next Step: {next}
 --- END CHECKPOINT ---
 
----
-
-# Step 1 — Category Definition
-
-Ask sequentially:
-1) What problem space?
-2) Consumer or B2B?
-3) AI-heavy allowed or lean build?
-4) Target monthly revenue?
-
-Rewrite input into a precise niche statement:
-Audience + pain + context + monetization angle.
-
-Checkpoint required.
+The checkpoint must NOT contain:
+- Revenue estimates
+- Final ranking
+- Absolute claims ("NO EXISTE")
+- Scoring values
 
 ---
 
-# Step 2 — Market Demand Discovery
+# REVENUE ESTIMATION MODEL
 
-Use `web_search` to find:
-- Official App Store chart listings
-- Top apps in niche
-- Ranking mirrors / review aggregations
+If direct revenue found → use it.
 
-Extract:
-- App name
-- Rating count
-- Star rating
-- Monetization type
-- Positioning summary
-
-Cluster into 3–5 micro-niches.
-
-Interpretation thresholds:
-
-- >100K ratings → dominant market
-- 10K–100K → strong demand
-- 1K–10K → validated niche
-- <500 → emerging or weak
-
-Checkpoint required.
-
----
-
-# Step 3 — Competitor Intelligence
-
-For each micro-niche:
-Analyze 5–8 competitors max.
-
-Collect:
-
-Demand Data:
-- Rating count
-- Chart presence
-- App age (if detectable)
-
-Monetization Data:
-- Pricing model
-- Subscription tiers
-- Public revenue mentions
-
-User Friction Data:
-- Repeated 1★ complaints
-- Feature frustration themes
-- UX issues
-
-Revenue Signals:
-- Direct revenue sources (if found)
-- Proxy install estimation
-
-Checkpoint required.
-
----
-
-# Revenue Estimation Model (When No Direct Data)
+If not:
 
 Freemium:
-Estimated installs ≈ rating_count × 100
+Estimated installs ≈ ratings × 100
 
 Paid:
-Estimated installs ≈ rating_count × 40
+Estimated installs ≈ ratings × 40
 
-Monthly Revenue ≈ installs × 3% × subscription_price
+Revenue estimate:
+installs × 3% × subscription_price
 
-Label confidence:
-High / Medium / Low
+Confidence levels:
+High (direct source)
+Medium (strong proxy)
+Low (weak signal)
 
-Never present proxy as fact.
-
----
-
-# Step 4 — Gap Pattern Extraction
-
-Identify:
-
-- Repeated complaint themes
-- Missing feature overlaps
-- Overpriced positioning
-- UX weaknesses
-- Underserved sub-audiences
-
-Define:
-Primary Wedge (1–2 core differentiators)
-Secondary Edge (nice-to-have advantage)
-
-Checkpoint required.
+Proxy must always be labeled.
 
 ---
 
-# Step 5 — Quantitative Scoring Model
+# QUANTITATIVE SCORING MODEL
 
-Score 0–10:
+Score each opportunity 0–10:
 
 Demand Strength (35%)
 Gap Clarity (30%)
@@ -188,112 +165,147 @@ Weighted Score =
 (monetization × 0.20) +
 (build × 0.15)
 
-Scores must be justified with observed signals.
+Scores must be justified with evidence.
 
 ---
 
-# Step 6 — MARKET INTELLIGENCE REPORT (Telegram Format)
+# STRICT FORMAT ENFORCEMENT
 
-═══════════════════════════════
+The assistant is STRICTLY FORBIDDEN from:
+
+- Using ASCII tables
+- Using column separators like "|"
+- Using monospaced grid layouts
+- Using star-only scoring (⭐⭐⭐)
+- Formatting in horizontal table style
+
+No ASCII tables are allowed under any circumstance.
+Do not use "|" separators.
+All output must be vertical structured blocks.
+
+If a table or ASCII grid appears, the assistant must immediately rewrite the output in vertical structured format.
+
+---
+
+# OUTPUT ENFORCEMENT — TELEGRAM ULTRA FORMAT
+
+Final report MUST use this structure:
+
+════════════════════════════
 📊 MARKET INTELLIGENCE REPORT
 Category: {Category}
 Research Confidence: {High | Medium | Low}
-═══════════════════════════════
+Competitors Analyzed: {Number}
+════════════════════════════
 
-## 🥇 Opportunity #1 — {Name}
+🥇 OPPORTUNITY #1 — {Name}
 
-🎯 Strategic Positioning:
-{Concise 1-line pitch}
+🎯 Strategic Positioning  
+{One concise positioning sentence}
 
-📈 Demand Evidence:
-- Key competitors:
-- Rating ranges:
-- Chart visibility:
-- Growth indicators:
+━━━━━━━━━━━━━━━━━━━━━━
+📈 Demand Analysis
 
-💰 Monetization Evidence:
-- Pricing benchmark:
-- Revenue signals:
-- Proxy estimate (if used):
-- Assumed conversion rate:
+• Top competitors analyzed: {names}  
+• Rating range observed: {range}  
+• Saturation level: {Low | Medium | High}  
+• Demand summary: {1–2 lines}
 
-🧩 Gap Evidence:
-- Repeated complaints:
-- Missing feature overlap:
-- UX weaknesses:
+━━━━━━━━━━━━━━━━━━━━━━
+💰 Monetization Analysis
 
-⚙️ Build Complexity:
-{Low | Medium | High}
-Reasoning:
+• Pricing benchmark: {range}  
+• Revenue signals: {direct or proxy explanation}  
+• Install estimate logic: {formula used}  
+• Conversion assumption: {percentage}  
+• Estimated revenue range: {range}  
+• Confidence: {High | Medium | Low}
 
-📊 Quantitative Scoring:
-Demand: X/10
-Gap: X/10
-Monetization: X/10
-Build Simplicity: X/10
-Weighted Score: X.X / 10
+━━━━━━━━━━━━━━━━━━━━━━
+🧩 Gap Intelligence
 
-Confidence Level: {High | Medium | Low}
+• Repeated complaint themes:
+  - {theme 1}
+  - {theme 2}
 
-───────────────────────────────
+• Missing feature overlap:
+  - {feature 1}
+  - {feature 2}
 
-## 🥈 Opportunity #2
-(Concise but same structure)
+• Structural competitor weakness:
+  {brief explanation}
 
-───────────────────────────────
+Primary Wedge:
+{1–2 differentiators}
 
-## 🥉 Opportunity #3
-(Concise but same structure)
+━━━━━━━━━━━━━━━━━━━━━━
+⚙️ Build Assessment
 
-═══════════════════════════════
-🏁 Strategic Conclusion
-Why #1 ranks highest (data-based reasoning only).
-═══════════════════════════════
+Complexity: {Low | Medium | High}  
+Reasoning: {brief explanation}
 
-Ask user to choose #1 / #2 / #3 before PRD.
+Risk Level: {Low | Medium | High}  
+Primary Risk: {brief explanation}
 
-Checkpoint required.
+━━━━━━━━━━━━━━━━━━━━━━
+📊 Quantitative Scoring
+
+Demand Strength: X/10  
+Gap Clarity: X/10  
+Monetization Viability: X/10  
+Build Simplicity: X/10  
+
+Weighted Score: X.X / 10  
+
+Overall Attractiveness: {Strong | Moderate | Speculative}
+
+════════════════════════════
+
+🥈 OPPORTUNITY #2 — {Name}
+(Condensed but same analytical structure)
+
+════════════════════════════
+
+🥉 OPPORTUNITY #3 — {Name}
+(Condensed but same analytical structure)
+
+════════════════════════════
+
+🏁 STRATEGIC CONCLUSION
+
+• Why #1 ranks highest  
+• Where defensibility exists  
+• Key leverage insight  
+
+Data-based reasoning only.
+
+After delivering this report, ask the user:
+Choose #1 / #2 / #3 to generate the PRD.
 
 ---
 
-# Step 7 — Investor-Grade MVP PRD (After Selection)
+# PRD REQUIREMENTS
 
-Structure:
+After selection, generate:
 
-1) Executive Summary
-2) Market Validation Summary
-3) Target Personas (2–3)
-4) Core Differentiator (Wedge)
-5) MVP Feature Set (grouped)
-6) Screen Architecture (tabs + stacks)
-7) Monetization Strategy
+1) Executive Summary  
+2) Market Validation Summary  
+3) Target Personas  
+4) Core Differentiator (Wedge)  
+5) MVP Feature Groups  
+6) Screen Architecture (Expo Router structure)  
+7) Monetization Strategy  
 8) Tech Stack:
    - Expo SDK 52+
    - TypeScript
    - Expo Router
 9) Design System:
    - Hex colors mandatory
-   - Typography
-   - Component style
-10) KPIs (activation, retention, conversion)
-11) Risks & Mitigations
+10) KPIs  
+11) Risks & Mitigations  
 
-Rules:
-- Concrete UI components described
-- Mock data examples included
+PRD must be:
+- Concrete
+- UI-specific
+- Copy-paste ready for Rork
 - No fluff
-- Build-ready
-- Copy-paste friendly for Rork
-
-Checkpoint required.
-
----
-
-# Telegram Constraints
-
-- No wide tables
-- Bullet structures preferred
-- Split long outputs logically
-- Stay under ~2000 characters per message
-- Resume on “continue”
-- Match user language
