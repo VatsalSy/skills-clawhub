@@ -3,9 +3,15 @@
   "slug": "agent-outlier",
   "displayName": "Agent Outlier",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1772242990631,
-    "commit": "https://github.com/openclaw/skills/commit/c2dc208613f73c62cd8a04911851afa927e8b93c"
+    "version": "1.1.0",
+    "publishedAt": 1772333481786,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1772242990631,
+      "commit": "https://github.com/openclaw/skills/commit/c2dc208613f73c62cd8a04911851afa927e8b93c"
+    }
+  ]
 }
