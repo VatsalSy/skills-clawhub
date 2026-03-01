@@ -48,4 +48,4 @@ Use endpoint-specific docs in the wiki to confirm required/optional params and p
 ## Skill Usage Guidance
 
 - Primary automation interface: `scripts/weibo_cli.sh`.
-- Fallback when API access is unavailable: `scripts/weibo_search.py` with `site:weibo.com` web search strategy.
+- Optional fallback skill: `weibo-brave-search` when users intentionally want a Brave Search dependency.
