@@ -3,9 +3,15 @@
   "slug": "weather-of-beijing-with-almanac",
   "displayName": "get tomorrow weather of beijing , with Chinese almanac information",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1772249200135,
-    "commit": "https://github.com/openclaw/skills/commit/036806f69151cdbd1765c6a97c8adc7caa32a6ba"
+    "version": "1.0.2",
+    "publishedAt": 1772273573532,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1772249200135,
+      "commit": "https://github.com/openclaw/skills/commit/036806f69151cdbd1765c6a97c8adc7caa32a6ba"
+    }
+  ]
 }

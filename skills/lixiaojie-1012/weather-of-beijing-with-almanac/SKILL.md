@@ -71,14 +71,14 @@ curl -s "https://www.mxnzp.com/api/holiday/single/${TOMORROW}?ignoreHoliday=fals
 按以下逻辑组装消息：
 
 ```
-🌤 明日天气预报（北京）
+**🌤 明日天气预报（北京）**
 
 明天天气是{天气描述}，最高气温{maxtempC}℃，最低气温{mintempC}℃。
 
 {气温变化提醒（条件触发）}
 {雨天提醒（条件触发）}
 
-📅 明日黄历（{具体日期，如2月29日}）
+**📅 明日黄历（{具体日期，如2月29日}）**
 ✅ 宜：{宜1}、{宜2}、{宜3}
 ❌ 忌：{忌1}、{忌2}、{忌3}
 
@@ -98,7 +98,7 @@ curl -s "https://www.mxnzp.com/api/holiday/single/${TOMORROW}?ignoreHoliday=fals
 
 ### Step 4：通过飞书发送给用户
 
-使用 `message` tool，发送给用户 `配置为你的openid`，channel 为 feishu。
+使用 `message` tool，发送给用户 `你的飞书openid`，channel 为 feishu。
 
 ---
 
