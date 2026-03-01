@@ -3,9 +3,15 @@
   "slug": "claw-mbti",
   "displayName": "Claw MBTI",
   "latest": {
-    "version": "1.1.0",
-    "publishedAt": 1772278789528,
-    "commit": "https://github.com/openclaw/skills/commit/0081d3867c7d87da10744a2931a1059137245f9f"
+    "version": "1.2.0",
+    "publishedAt": 1772288671005,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.1.0",
+      "publishedAt": 1772278789528,
+      "commit": "https://github.com/openclaw/skills/commit/0081d3867c7d87da10744a2931a1059137245f9f"
+    }
+  ]
 }
