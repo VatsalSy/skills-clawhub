@@ -3,11 +3,16 @@
   "slug": "consensus-publish-guard",
   "displayName": "consensus-publish-guard",
   "latest": {
-    "version": "1.1.10",
-    "publishedAt": 1772343211011,
-    "commit": "https://github.com/openclaw/skills/commit/17326c762652ff01f8b270b69e3914dd3ebfe385"
+    "version": "1.1.11",
+    "publishedAt": 1772375471008,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.1.10",
+      "publishedAt": 1772343211011,
+      "commit": "https://github.com/openclaw/skills/commit/17326c762652ff01f8b270b69e3914dd3ebfe385"
+    },
     {
       "version": "1.1.7",
       "publishedAt": 1772323436785,
