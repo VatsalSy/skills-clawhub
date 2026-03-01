@@ -132,9 +132,9 @@ class iFlowBridge:
         # 1. 保存到本地 records.json
         self.save_local_record(record)
         
-        # 2. 如果 iflow 记忆功能启用，保存到 iflow 记忆目录
-        if self.is_iflow_memory_enabled():
-            self.save_to_iflow_memory(record)
+        # 2. 如果 iflow 可用，同步到 iflow 记忆
+        if self.is_iflow_available():
+            self.sync_to_iflow_memory(record)
         
         # 3. 同步到 cases.json（如果解决方案值得复用）
         if record.get('success') and record.get('reuseable'):

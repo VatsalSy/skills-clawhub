@@ -75,8 +75,8 @@ class OpenClawDoctor:
     }
     
     def __init__(self):
-        # 基础路径 - OpenClaw 标准技能目录
-        self.base_dir = Path(os.path.expanduser("~/.openclaw/skills/openclaw-iflow-doctor"))
+        # 基础路径 - 独立目录
+        self.base_dir = Path(os.path.expanduser("~/.iflow/memory/openclaw"))
         self.desktop_dir = Path(os.path.expanduser("~/Desktop"))
         
         # 配置文件和数据文件（都在同一目录）
@@ -1358,9 +1358,9 @@ class OpenClawDoctor:
         result["problem_type"] = problem_type
         
         # 检查是否应该调用 iflow-helper
-        enable_iflow_helper = self.config.get("enable_iflow_helper", True)
+        iflow_integration = self.config.get("enable_iflow_integration", True)
         
-        if enable_iflow_helper:
+        if iflow_integration:
             # 生成包含 iflow-helper 调用的 BAT 文件
             bat_files = self.generate_bat_files_with_iflow(problem_type, error_text)
             result["iflow_recommended"] = True

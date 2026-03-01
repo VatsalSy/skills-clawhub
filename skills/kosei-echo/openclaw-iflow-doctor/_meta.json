@@ -1,11 +1,17 @@
 {
   "owner": "kosei-echo",
   "slug": "openclaw-iflow-doctor",
-  "displayName": "OpenClaw iFlow Doctor",
+  "displayName": "Openclaw Iflow Doctor",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1772224850096,
-    "commit": "https://github.com/openclaw/skills/commit/510aac2e26aaa44601451038140f161654172959"
+    "version": "1.1.0",
+    "publishedAt": 1772337087710,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1772224850096,
+      "commit": "https://github.com/openclaw/skills/commit/510aac2e26aaa44601451038140f161654172959"
+    }
+  ]
 }

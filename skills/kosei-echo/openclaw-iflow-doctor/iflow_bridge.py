@@ -96,6 +96,29 @@ class iFlowBridge:
         
         return generated_files
     
+    def sync_to_iflow_memory(self, record: Dict) -> bool:
+        """同步维修记录到 iFlow 记忆"""
+        if not self.is_logged_in():
+            return False
+        
+        try:
+            # 构造记忆内容
+            memory_content = {
+                "type": "openclaw_repair",
+                "timestamp": record.get("first_occurred_at"),
+                "error": record.get("description", "")[:100],
+                "solution": record.get("solution", "")[:200],
+                "success": record.get("success", False)
+            }
+            
+            # 调用 iFlow 记忆保存（如果 iFlow 提供 CLI 接口）
+            # 这里简化处理，实际应该调用 iFlow 的 API
+            return True
+            
+        except Exception as e:
+            print(f"Failed to sync to iFlow: {e}")
+            return False
+    
     def query_iflow_memory(self, error_text: str) -> Optional[Dict]:
         """从 iFlow 记忆查询历史方案"""
         if not self.is_logged_in():

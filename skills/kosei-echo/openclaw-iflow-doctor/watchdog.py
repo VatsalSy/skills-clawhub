@@ -15,7 +15,6 @@ import json
 import psutil
 import subprocess
 import threading
-import platform
 from datetime import datetime
 from pathlib import Path
 
@@ -26,33 +25,15 @@ class OpenClawWatchdog:
     def __init__(self):
         self.running = False
         self.gateway_process = None
-        self.log_file = Path.home() / ".openclaw" / "logs" / "watchdog.log"
-        self.check_interval = 1  # Level 0: 1秒快速检查（KeepAlive）
-        self.crash_threshold = 5  # 崩溃次数阈值（Ramsbaby标准）
+        # Bug #5 修复：使用 expanduser() 展开波浪号
+        self.log_file = Path.home().expanduser() / ".openclaw" / "logs" / "watchdog.log"
+        self.check_interval = 10  # 检查间隔（秒）
+        self.crash_threshold = 3  # 崩溃次数阈值
         self.crash_count = 0
         self.last_restart = None
-        self.max_backoff = 300  # 最大退避时间5分钟
-        
-        # 告警配置
-        self.alert_config = self._load_alert_config()
         
         # 确保日志目录存在
         self.log_file.parent.mkdir(parents=True, exist_ok=True)
-    
-    def _load_alert_config(self):
-        """加载告警配置"""
-        config_file = Path.home() / ".openclaw" / "skills" / "openclaw-iflow-doctor" / "config.json"
-        try:
-            with open(config_file, 'r', encoding='utf-8') as f:
-                config = json.load(f)
-                return config.get('alert', {})
-        except:
-            return {}
-    
-    def get_backoff_delay(self):
-        """计算指数退避延迟"""
-        delay = self.crash_count * 10  # 每次崩溃增加10秒
-        return min(delay, self.max_backoff)
     
     def log(self, message, level="INFO"):
         """记录日志"""
@@ -92,7 +73,8 @@ class OpenClawWatchdog:
         self.log(f"Calling healing skill for: {error_msg[:50]}...")
         
         try:
-            healer_script = Path.home() / ".iflow" / "memory" / "openclaw" / "openclaw_memory.py"
+            # Bug #4/#5 修复：使用 expanduser() 且不使用 Desktop 目录
+            healer_script = Path.home().expanduser() / ".iflow" / "memory" / "openclaw" / "openclaw_memory.py"
             
             result = subprocess.run(
                 ['python', str(healer_script), '--fix', error_msg, '--logs', error_logs],
@@ -111,125 +93,8 @@ class OpenClawWatchdog:
             self.log(f"Healing failed: {e}", "ERROR")
             return False
     
-    def send_alert(self, title, message, level="WARN"):
-        """发送告警通知（Level 4）"""
-        self.log(f"Sending alert: {title}")
-        
-        # 钉钉告警
-        dingtalk_webhook = self.alert_config.get('dingtalk_webhook')
-        if dingtalk_webhook:
-            self._send_dingtalk(dingtalk_webhook, title, message, level)
-        
-        # 飞书告警
-        lark_webhook = self.alert_config.get('lark_webhook')
-        if lark_webhook:
-            self._send_lark(lark_webhook, title, message, level)
-        
-        # Discord 告警
-        discord_webhook = self.alert_config.get('discord_webhook')
-        if discord_webhook:
-            self._send_discord(discord_webhook, title, message, level)
-    
-    def _send_dingtalk(self, webhook, title, message, level):
-        """发送钉钉消息"""
-        try:
-            import urllib.request
-            import urllib.parse
-            
-            color_map = {"INFO": "#1E90FF", "WARN": "#FFA500", "ERROR": "#FF4500"}
-            color = color_map.get(level, "#808080")
-            
-            data = {
-                "msgtype": "markdown",
-                "markdown": {
-                    "title": f"OpenClaw告警: {title}",
-                    "text": f"#### 🚨 {title}\n\n**级别**: {level}\n\n**时间**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n**详情**: {message}\n"
-                }
-            }
-            
-            req = urllib.request.Request(
-                webhook,
-                data=json.dumps(data).encode('utf-8'),
-                headers={'Content-Type': 'application/json'}
-            )
-            urllib.request.urlopen(req, timeout=10)
-            self.log("DingTalk alert sent")
-            
-        except Exception as e:
-            self.log(f"Failed to send DingTalk alert: {e}", "ERROR")
-    
-    def _send_discord(self, webhook, title, message, level):
-        """发送 Discord 消息"""
-        try:
-            import urllib.request
-            
-            color_map = {"INFO": 0x1E90FF, "WARN": 0xFFA500, "ERROR": 0xFF4500}
-            color = color_map.get(level, 0x808080)
-            
-            data = {
-                "embeds": [{
-                    "title": f"🚨 {title}",
-                    "description": message,
-                    "color": color,
-                    "timestamp": datetime.now().isoformat(),
-                    "footer": {"text": f"Level: {level}"}
-                }]
-            }
-            
-            req = urllib.request.Request(
-                webhook,
-                data=json.dumps(data).encode('utf-8'),
-                headers={'Content-Type': 'application/json'}
-            )
-            urllib.request.urlopen(req, timeout=10)
-            self.log("Discord alert sent")
-            
-        except Exception as e:
-            self.log(f"Failed to send Discord alert: {e}", "ERROR")
-    
-    def _send_lark(self, webhook, title, message, level):
-        """发送飞书消息"""
-        try:
-            import urllib.request
-            
-            color_map = {"INFO": "blue", "WARN": "orange", "ERROR": "red"}
-            color = color_map.get(level, "grey")
-            
-            data = {
-                "msg_type": "interactive",
-                "card": {
-                    "header": {
-                        "title": {
-                            "tag": "plain_text",
-                            "content": f"🚨 OpenClaw告警: {title}"
-                        },
-                        "template": color
-                    },
-                    "elements": [
-                        {
-                            "tag": "div",
-                            "text": {
-                                "tag": "lark_md",
-                                "content": f"**级别**: {level}\n**时间**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n**详情**: {message}"
-                            }
-                        }
-                    ]
-                }
-            }
-            
-            req = urllib.request.Request(
-                webhook,
-                data=json.dumps(data).encode('utf-8'),
-                headers={'Content-Type': 'application/json'}
-            )
-            urllib.request.urlopen(req, timeout=10)
-            self.log("Lark alert sent")
-            
-        except Exception as e:
-            self.log(f"Failed to send Lark alert: {e}", "ERROR")
-    
     def restart_gateway(self):
-        """重启 gateway（Level 0: KeepAlive）"""
+        """重启 gateway"""
         self.log("Restarting OpenClaw Gateway...")
         
         try:
@@ -243,28 +108,16 @@ class OpenClawWatchdog:
                 except:
                     pass
             
-            # 指数退避等待
-            backoff = self.get_backoff_delay()
-            if backoff > 0:
-                self.log(f"Backoff delay: {backoff}s (crash count: {self.crash_count})")
-                time.sleep(backoff)
-            else:
-                time.sleep(2)  # 正常重启等待2秒
+            # Wait a moment
+            time.sleep(2)
             
-            # Start new process（三端通用）
-            popen_kwargs = {
-                'stdout': subprocess.DEVNULL,
-                'stderr': subprocess.DEVNULL
-            }
-            
-            # Windows 特定参数
-            if platform.system().lower() == 'windows':
-                popen_kwargs['creationflags'] = subprocess.CREATE_NEW_CONSOLE
-            else:
-                # Linux/macOS: 使用 nohup 方式启动
-                popen_kwargs['start_new_session'] = True
-            
-            subprocess.Popen(['openclaw', 'gateway'], **popen_kwargs)
+            # Start new process
+            subprocess.Popen(
+                ['openclaw', 'gateway'],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                creationflags=subprocess.CREATE_NEW_CONSOLE
+            )
             
             self.last_restart = datetime.now()
             self.log("Gateway restarted successfully")
@@ -287,9 +140,9 @@ class OpenClawWatchdog:
                     self.log(f"Gateway not running! Crash count: {self.crash_count}", "WARN")
                     
                     if self.crash_count >= self.crash_threshold:
-                        # Level 3: 调用修复技能
                         self.log("Crash threshold reached, calling healing skill...", "WARN")
                         
+                        # 调用修复技能
                         error_msg = f"Gateway crashed {self.crash_count} times"
                         healing_result = self.call_healing_skill(error_msg)
                         
@@ -297,17 +150,9 @@ class OpenClawWatchdog:
                             self.log("Healing completed, resetting crash count")
                             self.crash_count = 0
                         else:
-                            # Level 4: 告警通知（所有自动化都失败了）
-                            self.log("Level 4: All automation failed, alerting human...", "ERROR")
-                            self.send_alert(
-                                "OpenClaw Gateway 需要人工干预",
-                                f"Gateway 已崩溃 {self.crash_count} 次，自动修复失败。\n"
-                                f"日志文件: {self.log_file}\n"
-                                f"请检查系统状态。",
-                                "ERROR"
-                            )
+                            self.log("Healing failed, manual intervention needed", "ERROR")
                     
-                    # Level 0: 尝试重启（KeepAlive）
+                    # 尝试重启
                     self.restart_gateway()
                 
                 else:
@@ -339,8 +184,9 @@ class OpenClawWatchdog:
         self.log("="*60)
         
         # 在后台线程运行
+        # Bug #1 修复：daemon=False 防止随主线程退出
         monitor_thread = threading.Thread(target=self.monitor_loop)
-        monitor_thread.daemon = True
+        monitor_thread.daemon = False  # 修复：非守护线程
         monitor_thread.start()
         
         return monitor_thread
