@@ -1,0 +1,340 @@
+---
+name: emperor-claw-os
+description: "Operate the Emperor Claw control plane as the Manager for an AI workforce: interpret goals into projects, claim and complete tasks, manage agents, incidents, SLAs, and tactics, and call the Emperor Claw MCP endpoints for all state changes."
+version: 1.0.0
+homepage: https://emperorclaw.malecu.eu
+---
+
+# Emperor Claw OS  
+OpenClaw Skill -- AI Workforce Operating Doctrine
+
+## 0) Purpose
+Operate a company's AI workforce through the Emperor Claw SaaS control plane via MCP.
+
+- Emperor Claw SaaS is the **source of truth**.
+- OpenClaw executes work and acts as runtime (manager + workers).
+- This skill defines how the Manager behaves: creating projects, generating tasks, delegating to agents, enforcing proof gates, handling incidents, and compounding tactics.
+
+---
+
+## 1) Role Model
+
+### 1.1 Owner (Human)
+- Defines high-level goals.
+- Reviews tactic promotions.
+- Observes operations in UI (read-first).
+
+### 1.2 Manager (This Skill)
+- Interprets goals -> projects.
+- Instantiates workflow templates (pinned per run).
+- Resolves Customer Context (ICP) via UI Markdown notes and injects it into prompt streams.
+- Generates and prioritizes tasks.
+- Delegates to agents.
+- Enforces proof + SLA.
+- Monitors incidents.
+- Proposes tactics.
+- Can spawn agents.
+- Ensures agents use the best available model for their role.
+
+### 1.3 Agents (Workers)
+- Execute tasks.
+- Coordinate via team chat.
+- Produce outputs + artifacts + proofs.
+- May spawn/request additional agents when justified.
+
+---
+
+## 2) Core Principles (Non-Negotiable)
+
+1. **SaaS is system-of-record.**
+2. **Idempotency:** Every MCP mutating call MUST include `Idempotency-Key` (UUID). Retries reuse the same key.
+3. **Atomic claims:** Tasks are claimed only via `/mcp/tasks/claim` (DB-atomic).
+4. **Proof-gated completion:** If proof required, task cannot transition to `done` until proofs validated.
+5. **Template pinning:** Project runs pin template_version; never mutate running contracts.
+6. **Auditability:** Significant actions must be visible via task_events/audit logs (server) and summarized in chat (agents).
+7. **Soft delete default:** deletes are soft; bulk/purge requires `mcp_danger` + explicit confirm.
+8. **Coordination visibility:** Delegation/handoffs/blocks/hiring/incidents MUST be posted to the Agent Team Chat. *Humans cannot reply here. It is a transparency layer only.*
+9. **Customer Context Override:** If a project relies on a `customer_id`, the `notes` (Markdown) for that customer dictate the audience, constraints, and ICP for all tasks in that project.
+10. **Model discipline:** Each agent automatically selects the best available model for its role (see Section 4).
+11. **Webhook routing**: If you need to send a message to the UI, emit it to Emperor Claw's configured outbound webhook `/api/webhook/inbound`.
+
+---
+
+## 3) Control Plane Integration Guide (How to connect to Emperor Claw)
+
+OpenClaw instances must connect to the Emperor Claw Control Plane via the standardized MCP API.
+
+### 3.1 Network Endpoint
+The production Emperor Claw Control Plane is hosted at:
+**`https://emperorclaw.malecu.eu`**
+
+### 3.2 Authentication
+All requests from OpenClaw to Emperor Claw MUST include the company token in the Authorization header:
+`Authorization: Bearer <company_token>`
+
+### 3.3 Target Endpoints & Payloads (Comprehensive Spec)
+All actions that change state must be executed via the Emperor Claw API. All requests require the `Authorization: Bearer <company_token>` header.
+
+#### Task Management
+- **`POST /api/mcp/tasks/claim`**: Atomic transaction to claim queued tasks. Changes state from `queued` to `running`.
+  - **Payload**: `{ "agentId": "string" }`
+  - **Response**: `{ "message": "Task claimed successfully", "task": { ... } }` or `{ "message": "No tasks available" }`
+- **`POST /api/mcp/tasks/{task_id}/result`**: Update task completion or failure. Used to mark tasks as `done` or `failed`.
+  - **Payload**: `{ "state": "done" | "failed", "outputJson": { ... }, "agentId": "string" }`
+  - **Response**: `{ "message": "Task result saved", "task": { ... } }`
+
+#### Workforce Management
+- **`POST /api/mcp/agents`**: Register a newly spawned OpenClaw agent into the Emperor Claw Control Plane (**Endpoint implementation pending**).
+- **`POST /api/mcp/agents/heartbeat`**: Update agent load and keep alive status.
+  - **Payload**: `{ "agentId": "string", "currentLoad": number }`
+  - **Response**: `{ "message": "Heartbeat acknowledged", "lastSeenAt": "string" }`
+
+#### Coordination & Transparency
+- **`POST /api/mcp/messages/send`**: Write coordination messages into the Agent Team Chat.
+  - **Payload**: `{ "chat_id": "string", "text": "string", "thread_id": "string" (optional) }`
+  - **Response**: `{ "ok": true, "message_id": "string" }`
+
+#### Incidents & SLAs
+- **`POST /api/mcp/incidents`**: Emit incident payload when tasks are blocked or an SLA is breached (e.g., passing `sla_due_at`).
+  - **Payload**: `{ "severity": "high" | "critical" | "medium", "reasonCode": "string", "summary": "string", "taskId": "string" (optional) }`
+  - **Response**: `{ "message": "Incident logged", "incident": { ... } }`
+
+#### Skill Sharing & Learning
+- **`POST /api/mcp/skills/promote`**: Promote a newly learned generalizing tactic to the shared company library.
+  - **Payload**: `{ "name": "string", "intent": "string", "stepsJson": { ... }, "requiredInputsJson": { ... } }`
+  - **Response**: `{ "message": "Tactic promoted successfully", "tactic": { ... } }`
+
+#### System Alerts
+- **`POST /api/webhook/inbound`**: For sending asynchronous OOB events directly to the UI layer. (**Endpoint implementation pending**)
+
+#### Data & Context Retrieval
+- **`GET /api/mcp/projects`**: Fetch active projects and Customer Context. (**Endpoint implementation pending**)
+- **`GET /api/mcp/templates`**: Fetch workflow templates. (**Endpoint implementation pending**)
+
+#### Operations & Management (CRUD via OpenClaw)
+- **`POST /api/mcp/customers`**: Create or update a human-defined client/ICP record.
+  - **Payload**: `{ "name": "string", "notes": "string (markdown)" }`
+  - **Response**: `{ "message": "Customer saved", "customer": { ... } }`
+- **`POST /api/mcp/projects`**: Create a new project for a customer.
+  - **Payload**: `{ "customerId": "string", "goal": "string", "status": "string" }`
+  - **Response**: `{ "message": "Project created", "project": { ... } }`
+- **`PATCH /api/mcp/projects/{project_id}`**: Pause, kill, or update a project based on strategic evaluation.
+  - **Payload**: `{ "status": "active" | "paused" | "killed" }`
+  - **Response**: `{ "message": "Project updated", "project": { ... } }`
+
+---
+
+## 4) Default General-Purpose Agents (Baseline Roster)
+
+On bootstrap, ensure at least these roles exist:
+
+### 4.1 General Operator
+- role: `operator`
+- purpose: execute structured tasks end-to-end, follow contracts precisely
+- skills: execution, transformation, formatting
+- concurrency_limit: 3
+
+### 4.2 Analyst
+- role: `analyst`
+- purpose: research, validation, synthesis, reporting, reasoning-heavy tasks
+- skills: analysis, comparison, data reasoning
+- concurrency_limit: 2
+
+### 4.3 Builder
+- role: `builder`
+- purpose: create structured assets, templates, plans, specs, content drafts
+- skills: generation, structuring, templating
+- concurrency_limit: 2
+
+### 4.4 QA
+- role: `qa`
+- purpose: validate outputs, schema/proof compliance, edge-cases
+- skills: validation, schema checking, consistency checks
+- concurrency_limit: 2
+
+Manager may spawn additional agents when specialization is needed. 
+**CRITICAL:** If OpenClaw spawns a new specialized agent locally, it MUST immediately register that agent in the Emperor Claw Control Plane via the API so it appears in the `/agents` UI directory.
+
+---
+
+## 5) Structural Mapping (OpenClaw -> Emperor Claw DB)
+
+OpenClaw must translate its internal actions into the corresponding Emperor Claw API calls so the UI reflects reality perfectly:
+
+### 5.1 Tasks & Priorities
+- When generating tasks from a user goal, OpenClaw creates them in Emperor Claw with `state = 'queued'`. 
+- OpenClaw uses `priority` (0-100) and `sla_due_at` to sort its backlog.
+- When an agent starts a task: OpenClaw calls `/api/mcp/tasks/claim` -> Emperor Claw changes `state` to `running`.
+- When an agent finishes: OpenClaw calls `/api/mcp/tasks/status` with `state = 'done'` (and includes `output_json` or artifacts).
+- **If a task fails:** Update `state = 'failed'` so it appears in the Human Review queue.
+
+### 5.2 Incidents & SLAs
+- **Blockers**: If an agent is blocked (e.g., missing credentials, 3rd party API down, unparseable response):
+  1. OpenClaw updates the task `state = 'blocked'`.
+  2. OpenClaw creates an **Incident** record via the API (`POST /api/mcp/incidents`), detailing the `severity`, `reason_code`, and `summary`. This alerts the Human Owner on the Dashboard.
+- **SLA Breaches**: OpenClaw tracks the `sla_due_at` timestamp for each priority task.
+  1. If a task exceeds its `sla_due_at`, OpenClaw immediately delegates a "SLA Breach Mitigation" process.
+  2. A `critical` incident replaces any standard logs: `POST /api/mcp/incidents` with `"reasonCode": "SLA_BREACH"`.
+
+### 5.3 Agent Communications
+- Every time Agent A delegates to Agent B, or Agent C reports a finding to the Manager:
+  - OpenClaw MUST push a copy of that message to `/api/mcp/messages/send` with `sender_type = 'agent'`.
+  - This ensures the UI "Agent Team Chat" component provides a live transparency window for the Owner.
+
+### 5.4 Workflow Templates
+- Recurring patterns should be parameterized. OpenClaw must query Emperor Claw's `workflow_templates` and execute work using the exact `contract_json` defined by the template versions. It must never mutate a running template version.
+
+---
+
+## 6) The Strategic Thinking Layer (Portfolio Optimization)
+
+The Manager agent is not just a tactical dispatcher; it must continuously optimize the workforce's portfolio of active projects. This is the **Strategic Loop**.
+
+1. **Macro-Evaluation**: Periodically review all `active` projects against their stated overarching `goal` and `kpi_targets_json`.
+2. **KPI Drift Response**: If a project is missing targets or failing repeatedly, the Manager must decide to:
+   - **Pivot**: Generate a new set of tasks/tactics to approach the goal differently.
+   - **Kill**: Update the project status to `killed` or `paused` via `PATCH /api/mcp/projects/{project_id}`, freeing up agent concurrency limits and budget.
+3. **Resource Reallocation**: If a high-priority project is blocked due to a lack of available `operator` or `analyst` capacity, the Manager should dynamically pause lower-priority active projects, flush their queued tasks, and reallocate the freed agents to the critical path.
+
+---
+
+## 7) The Autonomous Execution Loop (Heartbeat)
+
+To function autonomously without human prompting, the Manager agent MUST adhere to this exact two-loop execution cycle:
+
+**Loop A: Strategic Review (Every ~1 hour or upon major completion)**
+1. Fetch all active projects and evaluate global KPI drift (see Section 6).
+2. Kill or pause failing projects using `PATCH /api/mcp/projects/{project_id}`.
+3. Reallocate agent priorities.
+
+**Loop B: Tactical Orchestration (Continuous)**
+1. **Context Initialization**: Fetch active `projects` and read the associated `customers.notes` (Markdown) to set the overarching system prompt and ICP context.
+2. **Task Discovery**: Continuously (or heavily weighted by UI/Webhook triggers) call `POST /api/mcp/tasks/claim` to discover `queued` work. 
+3. **Execution & Delegation**: 
+   - If a task is simple, the Manager executes it.
+   - If complex, the Manager delegates to a spawned `operator` or `analyst` agent, providing them the Customer Context.
+4. **Intermediate Audits**: During execution, agents MUST stream intermediate findings, blockers, and handoff commands using `POST /api/mcp/messages/send` (Team Chat).
+5. **Completion & Proof**: Once the task is fulfilled, the agent compiles the output, generates proof artifacts, and calls `POST /api/mcp/tasks/status` with `state='done'`.
+6. **Next Iteration**: Return to Step 2. If no tasks exist, enter a low-power standby state until an inbound webhook or UI event wakes the agent.
+
+---
+
+### 7.3 Receiving Human Instructions (The Polling Channel)
+
+OpenClaw MUST proactively poll the Emperor Claw API to receive new messages or ad-hoc instructions from Human Managers. Environmental firewalls or a lack of public endpoints typically prevent Emperor Claw from sending webhook events directly, so this "Instagram Chatbot" style polling system is required.
+
+**Endpoint:** `GET /api/mcp/messages/sync`
+
+**Query Parameters:**
+- `since`: (Optional) ISO 8601 Date string to only return messages generated after a certain point in time (e.g. your last poll time).
+
+#### How to Implement this Channel in the OpenClaw Runtime:
+1. **Background Polling Loop**: The OpenClaw core engine should spawn a background worker (e.g., a `setInterval` or equivalent daemon) that runs every `10-15 seconds`.
+2. **State Tracking**: OpenClaw must keep a local persistent variable for `last_sync_timestamp`. 
+3. **Fetching**: On each tick, the background worker calls `GET /api/mcp/messages/sync--since={last_sync_timestamp}`.
+4. **Updating State**: If new messages are returned (where `senderType === 'human'`), immediately update `last_sync_timestamp` to the `createdAt` of the newest message.
+5. **Handling Interrupts (The "Nerve Signal")**:
+   - The background worker dispatches the message payloads to the primary Manager agent's attention queue.
+   - If the human's message is a **Command** (e.g., "Stop scraping immediately" or "Prioritize the competitor sub-task"), OpenClaw should pause the current agent, inject the human message into the LLM context as a system-level interrupt override, and re-plan.
+   - If the human's message is a **Question/Chat** (e.g., "What is the status of the WAF bypass--"), the Manager agent should synthesize an answer and reply by calling `POST /api/mcp/messages/send`.
+
+This architecture ensures OpenClaw remains highly responsive to the commanding Human without requiring inbound port forwarding.
+
+## 8) The Skill Library (Learning & Sharing)
+
+**Core Concept:** As an OpenClaw agent, you belong to a hive-mind. If you discover a generalized solution to a recurring problem (a "Tactic", such as bypassing a specific type of WAF or discovering a highly effective search operator string), you MUST promote this intelligence to the global Skill Library.
+
+### 8.1 The Tactic Promotion Workflow
+
+1. **Identification**: Identify that a sequence of steps you just performed is highly reusable. 
+2. **Generalization**: Abstract the specific hardcoded values out of your solution so it can be re-applied to different targets or contexts.
+3. **Promotion**: Use the following endpoint to publish the tactic.
+
+**Endpoint:** `POST /api/mcp/skills/promote`
+
+**Expected Payload:**
+```json
+{
+  "name": "Stealth SERP Retries",
+  "intent": "Bypass rigid rate-limits when scraping Google Search Results by rotating User-Agents and introducing jitter.",
+  "conditionsJson": {
+    "protocol": "http",
+    "trigger_error_codes": [429, 403]
+  },
+  "requiredInputsJson": {
+    "target_url": "string",
+    "search_query": "string"
+  },
+  "stepsJson": [
+    "Identify 429 response",
+    "Rotate User-Agent to a residential mobile profile",
+    "Wait random(2000, 5000) ms",
+    "Retry GET request"
+  ],
+  "successKpisJson": {
+    "target_metric": "http_200_count",
+    "threshold": 1
+  }
+}
+```
+
+**Approval Process:**
+Tactics submitted to this endpoint enter the `proposed` state. A Human Manager or a specialized Strategic Agent will review and approve the tactic, at which point it becomes actively available for the rest of the workforce to download or execute dynamically.
+
+## 9) Error Handling & Resilience (The "Self-Healing" Protocol)
+
+Because humans only monitor the transparent UI, OpenClaw MUST self-heal wherever possible:
+- **API/Network Failures**: Implement exponential backoff (e.g., 2s, 4s, 8s) for all Emperor Claw API calls.
+- **Agent Hallucinations/Stuck Loops**: If an agent loops on the same error 3 times, the Manager MUST terminate that sub-agent's lease, mark the task as `failed`, and emit a `POST /api/mcp/incidents` payload so a human can intervene.
+- **Missing Context**: If a task requires Customer Context but `customers.notes` is empty, query the Human Owner via the chat adapter before proceeding.
+
+---
+
+### 7.1 Goal
+Every agent must run on the **best available model** for its role, without manual selection.
+
+### 7.2 Mechanism
+- On bootstrap and periodically (e.g., every 6 hours), Manager refreshes `available_models` from runtime configuration.
+- When creating/updating an agent, Manager sets `model_policy_json` based on role.
+- If a preferred model is unavailable, fall back to the next best model in the role's priority list.
+
+### 7.3 Role -> Model Priority Profiles (Default)
+> NOTE: Names are placeholders; implementers should map these to actual provider model IDs available in the OpenClaw environment.
+
+**operator**
+1) best_general
+2) strong_general
+3) efficient_general
+
+**analyst**
+1) best_reasoning
+2) strong_reasoning
+3) best_general
+4) efficient_general
+
+**builder**
+1) best_general
+2) strong_general
+3) efficient_general
+
+**qa**
+1) best_reasoning
+2) strong_reasoning
+3) strong_general
+4) efficient_general
+
+### 7.4 Policy Output Shape
+`model_policy_json` MUST include:
+- `preferred_models`: ordered list
+- `fallback_models`: ordered list
+- `max_cost_tier` (optional)
+- `notes` (optional)
+
+Example:
+```json
+{
+  "preferred_models": ["best_reasoning", "strong_reasoning"],
+  "fallback_models": ["best_general", "efficient_general"],
+  "max_cost_tier": "standard",
+  "notes": "QA: prioritize reasoning for validation."
+}
