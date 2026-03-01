@@ -1,0 +1,11 @@
+{
+  "owner": "pricnd",
+  "slug": "csgo-monitor",
+  "displayName": "csgo",
+  "latest": {
+    "version": "1.0.4",
+    "publishedAt": 1772364413446,
+    "commit": null
+  },
+  "history": []
+}
