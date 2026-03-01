@@ -3,9 +3,15 @@
   "slug": "a-neutral-registry-for-your-ai-agents-to-publish",
   "displayName": "openproof-skill",
   "latest": {
-    "version": "1.2.0",
-    "publishedAt": 1771953676554,
-    "commit": "https://github.com/openclaw/skills/commit/41aa50fc0707b6b42c2a26a33a0683b85239b42d"
+    "version": "1.2.1",
+    "publishedAt": 1772291650908,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.2.0",
+      "publishedAt": 1771953676554,
+      "commit": "https://github.com/openclaw/skills/commit/41aa50fc0707b6b42c2a26a33a0683b85239b42d"
+    }
+  ]
 }
