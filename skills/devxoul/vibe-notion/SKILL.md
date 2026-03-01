@@ -1,7 +1,7 @@
 ---
 name: vibe-notion
 description: Interact with Notion using the unofficial private API - pages, databases, blocks, search, users, comments
-version: 0.6.0
+version: 0.8.0
 allowed-tools: Bash(vibe-notion:*)
 metadata:
   openclaw:
@@ -32,7 +32,7 @@ This package ships two CLIs. Pick the right one based on your situation:
 | Identity | Acts as the user | Acts as a bot |
 | Setup | Zero — credentials extracted automatically | Manual — create Integration at notion.so/my-integrations |
 | Database rows | `add-row`, `update-row` | Create via `page create --database` |
-| View management | `view-get`, `view-update` | Not supported |
+| View management | `view-get`, `view-update`, `view-list`, `view-add`, `view-delete` | Not supported |
 | Workspace listing | Supported | Not supported |
 | Stability | Private API — may break on Notion changes | Official versioned API — stable |
 
@@ -184,14 +184,19 @@ vibe-notion page get <page_id> --workspace-id <workspace_id> --pretty
 vibe-notion page get <page_id> --workspace-id <workspace_id> --limit 50
 vibe-notion page get <page_id> --workspace-id <workspace_id> --backlinks --pretty
 
-# Create a new page under a parent
+# Create a new page (--parent is optional; omit to create at workspace root)
 vibe-notion page create --workspace-id <workspace_id> --parent <parent_id> --title "My Page" --pretty
+vibe-notion page create --workspace-id <workspace_id> --title "New Root Page" --pretty
+
 
 # Create a page with markdown content
 vibe-notion page create --workspace-id <workspace_id> --parent <parent_id> --title "My Doc" --markdown '# Hello\n\nThis is **bold** text.'
 
 # Create a page with markdown from a file
 vibe-notion page create --workspace-id <workspace_id> --parent <parent_id> --title "My Doc" --markdown-file ./content.md
+
+# Create a page with markdown containing local images (auto-uploaded to Notion)
+vibe-notion page create --workspace-id <workspace_id> --parent <parent_id> --title "My Doc" --markdown-file ./doc-with-images.md
 
 # Replace all content on a page with new markdown
 vibe-notion page update <page_id> --workspace-id <workspace_id> --replace-content --markdown '# New Content'
@@ -217,6 +222,10 @@ vibe-notion database query <database_id> --workspace-id <workspace_id> --limit 1
 vibe-notion database query <database_id> --workspace-id <workspace_id> --view-id <view_id> --pretty
 vibe-notion database query <database_id> --workspace-id <workspace_id> --search-query "keyword" --pretty
 vibe-notion database query <database_id> --workspace-id <workspace_id> --timezone "America/New_York" --pretty
+
+# Query with filter and sort (uses property IDs from database get schema)
+vibe-notion database query <database_id> --workspace-id <workspace_id> --filter '<filter_json>' --pretty
+vibe-notion database query <database_id> --workspace-id <workspace_id> --sort '<sort_json>' --pretty
 
 # List all databases in workspace
 vibe-notion database list --workspace-id <workspace_id> --pretty
@@ -256,6 +265,19 @@ vibe-notion database view-update <view_id> --workspace-id <workspace_id> --show 
 # Reorder columns (comma-separated names in desired order; unmentioned columns appended)
 vibe-notion database view-update <view_id> --workspace-id <workspace_id> --reorder "Name,Status,Priority,Date" --pretty
 vibe-notion database view-update <view_id> --workspace-id <workspace_id> --reorder "Name,Status" --show "Status" --pretty
+
+# Resize columns (JSON mapping property names to pixel widths)
+vibe-notion database view-update <view_id> --workspace-id <workspace_id> --resize '{"Name":200,"Status":150}' --pretty
+
+# List all views for a database
+vibe-notion database view-list <database_id> --workspace-id <workspace_id> --pretty
+
+# Add a new view to a database (default type: table)
+vibe-notion database view-add <database_id> --workspace-id <workspace_id> --pretty
+vibe-notion database view-add <database_id> --workspace-id <workspace_id> --type board --name "Board View" --pretty
+
+# Delete a view from a database (cannot delete the last view)
+vibe-notion database view-delete <view_id> --workspace-id <workspace_id> --pretty
 ```
 
 ### Block Commands
@@ -279,11 +301,35 @@ vibe-notion block append <parent_id> --workspace-id <workspace_id> --markdown '#
 # Append markdown from a file
 vibe-notion block append <parent_id> --workspace-id <workspace_id> --markdown-file ./content.md
 
+# Append markdown with local images (auto-uploaded to Notion)
+vibe-notion block append <parent_id> --workspace-id <workspace_id> --markdown-file ./doc-with-images.md
+
+# Append nested markdown (indented lists become nested children blocks)
+vibe-notion block append <parent_id> --workspace-id <workspace_id> --markdown '- Parent item\n  - Child item\n    - Grandchild item'
+
+# Append blocks after a specific block (positional insertion)
+vibe-notion block append <parent_id> --workspace-id <workspace_id> --after <block_id> --markdown '# Inserted after specific block'
+vibe-notion block append <parent_id> --workspace-id <workspace_id> --after <block_id> --content '[{"type":"text","properties":{"title":[["Inserted after"]]}}]'
+
+# Append blocks before a specific block
+vibe-notion block append <parent_id> --workspace-id <workspace_id> --before <block_id> --markdown '# Inserted before specific block'
+
 # Update a block
 vibe-notion block update <block_id> --workspace-id <workspace_id> --content '{"properties":{"title":[["Updated text"]]}}' --pretty
 
 # Delete a block
 vibe-notion block delete <block_id> --workspace-id <workspace_id> --pretty
+
+# Upload a file as a block (image or file block)
+vibe-notion block upload <parent_id> --workspace-id <workspace_id> --file ./image.png --pretty
+vibe-notion block upload <parent_id> --workspace-id <workspace_id> --file ./document.pdf --pretty
+vibe-notion block upload <parent_id> --workspace-id <workspace_id> --file ./image.png --after <block_id> --pretty
+vibe-notion block upload <parent_id> --workspace-id <workspace_id> --file ./image.png --before <block_id> --pretty
+
+# Move a block to a new position
+vibe-notion block move <block_id> --workspace-id <workspace_id> --parent <parent_id> --pretty
+vibe-notion block move <block_id> --workspace-id <workspace_id> --parent <parent_id> --after <sibling_id> --pretty
+vibe-notion block move <block_id> --workspace-id <workspace_id> --parent <parent_id> --before <sibling_id> --pretty
 ```
 
 ### Block Types Reference
@@ -309,6 +355,14 @@ The internal API uses a specific block format. Here are all supported types:
 ```json
 {"type": "bulleted_list", "properties": {"title": [["Bullet item"]]}}
 {"type": "numbered_list", "properties": {"title": [["Numbered item"]]}}
+```
+
+#### Nested Children
+
+List blocks support nested children via the `children` property:
+
+```json
+{"type": "bulleted_list", "properties": {"title": [["Parent"]]}, "children": [{"type": "bulleted_list", "properties": {"title": [["Child"]]}}]}
 ```
 
 #### To-Do / Checkbox
@@ -358,6 +412,9 @@ Multiple segments: `[["plain "], ["bold", [["b"]]], [" more plain"]]`
 # List comments on a page
 vibe-notion comment list --page <page_id> --workspace-id <workspace_id> --pretty
 
+# List inline comments on a specific block
+vibe-notion comment list --page <page_id> --block <block_id> --workspace-id <workspace_id> --pretty
+
 # Create a comment on a page (starts a new discussion)
 vibe-notion comment create "This is a comment" --page <page_id> --workspace-id <workspace_id> --pretty
 
@@ -380,7 +437,7 @@ vibe-notion batch --workspace-id <workspace_id> '<operations_json>'
 vibe-notion batch --workspace-id <workspace_id> --file ./operations.json '[]'
 ```
 
-**Supported actions** (12 total):
+**Supported actions** (13 total):
 
 | Action | Description |
 |--------|-------------|
@@ -396,6 +453,7 @@ vibe-notion batch --workspace-id <workspace_id> --file ./operations.json '[]'
 | `database.delete-property` | Delete a database property |
 | `database.add-row` | Add a row to a database |
 | `database.update-row` | Update properties on a database row |
+| `block.upload` | Upload a file as an image or file block |
 
 **Operation format**: Each operation is an object with `action` plus the same fields you'd pass to the individual command handler. Example with mixed actions:
 
