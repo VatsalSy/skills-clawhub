@@ -13,7 +13,7 @@
     "temp_dir": "./temp",
     "format": "oggopus",
     "sample_rate": 48000,
-    "max_file_size_mb": 50,
+    "max_file_size_mb": 1,
     "supported_formats": ["ogg", "wav", "mp3"]
   },
   "logging": {

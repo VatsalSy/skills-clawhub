@@ -104,7 +104,7 @@ OpenClaw will inject these variables when the skill runs, without exposing them 
 
 ```bash
 cd skills/sergei-mikhailov-stt
-cp assets/.env.example .env
+cp assets/env.example .env
 ```
 
 Edit `.env`:
@@ -308,7 +308,7 @@ For contributors who want to work with the source directly:
 git clone https://github.com/bzSega/sergei-mikhailov-stt.git
 cd sergei-mikhailov-stt
 pip install -r requirements.txt
-cp assets/.env.example .env
+cp assets/env.example .env
 # Edit .env with your credentials
 ```
 

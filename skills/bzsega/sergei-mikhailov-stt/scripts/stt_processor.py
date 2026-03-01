@@ -82,8 +82,8 @@ class STTProcessor:
         file_size = path.stat().st_size
         if file_size == 0:
             raise ValueError("File is empty")
-        if file_size > 50 * 1024 * 1024:
-            raise ValueError(f"File too large ({file_size} bytes), maximum is 50 MB")
+        if file_size > 1 * 1024 * 1024:
+            raise ValueError(f"File too large ({file_size} bytes), maximum is 1 MB (Yandex SpeechKit v1 sync API limit)")
 
         logger.info(f"File: {path.name} ({file_size} bytes)")
 

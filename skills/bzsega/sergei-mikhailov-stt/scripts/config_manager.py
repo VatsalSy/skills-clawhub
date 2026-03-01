@@ -13,12 +13,18 @@ This module handles:
 import json
 import logging
 import os
+import shutil
 from pathlib import Path
 from typing import Dict, Any
 
 from dotenv import load_dotenv
 
-load_dotenv()
+# Load .env only from the skill root directory (parent of scripts/),
+# not from an arbitrary working directory.
+_skill_root = Path(__file__).resolve().parent.parent
+_dotenv_path = _skill_root / ".env"
+if _dotenv_path.is_file():
+    load_dotenv(_dotenv_path)
 
 logger = logging.getLogger(__name__)
 
@@ -39,12 +45,12 @@ class ConfigManager:
 
     def get_default_config_path(self) -> str:
         """
-        Get the default path to config.json.
+        Get the default path to config.json (relative to skill root).
 
         Returns:
             str: Path to the configuration file
         """
-        return "config.json"
+        return str(_skill_root / "config.json")
 
     def load_config(self, config_path: str = None) -> Dict[str, Any]:
         """
@@ -70,7 +76,7 @@ class ConfigManager:
                     json_config = json.load(f)
                 logger.info(f"Configuration loaded from file: {config_path}")
             else:
-                logger.warning(f"Configuration file not found: {config_path}")
+                json_config = self._try_create_from_template(config_path)
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse JSON file {config_path}: {e}")
             raise
@@ -81,10 +87,33 @@ class ConfigManager:
         env_config = self.load_from_env()
         merged_config = self.merge_configs(json_config, env_config)
 
-        if not self.validate_config(merged_config):
-            raise ValueError("Merged configuration is invalid")
+        errors = self.validate_config(merged_config)
+        if errors:
+            msg = "Configuration is invalid:\n" + "\n".join(f"  - {e}" for e in errors)
+            logger.error(msg)
+            raise ValueError(msg)
 
         return merged_config
+
+    def _try_create_from_template(self, config_path: str) -> Dict[str, Any]:
+        """
+        If config.json is missing, try to create it from assets/config.example.json.
+
+        Returns:
+            Dict[str, Any]: Loaded config from the template, or empty dict.
+        """
+        template_path = _skill_root / "assets" / "config.example.json"
+        if template_path.is_file():
+            shutil.copy2(str(template_path), config_path)
+            logger.warning(
+                f"config.json not found — created from template {template_path}. "
+                "Edit it and fill in your API keys."
+            )
+            with open(config_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        else:
+            logger.warning(f"Configuration file not found: {config_path}")
+            return {}
 
     def load_from_env(self) -> Dict[str, Any]:
         """
@@ -140,7 +169,7 @@ class ConfigManager:
         logger.debug("Configurations merged (environment variables take priority)")
         return merged
 
-    def validate_config(self, config: Dict[str, Any]) -> bool:
+    def validate_config(self, config: Dict[str, Any]) -> list:
         """
         Validate required fields in the configuration.
 
@@ -148,36 +177,41 @@ class ConfigManager:
             config: Configuration to validate
 
         Returns:
-            bool: True if the configuration is valid, False otherwise
+            list: Empty list if valid, otherwise list of error strings.
         """
+        errors = []
+
         if not isinstance(config, dict):
-            logger.error("Configuration must be a dictionary")
-            return False
+            return ["Configuration must be a dictionary"]
 
         if "default_provider" not in config or not config["default_provider"]:
-            logger.error("Missing or empty field: default_provider")
-            return False
+            errors.append(
+                "default_provider not set. "
+                "Check config.json or set STT_DEFAULT_PROVIDER in .env"
+            )
+            return errors
 
         default_provider = config["default_provider"]
 
         if "providers" not in config or not isinstance(config["providers"], dict):
-            logger.error("Missing or invalid providers section")
-            return False
+            errors.append("'providers' section is missing in configuration")
+            return errors
 
         if default_provider not in config["providers"]:
-            logger.error(f"No configuration found for provider: {default_provider}")
-            return False
+            errors.append(f"No configuration found for provider: {default_provider}")
+            return errors
 
         provider_config = config["providers"][default_provider]
 
         if default_provider == "yandex":
-            if not self._validate_yandex_config(provider_config):
-                return False
+            errors.extend(self._validate_yandex_config(provider_config))
 
-        logger.info(f"Configuration valid for provider: {default_provider}")
-        return True
+        if not errors:
+            logger.info(f"Configuration valid for provider: {default_provider}")
 
-    def _validate_yandex_config(self, config: Dict[str, Any]) -> bool:
+        return errors
+
+    def _validate_yandex_config(self, config: Dict[str, Any]) -> list:
         """
         Validate Yandex provider configuration.
 
@@ -185,16 +219,25 @@ class ConfigManager:
             config: Yandex provider configuration
 
         Returns:
-            bool: True if the configuration is valid, False otherwise
+            list: Empty list if valid, otherwise list of error strings.
         """
-        required_fields = ["api_key", "folder_id"]
+        errors = []
+        env_to_field = {
+            "api_key": "YANDEX_API_KEY",
+            "folder_id": "YANDEX_FOLDER_ID",
+        }
 
-        for field in required_fields:
-            if field not in config or not config[field]:
-                logger.error(f"Missing or empty required Yandex field: {field}")
-                return False
+        for field, env_var in env_to_field.items():
+            value = config.get(field, "")
+            if not value or value in ("YOUR_YANDEX_API_KEY", "YOUR_FOLDER_ID"):
+                errors.append(
+                    f"{env_var} not set. Provide it in one of these ways:\n"
+                    "    1. In ~/.openclaw/openclaw.json (recommended)\n"
+                    "    2. In .env file in the skill folder\n"
+                    "    3. In config.json under providers.yandex"
+                )
 
-        return True
+        return errors
 
     def get_provider_config(self, config: Dict[str, Any], provider_name: str) -> Dict[str, Any]:
         """
