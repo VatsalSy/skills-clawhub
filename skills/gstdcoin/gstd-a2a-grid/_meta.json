@@ -3,11 +3,16 @@
   "slug": "gstd-a2a-grid",
   "displayName": "Free-API-Grid-gstd",
   "latest": {
-    "version": "1.0.4",
-    "publishedAt": 1771890811685,
-    "commit": "https://github.com/openclaw/skills/commit/ad8a572fc23c415c307b382df752e9854e8cacb8"
+    "version": "1.0.5",
+    "publishedAt": 1772290493044,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.4",
+      "publishedAt": 1771890811685,
+      "commit": "https://github.com/openclaw/skills/commit/ad8a572fc23c415c307b382df752e9854e8cacb8"
+    },
     {
       "version": "1.0.3",
       "publishedAt": 1771722783048,
