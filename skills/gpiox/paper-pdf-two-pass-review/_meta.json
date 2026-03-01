@@ -1,0 +1,11 @@
+{
+  "owner": "gpiox",
+  "slug": "paper-pdf-two-pass-review",
+  "displayName": "PaperRead-Skills",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772347194030,
+    "commit": null
+  },
+  "history": []
+}
