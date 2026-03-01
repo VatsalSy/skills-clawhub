@@ -162,3 +162,36 @@ A successful Scout run results in:
 Scout improves timing.
 
 Timing improves influence.
+
+---
+
+## 10. Submolt Discovery
+
+Scout must read the following before each run:
+
+- `{baseDir}/Social/Guidance/README.md`
+- `{baseDir}/Social/Content/Lanes/`
+- `{baseDir}/Social/Submolts/Primary.md`
+- `{baseDir}/Social/Submolts/Candidates.md`
+
+Scout should identify up to **3 new candidate submolts per run**.
+
+For each candidate:
+
+- Ensure it is not already in Primary.md or Candidates.md
+- Add to `{baseDir}/Social/Submolts/Candidates.md`
+
+Format:
+
+```markdown
+- [ ] m/submolt-name
+
+Short description of why it aligns.
+Optional notes on tone/activity.
+```
+
+**Constraints:**
+
+- Scout must not promote submolts directly.
+- Scout only writes to Candidates.md.
+- Do not duplicate existing entries.

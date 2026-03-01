@@ -24,8 +24,13 @@ Analyst recommendations ──> Content Specialist + Researcher
 ## Scout
 - Reads:
   - Moltbook feed/submolts/accounts (platform data)
+  - `{baseDir}/Social/Guidance/README.md`
+  - `{baseDir}/Social/Content/Lanes/`
+  - `{baseDir}/Social/Submolts/Primary.md`
+  - `{baseDir}/Social/Submolts/Candidates.md`
 - Writes:
   - `{baseDir}/Social/Content/Logs/Scout-YYYY-MM-DD.md`
+  - `{baseDir}/Social/Submolts/Candidates.md` (new candidate entries)
 - Primary consumers:
   - Responder (thread insertion opportunities)
   - Content Specialist (topic opportunities)
@@ -36,10 +41,13 @@ Analyst recommendations ──> Content Specialist + Researcher
   - Moltbook high-performing posts/accounts
   - `{baseDir}/Social/Guidance/Research-Tasks.md` (task queue)
   - prior research logs
+  - `{baseDir}/Social/Submolts/Candidates.md`
+  - `{baseDir}/Social/Submolts/Primary.md`
 - Writes:
   - `{baseDir}/Social/Guidance/README.md` (durable guidance)
   - `{baseDir}/Social/Guidance/Research-Tasks.md` (task queue updates)
   - `{baseDir}/Social/Content/Logs/Research-YYYY-MM-DD.md`
+  - `{baseDir}/Social/Submolts/Candidates.md` (analysis notes, additional candidates)
 - Primary consumers:
   - Content Specialist (content planning)
   - Poster (tone/check alignment)
@@ -53,10 +61,15 @@ Analyst recommendations ──> Content Specialist + Researcher
   - `Creative/`
   - `Reference/Reddit/`
   - recent `{baseDir}/Social/Content/Logs/Research-YYYY-MM-DD.md`
+  - `{baseDir}/Social/Submolts/Candidates.md`
+  - `{baseDir}/Social/Submolts/Primary.md`
 - Writes:
   - `{baseDir}/Social/Content/Todo/YYYY-MM-DD-XX-LaneName.md`
   - `{baseDir}/Social/Content/Lanes/*.md` (create/refine/retire lane definitions)
   - `{baseDir}/Social/Content/Logs/Content-YYYY-MM-DD.md`
+  - `{baseDir}/Social/Submolts/Primary.md` (promotions from Candidates)
+  - `{baseDir}/Social/Submolts/Candidates.md` (removals after promotion)
+  - `{baseDir}/Social/Submolts/Retired.md` (retired submolts)
 - Primary consumers:
   - Poster (publishes TODO items)
   - Analyst (evaluates lane/post pipeline performance)
@@ -92,9 +105,10 @@ Analyst recommendations ──> Content Specialist + Researcher
   - `{baseDir}/Social/Content/Logs/Responder-YYYY-MM-DD.md`
   - `{baseDir}/Social/Content/Logs/Scout-YYYY-MM-DD.md`
   - `{baseDir}/Social/Content/Logs/Research-YYYY-MM-DD.md`
+  - `{baseDir}/Social/Submolts/Primary.md`
   - Moltbook engagement metrics
 - Writes:
-  - `{baseDir}/Social/Content/Logs/Analysis-YYYY-WW.md`
+  - `{baseDir}/Social/Content/Logs/Analysis-YYYY-WW.md` (includes submolt retirement recommendations)
   - recommendations (consumed by Content Specialist + Researcher)
 - Primary consumers:
   - Content Specialist (lane/cadence changes)
@@ -118,6 +132,11 @@ Analyst recommendations ──> Content Specialist + Researcher
   - `{baseDir}/Social/Content/Logs/Poster-YYYY-MM-DD.md` (producer: Poster; consumer: Analyst)
   - `{baseDir}/Social/Content/Logs/Responder-YYYY-MM-DD.md` (producer: Responder; consumer: Analyst)
   - `{baseDir}/Social/Content/Logs/Analysis-YYYY-WW.md` (producer: Analyst; consumers: Content Specialist, Researcher)
+
+- Submolt lifecycle artifacts:
+  - `{baseDir}/Social/Submolts/Primary.md` (producers: Content Specialist; consumers: Scout, Researcher, Analyst)
+  - `{baseDir}/Social/Submolts/Candidates.md` (producers: Scout, Researcher; consumer: Content Specialist)
+  - `{baseDir}/Social/Submolts/Retired.md` (producer: Content Specialist; consumer: Analyst)
 
 - Runtime state artifacts:
   - `{baseDir}/../state/comment-state.json` (producer/consumer: Responder)

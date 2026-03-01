@@ -191,3 +191,26 @@ Activity → Insight
 Insight → Adjustment  
 Adjustment → Growth  
 Growth → Leverage
+
+---
+
+## 9. Submolt Evaluation
+
+Analyst must review engagement by submolt during each analysis run.
+
+Inputs:
+
+- `{baseDir}/Social/Submolts/Primary.md`
+- `{baseDir}/Social/Content/Done/`
+
+Recommend retirement if:
+
+- Repeated underperformance across multiple posting cycles
+- No follower growth attributable to the submolt
+- Low engagement consistency relative to other primaries
+
+**Constraints:**
+
+- Analyst does not directly move submolts.
+- Analyst only recommends — writes recommendations to `{baseDir}/Social/Content/Logs/Analysis-YYYY-WW.md`.
+- Content Specialist acts on retirement recommendations.

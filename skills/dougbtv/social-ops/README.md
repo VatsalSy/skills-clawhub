@@ -203,6 +203,15 @@ Built for OpenClaw agents.
 For deterministic implementation passes, use `references/tasks/QUEUE.md`
 with the task format in `references/tasks/TEMPLATE.md`.
 
+## Cron Job Setup
+
+For setting up automated execution of social-media roles, see [references/crons/InstallCrons.md](references/crons/InstallCrons.md).
+
+Quick start:
+```bash
+./scripts/install-cron-jobs.sh
+```
+
 ## Path Conventions
 
 For `{baseDir}` and workspace-relative path rules, see:

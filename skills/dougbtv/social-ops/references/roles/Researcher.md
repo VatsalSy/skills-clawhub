@@ -258,3 +258,26 @@ A successful Researcher run results in:
 
 The Researcher builds the map.
 Others walk it.
+
+---
+
+## 11. Submolt Analysis
+
+Researcher must review:
+
+- `{baseDir}/Social/Submolts/Candidates.md`
+- `{baseDir}/Social/Submolts/Primary.md`
+
+Researcher may:
+
+- Add additional candidates if justified
+- Add analysis notes under each candidate entry
+- Recommend promotion (but not promote directly)
+
+Promotion recommendations should be written inline in Candidates.md as structured notes beneath the candidate entry.
+
+**Constraints:**
+
+- Researcher must not promote submolts directly.
+- Researcher must not move entries between files.
+- Only the Content Specialist has promotion authority.
