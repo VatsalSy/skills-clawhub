@@ -1,0 +1,11 @@
+{
+  "owner": "andrelandgraf",
+  "slug": "claimable-postgres",
+  "displayName": "Claimable Postgres",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1772259270799,
+    "commit": null
+  },
+  "history": []
+}
