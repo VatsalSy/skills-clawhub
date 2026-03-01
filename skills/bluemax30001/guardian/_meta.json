@@ -3,11 +3,16 @@
   "slug": "guardian",
   "displayName": "Guardian",
   "latest": {
-    "version": "2.2.0",
-    "publishedAt": 1772219442899,
-    "commit": "https://github.com/openclaw/skills/commit/97408520871b27825104db5efeb97283dfdc5d3a"
+    "version": "2.3.0",
+    "publishedAt": 1772386988553,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.2.0",
+      "publishedAt": 1772219442899,
+      "commit": "https://github.com/openclaw/skills/commit/97408520871b27825104db5efeb97283dfdc5d3a"
+    },
     {
       "version": "2.0.20",
       "publishedAt": 1772075338222,

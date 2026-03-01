@@ -404,6 +404,10 @@ def cron_line_for(script: str, interval_min: int, skill_dir: Path) -> str:
 
 CRON_DAILY_DIGEST = '0 9 * * * openclaw run "cd {skill_dir} && python3 scripts/daily_digest.py" --deliver-to=agent 2>> /tmp/guardian-daily.log'
 CRON_UPDATE_CHECK = '0 10 * * * openclaw run "cd {skill_dir} && python3 scripts/check_updates.py" --deliver-to=agent 2>> /tmp/guardian-updates.log'
+# Layer 2 cron entry comment: every 5 minutes
+CRON_RUNTIME_MONITOR_NOTE = "# Layer 2 Runtime Monitor (every 5 minutes): */5 * * * * cd {skill_dir} && python3 scripts/runtime_monitor.py --scan >> /tmp/guardian-runtime_monitor.py.log 2>&1"
+# Layer 3 cron entry comment: every 10 minutes
+CRON_EGRESS_SCANNER_NOTE = "# Layer 3 Egress Scanner (every 10 minutes): */10 * * * * cd {skill_dir} && python3 scripts/egress_scanner.py --scan >> /tmp/guardian-egress_scanner.py.log 2>&1"
 
 
 def detect_operational_status(skill_dir: Path, workspace: Path, db_path: Path, cfg: dict) -> dict:
@@ -514,6 +518,9 @@ def build_status_report(ops: dict, skill_dir: Path, workspace: Path) -> str:
         ]
         for line in ops["cron_lines_needed"]:
             lines.append(line)
+        lines.append("")
+        lines.append(CRON_RUNTIME_MONITOR_NOTE.format(skill_dir=skill_dir))
+        lines.append(CRON_EGRESS_SCANNER_NOTE.format(skill_dir=skill_dir))
         lines.append("```")
 
     # Dashboard server
@@ -570,6 +577,8 @@ def setup_crons(ops: dict) -> tuple[bool, str]:
 # Script names that identify Guardian-managed cron jobs
 GUARDIAN_SCRIPT_NAMES = [
     "guardian.py",
+    "runtime_monitor.py",
+    "egress_scanner.py",
     "daily_digest.py",
     "check_updates.py",
     "dashboard_export.py",

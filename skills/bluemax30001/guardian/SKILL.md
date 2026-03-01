@@ -1,7 +1,7 @@
 ---
 name: clawguardian
-description: Local-first security scanner for OpenClaw agents. Detects prompt injection, exfiltration patterns, tool abuse, and social engineering using bundled signatures.
-version: 2.2.0
+description: One layer in a multi-layer security stack for OpenClaw agents. Intercepts prompt injection, exfiltration attempts, tool abuse, and social engineering before they reach the model. Use alongside OpenClaw's built-in capability restrictions for defense-in-depth.
+version: 2.3.0
 metadata:
   openclaw:
     requires:
@@ -21,17 +21,23 @@ metadata:
 
 # Guardian
 
-Security scanner for OpenClaw agents. Detects prompt injection, credential
-exfiltration attempts, tool abuse patterns, and social engineering attacks using
-regex-based signature matching.
+**One layer in a multi-layer security stack for OpenClaw agents.**
+
+Real agent security requires multiple layers: OpenClaw's built-in capability restrictions and
+approval gates handle what the agent *can do*. Guardian handles what the agent *sees* —
+intercepting malicious inputs before they reach the model.
+
+Guardian provides signature-based pre-model scanning for prompt injection, credential
+exfiltration attempts, tool abuse patterns, and social engineering attacks. It is not a complete
+security solution on its own. Use it alongside OpenClaw's tool allowlists, approval gates, and
+sandboxed execution for defense-in-depth.
 
 Guardian provides two scanning modes:
 
 - **Real-time pre-scan** — checks each incoming message before it reaches the model
 - **Batch scan** — periodic sweep of workspace files and conversation logs
 
-All data stays local. This release removes optional webhook/API networking paths to reduce moderation risk.
-Cron setup remains optional via `scripts/onboard.py --setup-crons`.
+All data stays local. Cron setup is optional via `scripts/onboard.py --setup-crons`.
 
 Scan results are stored in a SQLite database (`guardian.db`).
 

@@ -8,8 +8,10 @@ import json
 import os
 import secrets
 import shlex
+import sqlite3
 import subprocess
 import sys
+from datetime import datetime, timezone
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -24,6 +26,177 @@ if str(SKILL_ROOT) not in sys.path:
 
 from core.api import GuardianScanner
 from core.settings import load_config as load_guardian_config
+from scripts.audit_export import export_dir as audit_export_dir
+from scripts.audit_export import list_export_files as list_audit_export_files
+from scripts.egress_scanner import ensure_egress_table
+from scripts.runtime_monitor import ensure_runtime_table
+
+
+def _table_exists(conn: sqlite3.Connection, table: str) -> bool:
+    row = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=? LIMIT 1",
+        (table,),
+    ).fetchone()
+    return row is not None
+
+
+def _today_bounds_utc() -> Tuple[str, str]:
+    now = datetime.now(timezone.utc)
+    start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    end = now.replace(hour=23, minute=59, second=59, microsecond=999999)
+    return start.isoformat(), end.isoformat()
+
+
+def list_runtime_events_payload(scanner: GuardianScanner, query: str) -> Dict[str, Any]:
+    """Return runtime monitor events."""
+    db = scanner._scanner.db
+    if not db:
+        return {"events": [], "count": 0}
+    ensure_runtime_table(db.conn)
+    qs = parse_qs(query)
+    limit = int((qs.get("limit", ["20"]) or ["20"])[0])
+    rows = db.conn.execute(
+        "SELECT * FROM runtime_events ORDER BY timestamp DESC LIMIT ?",
+        (max(1, min(limit, 500)),),
+    ).fetchall()
+    return {"events": [dict(row) for row in rows], "count": len(rows)}
+
+
+def list_egress_events_payload(scanner: GuardianScanner, query: str) -> Dict[str, Any]:
+    """Return egress scanner events."""
+    db = scanner._scanner.db
+    if not db:
+        return {"events": [], "count": 0}
+    ensure_egress_table(db.conn)
+    qs = parse_qs(query)
+    limit = int((qs.get("limit", ["20"]) or ["20"])[0])
+    rows = db.conn.execute(
+        "SELECT * FROM egress_events ORDER BY timestamp DESC LIMIT ?",
+        (max(1, min(limit, 500)),),
+    ).fetchall()
+    return {"events": [dict(row) for row in rows], "count": len(rows)}
+
+
+def build_layer_status_payload(scanner: GuardianScanner) -> Dict[str, Any]:
+    """Return status for all Guardian security layers."""
+    db = scanner._scanner.db
+    layers: Dict[str, Any] = {
+        "layer0": {
+            "name": "OpenClaw Native",
+            "active": True,
+            "event_count_today": 0,
+            "last_scan": None,
+            "status": "active",
+            "description": "Capability restrictions and approval gates.",
+        }
+    }
+    if not db:
+        layers.update(
+            {
+                "layer1": {"name": "Pre-Scan", "active": False, "event_count_today": 0, "last_scan": None, "status": "inactive"},
+                "layer2": {"name": "Runtime Monitor", "active": False, "event_count_today": 0, "last_scan": None, "status": "inactive"},
+                "layer3": {"name": "Egress Control", "active": False, "event_count_today": 0, "last_scan": None, "status": "inactive"},
+                "layer4": {"name": "Audit Trail", "active": False, "event_count_today": 0, "last_scan": None, "status": "inactive"},
+            }
+        )
+        return {"layers": layers}
+
+    conn = db.conn
+    start_day, end_day = _today_bounds_utc()
+
+    pre_scan_count = 0
+    pre_scan_total = 0
+    if _table_exists(conn, "threats"):
+        row = conn.execute(
+            "SELECT COUNT(*) AS cnt FROM threats WHERE detected_at >= ? AND detected_at <= ?",
+            (start_day, end_day),
+        ).fetchone()
+        pre_scan_count = int(row["cnt"]) if row else 0
+        row_total = conn.execute("SELECT COUNT(*) AS cnt FROM threats").fetchone()
+        pre_scan_total = int(row_total["cnt"] or 0) if row_total else 0
+    metrics_last = None
+    if _table_exists(conn, "metrics"):
+        row = conn.execute("SELECT MAX(period_start) AS last_scan FROM metrics").fetchone()
+        metrics_last = row["last_scan"] if row else None
+
+    layers["layer1"] = {
+        "name": "Pre-Scan",
+        "active": _table_exists(conn, "threats"),
+        "event_count_today": pre_scan_count,
+        "total_events": pre_scan_total,
+        "last_scan": metrics_last,
+        "status": "active" if _table_exists(conn, "threats") else "inactive",
+        "description": "Signature matching on inbound content.",
+    }
+
+    ensure_runtime_table(conn)
+    runtime_count = 0
+    runtime_total = 0
+    runtime_last = None
+    row = conn.execute(
+        "SELECT COUNT(*) AS cnt, MAX(timestamp) AS last_scan FROM runtime_events WHERE timestamp >= ? AND timestamp <= ?",
+        (start_day, end_day),
+    ).fetchone()
+    if row:
+        runtime_count = int(row["cnt"] or 0)
+        runtime_last = row["last_scan"]
+    row_total = conn.execute("SELECT COUNT(*) AS cnt FROM runtime_events").fetchone()
+    runtime_total = int(row_total["cnt"] or 0) if row_total else 0
+    layers["layer2"] = {
+        "name": "Runtime Monitor",
+        "active": True,
+        "event_count_today": runtime_count,
+        "total_events": runtime_total,
+        "last_scan": runtime_last,
+        "status": "active" if runtime_total > 0 else "partial",
+        "description": "Post-processing behavioral analysis.",
+    }
+
+    ensure_egress_table(conn)
+    egress_count = 0
+    egress_total = 0
+    egress_last = None
+    row = conn.execute(
+        "SELECT COUNT(*) AS cnt, MAX(timestamp) AS last_scan FROM egress_events WHERE timestamp >= ? AND timestamp <= ?",
+        (start_day, end_day),
+    ).fetchone()
+    if row:
+        egress_count = int(row["cnt"] or 0)
+        egress_last = row["last_scan"]
+    row_total = conn.execute("SELECT COUNT(*) AS cnt FROM egress_events").fetchone()
+    egress_total = int(row_total["cnt"] or 0) if row_total else 0
+    layers["layer3"] = {
+        "name": "Egress Control",
+        "active": True,
+        "event_count_today": egress_count,
+        "total_events": egress_total,
+        "last_scan": egress_last,
+        "status": "active" if egress_total > 0 else "partial",
+        "description": "Outbound content scanning.",
+    }
+
+    workspace = Path(os.environ.get("GUARDIAN_WORKSPACE", os.getcwd())).expanduser().resolve()
+    exports_root = audit_export_dir(workspace)
+    files = list_audit_export_files(exports_root)
+    today_count = 0
+    for fpath in files:
+        try:
+            if fpath.stat().st_mtime >= datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).timestamp():
+                today_count += 1
+        except OSError:
+            continue
+    last_scan = datetime.fromtimestamp(files[-1].stat().st_mtime, tz=timezone.utc).isoformat() if files else None
+    layers["layer4"] = {
+        "name": "Audit Trail",
+        "active": exports_root.exists(),
+        "event_count_today": today_count,
+        "total_events": len(files),
+        "last_scan": last_scan,
+        "status": "active" if files else "partial",
+        "description": "Tamper-evident decision log.",
+    }
+
+    return {"layers": layers}
 
 
 def build_status_payload(scanner: GuardianScanner) -> Dict[str, Any]:
@@ -571,6 +744,18 @@ class GuardianHTTPHandler(BaseHTTPRequestHandler):
             self._json_response(HTTPStatus.OK, list_threats_payload(self.scanner, parsed.query))
             return
 
+        if parsed.path == "/runtime-events":
+            self._json_response(HTTPStatus.OK, list_runtime_events_payload(self.scanner, parsed.query))
+            return
+
+        if parsed.path == "/egress-events":
+            self._json_response(HTTPStatus.OK, list_egress_events_payload(self.scanner, parsed.query))
+            return
+
+        if parsed.path == "/layer-status":
+            self._json_response(HTTPStatus.OK, build_layer_status_payload(self.scanner))
+            return
+
         if parsed.path == "/threats-lite":
             payload = list_threats_payload(self.scanner, parsed.query)
             rows = payload.get("threats", [])
@@ -753,8 +938,8 @@ class GuardianHTTPHandler(BaseHTTPRequestHandler):
             self._json_response(HTTPStatus.OK, {"ok": True, "token": token, "status": "denied"})
             return
 
-        if parsed.path == "/api/approve-override":
-            # BL-039: Primary-channel approve-override endpoint
+        if parsed.path in {"/api/approve-override", "/approve-override"}:
+            # BL-039: Primary-channel approve-override endpoint (legacy alias: /approve-override)
             data, err = self._read_json_body()
             if err:
                 self._json_response(HTTPStatus.BAD_REQUEST, {"error": err})

@@ -78,69 +78,83 @@ def resolve_db_path(cfg: Dict[str, Any]) -> Path:
 
 def connect_db(db_path: Path) -> sqlite3.Connection:
     """Open sqlite connection, creating parent directory when needed."""
-    db_path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    try:
-        conn.execute("PRAGMA journal_mode=WAL")
-    except sqlite3.OperationalError:
-        conn.execute("PRAGMA journal_mode=DELETE")
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS threats (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            detected_at TEXT NOT NULL,
-            sig_id TEXT,
-            category TEXT,
-            severity TEXT,
-            score INTEGER,
-            evidence TEXT,
-            description TEXT,
-            blocked INTEGER DEFAULT 0,
-            channel TEXT,
-            source_file TEXT,
-            message_hash TEXT UNIQUE,
-            dismissed INTEGER DEFAULT 0,
-            context TEXT
-        )
-        """
-    )
-    cols = conn.execute("PRAGMA table_info(threats)").fetchall()
-    if not any(col[1] == "context" for col in cols):
-        conn.execute("ALTER TABLE threats ADD COLUMN context TEXT")
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS allowlist (
-            id INTEGER PRIMARY KEY,
-            signature_id TEXT NOT NULL,
-            scope TEXT NOT NULL,
-            scope_value TEXT,
-            created_at TEXT NOT NULL,
-            created_by TEXT,
-            reason TEXT,
-            active INTEGER DEFAULT 1
-        )
-        """
-    )
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS metrics (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            period TEXT NOT NULL,
-            period_start TEXT NOT NULL,
-            messages_scanned INTEGER DEFAULT 0,
-            files_scanned INTEGER DEFAULT 0,
-            clean INTEGER DEFAULT 0,
-            at_risk INTEGER DEFAULT 0,
-            blocked INTEGER DEFAULT 0,
-            categories TEXT,
-            health_score INTEGER,
-            UNIQUE(period, period_start)
-        )
-        """
-    )
-    conn.commit()
-    return conn
+    candidates = [
+        db_path,
+        (skill_root() / "guardian.db").resolve(),
+        Path("/tmp/guardian-admin.db").resolve(),
+    ]
+
+    last_err: Optional[Exception] = None
+    for candidate in candidates:
+        try:
+            candidate.parent.mkdir(parents=True, exist_ok=True)
+            conn = sqlite3.connect(candidate)
+            conn.row_factory = sqlite3.Row
+            try:
+                conn.execute("PRAGMA journal_mode=WAL")
+            except sqlite3.OperationalError:
+                conn.execute("PRAGMA journal_mode=DELETE")
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS threats (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    detected_at TEXT NOT NULL,
+                    sig_id TEXT,
+                    category TEXT,
+                    severity TEXT,
+                    score INTEGER,
+                    evidence TEXT,
+                    description TEXT,
+                    blocked INTEGER DEFAULT 0,
+                    channel TEXT,
+                    source_file TEXT,
+                    message_hash TEXT UNIQUE,
+                    dismissed INTEGER DEFAULT 0,
+                    context TEXT
+                )
+                """
+            )
+            cols = conn.execute("PRAGMA table_info(threats)").fetchall()
+            if not any(col[1] == "context" for col in cols):
+                conn.execute("ALTER TABLE threats ADD COLUMN context TEXT")
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS allowlist (
+                    id INTEGER PRIMARY KEY,
+                    signature_id TEXT NOT NULL,
+                    scope TEXT NOT NULL,
+                    scope_value TEXT,
+                    created_at TEXT NOT NULL,
+                    created_by TEXT,
+                    reason TEXT,
+                    active INTEGER DEFAULT 1
+                )
+                """
+            )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS metrics (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    period TEXT NOT NULL,
+                    period_start TEXT NOT NULL,
+                    messages_scanned INTEGER DEFAULT 0,
+                    files_scanned INTEGER DEFAULT 0,
+                    clean INTEGER DEFAULT 0,
+                    at_risk INTEGER DEFAULT 0,
+                    blocked INTEGER DEFAULT 0,
+                    categories TEXT,
+                    health_score INTEGER,
+                    UNIQUE(period, period_start)
+                )
+                """
+            )
+            conn.commit()
+            return conn
+        except sqlite3.OperationalError as exc:
+            last_err = exc
+            continue
+
+    raise sqlite3.OperationalError(f"Unable to open writable admin DB: {last_err}")
 
 
 def parse_duration(raw: str) -> timedelta:
