@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-xhs-mac-mcp / server.py
+rednote-mac / server.py
 通过 Accessibility API 控制 Mac 小红书 App 的 MCP server。
 
 前提条件：
@@ -26,7 +26,7 @@ except ImportError:
 
 import xhs_controller as xhs
 
-app = Server("xhs-mac-mcp")
+app = Server("rednote-mac")
 
 # ── 工具函数 ──────────────────────────────────────────────────
 

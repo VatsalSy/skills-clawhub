@@ -1,5 +1,5 @@
 /**
- * xhs-mac OpenClaw Plugin
+ * rednote-mac OpenClaw Plugin
  * 通过 Accessibility API 控制 Mac 小红书 App
  */
 
@@ -8,7 +8,9 @@ import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 
-const SKILL_DIR = "/Users/huangrunhui/.agents/skills/xhs-mac-mcp";
+import { fileURLToPath } from "node:url";
+import { dirname } from "node:path";
+const SKILL_DIR = dirname(fileURLToPath(import.meta.url));
 
 /** 调用 xhs_controller.py 里的函数，返回 stdout 字符串 */
 async function xhsCall(pyCode: string): Promise<string> {
@@ -19,7 +21,7 @@ async function xhsCall(pyCode: string): Promise<string> {
   );
   if (stderr && stderr.trim()) {
     // stderr 里有些是正常的 import 警告，只打印非空内容
-    process.stderr.write(`[xhs-mac] ${stderr}\n`);
+    process.stderr.write(`[rednote-mac] ${stderr}\n`);
   }
   return stdout.trim();
 }

@@ -1,86 +1,98 @@
 ---
 name: rednote-mac
-description: >
-  Control the RedNote (Xiaohongshu) Mac desktop app via macOS Accessibility API.
-  Supports DMs, comment replies, video comment reading, search, like, collect,
-  follow, and author stats — features unavailable in headless alternatives.
-
-  REQUIREMENTS: macOS only. Requires Terminal accessibility permission
-  (System Settings → Privacy & Security → Accessibility). RedNote App must be
-  visible on screen. Contains install.sh (symlinks plugin dir) and index.ts
-  (registers OpenClaw plugin tools). No network calls, no credentials stored.
-  All actions are scoped to the RedNote App window only.
+description: "Control the RedNote (Xiaohongshu) Mac app via macOS Accessibility API. Fills the gap headless tools can't: read/reply to comments on video posts, send DMs, get author stats. No browser, no API tokens. macOS only — requires Terminal accessibility permission."
+metadata:
+  openclaw:
+    os: [darwin]
+    requires:
+      bins: [cliclick, python3]
+      apps: [rednote]
+      permissions: [accessibility]
 ---
 
 # rednote-mac
 
-Control the RedNote (Xiaohongshu) Mac app directly via macOS Accessibility API.
+Control RedNote's Mac app directly — no browser, no API tokens.
+Uses macOS Accessibility API to drive the native App.
 
-**Why this instead of headless?**
-Headless browser tools can't access DMs, comment reply threads, or video comment
-lists. This skill talks directly to the native App via macOS Accessibility API —
-no reverse engineering, no API tokens.
+Headless tools (xiaohongshu-mcp) can't reach **DMs**, **comment replies**, or **video comment lists** — this skill can.
 
-## Permissions required
+> ⚠️ Requires: Terminal → Accessibility permission + RedNote App visible on screen.
+> No network access. No credentials stored.
 
-| Permission | Why |
-|------------|-----|
-| Terminal → Accessibility | Required by macOS for AX API mouse/keyboard control |
-| Screen visible | Mouse events only work when the App window is on-screen |
-
-No network access. No stored credentials. No data leaves the machine.
-
-## Install
+## Setup
 
 ```bash
-# One-liner
 cd ~/.agents/skills/rednote-mac && bash install.sh
-
-# What install.sh does (transparent):
-#   1. uv sync  (installs Python deps: atomacos, pyobjc)
-#   2. ln -sf ~/.agents/skills/rednote-mac ~/.openclaw/extensions/rednote-mac
-#   3. Prints: openclaw config set tools.allow '["rednote-mac"]'
-
 openclaw config set tools.allow '["rednote-mac"]'
 openclaw gateway restart
 ```
 
-Verify: `openclaw plugins list | grep rednote-mac`
+Enable in System Settings → Privacy & Security → Accessibility → Terminal.
 
-⚠️ System Settings → Privacy & Security → Accessibility → enable Terminal
-
-## Available Tools (quick reference)
+## Navigate
 
 ```
-xhs_screenshot          Capture current screen
-xhs_navigate            Switch bottom tab: home | messages | profile
-xhs_navigate_top        Switch top tab: follow | discover | video
-xhs_back                Go back one page
-xhs_search              Search keyword → results page
-xhs_scroll_feed         Scroll feed (direction, times)
-xhs_open_note           Open note by grid position (col, row)
-xhs_like                Like current note
-xhs_collect             Collect/save current note
-xhs_get_note_url        Get share URL of current note
-xhs_follow_author       Follow current note's author
-xhs_open_comments       Open comment section
-xhs_scroll_comments     Scroll comments
-xhs_get_comments        Get comment list → [{index, author, cx, cy}]
-xhs_post_comment        Post a comment
-xhs_reply_to_comment    Reply to a comment (index, text)
-xhs_delete_comment      Delete own comment (index) ⚠️ irreversible
-xhs_open_dm             Open DM conversation (index)
-xhs_send_dm             Send DM in current conversation
-xhs_get_author_stats    Get profile stats (following/followers/likes/bio)
+xhs_navigate(tab="home")          # home / messages / profile
+xhs_navigate_top(tab="discover")  # follow / discover / video
+xhs_back()
+xhs_search(keyword="AI paper")
+xhs_screenshot()                  # always verify after navigation
+```
+
+## Browse feed
+
+```
+xhs_scroll_feed(direction="down", times=5)
+xhs_open_note(col=0, row=0)   # col: 0=left, 1=right  row: 0=first
+xhs_screenshot()
+```
+
+## Interact with a note
+
+```
+xhs_like()
+xhs_collect()
+xhs_follow_author()
+xhs_get_note_url()   # returns xhslink.com short URL
+```
+
+## Comments (video posts — fully reliable)
+
+```
+xhs_open_comments()
+xhs_get_comments()
+# → [{"index": 0, "author": "alice", "cx": 1450, "cy": 368}, ...]
+
+xhs_post_comment(text="Great post!")
+xhs_reply_to_comment(index=0, text="Thanks!")
+xhs_delete_comment(index=0)   # ⚠️ irreversible — your comments only
+xhs_scroll_comments(times=3)
+```
+
+## Direct messages
+
+```
+xhs_open_dm(index=0)           # 0 = first conversation in list
+xhs_send_dm(text="Hello!")
+xhs_screenshot()               # confirm sent
+```
+
+## Author stats
+
+```
+xhs_navigate(tab="profile")
+xhs_get_author_stats()
+# → {"following": "2", "followers": "29", "likes": "302", "bio": "..."}
 ```
 
 ## Reference docs (load on demand)
 
-| Task | Read |
-|------|------|
-| Navigate, screenshot, search | `docs/ref-navigation.md` |
-| Browse feed, open notes | `docs/ref-feed.md` |
-| Like, collect, comment, reply, delete | `docs/ref-note.md` |
-| Direct messages | `docs/ref-dm.md` |
-| Profile / author stats | `docs/ref-profile.md` |
-| Known limitations & workarounds | `docs/ref-limits.md` |
+| Need to... | Read |
+|-----------|------|
+| Navigate / search details | `docs/ref-navigation.md` |
+| Feed & note opening | `docs/ref-feed.md` |
+| Comment workflows | `docs/ref-note.md` |
+| DM details | `docs/ref-dm.md` |
+| Profile & stats | `docs/ref-profile.md` |
+| Limits & workarounds | `docs/ref-limits.md` |
