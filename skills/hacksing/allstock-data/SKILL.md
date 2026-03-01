@@ -1,149 +1,239 @@
 ---
 name: allstock-data
-description: Query A-share and US stock data via Tencent Finance API. Use when user needs real-time or historical stock quotes, indices, ETF prices, or market data for Chinese or US markets.
+description: Stock market data query skill for China A-shares, Hong Kong, and US markets. Uses Tencent Finance HTTP API by default (lightweight, no install needed), with optional adata SDK for more comprehensive data. Supports real-time quotes, K-line history, order book analysis, and more.
 ---
 
-# China Stock Data
+# Stock Data Query
 
-Query A-share and US stock real-time market data.
+Two data sources are supported. **Tencent Finance HTTP API is used by default:**
 
-## A-Share Data Query
+1. **Tencent Finance HTTP API (Default)** — Lightweight, no installation, no proxy required
+2. **adata SDK (Optional)** — More comprehensive data, requires installation and possibly a proxy
 
-### Base URL
+---
+
+## 1. Tencent Finance HTTP API (Default)
+
+### 1.1 China A-Share Real-Time Quotes
+
+**Endpoint:**
 ```
 http://qt.gtimg.cn/q=<stock_code>
 ```
 
-### Stock Code Rules
+**Stock Code Format:**
 
 | Market | Code Prefix | Example |
 |--------|-------------|---------|
-| Shanghai Main Board | sh600xxx | sh600560 |
-| Shanghai STAR Market | sh688xxx | sh688xxx |
+| Shanghai Main Board | sh600xxx | sh600519 (Moutai) |
+| STAR Market | sh688xxx | sh688111 |
 | Shenzhen Main Board | sz000xxx | sz000001 (Ping An Bank) |
-| Shenzhen ChiNext | sz300xxx | sz300xxx |
-| Shenzhen ETF | sz159xxx | sz159326 |
+| ChiNext (GEM) | sz300xxx | sz300033 |
+| ETF | sz159xxx | sz159919 |
 
-### Index Codes
+**Index Codes:**
 
 | Index | Code |
 |-------|------|
-| Shanghai Composite | sh000001 |
-| Shenzhen Component | sz399001 |
+| SSE Composite (Shanghai) | sh000001 |
+| SZSE Component (Shenzhen) | sz399001 |
 | ChiNext Index | sz399006 |
 | STAR 50 | sz399987 |
 | CSI 300 | sh000300 |
 
-### Query Examples
+**Examples:**
+```bash
+# Single stock
+curl -s "http://qt.gtimg.cn/q=sh600519"
 
-**Single Stock:**
-```
-http://qt.gtimg.cn/q=sh600089
-```
-
-**Multiple Stocks (comma separated):**
-```
-http://qt.gtimg.cn/q=sh600089,sh600560,sz399001
+# Multiple stocks
+curl -s "http://qt.gtimg.cn/q=sh600519,sh000001,sz399001"
 ```
 
-### Return Data Format
-
-Returns quasi-JSON format with fields separated by `~`:
-
+**Response Fields:**
 ```
-v_sh600089="1~TEB~600089~28.75~28.92~28.63~1999256~...~-0.17~-0.59~..."
+v_sh600519="1~贵州茅台~600519~1460.00~1466.21~1466.99~14146~6374~7772~..."
+          ~  Name    ~ Code  ~  Open  ~  High  ~   Low  ~ Volume
 ```
 
-**Key Field Indices:**
-
-| Index | Meaning |
-|-------|---------|
-| 0 | Market Code |
-| 1 | Stock Name |
-| 2 | Stock Code |
-| 3 | Current Price |
-| 4 | Open Price |
-| 5 | Low Price |
-| 6 | High Price |
-| 30 | Change Amount |
+| Index | Field |
+|-------|-------|
+| 0 | Market code |
+| 1 | Stock name |
+| 2 | Stock code |
+| 3 | Current price |
+| 4 | Open price |
+| 5 | Low price |
+| 6 | High price |
+| 30 | Price change |
 | 31 | Change % |
-| 32 | High Price |
-| 33 | Low Price |
 
-**Note**: The API returns change % field (index 31). Use this field instead of calculating it yourself.
+---
 
-## US Stock Data Query
+### 1.2 Hong Kong Stock Real-Time Quotes
 
-Tencent Finance API has limited US stock support. Use these alternatives:
+**Endpoint:**
+```
+http://qt.gtimg.cn/q=hk<stock_code>
+```
 
-### Option 1: Yahoo Finance (Recommended)
+**Examples:**
+```bash
+# Tencent Holdings
+curl -s "http://qt.gtimg.cn/q=hk00700"
+
+# Alibaba
+curl -s "http://qt.gtimg.cn/q=hk09988"
+```
+
+---
+
+### 1.3 US Stock Real-Time Quotes
+
+**Endpoint:**
+```
+http://qt.gtimg.cn/q=us<ticker>
+```
+
+**Examples:**
+```bash
+# Apple
+curl -s "http://qt.gtimg.cn/q=usAAPL"
+
+# Tesla
+curl -s "http://qt.gtimg.cn/q=usTSLA"
+
+# NVIDIA
+curl -s "http://qt.gtimg.cn/q=usNVDA"
+```
+
+---
+
+### 1.4 K-Line Historical Data
+
+**Endpoint:**
+```
+https://web.ifzq.gtimg.cn/appstock/app/fqkline/get
+```
+
+**Parameters:**
+| Parameter | Description |
+|-----------|-------------|
+| `_var` | Variable name, e.g. `kline_dayqfq` |
+| `param` | stock_code, kline_type, start_date, end_date, count, adjust_type |
+
+**K-Line Types:** `day` / `week` / `month`
+
+**Adjustment Types:** `qfqa` (forward-adjusted) / `qfq` (backward-adjusted) / empty (unadjusted)
+
+**Examples:**
+```bash
+# Moutai daily K-line (last 10 days, forward-adjusted)
+curl -s "https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?_var=kline_dayqfq&param=sh600519,day,,,10,qfqa"
+
+# Ping An Bank weekly K-line (last 5 weeks)
+curl -s "https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?_var=kline_weekqfq&param=sz000001,week,,,5,qfqa"
+
+# ChiNext Index monthly K-line (last 3 months)
+curl -s "https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?_var=kline_monthqfq&param=sz399006,month,,,3,qfqa"
+```
+
+**Response Format:**
+```json
+{"day": [["2026-02-27", "1466.99", "1461.19", "1476.21", "1456.01", "13534"], ...]}
+                Date       Open      Close      High       Low      Volume
+```
+
+---
+
+### 1.5 Order Book Analysis
+
+**Endpoint:**
+```
+http://qt.gtimg.cn/q=s_pk<stock_code>
+```
+
+**Example:**
+```bash
+curl -s "http://qt.gtimg.cn/q=s_pksh600519"
+```
+
+**Returns:** Buy/sell volume ratios (internal vs external trades)
+
+---
+
+## 2. adata SDK (Optional)
+
+adata is an open-source A-share quantitative data library providing more comprehensive data. Requires installation and possibly a proxy.
+
+### Installation
 
 ```bash
-curl -s "https://query1.finance.yahoo.com/v8/finance/chart/AAPL"
+pip install adata
 ```
 
-### Option 2: Alpha Vantage (Needs API Key)
-
-```bash
-curl -s "https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=AAPL&apikey=YOUR_KEY"
-```
-
-### Common US Index Codes
-
-| Index | Yahoo Code |
-|-------|------------|
-| Dow Jones | ^DJI |
-| Nasdaq | ^IXIC |
-| S&P 500 | ^GSPC |
-
-## Data Parsing Examples
-
-### Python - Parse Tencent Finance Data
+### Proxy Setup (if needed)
 
 ```python
-import re
-import urllib.request
-
-def get_stock_data(code):
-    url = f"http://qt.gtimg.cn/q={code}"
-    with urllib.request.urlopen(url) as response:
-        data = response.read().decode('gbk')
-    
-    # Extract data
-    match = re.search(r'="([^"]+)"', data)
-    if not match:
-        return None
-    
-    fields = match.group(1).split('~')
-    
-    return {
-        'name': fields[1],
-        'code': fields[2],
-        'price': float(fields[3]),
-        'open': float(fields[4]),
-        'high': float(fields[5]),
-        'low': float(fields[6]),
-        'change': float(fields[30]),
-        'change_pct': float(fields[31]),
-    }
-
-# Usage
-data = get_stock_data('sh600089')
-print(f"{data['name']}: {data['price']} ({data['change_pct']}%)")
+import adata
+adata.proxy(is_proxy=True, ip='your-proxy-ip:port')
 ```
 
-### Using web_fetch Tool
+### Feature List
+
+| Feature | Description |
+|---------|-------------|
+| Stock Basic Info | All A-share codes, share capital, SW industry classification |
+| K-Line Data | Daily/Weekly/Monthly, forward/backward adjustment |
+| Real-Time Quotes | Batch real-time pricing |
+| Level-2 Order Book | Bid/ask depth data |
+| Capital Flow | Individual stock capital flow analysis |
+| Concept Sectors | Thematic sector data |
+| Index Data | Major index quotes |
+| ETF | ETF quotes |
+
+### Usage Examples
 
 ```python
-# Get multiple stock data
-url = "http://qt.gtimg.cn/q=sh000001,sh600089,sz399001"
-# Use web_fetch to get data, then parse
+import adata
+
+# Get all A-share stock codes
+df = adata.stock.info.all_code()
+
+# Get K-line data
+df = adata.stock.market.get_market(
+    stock_code='000001',
+    k_type=1,           # 1=daily, 2=weekly, 3=monthly
+    start_date='2024-01-01',
+    adjust_type=1        # 0=unadjusted, 1=forward, 2=backward
+)
+
+# Real-time quotes
+df = adata.stock.market.list_market_current(
+    code_list=['000001', '600519']
+)
 ```
 
-## Notes
+---
 
-1. **Encoding**: Tencent Finance returns GBK encoding, decode properly
-2. **Change %**: Use API-returned field (index 31), avoid calculating manually
-3. **Data Delay**: Real-time data may have 15-minute delay
-4. **Request Frequency**: Avoid high-frequency requests, use batch queries
-5. **Error Handling**: Invalid codes return `v_pv_none_match="1"`, check response content
+## 3. Use Case Guide
+
+| Scenario | Recommended Source |
+|----------|--------------------|
+| Quick single stock price check | Tencent Finance API |
+| K-line historical data | Tencent Finance API |
+| Batch quote queries | Tencent Finance API |
+| Capital flow data | adata SDK |
+| Full financial statements | adata SDK |
+| Concept/sector analysis | adata SDK |
+| Level-2 order book | Tencent Finance API or adata SDK |
+
+---
+
+## 4. Important Notes
+
+1. **Encoding**: Tencent Finance API returns GBK-encoded text — decode accordingly
+2. **Change %**: Use the API's built-in field (index 31) — do not calculate manually
+3. **Data Delay**: Real-time data may have up to 15-minute delay
+4. **Request Rate**: Avoid high-frequency requests — use batch queries when possible
+5. **Error Handling**: Invalid stock codes return `v_pv_none_match="1"`
