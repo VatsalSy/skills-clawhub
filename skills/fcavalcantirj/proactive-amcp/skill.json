@@ -1,8 +1,8 @@
 {
   "name": "proactive-amcp",
   "displayName": "Proactive AMCP",
-  "version": "0.9.8",
-  "description": "Make your agent proactive — auto-checkpoint before death, resurrect from IPFS, self-heal via watchdog with Solvr integration. Quick mode is safe (no secrets). Use --full for complete resurrection.",
+  "version": "1.0.0",
+  "description": "Proactive immortal — behavior hooks kick in · IPFS soul · Solvr collective · self-heals on boot",
   "homepage": "https://github.com/fcavalcantirj/proactive-amcp",
   "requiredEnvVars": [
     {
@@ -26,8 +26,18 @@
       "required": false
     }
   ],
-  "requiredBinaries": ["bash", "curl", "jq"],
-  "optionalBinaries": ["git", "systemctl", "crontab", "openclaw", "agentmemory"],
+  "requiredBinaries": [
+    "bash",
+    "curl",
+    "jq"
+  ],
+  "optionalBinaries": [
+    "git",
+    "systemctl",
+    "crontab",
+    "openclaw",
+    "agentmemory"
+  ],
   "persistence": {
     "createsSystemdUnits": true,
     "createsCronJobs": true,
@@ -74,9 +84,18 @@
   },
   "networkAccess": {
     "endpoints": [
-      {"host": "api.solvr.dev", "purpose": "Agent registration, IPFS pinning"},
-      {"host": "api.pinata.cloud", "purpose": "Direct IPFS pinning"},
-      {"host": "ipfs.solvr.dev", "purpose": "Checkpoint retrieval"}
+      {
+        "host": "api.solvr.dev",
+        "purpose": "Agent registration, IPFS pinning"
+      },
+      {
+        "host": "api.pinata.cloud",
+        "purpose": "Direct IPFS pinning"
+      },
+      {
+        "host": "ipfs.solvr.dev",
+        "purpose": "Checkpoint retrieval"
+      }
     ]
   },
   "dataExposed": "FULL CHECKPOINTS INCLUDE SECRETS (API keys, OAuth tokens) for complete resurrection. Quick checkpoints exclude secrets. Checkpoints are plaintext by default; use --encrypt for encryption.",
