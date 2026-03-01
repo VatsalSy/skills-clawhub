@@ -1,0 +1,11 @@
+{
+  "owner": "geoly-geo",
+  "slug": "geo-report-builder",
+  "displayName": "GEO Performance Report Builder",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772280599076,
+    "commit": null
+  },
+  "history": []
+}
