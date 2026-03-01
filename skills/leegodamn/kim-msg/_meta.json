@@ -3,9 +3,15 @@
   "slug": "kim-msg",
   "displayName": "Kim Msg",
   "latest": {
-    "version": "1.1.0",
-    "publishedAt": 1772245556720,
-    "commit": "https://github.com/openclaw/skills/commit/f71800077b24a526be2cdf45a8b3039e064d6886"
+    "version": "1.1.2",
+    "publishedAt": 1772248168254,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.1.0",
+      "publishedAt": 1772245556720,
+      "commit": "https://github.com/openclaw/skills/commit/f71800077b24a526be2cdf45a8b3039e064d6886"
+    }
+  ]
 }

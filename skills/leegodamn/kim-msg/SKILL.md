@@ -49,6 +49,8 @@ kim-msg/message.sh -u <邮箱前缀> -m "消息内容"
 kim-msg/message.sh -u wangyang -m "**提醒**：今天有会议"
 ```
 
+> ⚠️ 首次使用如果遇到权限错误，运行：`chmod +x scripts/*.sh`
+
 ## API 详情
 
 ### Webhook

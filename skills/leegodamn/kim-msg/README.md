@@ -70,6 +70,8 @@ export KIM_SECRET_KEY="your-secret-key"
 ./scripts/message.sh -u wangyang -m "**提醒**：今天有会议"
 ```
 
+> ⚠️ 如果遇到 "permission denied" 错误，先运行：`chmod +x scripts/*.sh`
+
 ## 🔐 安全提示
 
 - **不要硬编码密钥** - 所有凭证通过环境变量传递
