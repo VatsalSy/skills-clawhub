@@ -3,11 +3,16 @@
   "slug": "gandi-skill",
   "displayName": "Gandi - Registrar & DNS",
   "latest": {
-    "version": "0.2.5",
-    "publishedAt": 1770785344517,
-    "commit": "https://github.com/openclaw/skills/commit/27e97b0ac915d33b52098a3306e17a056e8a23c2"
+    "version": "0.2.7",
+    "publishedAt": 1772319287154,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.2.5",
+      "publishedAt": 1770785344517,
+      "commit": "https://github.com/openclaw/skills/commit/27e97b0ac915d33b52098a3306e17a056e8a23c2"
+    },
     {
       "version": "0.2.3",
       "publishedAt": 1770774699104,
