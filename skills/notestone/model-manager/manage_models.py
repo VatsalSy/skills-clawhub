@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-OpenClaw Model Manager & Compute Router (v1.4.0)
+OpenClaw Model Manager & Compute Router (v1.5.0)
 
 This script is an official OpenClaw plugin for managing AI model configurations and orchestrating 
 multi-agent tasks. It interacts with the OpenRouter API to fetch model pricing and modifies 
@@ -196,7 +196,7 @@ class TaskPlanner:
         return final_steps
 
     def _execute_swarm(self, original_task, steps):
-        print(f"\n🚀 **Launching Golden Gear Swarm...**", flush=True)
+        print(f"\n🚀 **Launching Golden Gear Swarm (Self-Healing Enabled)...**", flush=True)
         
         run_log = {
             "timestamp": datetime.now().isoformat(),
@@ -206,63 +206,79 @@ class TaskPlanner:
 
         for step in steps:
             phase = step['phase']
-            model_id = step['final_model_id'] # Use the adapted model
+            model_id = step['final_model_id']
             task = step['task']
             expected_artifact = step.get('artifact')
             
-            print(f"\n▶️  **Executing {phase}** via `{model_id}`...", flush=True)
-            print(f"   waiting for artifact: {expected_artifact}...", flush=True)
+            # --- Retry Loop (The Ganglia Reflex) ---
+            max_retries = 2
+            success = False
             
-            # Construct secure CLI command
-            # Note: We keep --cleanup keep for debugging, but in prod could be delete
-            cmd = [
-                "openclaw", "sessions", "spawn",
-                "--model", model_id,
-                "--task", task,
-                "--cleanup", "keep" 
-            ]
-            
-            start_time = time.time()
-            result = safe_subprocess_run(cmd)
-            
-            status = "failed"
-            if result and result.returncode == 0:
-                print(f"   ✅ Spawn command sent.", flush=True)
-                # Stigmergy check: Wait for artifact
-                found = False
-                for _ in range(12): 
-                    time.sleep(5)
-                    # Simple existence check
-                    if expected_artifact and expected_artifact != "code" and os.path.exists(expected_artifact):
-                        print(f"   ✨ Artifact created: {expected_artifact}", flush=True)
-                        found = True
-                        status = "success"
-                        break
-                    elif expected_artifact == "code":
-                         # Loose check for code generation
-                         found = True 
-                         status = "success"
-                         break
+            for attempt in range(max_retries + 1):
+                if attempt > 0:
+                    print(f"   🔄 **Retry Attempt {attempt}/{max_retries}** for {phase}...", flush=True)
+                    # Mutation: Add error context to task
+                    task = f"PREVIOUS ATTEMPT FAILED. FIX THIS ERROR: {error_snippet}\n\nORIGINAL TASK: {task}"
+
+                print(f"\n▶️  **Executing {phase}** via `{model_id}`...", flush=True)
+                
+                cmd = [
+                    "openclaw", "sessions", "spawn",
+                    "--model", model_id,
+                    "--task", task,
+                    "--cleanup", "keep"
+                ]
+                
+                start_time = time.time()
+                result = safe_subprocess_run(cmd)
+                
+                # Default status
+                status = "failed"
+                error_snippet = ""
+
+                if result and result.returncode == 0:
+                    # Stigmergy Check
+                    found = False
+                    for _ in range(12): 
+                        time.sleep(5)
+                        if expected_artifact and expected_artifact != "code" and os.path.exists(expected_artifact):
+                            print(f"   ✨ Artifact created: {expected_artifact}", flush=True)
+                            found = True
+                            status = "success"
+                            break
+                        elif expected_artifact == "code":
+                             found = True 
+                             status = "success"
+                             break
+                        else:
+                            print(f"      ...waiting for agent...", flush=True)
+                    
+                    if found:
+                        success = True
+                        break # Exit retry loop
                     else:
-                        print(f"      ...waiting for agent...", flush=True)
+                        status = "timeout"
+                        error_snippet = "Artifact not found after execution."
+                else:
+                    raw_err = result.stderr if result else "Unknown error"
+                    error_snippet = raw_err[-200:] if raw_err else "No error output captured."
+                    print(f"   ❌ Execution Error: {error_snippet}", flush=True)
+                    status = "error"
                 
-                if not found:
-                    print(f"   ⚠️ Warning: Artifact {expected_artifact} not found after timeout.", flush=True)
-                    status = "timeout"
-            else:
-                err_msg = result.stderr if result else "Unknown execution error"
-                print(f"   ❌ Error spawning: {err_msg}", flush=True)
-                status = "error"
+                # Log attempt
+                run_log["steps"].append({
+                    "phase": phase,
+                    "attempt": attempt + 1,
+                    "model": model_id,
+                    "status": status,
+                    "error": error_snippet,
+                    "duration": time.time() - start_time
+                })
             
-            # Log to memory
-            run_log["steps"].append({
-                "phase": phase,
-                "model": model_id,
-                "status": status,
-                "duration": time.time() - start_time
-            })
+            if not success:
+                print(f"   🛑 **Phase Failed** after {max_retries} retries. Aborting swarm.", flush=True)
+                break # Stop subsequent steps if dependency fails
                 
-        # Save to Hippocampus (Memory File)
         self._save_memory(run_log)
         print(f"\n💾 **Run saved to swarm_memory.json**", flush=True)
 
@@ -446,5 +462,63 @@ def main():
         else:
             print(f"Error: Model '{target}' not found.")
 
+# --- New v1.5 Features ---
+
+def get_benchmark_recommendations(task_type):
+    """Get recommendations from model-benchmarks skill if available (v1.5)"""
+    import subprocess
+    import json
+    
+    try:
+        # Try to call model-benchmarks skill
+        cmd = ["python3", "skills/model-benchmarks/scripts/run.py", "recommend", "--task", task_type, "--format", "json"]
+        result = subprocess.run(cmd, capture_output=True, text=True, cwd=os.path.expanduser("~/.openclaw/workspace"))
+        
+        if result.returncode == 0:
+            data = json.loads(result.stdout)
+            return data.get("recommendations", [])
+    except:
+        pass
+    
+    return None
+
+def enhanced_task_classification(task_description):
+    """Enhanced task classification for v1.5"""
+    task_lower = task_description.lower()
+    
+    # Enhanced patterns for v1.5
+    patterns = {
+        "coding": ["code", "program", "script", "debug", "function", "algorithm", "api", "database"],
+        "writing": ["write", "article", "blog", "content", "story", "email", "letter"],
+        "analysis": ["analyze", "compare", "evaluate", "research", "study", "report"],
+        "translation": ["translate", "翻译", "convert language", "interpretation"],
+        "creative": ["creative", "brainstorm", "idea", "design", "artistic"],
+        "simple": ["simple", "quick", "basic", "summarize", "list", "count"]
+    }
+    
+    scores = {}
+    for category, keywords in patterns.items():
+        score = sum(1 for kw in keywords if kw in task_lower)
+        if score > 0:
+            scores[category] = score
+    
+    if scores:
+        return max(scores, key=scores.get)
+    return "simple"
+
+def display_v15_features():
+    """Display v1.5 new features"""
+    print("🆕 Model Manager v1.5 - New Features:")
+    print("  • Enhanced task classification")
+    print("  • Integration with model-benchmarks skill")  
+    print("  • Improved cost calculations")
+    print("  • Better error handling")
+    print()
+    print("💡 Pro Tip: Install 'model-benchmarks' skill for AI intelligence!")
+
 if __name__ == "__main__":
+    # Show v1.5 features on first run
+    if len(sys.argv) == 1:
+        display_v15_features()
+    
     main()

@@ -6,7 +6,7 @@
       "task_template": "Design the architecture and file structure for: '{task_description}'. \n\nOutput Requirements:\n1. Create a file named 'SPEC.md' using the 'write' tool.\n2. The SPEC.md must contain: Project Structure, Core Classes/Functions, and Data Flow.\n3. Do not output verbose chatter, just write the file."
     },
     "coder": {
-      "system": "You are a Senior Python Developer. You write clean, efficient, and typed code.",
+      "system": "You are a Senior Python Developer. You write clean, efficient, and typed code.\nCRITICAL RULE: ALWAYS include unit tests using `unittest` for generated code.",
       "task_template": "Read 'SPEC.md' (if available) to understand the design. Write the implementation for: '{task_description}'. \n\nOutput Requirements:\n1. Use the 'write' tool to save the code to appropriate files (e.g., main.py).\n2. Ensure code is runnable and includes basic error handling.\n3. Verify file creation before finishing."
     },
     "auditor": {
