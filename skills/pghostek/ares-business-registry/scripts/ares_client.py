@@ -380,15 +380,38 @@ def fetch_ico(base: str, ico: str) -> dict[str, Any]:
     return http_json("GET", f"{base.rstrip('/')}/ekonomicke-subjekty/{ico}")
 
 
-def fetch_search(base: str, name: str, city: str | None, limit: int, offset: int) -> dict[str, Any]:
+def validate_nace(values: list[str]) -> list[str]:
+    """Validate CZ-NACE codes: exactly 5 digits (e.g. '47710', '46420')."""
+    validated = []
+    for v in values:
+        code = v.strip()
+        if not re.fullmatch(r"\d{5}", code):
+            raise ValidationError(f"NACE code must be exactly 5 digits (CZ-NACE format), got: {code!r}")
+        validated.append(code)
+    return validated
+
+
+def fetch_search(
+    base: str,
+    name: str | None,
+    city: str | None,
+    nace: list[str] | None,
+    limit: int,
+    offset: int,
+) -> dict[str, Any]:
     body: dict[str, Any] = {
-        "obchodniJmeno": name,
         "pocet": limit,
         "start": offset,
         "razeni": [DEFAULT_SORT],
     }
+    if name:
+        body["obchodniJmeno"] = name
     if city:
         body["sidlo"] = {"nazevObce": city}
+    if nace:
+        body["czNace"] = nace
+    if not name and not nace:
+        raise ValidationError("search requires at least --name or --nace")
     return http_json("POST", f"{base.rstrip('/')}/ekonomicke-subjekty/vyhledat", payload=body)
 
 
@@ -408,10 +431,16 @@ def print_human_ico(item: dict[str, Any]) -> None:
 def print_human_search(result: dict[str, Any]) -> None:
     query = result.get("query", {})
     city = query.get("city") if isinstance(query, dict) else None
-    print(
-        f"Query name={query.get('name')!r}, city={city!r}, limit={query.get('limit')}, "
-        f"offset={query.get('offset')} | total={result.get('total')}"
-    )
+    nace = query.get("nace") if isinstance(query, dict) else None
+    parts = [
+        f"name={query.get('name')!r}",
+        f"city={city!r}",
+    ]
+    if nace:
+        parts.append(f"nace={nace!r}")
+    parts.append(f"limit={query.get('limit')}")
+    parts.append(f"offset={query.get('offset')}")
+    print(f"Query {', '.join(parts)} | total={result.get('total')}")
 
     items = result.get("items")
     if not isinstance(items, list) or not items:
@@ -466,19 +495,24 @@ def cmd_ico(args: argparse.Namespace) -> int:
 
 
 def cmd_search(args: argparse.Namespace) -> int:
-    name = validate_name(args.name)
+    name: str | None = None
+    if args.name:
+        name = validate_name(args.name)
+    nace: list[str] | None = None
+    if args.nace:
+        nace = validate_nace(args.nace)
     city = args.city.strip() if args.city else None
     limit = validate_limit(args.limit)
     offset = validate_offset(args.offset)
     pick = validate_pick(args.pick)
 
     pravni_map = get_pravni_forma_map(args.base)
-    payload = fetch_search(args.base, name, city, limit, offset)
+    payload = fetch_search(args.base, name, city, nace, limit, offset)
 
     raw_items = parse_search_items(payload)
     items = [normalize_subject(item, pravni_map) for item in raw_items]
     result: dict[str, Any] = {
-        "query": {"name": name, "city": city, "limit": limit, "offset": offset},
+        "query": {"name": name, "city": city, "nace": nace, "limit": limit, "offset": offset},
         "total": parse_total(payload, len(items)),
         "items": items,
     }
@@ -513,8 +547,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_ico.add_argument("ico")
     p_ico.set_defaults(func=cmd_ico)
 
-    p_search = sub.add_parser("search", parents=[common], help="Search by name (explicit flag)")
-    p_search.add_argument("--name", required=True)
+    p_search = sub.add_parser("search", parents=[common], help="Search by name and/or NACE code")
+    p_search.add_argument("--name")
+    p_search.add_argument("--nace", nargs="+", metavar="CODE", help="CZ-NACE code(s) to filter by (e.g. 4771 4719)")
     p_search.add_argument("--city")
     p_search.add_argument("--limit", type=int, default=DEFAULT_LIMIT)
     p_search.add_argument("--offset", type=int, default=0)
@@ -524,6 +559,7 @@ def build_parser() -> argparse.ArgumentParser:
     # Friendly alias: `ares name "Foo"` instead of `ares search --name "Foo"`
     p_name = sub.add_parser("name", parents=[common], help="Search by name")
     p_name.add_argument("name")
+    p_name.add_argument("--nace", nargs="+", metavar="CODE", help="CZ-NACE code(s) to filter by (e.g. 4771 4719)")
     p_name.add_argument("--city")
     p_name.add_argument("--limit", type=int, default=DEFAULT_LIMIT)
     p_name.add_argument("--offset", type=int, default=0)
