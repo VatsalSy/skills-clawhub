@@ -24,7 +24,7 @@
 - 节点侧接收 `node.invoke.request` 时仅解析 `paramsJSON`，且 `paramsJSON` 必须为对象 JSON。
 - `paramsJSON` 缺失或 `null` 时按空对象处理；若存在但不是字符串、为空字符串、或解析后不是对象，返回 `INVALID_PARAMS`。
 - `node.invoke.params.timeoutMs` 可省略；若传入，必须为非负整数（毫秒），否则返回 `INVALID_PARAMS`。其中 `0` 视为立即超时。
-- `node.invoke.params.timeoutMs` 会参与请求预算裁剪。节点内部会将 `process.exec.params.timeoutMs` 与 `file.read(operation=rg)` 的内部执行超时裁剪到该预算内（取更小值）。
+- `node.invoke.params.timeoutMs` 会参与请求预算裁剪。当前节点内部仅将 `process.exec.params.timeoutMs` 与 `file.read(operation=rg)` 的内部执行超时裁剪到该预算内（取更小值）。
 - 即便省略 `node.invoke.params.timeoutMs`，网关/调用端仍存在等待超时（当前 OpenClaw 侧常见默认约 `30000ms`，CLI `openclaw nodes invoke` 默认 `15000ms`）。
 - 实际可用执行时长取决于最先触发的超时层：调用端/网关等待超时、`node.invoke.params.timeoutMs`（若传入）、能力内部超时。
 
@@ -207,7 +207,8 @@
   - `matchCount`
   - `fileCount`
   - `truncated`
-  - `rgExitCode`
+  - `searchBackend`（`rg` 或 `powershell.select-string`）
+  - `searchExitCode`
   - `stderr`（可选）
   - `matches`（数组元素字段：`path`、`lineNumber`、`columnStart`、`columnEnd`、`lineText`、`matchText`）
 - `stat` 模式字段：
@@ -221,12 +222,12 @@
 
 ## 3. file.write
 
-用途：写入文件内容，或执行移动（剪切）与删除操作。
+用途：写入文件内容，或执行移动（剪切）/删除/目录增删操作。
 
 `params`：
 - `path`：字符串，必填。
 - `allowWrite`：布尔，可选，默认 `false`。必须显式传 `true` 才允许执行 `file.write`。
-- `operation`：字符串，可选，默认 `write`。可选值：`write` / `move`（或 `cut`）/ `delete`（或 `remove`）。
+- `operation`：字符串，可选，默认 `write`。可选值：`write` / `move`（或 `cut`）/ `delete`（或 `remove`）/ `mkdir`（或 `createDir`）/ `rmdir`（或 `removeDir`）。
 - `write` 模式参数：
   - `content`：字符串，必填。
   - `encoding`：字符串，可选，`utf8`（默认）或 `base64`。
@@ -238,6 +239,10 @@
   - `createDirs`：布尔，可选，默认 `true`（自动创建目标父目录）。
 - `delete` 模式参数：
   - 无额外必填参数。删除行为固定为移动到回收站（`QFile::moveToTrash`）。
+- `mkdir` 模式参数：
+  - `createDirs`：布尔，可选，默认 `true`（是否递归创建父目录）。
+- `rmdir` 模式参数：
+  - 无额外必填参数。仅允许删除目录，删除行为固定为移动到回收站（`QFile::moveToTrash`）。
 
 示例：
 
@@ -321,6 +326,14 @@
   - `targetType`：`file` 或 `directory`
   - `deleted`
   - `deleteMode`：固定 `trash`
+- `mkdir` 模式字段：
+  - `targetType`：固定 `directory`
+  - `created`
+  - `existed`
+- `rmdir` 模式字段：
+  - `targetType`：固定 `directory`
+  - `deleted`
+  - `deleteMode`：固定 `trash`
 
 ## 4. process.exec
 
@@ -379,7 +392,128 @@
 - `resultClass=timeout`（或 `timedOut=true`）时，`node.invoke` 仍返回成功结构，调用方应按业务将其视为超时失败。
 - 无进程级错误时，不返回 `processError*` 字段。
 
-## 5. system.screenshot
+## 5. process.which
+
+用途：探测命令在节点环境中是否可执行，并返回可用路径。
+
+`params`：
+- `program`：字符串，可选。单个命令名。
+- `programs`：字符串数组，可选。批量命令名列表。
+- 约束：
+  - `program` 与 `programs` 至少提供一个。
+  - `programs` 长度范围 `[1, 200]`。
+  - 若同时提供，节点会合并去重后统一探测。
+
+示例：
+
+```json
+{
+  "method": "node.invoke",
+  "params": {
+    "nodeId": "<node-id>",
+    "command": "process.which",
+    "params": {
+      "programs": ["git", "python", "ffmpeg"]
+    },
+    "timeoutMs": 15000,
+    "idempotencyKey": "<uuid>"
+  }
+}
+```
+
+返回重点（payload）：
+- `operation`：固定 `which`
+- `requestedCount` / `foundCount` / `allFound`
+- `results`：数组元素字段：
+  - `program`
+  - `backend`（`where` / `which` / `qt.findExecutable`）
+  - `found`
+  - `path`（仅命中时返回）
+  - `allPaths`
+
+兼容字段（仅单命令时返回）：
+- `program` / `backend` / `found` / `path` / `allPaths`
+
+## 6. process.manage
+
+用途：进程管理（当前仅支持 Windows），支持进程列表、搜索和终止。
+
+`params`：
+- `operation`：字符串，可选，默认 `list`。可选值：`list` / `search` / `kill`。
+- `list` 与 `search` 通用参数：
+  - `query`：字符串，可选。搜索关键字。
+  - `keyword`：字符串，可选。`query` 的兼容别名（仅在 `query` 为空时生效）。
+  - `pid`：数字，可选，范围 `[1, 2147483647]`。作为 PID 精确过滤条件。
+  - `caseSensitive`：布尔，可选，默认 `false`。
+  - `limit`：数字，可选，默认 `200`，范围 `[1, 5000]`。
+  - `includePath`：布尔，可选，默认 `false`。是否返回进程路径，并允许 `query` 匹配路径。
+  - `includeArchitecture`：布尔，可选，默认 `false`。是否返回 `isWow64` 字段（Windows）。
+- `search` 额外约束：
+  - 必须提供 `query`（或 `keyword`）与 `pid` 之一，否则返回 `INVALID_PARAMS`。
+- `kill` 参数：
+  - `pid`：数字，必填，范围 `[1, 2147483647]`。
+  - `waitMs`：数字，可选，默认 `3000`，范围 `[0, 30000]`。
+  - 注意：`waitMs` 当前不会被 `node.invoke.timeoutMs` 二次裁剪，调用端应自行保证请求预算充足。
+  - 默认拒绝终止关键进程（critical process）；仅当 `pid` 等于当前节点进程 PID 时允许。
+
+示例（search 模式）：
+
+```json
+{
+  "method": "node.invoke",
+  "params": {
+    "nodeId": "<node-id>",
+    "command": "process.manage",
+    "params": {
+      "operation": "search",
+      "query": "chrome",
+      "limit": 20,
+      "includePath": true
+    },
+    "timeoutMs": 15000,
+    "idempotencyKey": "<uuid>"
+  }
+}
+```
+
+示例（kill 模式）：
+
+```json
+{
+  "method": "node.invoke",
+  "params": {
+    "nodeId": "<node-id>",
+    "command": "process.manage",
+    "params": {
+      "operation": "kill",
+      "pid": 12345,
+      "waitMs": 5000
+    },
+    "timeoutMs": 10000,
+    "idempotencyKey": "<uuid>"
+  }
+}
+```
+
+返回重点（payload）：
+- `list` / `search` 返回字段：
+  - `operation` / `query`（可选）/ `pid`（可选）/ `caseSensitive` / `limit`
+  - `includePath` / `includeArchitecture`
+  - `returnedCount` / `totalMatched` / `truncated`
+  - `processes`：数组元素字段包含
+    - `pid`
+    - `name`
+    - `sessionId`（可选）
+    - `path`（可选）
+    - `isWow64`（可选）
+- `kill` 返回字段：
+  - `operation` / `pid`
+  - `name`（可选）/ `path`（可选）/ `isWow64`（可选）
+  - `waitMs` / `waitResult` / `terminated` / `exited` / `resultClass`
+  - `exitCode`（可选）
+  - `waitResult` 取值：`signaled` / `timeout` / `abandoned` / `unknown`。
+
+## 7. system.screenshot
 
 用途：采集全部屏幕截图并返回上传后的 URL 信息。
 
@@ -392,7 +526,7 @@
 - `screenIndex`
 - `screenName`（可选）
 
-## 6. system.info
+## 8. system.info
 
 用途：采集系统基础信息。
 
@@ -410,19 +544,100 @@
 - `ip`
 - `disks`
 
-## 7. 常见错误与处理
+## 9. system.notify
+
+用途：弹出系统消息提示框。参数校验通过后会异步投递弹窗请求，`node.invoke` 会立即返回。
+
+参数（`params`）：
+- `message`：字符串，必填，非空，长度范围 `[1, 4000]`
+- `title`：字符串，可选，默认 `JQOpenClaw`，长度上限 `120`
+
+返回（`payload`）：
+- `operation`：固定 `notify`
+- `title`
+- `message`
+- `shown`：固定 `true`
+- `async`：固定 `true`
+- `ok`：固定 `true`
+
+## 10. system.clipboard
+
+用途：读取当前系统剪贴板文本，或写入文本到系统剪贴板。建议 `timeoutMs` 取值 `5000-15000`。
+
+参数（`params`）：
+- `operation`：字符串，可选，`read|write`，默认 `read`
+- `text`：字符串，当 `operation=write` 时必填（可为空字符串）
+
+返回（`payload`）：
+- `operation=read`：
+  - `operation`：固定 `read`
+  - `text`
+  - `length`
+  - `hasText`
+  - `ok`：固定 `true`
+- `operation=write`：
+  - `operation`：固定 `write`
+  - `written`：固定 `true`
+  - `length`
+  - `hasText`
+  - `ok`：固定 `true`
+
+示例（读取剪贴板）：
+
+```json
+{
+  "method": "node.invoke",
+  "params": {
+    "nodeId": "<node-id>",
+    "command": "system.clipboard",
+    "params": {
+      "operation": "read"
+    },
+    "timeoutMs": 10000,
+    "idempotencyKey": "<uuid>"
+  }
+}
+```
+
+示例（写入剪贴板）：
+
+```json
+{
+  "method": "node.invoke",
+  "params": {
+    "nodeId": "<node-id>",
+    "command": "system.clipboard",
+    "params": {
+      "operation": "write",
+      "text": "hello from openclaw"
+    },
+    "timeoutMs": 10000,
+    "idempotencyKey": "<uuid>"
+  }
+}
+```
+
+## 11. 常见错误与处理
 
 - `INVALID_PARAMS`
-  - 参数缺失、类型不匹配或超出范围（含 `file.read` / `file.write` / `process.exec` 参数校验失败）。
+  - 参数缺失、类型不匹配或超出范围（含 `file.read` / `file.write` / `process.manage` / `process.exec` / `process.which` / `system.notify` / `system.clipboard` / `system.input` 参数校验失败）。
   - 修正字段后重试。
 
 - `FILE_READ_FAILED` / `FILE_WRITE_FAILED`
   - 常见原因：路径错误、权限不足、父目录不存在、移动目标已存在、系统回收站不可用或拒绝接收目标。
   - 优先检查路径、权限、目录状态、回收站状态等执行环境问题。
 
+- `PROCESS_MANAGE_FAILED`
+  - 常见原因：目标进程不存在、权限不足、非 Windows 平台、命中关键进程保护、终止失败或等待失败。
+  - 优先检查 `pid`、节点运行权限、平台类型与目标进程存活状态。
+
 - `PROCESS_EXEC_FAILED`
   - 常见原因：程序不存在、权限不足、启动失败等无法产出结构化执行结果。
   - 优先检查 `program`、`workingDirectory`、权限、运行环境。
+
+- `PROCESS_WHICH_FAILED`
+  - 常见原因：探测流程内部异常。
+  - 建议检查节点日志并重试。
 
 - `SYSTEM_INFO_FAILED`
   - 系统信息采集失败。
@@ -440,7 +655,61 @@
 - `COMMAND_NOT_SUPPORTED`
   - 节点未实现该命令。
   - 检查 `node.describe.commands`。
-
+- `SYSTEM_INPUT_FAILED`
+  - `system.input` 请求投递失败（例如线程池不可用、平台不支持）。
+- `SYSTEM_NOTIFY_FAILED`
+  - `system.notify` 请求投递失败（如应用实例不可用、UI 线程分发失败）。
+- `SYSTEM_CLIPBOARD_FAILED`
+  - `system.clipboard` 执行失败（如应用实例不可用、图形环境缺失、剪贴板访问失败）。
 - `command not allowlisted`
   - 网关策略拦截。
-  - 在网关配置 `gateway.nodes.allowCommands` 增加目标命令（如 `file.read`、`file.write`）。
+  - 在网关配置 `gateway.nodes.allowCommands` 增加目标命令（如 `file.read`、`file.write`、`process.manage`、`process.exec`、`process.which`、`system.notify`、`system.clipboard`、`system.input`）。
+
+## 12. system.input
+
+用途：控制鼠标与键盘输入，支持一个请求内多动作顺序执行。
+说明：参数校验通过后请求会异步入队，`node.invoke` 立即返回，不等待动作执行完成。
+调度策略：latest-wins。若新请求到达，会取消旧请求尚未完成的剩余动作；已执行动作不会回滚。
+建议：`keyboard.down` / `keyboard.up` 尽量在同一请求内闭合配对，或优先使用 `keyboard.tap`。
+
+参数（`params`）：
+- `actions`：数组，必填，长度 `[1, 1000]`
+- `actions[i].type` 支持：
+  - `mouse.move`：`mode=absolute|relative`，`x`，`y`
+  - `mouse.click`：`button=left|right`，可选 `count`
+  - `mouse.scroll`：`delta|deltaY`（二选一，范围 `[-12000, 12000]`），可选 `deltaX`（范围 `[-12000, 12000]`）
+  - `mouse.drag`：`mode=absolute|relative`，`x`，`y`，可选 `button=left|right`
+  - `keyboard.down` / `keyboard.up` / `keyboard.tap`：`key`
+  - `keyboard.text`：`text`（非空），可选 `intervalMs`
+  - `delay`：`ms`
+
+返回（`payload`）：
+- `operation`：固定 `input`
+- `totalCount`
+- `accepted`：固定 `true`
+- `async`：固定 `true`
+- `ok`：固定 `true`
+
+示例：
+
+```json
+{
+  "method": "node.invoke",
+  "params": {
+    "nodeId": "<node-id>",
+    "command": "system.input",
+    "params": {
+      "actions": [
+        { "type": "mouse.move", "mode": "absolute", "x": 1200, "y": 700 },
+        { "type": "mouse.click", "button": "left" },
+        { "type": "mouse.scroll", "deltaY": -120, "deltaX": 0 },
+        { "type": "mouse.drag", "mode": "absolute", "x": 1400, "y": 700, "button": "left" },
+        { "type": "delay", "ms": 150 },
+        { "type": "keyboard.text", "text": "OpenClaw", "intervalMs": 20 }
+      ]
+    },
+    "timeoutMs": 15000,
+    "idempotencyKey": "<uuid>"
+  }
+}
+```
