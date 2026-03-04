@@ -1,15 +1,15 @@
 ---
 name: ibt
-version: 2.6.0
+version: 2.7.3
 title: IBT: Instinct + Behavior + Trust
-description: Execution discipline with agency, instinct detection, critical safety rules, and trust layer. v2.6 adds Discrepancy Reasoning protocol.
+description: Execution discipline with agency, instinct detection, critical safety rules, trust layer, and error resilience. v2.7 adds timeout handling, checkpointing, and decision logging.
 homepage: https://github.com/palxislabs/ibt-skill
 metadata: {"openclaw":{"emoji":"🧠","category":"execution","tags":["ibt","instinct","behavior","trust","discipline","safety"]}}
 ---
 
-# IBT v2.6 — Instinct + Behavior + Trust
+# IBT v2.7 — Instinct + Behavior + Trust
 
-> **v2.6 supersedes v2.5** — Install v2.6 for Discrepancy Reasoning protocol from Trinity.
+> **v2.7 supersedes v2.6** — Install v2.7 for Error Resilience + Checkpointing + Decision Logging.
 
 ## What to Do (Quick Reference)
 
@@ -25,6 +25,9 @@ When you receive a user request, follow this:
 - **Realign after gaps**: After compaction, session rotation, or 12h+ gap, summarize where you left off
 - **Verify before claiming**: Check your work, don't overclaim
 - **Stay in sync**: Use Trust Contract to define relationship with human
+- **Log decisions**: Every phase transition gets 1 line logged
+- **Checkpoint before Act**: Save state before risky operations
+- **Classify errors**: Know the error type before reacting
 
 ## Core Loop (v2)
 
@@ -170,13 +173,24 @@ User: I want to get my car washed. Walk or drive?
 
 ### The Prime Directive
 
-**STOP commands are sacred.** Any message containing "stop", "don't", "wait", "no", "cancel", "abort", or "halt" → IMMEDIATELY halt all execution, acknowledge, and confirm before continuing.
+**Explicit STOP commands are sacred.** Only halt immediately when:
+- The message contains `/stop` or `/halt`
+- The message is a direct command to stop, halt, cancel, abort, or wait
+- The message clearly expresses intent to stop (not rhetorical "no" or casual "don't think so")
+
+**Do NOT halt on:**
+- Casual "no" or "don't" in normal sentences
+- Rhetorical questions
+- Negative statements that aren't commands
+
+When in doubt, acknowledge the concern but ask for clarification: "I heard 'stop' — did you want me to halt, or were you just saying no to something?"
 
 ### Core Safety Rules
 
 | Rule | Description |
 |------|-------------|
-| **Stop = Stop** | Any stop word → halt immediately, confirm |
+| **Explicit Stop = Stop** | Only halt on clear stop commands, not casual "no"/"don't" |
+| **Clarify Ambiguity** | When unclear if message is a stop, ask first |
 | **Instruction Persistence** | Summarize key instructions to file before long tasks |
 | **Context Awareness** | At >70% context, re-state understanding |
 | **Approval Gates** | Never skip confirmation when human said "check with me first" |
@@ -416,6 +430,156 @@ TEST: "Can you confirm which account you're checking?
 
 ---
 
+## Part 5: Error Resilience Layer (v2.7 — New)
+
+*Added 2026-03-02 for structured error handling, checkpointing, and decision logging.*
+
+### ⚠️ Privacy Note
+
+**All checkpoints and decision logs are stored IN-MEMORY ONLY.**
+- Lost immediately when the session ends
+- Never persisted to disk
+- Never sent to any external service
+- Not readable by anyone other than the agent during the session
+
+### ⚠️ Sensitive Data Redaction
+
+**Always redact sensitive data before logging:**
+- API keys, tokens, passwords → log `[REDACTED]` or hash only
+- Personal info (names, emails, phone numbers) → log `[PII]`
+- Financial data → log `[SENSITIVE]` or just the type
+
+```javascript
+// Before logging, redact:
+function sanitize(log) {
+  return log
+    .replace(/sk-[a-zA-Z0-9]+/g, '[REDACTED]')
+    .replace(/password[^,}]*/g, '[REDACTED]')
+    .replace(/\d{4}[-\d]{8,}/g, '[SENSITIVE]')
+}
+```
+
+**Never log:** Full credentials, raw API responses with secrets, PII
+
+### Core Principle
+
+**"Fail fast, log cheap, resume fast"** — minimal overhead, maximum debuggability.
+
+### Error Classification (Enum-Based)
+
+Fast error classification using integers, not strings:
+
+```javascript
+const ERR = {
+  TIMEOUT: 1,   // Retry with backoff (max 2)
+  AUTH: 2,      // Stop immediately, alert human
+  RATE: 3,      // Wait 60s, retry (max 2)
+  PARSE: 4,     // Retry once, then skip if fail
+  UNKNOWN: 0   // Stop, alert human
+}
+```
+
+### Timeout Configuration
+
+```javascript
+const TIMEOUTS = {
+  api: 30000,    // 30s for API calls
+  exec: 60000,   // 60s for shell commands
+  verify: 10000 // 10s for verification checks
+}
+```
+
+### Checkpointing
+
+Before any **Act** phase (especially risky operations), save a checkpoint:
+
+```javascript
+// One-line checkpoint (stored in memory, not disk for speed)
+checkpoint = {
+  t: "commit",      // type
+  s: planHash,     // plan hash for verification
+  c: actCommand,   // what will be executed
+  ts: Date.now()   // timestamp
+}
+```
+
+**When to checkpoint:**
+- Before any API call that modifies data
+- Before any shell command
+- Before any operation that can't be easily undone
+
+**Recovery:** If Act fails, use checkpoint to resume from Commit phase.
+
+### Decision Logging
+
+Log every phase transition (one line, minimal overhead):
+
+```javascript
+// One-line decision log
+decisionLog.push({
+  t: "decide",        // type
+  p: fromPhase,       // e.g., "parse", "plan", "commit"
+  d: decision,        // e.g., "retry", "proceed", "stop"
+  r: reason,          // brief reason
+  ts: Date.now()
+})
+```
+
+**What to log:**
+- Parsing complete → "proceed" or "need_clarity"
+- Planning complete → "plan_approved" or "need_approval"
+- Commit → checkpoint created
+- Act started/completed
+- Verify → "success", "failed", "retry"
+- Update → what was patched
+
+### Recovery Flow
+
+```
+Act fails → Verify detects → Classify error → Update applies rule:
+
+TIMEOUT → retry (max 2) → if still fail → checkpoint → ask human
+AUTH    → checkpoint → stop → alert human
+RATE    → wait 60s → retry (max 2) → if fail → ask human
+PARSE   → retry once → if fail → skip, log, continue
+UNKNOWN → checkpoint → stop → alert human
+```
+
+### Integration into Core Loop
+
+| Phase | Addition | Overhead |
+|-------|----------|----------|
+| Observe | — | 0 |
+| Parse | Decision log | ~1ms |
+| Plan | Decision log | ~1ms |
+| Commit | **Checkpoint** | ~1ms |
+| Act | **Timeout** enforced | 0 |
+| Verify | **Error classification** | ~1ms |
+| Update | Decision log | ~1ms |
+| Stop | — | 0 |
+
+**Total overhead: ~3ms per cycle** (negligible)
+
+### Quick Reference (v2.7)
+
+```
+ERR CODES: 1=timeout, 2=auth, 3=rate, 4=parse, 0=unknown
+TIMEOUTS: api=30s, exec=60s, verify=10s
+MAX_RETRY: 2 (timeout/rate/parse), 0 (auth)
+
+Checkpoint: {"t":"commit","s":"hash","c":"cmd","ts":N}
+Decision:  {"t":"decide","p":"phase","d":"action","r":"reason","ts":N}
+
+Recovery:
+  timeout → retry x2 → fail → checkpoint → ask
+  auth    → checkpoint → stop → alert
+  rate    → wait 60s → retry x2 → fail → ask
+  parse   → retry x1 → fail → skip, log
+  unknown → checkpoint → stop → alert
+```
+
+---
+
 ## Installation
 
 ```bash
@@ -431,9 +595,9 @@ clawhub install ibt
 | `TEMPLATE.md` | Full drop-in policy |
 | `EXAMPLES.md` | Before/after demonstrations |
 
-## Upgrading from v1, v2, v2.2, v2.3, v2.4, v2.5, or v2.5.1
+## Upgrading from v1, v2, v2.2, v2.3, v2.4, v2.5, v2.5.1, or v2.6
 
-v2.6 is a drop-in replacement. Just install v2.6 and you get:
+v2.7 is a drop-in replacement. Just install v2.7 and you get:
 - ✅ All v1 steps (Parse → ... → Stop)
 - ✅ Observe step (v2)
 - ✅ Instinct layer (takes, concerns, suggestions)
@@ -441,6 +605,7 @@ v2.6 is a drop-in replacement. Just install v2.6 and you get:
 - ✅ Trust Layer with contracts and session realignment (v2.3)
 - ✅ Human ambiguity handling + Car Wash example (v2.5)
 - ✅ Discrepancy Reasoning protocol (v2.6) — Trinity's contribution
+- ✅ Error Resilience layer (v2.7) — timeout handling, checkpointing, decision logging
 
 No changes to your existing setup needed.
 
