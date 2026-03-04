@@ -1,224 +1,164 @@
 ---
 name: feishu-doc-orchestrator
-description: |
-  飞书文档创建与权限管理工作流 - 支持 Markdown 导入、分块添加、权限自动分配。
-  用于创建飞书文档(docx)并自动完成权限管理（添加协作者+转移所有权）。
-  当用户需要：1) 创建飞书文档并设置权限 2) 将 Markdown 导入飞书 3) 批量处理文档权限 时使用此技能。
+description: 飞书文档创建技能 - 将Markdown文件转换为飞书文档，支持25种块类型，完整权限管理。当用户需要将Markdown文档转换为飞书文档、创建协作文档、批量处理文档内容时激活此技能。
 ---
 
-# 飞书文档创建与权限管理
+# 飞书文档创建技能
 
-自动化飞书文档创建工作流，支持 Markdown 导入、智能分块添加、权限自动分配。
+将Markdown文件转换为飞书文档的完整解决方案，支持25种飞书文档块类型，包括表格、代码块、待办事项、高亮块等复杂格式。
 
-## 功能概述
+## 功能特性
 
-- **文档创建**：从 Markdown 或纯文本创建飞书文档(docx)
-- **权限管理**：自动添加协作者并转移所有权
-- **智能分块**：自动将内容分割为飞书 API 支持的块类型
-- **工作流追踪**：完整的工作流日志和状态追踪
+- ✅ **25种块类型支持**：标题（H1-H9）、文本、列表、表格、代码、引用、待办事项、高亮块、分割线等
+- ✅ **Markdown到飞书格式转换**：自动解析Markdown并转换为飞书块结构
+- ✅ **权限管理**：智能Token模式选择，自动添加协作者权限
+- ✅ **批量处理**：分批添加块，避免API限制
+- ✅ **图片上传**：支持本地图片自动上传到飞书文档
+- ✅ **表格转换**：Markdown表格转换为飞书原生表格
+- ✅ **错误恢复**：部分块失败不影响整体流程
+
+## 使用场景
+
+**触发时机**：
+- 用户需要将Markdown文档转换为飞书文档
+- 用户需要创建协作文档并分配权限
+- 用户需要批量处理文档内容到飞书
+- 用户需要保留复杂格式（表格、代码、列表等）的文档转换
+
+**示例请求**：
+- "帮我把`报告.md`转换为飞书文档"
+- "将这个Markdown文档发布到飞书"
+- "创建一个飞书文档，包含这些表格和列表"
+- "批量处理这些文档到飞书协作空间"
+
+## 使用前准备
+
+### 1. 配置飞书应用
+需要飞书开放平台应用凭证：
+
+```bash
+# 创建配置文件
+cat > ~/.openclaw/feishu-config.env << EOF
+FEISHU_APP_ID=cli_xxxxxxxxxxxxx
+FEISHU_APP_SECRET=xxxxxxxxxxxxxxxxxx
+FEISHU_API_DOMAIN=https://open.feishu.cn
+EOF
+```
+
+### 2. 检查配置
+```bash
+python ~/.openclaw/skills/feishu-doc-orchestrator/scripts/check_config.py
+```
+
+## 工作流程
+
+1. **Markdown解析**：使用`feishu-md-parser`解析Markdown文件，生成块数据
+2. **文档创建**：使用`feishu-doc-creator-with-permission`创建文档并处理权限
+3. **块添加**：使用`feishu-block-adder`批量添加块到文档
+4. **结果验证**：返回文档链接和添加统计
 
 ## 快速开始
 
-### 场景1：创建文档并自动分配权限
-
-```python
-# 创建新文档并自动给用户添加权限
-result = feishu_doc_create_with_permission(
-    title="我的文档",
-    collaborator_id="ou_xxx",  # 用户 open_id
-    perm="full_access"  # 权限级别
-)
-# 返回: {"document_id": "xxx", "document_url": "https://feishu.cn/docx/xxx", "permission_status": {...}}
-```
-
-### 场景2：Markdown 导入飞书
-
+### 命令行使用
 ```bash
-# 使用编排器完整工作流
-python scripts/orchestrator.py input.md "文档标题" "run-name"
+# 转换单个Markdown文件
+python scripts/feishu_doc_cli.py --input 报告.md --title "文档标题"
 
-# 工作流步骤：
-# 1. 解析 Markdown → 块结构
-# 2. 创建文档 + 权限设置
-# 3. 添加内容块
-# 4. 验证文档
-# 5. 记录日志
+# 使用现有文档ID（追加内容）
+python scripts/feishu_doc_cli.py --input 内容.md --doc-id DJ8QdybJboi1EJxrndLchPtEnoh
 ```
 
-### 场景3：给现有文档添加权限
+### OpenClaw Agent调用
+技能会自动激活当用户请求Markdown到飞书文档转换。
 
-```python
-# 添加协作者权限
-feishu_perm_add(
-    token="doc_id",
-    type="docx",
-    member_type="openid",
-    member_id="ou_xxx",
-    perm="full_access"
-)
-
-# 转移所有权
-feishu_doc_transfer_owner(
-    document_id="doc_id",
-    new_owner_id="ou_xxx"
-)
-```
-
-## 详细使用指南
-
-### 智能 Token 模式选择
-
-脚本根据文档标题智能判断使用哪种 Token 模式：
-
-| 标题包含关键词 | 使用的 Token 模式 | 说明 |
-|---------------|------------------|------|
-| `文件夹`、`用户`、`个人`、`我的` | **user_access_token** | 文档属于用户，无需权限转移 |
-| 其他情况 | **tenant_access_token**（默认） | 文档属于应用，需添加协作者权限 |
-
-### 权限级别
-
-- `view` - 仅查看
-- `edit` - 可编辑
-- `full_access` - 完全访问（可管理权限）
-
-### 工作流目录结构
+## 技能架构
 
 ```
-workflow/feishu-doc-runs/run-2026-02-10-143022/
-├── step1_parse/              # Markdown 解析结果
-│   └── blocks.json
-├── step2_create_with_permission/  # 文档创建+权限
-│   └── doc_with_permission.json
-├── step3_add_blocks/         # 块添加结果
-│   └── add_result.json
-└── step4_verify/             # 验证结果
-    └── verify_result.json
+feishu-doc-orchestrator/      # 主编排技能
+├── feishu-md-parser/         # 子技能1：Markdown解析
+├── feishu-doc-creator-with-permission/  # 子技能2：创建+权限
+├── feishu-block-adder/       # 子技能3：块添加
+├── feishu-doc-verifier/      # 子技能4：文档验证
+└── feishu-logger/            # 子技能5：日志记录
 ```
 
-## 脚本说明
+## 配置文件说明
 
-### scripts/doc_creator_with_permission.py
+### feishu-config.env
+```ini
+# 必需配置
+FEISHU_APP_ID = "cli_xxxxxxxxxxxxx"
+FEISHU_APP_SECRET = "xxxxxxxxxxxxxxxxxx"
+FEISHU_API_DOMAIN = "https://open.feishu.cn"
 
-**功能**：创建文档并自动完成权限管理（原子操作）
-
-**使用方式**：
-```bash
-# 默认模式（Tenant Token）
-python scripts/doc_creator_with_permission.py "产品需求文档"
-
-# User Token 模式（检测到关键词）
-python scripts/doc_creator_with_permission.py "我的个人笔记"
-
-# 强制使用 User Token
-python scripts/doc_creator_with_permission.py "测试文档" --user-token
+# 可选配置
+FEISHU_AUTO_COLLABORATOR_ID = "ou_xxx"    # 自动添加协作者
+FEISHU_DEFAULT_FOLDER = "folder_token"    # 默认文件夹
 ```
 
-**输出**：`output/doc_with_permission.json`
+## 支持的块类型
 
-### scripts/orchestrator.py
+| 块类型 | 名称 | Markdown对应 |
+|--------|------|--------------|
+| 2 | 文本 | 普通段落 |
+| 3-8 | 标题1-6 | # - ###### |
+| 12 | 无序列表 | `- item` |
+| 13 | 有序列表 | `1. item` |
+| 14 | 代码块 | ```代码``` |
+| 15 | 引用块 | `> 引用` |
+| 17 | 待办事项 | `- [ ] todo` |
+| 19 | 高亮块 | `> [!NOTE]` |
+| 22 | 分割线 | `---` |
+| 27 | 图片块 | `![alt](path)` |
+| 31 | 表格 | Markdown表格 |
+| 32 | 表格单元格 | 自动生成 |
 
-**功能**：完整工作流编排（5步骤）
+## 性能表现
 
-**使用方式**：
-```bash
-python scripts/orchestrator.py <markdown文件> [文档标题] [运行名称]
+- **小文档**（32个块）：10-15秒，成功率>95%
+- **大文档**（160个块，含表格）：45-60秒，成功率>80%
+- **图片上传**：支持本地图片自动上传
 
-# 示例
-python scripts/orchestrator.py input.md "我的文档" "test-run-01"
-```
+## 注意事项
 
-### scripts/add_permission.py
+1. **权限要求**：
+   - 需要飞书开放平台应用权限：`docx:document`、`docx:document.block:convert`、`drive:drive`
+   - Tenant Token创建的文档需添加协作者权限
+   - User Token创建的文档无需权限转移
 
-**功能**：给现有文档添加权限并转移所有权
+2. **文件路径**：
+   - 本地图片需使用绝对路径
+   - Markdown文件路径支持相对/绝对路径
 
-**使用方式**：
-```bash
-python scripts/add_permission.py <文档ID> <用户open_id>
+3. **API限制**：
+   - 批量处理自动分批，每批20个块
+   - 每块间隔50ms避免限流
 
-# 示例
-python scripts/add_permission.py xxxxxxxxxxxxxxxxxxxx ou_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-```
-
-## 配置要求
-
-### 必需配置
-
-在 `.claude/feishu-config.env` 中配置：
-
-```env
-FEISHU_APP_ID=cli_xxx
-FEISHU_APP_SECRET=xxx
-FEISHU_API_DOMAIN=https://open.feishu.cn
-FEISHU_WEB_DOMAIN=https://feishu.cn
-FEISHU_AUTO_COLLABORATOR_ID=ou_xxx  # 默认协作者ID
-FEISHU_AUTO_COLLABORATOR_TYPE=openid
-FEISHU_AUTO_COLLABORATOR_PERM=full_access
-FEISHU_DEFAULT_FOLDER=fldcnxxx  # 可选，默认文件夹
-```
-
-### OAuth 授权（User Token 模式需要）
-
-运行自动授权脚本：
-
-```bash
-python scripts/auto_auth.py
-```
-
-此脚本会自动：
-1. 启动本地服务器接收回调
-2. 打开浏览器飞书授权页面
-3. 自动捕获授权码
-4. 获取并保存 token 到 `.claude/feishu-token.json`
-
-## 依赖安装
-
-```bash
-# 必需依赖
-pip install requests lark-oapi
-```
-
-## API 参考
-
-### 支持的块类型
-
-- 标题 (Heading1-9)
-- 文本 (Text)
-- 无序列表 (Bullet)
-- 有序列表 (Numbered)
-- 引用 (Quote)
-- 代码块 (Code)
-- 分割线 (Divider)
-- 表格 (Table)
-- 图片 (Image) - 通过 URL
-
-详细块类型定义参见 `references/block_types.md`
+4. **错误处理**：
+   - 单个块失败不影响整体流程
+   - 失败信息记录到日志文件
+   - 可重试失败块
 
 ## 故障排除
 
 ### 常见问题
+1. **API权限不足**：检查应用权限配置
+2. **图片上传失败**：确认图片路径正确且文件存在
+3. **表格转换失败**：检查Markdown表格格式
+4. **Token过期**：重新获取token
 
-**Q: 添加权限失败，提示 "Permission denied"**
-- 确保使用 tenant_access_token 添加协作者
-- 检查文档ID是否正确
-- 确认应用有 `drive:permission` 权限
+### 调试模式
+```bash
+python scripts/feishu_doc_cli.py --input test.md --title "测试" --verbose
+```
 
-**Q: 转移所有权失败**
-- 确保 user_access_token 有效且未过期
-- 检查是否具有转移所有权的权限
-- 确认 lark-oapi SDK 已安装
+## 更新日志
 
-**Q: 文档创建成功但内容为空**
-- 检查 blocks.json 是否正确生成
-- 确认块类型和格式符合飞书 API 要求
-- 查看 step3_add_blocks/add_result.json 错误日志
+- **v1.0.0** (2026-02-24)：初始版本，基于rosalynYANG/feishu-doc-creator-skill打包
+- 支持25种飞书块类型
+- 完整权限管理
+- 批量处理优化
 
-## 注意事项
+## 致谢
 
-1. **Token 类型必须一致**：文档创建和块添加必须使用相同类型的 Token
-2. **Tenant Token 创建后必须立即添加协作者**：否则后续的块添加会因权限不足而失败
-3. **User Token 需要先授权**：确保运行 auto_auth.py 完成授权流程
-
-## 相关资源
-
-- [飞书开放平台和权限管理 API](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/drive-v1/permission-member/create)
-- [飞书文档块类型 API](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/docx-v1/document-block/overview)
+基于 [rosalynYANG/feishu-doc-creator-skill](https://github.com/rosalynYANG/feishu-doc-creator-skill) 开发，感谢原作者的优秀工作。

@@ -123,7 +123,7 @@ def transfer_owner(document_id, user_id, config):
 def main():
     if len(sys.argv) < 3:
         print("用法: python add_permission.py <文档ID> <用户open_id>")
-        print("示例: python add_permission.py xxxxxxxxxxxxxxxxxxxx ou_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
+        print("示例: python add_permission.py Lh6hdTak5oMOrlx96VtcHZrInfb ou_c3187510002211b7dab58e3107255adf")
         sys.exit(1)
     
     document_id = sys.argv[1]
