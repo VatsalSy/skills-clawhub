@@ -349,7 +349,7 @@ GET /api/agent/supported-tokens?network=solana-devnet
 GET /api/agent/supported-tokens?chain=solana
 ```
 
-No authentication required. Returns **recommended common, well-known tokens** for the specified network (defaults to mainnet).
+Requires `X-Agent-Key`. Returns **recommended common, well-known tokens** for the specified network (defaults to mainnet).
 Agents can still use any valid ERC-20 token contract address on EVM and any valid SPL mint on Solana.
 
 Response:
@@ -372,11 +372,12 @@ Notes:
 - ERC-20 addresses are network-specific (mainnet and sepolia differ).
 - SOL is native on Solana and represented by `native:sol`.
 
-## Get Swap Quote (Uniswap v2)
+## Get Swap Quote (DEX)
 
 ```
 POST /api/agent/quote?network=mainnet
 Content-Type: application/json
+X-Agent-Key: occ_your_api_key
 ```
 
 Request:
@@ -400,6 +401,17 @@ Response:
   "feePercent": "0.30%",
   "dex": "uniswap-v2",
   "network": "mainnet"
+}
+```
+
+Solana (Jupiter) request example:
+```json
+{
+  "chain": "solana",
+  "walletId": 5,
+  "tokenIn": "SOL",
+  "tokenOut": "USDC",
+  "amountIn": "10000000"
 }
 ```
 
@@ -509,7 +521,7 @@ Network is fixed at wallet creation and cannot be changed.
 - EVM token transfers require ETH in the wallet for gas fees
 - Solana token transfers require SOL in the wallet for transaction fees
 - Native SOL transfers account for network fee and may return adjusted transfer values in response
-- Swap supports EVM (Uniswap) and Solana (Jupiter); Quote/Approve are EVM-only
+- Swap supports EVM (Uniswap) and Solana mainnet (Jupiter); Quote supports EVM and Solana mainnet; Approve is EVM-only
 - Platform fee is deducted from the token amount (not ETH), consistent with ETH transfers
 - Use `amount` for simplicity (human-readable), use `value` when you need precise base-unit control
 - Optional `chain` guard is supported on agent endpoints; mismatches return `400` with `code: "chain_mismatch"`.

@@ -3,11 +3,16 @@
   "slug": "open-claw-cash",
   "displayName": "OpenClawCash",
   "latest": {
-    "version": "1.9.4",
-    "publishedAt": 1772298901099,
-    "commit": "https://github.com/openclaw/skills/commit/c3946cd8f3f95b353024c3410e7726e9d5ea951a"
+    "version": "1.9.6",
+    "publishedAt": 1772532576206,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.9.4",
+      "publishedAt": 1772298901099,
+      "commit": "https://github.com/openclaw/skills/commit/c3946cd8f3f95b353024c3410e7726e9d5ea951a"
+    },
     {
       "version": "1.9.1",
       "publishedAt": 1771886334365,

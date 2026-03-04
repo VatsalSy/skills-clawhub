@@ -5,7 +5,7 @@ license: Proprietary
 compatibility: Requires network access to https://openclawcash.com
 metadata:
   author: agentwalletapi
-  version: "1.9.4"
+  version: "1.9.6"
   required_env_vars:
     - AGENTWALLETAPI_KEY
   optional_env_vars:
@@ -74,10 +74,10 @@ If MCP is unavailable, use the included tool script to make API calls directly:
 ```bash
 # Read-only (recommended first)
 bash scripts/agentwalletapi.sh wallets
-bash scripts/agentwalletapi.sh wallet 2
+bash scripts/agentwalletapi.sh wallet Q7X2K9P
 bash scripts/agentwalletapi.sh wallet "Trading Bot"
-bash scripts/agentwalletapi.sh balance 2
-bash scripts/agentwalletapi.sh transactions 2
+bash scripts/agentwalletapi.sh balance Q7X2K9P
+bash scripts/agentwalletapi.sh transactions Q7X2K9P
 bash scripts/agentwalletapi.sh tokens mainnet
 
 # Write actions (require explicit --yes)
@@ -86,10 +86,11 @@ bash scripts/agentwalletapi.sh create "Ops Wallet" sepolia WALLET_EXPORT_PASSPHR
 bash scripts/agentwalletapi.sh import "Treasury Imported" mainnet --yes
 # Automation-safe import: read private key from stdin instead of command args
 printf '%s' '<private_key>' | bash scripts/agentwalletapi.sh import "Treasury Imported" mainnet - --yes
-bash scripts/agentwalletapi.sh transfer 2 0xRecipient 0.01 --yes
-bash scripts/agentwalletapi.sh transfer 2 0xRecipient 100 USDC --yes
+bash scripts/agentwalletapi.sh transfer Q7X2K9P 0xRecipient 0.01 --yes
+bash scripts/agentwalletapi.sh transfer Q7X2K9P 0xRecipient 100 USDC --yes
 bash scripts/agentwalletapi.sh quote mainnet WETH USDC 10000000000000000
-bash scripts/agentwalletapi.sh swap 2 WETH USDC 10000000000000000 0.5 --yes
+bash scripts/agentwalletapi.sh quote solana-mainnet SOL USDC 10000000 solana
+bash scripts/agentwalletapi.sh swap Q7X2K9P WETH USDC 10000000000000000 0.5 --yes
 ```
 
 ### Import Input Safety
@@ -151,10 +152,10 @@ Content-Type: application/json
    - `POST /api/agent/wallets/create` - Create a new wallet under API-key policy controls
    - `POST /api/agent/wallets/import` - Import a `mainnet` or `solana-mainnet` wallet under API-key policy controls
 4. `GET /api/agent/transactions?walletId=...` (or `walletLabel`/`walletAddress`) - Read merged wallet transaction history (on-chain + app-recorded)
-5. `GET /api/agent/supported-tokens?network=...` or `?chain=evm|solana` - Get recommended common, well-known token list + guidance
+5. `GET /api/agent/supported-tokens?network=...` or `?chain=evm|solana` - Get recommended common, well-known token list + guidance (requires `X-Agent-Key`)
 6. `POST /api/agent/token-balance` - Check wallet balances (native + token balances; specific token by symbol/address supported)
-7. `POST /api/agent/quote` - Get a Uniswap quote before execution (EVM only)
-8. `POST /api/agent/swap` - Execute token swap on Uniswap (EVM) or Jupiter (Solana)
+7. `POST /api/agent/quote` - Get a swap quote before execution on Uniswap (EVM) or Jupiter (Solana mainnet)
+8. `POST /api/agent/swap` - Execute token swap on Uniswap (EVM) or Jupiter (Solana mainnet)
 9. `POST /api/agent/transfer` - Send native coin or token on the wallet's chain (optional `chain` guard)
 10. Use returned `txHash` values to confirm transactions
 
@@ -182,11 +183,11 @@ Recommended onboarding wording:
 Example:
 
 - User selects: `operate_on_my_behalf`
-- Later user message: "Send 100 USDC from wallet 2 to 0xabc... on Ethereum."
+- Later user message: "Send 100 USDC from wallet Q7X2K9P to 0xabc... on Ethereum."
 - If MCP is available, the agent should call the matching MCP write tool directly.
 - If MCP is not available, the agent should execute:
   ```bash
-  bash scripts/agentwalletapi.sh transfer 2 0xabc... 100 USDC evm --yes
+  bash scripts/agentwalletapi.sh transfer Q7X2K9P 0xabc... 100 USDC evm --yes
   ```
 - The agent should not ask for transfer permission again in that same session unless the user revokes the mode or the instruction is ambiguous.
 
@@ -200,10 +201,10 @@ Example:
 | `/api/agent/wallets/import` | POST | Yes | Import a mainnet/solana-mainnet wallet via API key |
 | `/api/agent/transactions` | GET | Yes | List per-wallet transaction history |
 | `/api/agent/transfer` | POST | Yes | Send native/token transfers (EVM + Solana) |
-| `/api/agent/swap` | POST | Yes | Execute DEX swap (Uniswap on EVM, Jupiter on Solana) |
-| `/api/agent/quote` | POST | No | Get Uniswap quote (EVM only) |
+| `/api/agent/swap` | POST | Yes | Execute DEX swap (Uniswap on EVM, Jupiter on Solana mainnet) |
+| `/api/agent/quote` | POST | Yes | Get swap quotes (Uniswap on EVM, Jupiter on Solana mainnet) |
 | `/api/agent/token-balance` | POST | Yes | Check balances |
-| `/api/agent/supported-tokens` | GET | No | List recommended common, well-known tokens per network |
+| `/api/agent/supported-tokens` | GET | Yes | List recommended common, well-known tokens per network |
 | `/api/agent/approve` | POST | Yes | Approve spender for ERC-20 token (EVM only) |
 
 ## Agent Wallet Create/Import (Agent API)
@@ -240,7 +241,7 @@ Behavior notes:
 
 Send native coin (default when no token specified):
 ```json
-{ "walletId": 2, "to": "0xRecipient...", "amount": "0.01" }
+{ "walletId": "Q7X2K9P", "to": "0xRecipient...", "amount": "0.01" }
 ```
 
 Send 100 USDC by symbol:
@@ -250,7 +251,7 @@ Send 100 USDC by symbol:
 
 Send arbitrary ERC-20 by contract address:
 ```json
-{ "walletId": 2, "to": "0xRecipient...", "token": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", "amount": "100" }
+{ "walletId": "Q7X2K9P", "to": "0xRecipient...", "token": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", "amount": "100" }
 ```
 
 Send SOL by symbol:
@@ -305,7 +306,7 @@ Violations return HTTP 401 with an explanation message.
 - Solana native transfers account for network fee and can auto-adjust requested transfer amount
 - Native transfers may return `400 amount_below_min_transfer` when requested amount is too small after platform fee or below chain transferability minimum (for example, first funding a new Solana address)
 - If requested native SOL + platform fee + network fee cannot fit wallet balance, API returns `400 insufficient_balance`
-- Swap supports EVM (Uniswap) and Solana (Jupiter); Quote/Approve are EVM-only
+- Swap supports EVM (Uniswap) and Solana mainnet (Jupiter); Quote supports EVM and Solana mainnet; Approve is EVM-only
 - A platform fee (default 1%) is deducted from the token amount
 - Use `amount` for simplicity, use `value` for precise base-unit control
 - For robust agent behavior:

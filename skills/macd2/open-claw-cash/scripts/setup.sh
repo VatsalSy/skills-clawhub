@@ -8,7 +8,7 @@ ENV_FILE="$SKILL_DIR/.env"
 if [ -f "$ENV_FILE" ]; then
     echo "Found existing .env at $ENV_FILE"
     source "$ENV_FILE"
-    if [ -n "$AGENTWALLETAPI_KEY" ] && [ "$AGENTWALLETAPI_KEY" != "ag_your_api_key_here" ]; then
+    if [ -n "$AGENTWALLETAPI_KEY" ] && [ "$AGENTWALLETAPI_KEY" != "occ_your_api_key" ]; then
         echo "API key is configured."
         exit 0
     else
@@ -24,10 +24,10 @@ cat > "$ENV_FILE" << 'EOF'
 # Required env var: AGENTWALLETAPI_KEY
 # Optional env var: AGENTWALLETAPI_URL
 # Get your API key at https://openclawcash.com (API Keys page)
-AGENTWALLETAPI_KEY=ag_your_api_key_here
+AGENTWALLETAPI_KEY=occ_your_api_key
 AGENTWALLETAPI_URL=https://openclawcash.com
 EOF
 
 echo "Created $ENV_FILE"
-echo "Edit the file and replace ag_your_api_key_here with your actual API key."
+echo "Edit the file and replace occ_your_api_key with your actual API key."
 echo "Get your key at https://openclawcash.com"

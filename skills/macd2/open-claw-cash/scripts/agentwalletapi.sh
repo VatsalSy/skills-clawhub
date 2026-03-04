@@ -7,16 +7,16 @@
 #
 # Commands:
 #   wallets                     List all wallets
-#   wallet <walletId|walletLabel> [chain]   Get one wallet detail with balances
+#   wallet <walletId|publicWalletId|walletLabel> [chain]   Get one wallet detail with balances
 #   create <label> [network] <passphraseEnvVar> [--yes]    Create a wallet (default network: sepolia)
 #   import <label> <network> [privateKey|-] [--yes]   Import wallet (network: mainnet|solana-mainnet)
-#   transactions <walletId> [chain]     List merged transaction history for a wallet
-#   balance <walletId> [token] [chain]  Check balances for a wallet
-#   transfer <walletId> <to> <amount> [token] [chain] [--yes]   Send native/token transfer
+#   transactions <walletId|publicWalletId> [chain]     List merged transaction history for a wallet
+#   balance <walletId|publicWalletId> [token] [chain]  Check balances for a wallet
+#   transfer <walletId|publicWalletId> <to> <amount> [token] [chain] [--yes]   Send native/token transfer
 #   tokens [network] [chain]            List supported tokens (default: mainnet)
 #   quote <network> <tokenIn> <tokenOut> <amountInBaseUnits> [chain]   Get swap quote
-#   swap <walletId> <tokenIn> <tokenOut> <amountInBaseUnits> [slippage] [chain] [--yes]
-#   approve <walletId> <tokenAddress> <spender> <amountBaseUnits> [chain] [--yes]   Approve ERC-20 allowance
+#   swap <walletId|publicWalletId> <tokenIn> <tokenOut> <amountInBaseUnits> [slippage] [chain] [--yes]
+#   approve <walletId|publicWalletId> <tokenAddress> <spender> <amountBaseUnits> [chain] [--yes]   Approve ERC-20 allowance
 
 SKILL_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 ENV_FILE="$SKILL_DIR/.env"
@@ -29,7 +29,7 @@ fi
 
 source "$ENV_FILE"
 
-if [ -z "$AGENTWALLETAPI_KEY" ] || [ "$AGENTWALLETAPI_KEY" = "ag_your_api_key_here" ]; then
+if [ -z "$AGENTWALLETAPI_KEY" ] || [ "$AGENTWALLETAPI_KEY" = "occ_your_api_key" ]; then
     echo "Error: API key not configured. Edit $ENV_FILE and set AGENTWALLETAPI_KEY."
     exit 1
 fi
@@ -104,6 +104,39 @@ require_uint() {
     fi
 }
 
+is_uint() {
+    VALUE="$1"
+    [[ "$VALUE" =~ ^[0-9]+$ ]]
+}
+
+is_public_wallet_id() {
+    VALUE="$1"
+    [[ "$VALUE" =~ ^[A-Za-z0-9]{6,12}$ ]]
+}
+
+append_wallet_selector_query() {
+    DEST_VAR="$1"
+    SELECTOR="$2"
+    if is_uint "$SELECTOR" || is_public_wallet_id "$SELECTOR"; then
+        append_query_param "$DEST_VAR" "walletId" "$SELECTOR"
+    else
+        append_query_param "$DEST_VAR" "walletLabel" "$SELECTOR"
+    fi
+}
+
+append_wallet_id_json_field() {
+    DEST_VAR="$1"
+    SELECTOR="$2"
+    BODY="${!DEST_VAR}"
+    if is_uint "$SELECTOR"; then
+        BODY="$BODY\"walletId\": $SELECTOR"
+    else
+        json_escape_var WALLET_ID_ESC "$SELECTOR"
+        BODY="$BODY\"walletId\": \"$WALLET_ID_ESC\""
+    fi
+    printf -v "$DEST_VAR" '%s' "$BODY"
+}
+
 require_decimal() {
     NAME="$1"
     VALUE="$2"
@@ -152,15 +185,11 @@ case "$COMMAND" in
         SELECTOR="$2"
         CHAIN="$3"
         if [ -z "$SELECTOR" ]; then
-            echo "Usage: agentwalletapi.sh wallet <walletId|walletLabel> [chain]"
+            echo "Usage: agentwalletapi.sh wallet <walletId|publicWalletId|walletLabel> [chain]"
             exit 1
         fi
-        if echo "$SELECTOR" | grep -Eq '^[0-9]+$'; then
-            URL="$BASE_URL/api/agent/wallet?walletId=$SELECTOR"
-        else
-            URL="$BASE_URL/api/agent/wallet"
-            append_query_param URL "walletLabel" "$SELECTOR"
-        fi
+        URL="$BASE_URL/api/agent/wallet"
+        append_wallet_selector_query URL "$SELECTOR"
         if [ -n "$CHAIN" ]; then
             append_query_param URL "chain" "$CHAIN"
         fi
@@ -253,11 +282,11 @@ case "$COMMAND" in
         WALLET_ID="$2"
         CHAIN="$3"
         if [ -z "$WALLET_ID" ]; then
-            echo "Usage: agentwalletapi.sh transactions <walletId> [chain]"
+            echo "Usage: agentwalletapi.sh transactions <walletId|publicWalletId> [chain]"
             exit 1
         fi
-        require_uint "walletId" "$WALLET_ID"
-        URL="$BASE_URL/api/agent/transactions?walletId=$WALLET_ID"
+        URL="$BASE_URL/api/agent/transactions"
+        append_query_param URL "walletId" "$WALLET_ID"
         if [ -n "$CHAIN" ]; then
             append_query_param URL "chain" "$CHAIN"
         fi
@@ -270,11 +299,11 @@ case "$COMMAND" in
         TOKEN_FILTER="$3"
         CHAIN="$4"
         if [ -z "$WALLET_ID" ]; then
-            echo "Usage: agentwalletapi.sh balance <walletId> [token] [chain]"
+            echo "Usage: agentwalletapi.sh balance <walletId|publicWalletId> [token] [chain]"
             exit 1
         fi
-        require_uint "walletId" "$WALLET_ID"
-        BODY="{\"walletId\": $WALLET_ID"
+        BODY="{"
+        append_wallet_id_json_field BODY "$WALLET_ID"
         if [ -n "$TOKEN_FILTER" ]; then
             json_escape_var TOKEN_FILTER_ESC "$TOKEN_FILTER"
             BODY="$BODY, \"token\": \"$TOKEN_FILTER_ESC\""
@@ -299,14 +328,15 @@ case "$COMMAND" in
         TOKEN="${5:-ETH}"
         CHAIN="$6"
         if [ -z "$WALLET_ID" ] || [ -z "$TO" ] || [ -z "$AMOUNT" ]; then
-            echo "Usage: agentwalletapi.sh transfer <walletId> <to> <amount> [token] [chain]"
+            echo "Usage: agentwalletapi.sh transfer <walletId|publicWalletId> <to> <amount> [token] [chain]"
             echo "  token defaults to the wallet's native token (ETH/SOL) if not specified"
             exit 1
         fi
-        require_uint "walletId" "$WALLET_ID"
         json_escape_var TO_ESC "$TO"
         json_escape_var AMOUNT_ESC "$AMOUNT"
-        BODY="{\"walletId\": $WALLET_ID, \"to\": \"$TO_ESC\", \"amount\": \"$AMOUNT_ESC\""
+        BODY="{"
+        append_wallet_id_json_field BODY "$WALLET_ID"
+        BODY="$BODY, \"to\": \"$TO_ESC\", \"amount\": \"$AMOUNT_ESC\""
         if [ "$TOKEN" != "ETH" ]; then
             json_escape_var TOKEN_ESC "$TOKEN"
             BODY="$BODY, \"token\": \"$TOKEN_ESC\""
@@ -370,15 +400,16 @@ case "$COMMAND" in
         SLIPPAGE="${6:-0.5}"
         CHAIN="$7"
         if [ -z "$WALLET_ID" ] || [ -z "$TOKEN_IN" ] || [ -z "$TOKEN_OUT" ] || [ -z "$AMOUNT_IN" ]; then
-            echo "Usage: agentwalletapi.sh swap <walletId> <tokenIn> <tokenOut> <amountInBaseUnits> [slippage] [chain]"
+            echo "Usage: agentwalletapi.sh swap <walletId|publicWalletId> <tokenIn> <tokenOut> <amountInBaseUnits> [slippage] [chain]"
             exit 1
         fi
-        require_uint "walletId" "$WALLET_ID"
         require_decimal "slippage" "$SLIPPAGE"
         json_escape_var TOKEN_IN_ESC "$TOKEN_IN"
         json_escape_var TOKEN_OUT_ESC "$TOKEN_OUT"
         json_escape_var AMOUNT_IN_ESC "$AMOUNT_IN"
-        BODY="{\"walletId\":$WALLET_ID,\"tokenIn\":\"$TOKEN_IN_ESC\",\"tokenOut\":\"$TOKEN_OUT_ESC\",\"amountIn\":\"$AMOUNT_IN_ESC\",\"slippage\":$SLIPPAGE"
+        BODY="{"
+        append_wallet_id_json_field BODY "$WALLET_ID"
+        BODY="$BODY,\"tokenIn\":\"$TOKEN_IN_ESC\",\"tokenOut\":\"$TOKEN_OUT_ESC\",\"amountIn\":\"$AMOUNT_IN_ESC\",\"slippage\":$SLIPPAGE"
         if [ -n "$CHAIN" ]; then
             json_escape_var CHAIN_ESC "$CHAIN"
             BODY="$BODY, \"chain\": \"$CHAIN_ESC\""
@@ -399,14 +430,15 @@ case "$COMMAND" in
         AMOUNT="$5"
         CHAIN="$6"
         if [ -z "$WALLET_ID" ] || [ -z "$TOKEN_ADDRESS" ] || [ -z "$SPENDER" ] || [ -z "$AMOUNT" ]; then
-            echo "Usage: agentwalletapi.sh approve <walletId> <tokenAddress> <spender> <amountBaseUnits> [chain]"
+            echo "Usage: agentwalletapi.sh approve <walletId|publicWalletId> <tokenAddress> <spender> <amountBaseUnits> [chain]"
             exit 1
         fi
-        require_uint "walletId" "$WALLET_ID"
         json_escape_var TOKEN_ADDRESS_ESC "$TOKEN_ADDRESS"
         json_escape_var SPENDER_ESC "$SPENDER"
         json_escape_var AMOUNT_ESC "$AMOUNT"
-        BODY="{\"walletId\":$WALLET_ID,\"tokenAddress\":\"$TOKEN_ADDRESS_ESC\",\"spender\":\"$SPENDER_ESC\",\"amount\":\"$AMOUNT_ESC\""
+        BODY="{"
+        append_wallet_id_json_field BODY "$WALLET_ID"
+        BODY="$BODY,\"tokenAddress\":\"$TOKEN_ADDRESS_ESC\",\"spender\":\"$SPENDER_ESC\",\"amount\":\"$AMOUNT_ESC\""
         if [ -n "$CHAIN" ]; then
             json_escape_var CHAIN_ESC "$CHAIN"
             BODY="$BODY, \"chain\": \"$CHAIN_ESC\""
@@ -426,16 +458,16 @@ case "$COMMAND" in
         echo ""
         echo "Commands:"
         echo "  wallets                                    List all wallets"
-        echo "  wallet <walletId|walletLabel> [chain]              Get one wallet detail with balances"
+        echo "  wallet <walletId|publicWalletId|walletLabel> [chain]  Get one wallet detail with balances"
         echo "  create <label> [network] <passphraseEnvVar> [--yes]  Create wallet (default network: sepolia)"
         echo "  import <label> <network> [privateKey] [--yes]      Import wallet (mainnet|solana-mainnet)"
-        echo "  transactions <walletId> [chain]                    List wallet transaction history"
-        echo "  balance <walletId> [token] [chain]                 Check balances"
-        echo "  transfer <walletId> <to> <amount> [token] [chain] [--yes]  Send native/token transfer"
+        echo "  transactions <walletId|publicWalletId> [chain]    List wallet transaction history"
+        echo "  balance <walletId|publicWalletId> [token] [chain] Check balances"
+        echo "  transfer <walletId|publicWalletId> <to> <amount> [token] [chain] [--yes]  Send native/token transfer"
         echo "  tokens [network] [chain]                           List supported tokens"
         echo "  quote <network> <tokenIn> <tokenOut> <amountInBaseUnits> [chain]  Get swap quote"
-        echo "  swap <walletId> <tokenIn> <tokenOut> <amountInBaseUnits> [slippage] [chain] [--yes]  Execute swap"
-        echo "  approve <walletId> <tokenAddress> <spender> <amountBaseUnits> [chain] [--yes]  Approve allowance"
+        echo "  swap <walletId|publicWalletId> <tokenIn> <tokenOut> <amountInBaseUnits> [slippage] [chain] [--yes]  Execute swap"
+        echo "  approve <walletId|publicWalletId> <tokenAddress> <spender> <amountBaseUnits> [chain] [--yes]  Approve allowance"
         echo ""
         echo "Examples:"
         echo "  agentwalletapi.sh wallets"
