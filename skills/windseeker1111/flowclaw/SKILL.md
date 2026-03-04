@@ -1,6 +1,6 @@
 ---
-name: flowclaw
-description: "Unkillable Agent Infrastructure. Unified usage monitoring and intelligent load balancing for Anthropic, Google, OpenAI, and Ollama. Never let your agent get stuck."
+name: FlowClaw
+description: "Unkillable LLM load balancer for OpenClaw. Monitors usage across Anthropic, Google, OpenAI, GitHub Copilot, and Ollama. Scores accounts by urgency, rotates automatically, and fails over to local models. Your agent never gets stuck."
 metadata:
   openclaw:
     emoji: "🦞"
