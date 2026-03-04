@@ -8,7 +8,28 @@ metadata: { "openclaw": { "primaryEnv": "AICOIN_ACCESS_KEY_ID", "requires": { "b
 
 Crypto data & trading toolkit powered by [AiCoin Open API](https://www.aicoin.com/opendata).
 
-**Version:** 1.5.17 | **Last Updated:** 2026-03-04
+**Version:** 1.5.24 | **Last Updated:** 2026-03-04
+
+**Data Sources:** AiCoin aggregates data from 200+ exchanges. Price data is real-time, K-lines updated every second, funding rates every 8h.
+
+**Supported Exchanges for Trading:** Binance, OKX, Bybit, Bitget, Gate.io, HTX, KuCoin, MEXC, Coinbase (requires API keys in `.env`).
+
+**Quick Start Examples:**
+```bash
+# Check BTC price
+node scripts/coin.mjs coin_ticker '{"coin_list":"bitcoin"}'
+
+# Get 1h K-line
+node scripts/market.mjs kline '{"symbol":"btcusdt:okex","period":"3600","size":"10"}'
+
+# Check balance (requires exchange API keys)
+node scripts/exchange.mjs balance '{"exchange":"okx"}'
+```
+
+**Performance Tips:**
+- Batch queries: `coin_ticker` supports multiple coins → faster than separate calls
+- Reduce API calls: Check balance once, reuse result for multiple calculations
+- Use appropriate timeframes: Don't fetch 1000 candles when 10 is enough
 
 ## Quick Reference — Most Common Commands
 
@@ -49,6 +70,7 @@ Crypto data & trading toolkit powered by [AiCoin Open API](https://www.aicoin.co
 - `Error: API key invalid` → Keys are in `.env`, never pass inline. Check if user configured exchange keys.
 - `Timeout` → Freqtrade operations may take 5+ minutes, increase timeout or use `ft-deploy.mjs` which handles this
 - `Rate limit exceeded` → Wait 1-2 seconds between requests. Use batch queries when possible to reduce API calls.
+- `Script not found` → Ensure you're in the aicoin skill directory. Use `exec` tool with full path to script.
 
 **Response Format Best Practices:**
 - Use tables for structured data (prices, K-lines, balances)
@@ -56,10 +78,11 @@ Crypto data & trading toolkit powered by [AiCoin Open API](https://www.aicoin.co
 - For analysis: show data first, then interpretation
 - Keep responses concise - users can ask for details if needed
 - Always fetch fresh data - NEVER use cached or memorized prices
+- Timestamps: API returns UTC, convert to user's timezone if needed (default: show UTC+8 for Chinese users)
 
 ## Setup Checklist
 
-**Scripts auto-load `.env` files** from these locations (earlier paths take priority):
+**✅ Good News: The skill works out of the box!** Scripts auto-load `.env` files from these locations (earlier paths take priority):
 1. Current working directory (`.env`)
 2. `~/.openclaw/workspace/.env`
 3. `~/.openclaw/.env`
