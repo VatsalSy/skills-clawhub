@@ -1,0 +1,11 @@
+{
+  "owner": "inuyashayang",
+  "slug": "zhihu-post",
+  "displayName": "知乎发帖 (Zhihu Post via Browser Relay)",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1772469387948,
+    "commit": null
+  },
+  "history": []
+}
