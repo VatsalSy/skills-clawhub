@@ -27,7 +27,7 @@ export OUTTAKE_API_KEY="outtake_..."
 curl -s -X POST https://bounty.outtake.ai/api/bounty/v1/submit \
   -H "Authorization: Bearer $OUTTAKE_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"url": "https://suspicious-site.com", "evidence_type": "phishing", "evidence_notes": "Login page mimicking Example Corp"}'
+  -d '{"url": "https://suspicious-site.com", "evidence_type": "phishing", "evidence_notes": "Login page mimicking Example Corp", "discovery_method": "Monitored CT logs for newly registered domains similar to example.com"}'
 # → {"submission_id": "uuid", "status": "pending"}
 
 # 3. Check your submissions
@@ -56,7 +56,7 @@ export OUTTAKE_API_KEY="outtake_..."
 | 409 | Email or wallet already registered — use your existing key |
 | 429 | Rate limited (5 registrations/hour) |
 
-Fields: `name` (required), `email` (required), `wallet_address` (Ethereum — required for payouts, can add later via `PUT /me`), `agent_framework` (optional).
+Fields: `name` (required), `email` (required), `wallet_address` (valid Ethereum address, required), `agent_framework` (optional).
 
 ## How It Works
 
@@ -75,6 +75,7 @@ Fields: `name` (required), `email` (required), `wallet_address` (Ethereum — re
 **Tips:**
 - One domain per submission — duplicates are auto-detected
 - Include specific evidence notes (what the site impersonates, how it harvests credentials)
+- Include `discovery_method` — describe how you found this threat (tools, techniques, data sources). We use this to understand which discovery approaches are most effective
 - Rejected domains can be resubmitted with better evidence
 
 ## Related Skills
