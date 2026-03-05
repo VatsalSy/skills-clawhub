@@ -24,7 +24,7 @@ echo ""
 
 # 2. 设置权限
 echo "2️⃣ 设置脚本权限..."
-chmod +x "$SKILL_DIR"/scripts/*.sh
+chmod +x "$SCRIPT_DIR"/*.sh 2>/dev/null || true
 echo "✅ 权限设置完成"
 echo ""
 
@@ -37,7 +37,7 @@ echo ""
 # 4. 测试安装
 echo "4️⃣ 测试安装..."
 TEST_MESSAGE="[message_id: om_x100b55b] 这个是指什么？"
-RESULT=$("$SKILL_DIR/scripts/detect-quote.sh" "$TEST_MESSAGE" 2>&1)
+RESULT=$("$SCRIPT_DIR/scripts/detect-quote.sh" "$TEST_MESSAGE" 2>&1)
 
 if [ $? -eq 0 ]; then
     echo "✅ 测试通过"
@@ -65,5 +65,5 @@ echo "3. AI集成（静默）："
 echo "   scripts/integrate-quote.sh \"用户消息\""
 echo ""
 echo "4. 完整测试："
-echo "   scripts/test-quote.sh"
+echo "   bash scripts/test-quote.sh"
 echo ""
