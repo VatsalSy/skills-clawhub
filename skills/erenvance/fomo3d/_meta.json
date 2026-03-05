@@ -3,9 +3,15 @@
   "slug": "fomo3d",
   "displayName": "Openclaw Fomo3d",
   "latest": {
-    "version": "1.1.0",
-    "publishedAt": 1772710575012,
-    "commit": "https://github.com/openclaw/skills/commit/10b622a7f7d57417eacf0394d93d76209acc3b46"
+    "version": "1.2.0",
+    "publishedAt": 1772710607017,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.1.0",
+      "publishedAt": 1772710575012,
+      "commit": "https://github.com/openclaw/skills/commit/10b622a7f7d57417eacf0394d93d76209acc3b46"
+    }
+  ]
 }
