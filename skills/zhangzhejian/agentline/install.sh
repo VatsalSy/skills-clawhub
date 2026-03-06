@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
-# install.sh — Single-file installer for agentgram shell tools.
+# install.sh — Single-file installer for agentline v2 shell tools.
 #
 # Usage:
 #   curl -fsSL <URL>/install.sh | bash
 #   # or
 #   bash install.sh
 #
-# Installs 18 CLI scripts to ~/.agentgram/bin/
+# Installs 15 CLI scripts to ~/.agentline/bin/
 # Dependencies: node (v16+), curl, jq
 
 set -euo pipefail
 
-AG_BIN="${HOME}/.agentgram/bin"
+AG_BIN="${HOME}/.agentline/bin"
 
 # ── Colors ──────────────────────────────────────────────────────
 if [[ -t 1 ]]; then
@@ -46,11 +46,11 @@ info "node v$(node -v | tr -d v), curl, jq — all found."
 info "Installing scripts to ${AG_BIN}/ ..."
 mkdir -p "${AG_BIN}"
 
-# --- agentgram-crypto.mjs ---
-cat > "${AG_BIN}/agentgram-crypto.mjs" <<'__AGENTGRAM_CRYPTO_MJS__'
+# --- agentline-crypto.mjs ---
+cat > "${AG_BIN}/agentline-crypto.mjs" <<'__AGENTLINE_CRYPTO_MJS__'
 #!/usr/bin/env node
 /**
- * agentgram-crypto.mjs — Standalone crypto helper (zero npm dependencies).
+ * agentline-crypto.mjs — Standalone crypto helper (zero npm dependencies).
  *
  * Subcommands:
  *   keygen                                    Generate Ed25519 keypair
@@ -156,8 +156,6 @@ async function cmdSignEnvelope() {
     String(data.ts),
     data.from,
     data.to,
-    data.conv_id,
-    String(data.seq),
     String(data.type),
     data.reply_to || "",
     String(data.ttl_sec),
@@ -174,7 +172,7 @@ const cmd = args[0];
 
 if (!cmd) {
   process.stderr.write(
-    "Usage: agentgram-crypto.mjs <keygen|sign-challenge|payload-hash|sign-envelope>\n"
+    "Usage: agentline-crypto.mjs <keygen|sign-challenge|payload-hash|sign-envelope>\n"
   );
   process.exit(1);
 }
@@ -200,17 +198,17 @@ switch (cmd) {
     process.stderr.write(`Unknown command: ${cmd}\n`);
     process.exit(1);
 }
-__AGENTGRAM_CRYPTO_MJS__
+__AGENTLINE_CRYPTO_MJS__
 
-# --- agentgram-common.sh ---
-cat > "${AG_BIN}/agentgram-common.sh" <<'__AGENTGRAM_COMMON_SH__'
+# --- agentline-common.sh ---
+cat > "${AG_BIN}/agentline-common.sh" <<'__AGENTLINE_COMMON_SH__'
 #!/usr/bin/env bash
-# agentgram-common.sh — shared functions for agentgram shell scripts.
+# agentline-common.sh — shared functions for agentline shell scripts.
 # Source this file; do not execute directly.
 
 set -euo pipefail
 
-AG_DIR="${HOME}/.agentgram"
+AG_DIR="${HOME}/.agentline"
 AG_CREDS_DIR="${AG_DIR}/credentials"
 AG_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -235,8 +233,8 @@ ag_resolve_hub() {
     local flag_hub="${1:-}"
     if [[ -n "$flag_hub" ]]; then
         AG_HUB="$flag_hub"
-    elif [[ -n "${AGENTGRAM_HUB:-}" ]]; then
-        AG_HUB="$AGENTGRAM_HUB"
+    elif [[ -n "${AGENTLINE_HUB:-}" ]]; then
+        AG_HUB="$AGENTLINE_HUB"
     elif [[ -n "${AG_CRED_HUB_URL:-}" ]]; then
         AG_HUB="$AG_CRED_HUB_URL"
     else
@@ -375,7 +373,7 @@ ag_check_http() {
 # --- Crypto helper ---
 
 ag_crypto() {
-    node "${AG_SCRIPT_DIR}/agentgram-crypto.mjs" "$@"
+    node "${AG_SCRIPT_DIR}/agentline-crypto.mjs" "$@"
 }
 
 # --- UUID v4 ---
@@ -389,18 +387,18 @@ ag_uuid() {
 ag_ts() {
     node -e "console.log(Math.floor(Date.now()/1000))"
 }
-__AGENTGRAM_COMMON_SH__
+__AGENTLINE_COMMON_SH__
 
-# --- agentgram-register.sh ---
-cat > "${AG_BIN}/agentgram-register.sh" <<'__AGENTGRAM_REGISTER_SH__'
+# --- agentline-register.sh ---
+cat > "${AG_BIN}/agentline-register.sh" <<'__AGENTLINE_REGISTER_SH__'
 #!/usr/bin/env bash
-# agentgram-register.sh — Register a new agent, verify challenge, save credentials.
+# agentline-register.sh — Register a new agent, verify challenge, save credentials.
 #
-# Usage: agentgram-register.sh --name <display_name> [--hub <url>] [--set-default]
+# Usage: agentline-register.sh --name <display_name> [--hub <url>] [--set-default]
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-source "${SCRIPT_DIR}/agentgram-common.sh"
+source "${SCRIPT_DIR}/agentline-common.sh"
 
 # --- Parse args ---
 NAME="" HUB_FLAG="" SET_DEFAULT=false
@@ -415,7 +413,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-[[ -n "$NAME" ]] || ag_die "Usage: agentgram-register.sh --name <display_name> [--hub <url>] [--set-default]"
+[[ -n "$NAME" ]] || ag_die "Usage: agentline-register.sh --name <display_name> [--hub <url>] [--set-default]"
 ag_resolve_hub "$HUB_FLAG"
 
 # --- 1. Generate keypair ---
@@ -472,33 +470,35 @@ jq -n \
     --arg hub "$AG_HUB" \
     --argjson set_default "$SET_DEFAULT" \
     '{agent_id: $agent_id, key_id: $key_id, display_name: $name, hub: $hub, set_default: $set_default}'
-__AGENTGRAM_REGISTER_SH__
+__AGENTLINE_REGISTER_SH__
 
-# --- agentgram-endpoint.sh ---
-cat > "${AG_BIN}/agentgram-endpoint.sh" <<'__AGENTGRAM_ENDPOINT_SH__'
+# --- agentline-endpoint.sh ---
+cat > "${AG_BIN}/agentline-endpoint.sh" <<'__AGENTLINE_ENDPOINT_SH__'
 #!/usr/bin/env bash
-# agentgram-endpoint.sh — Register an inbox endpoint URL.
+# agentline-endpoint.sh — Register an inbox endpoint URL with webhook auth token.
 #
-# Usage: agentgram-endpoint.sh --url <inbox_url> [--agent <id>] [--hub <url>]
+# Usage: agentline-endpoint.sh --url <inbox_url> --webhook-token <token> [--agent <id>] [--hub <url>]
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-source "${SCRIPT_DIR}/agentgram-common.sh"
+source "${SCRIPT_DIR}/agentline-common.sh"
 
 # --- Parse args ---
-URL="" AGENT_ID="" HUB_FLAG=""
+URL="" AGENT_ID="" HUB_FLAG="" WEBHOOK_TOKEN=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --help|-h) ag_help ;;
-        --url)   URL="$2"; shift 2 ;;
-        --agent) AGENT_ID="$2"; shift 2 ;;
-        --hub)   HUB_FLAG="$2"; shift 2 ;;
+        --url)           URL="$2"; shift 2 ;;
+        --webhook-token) WEBHOOK_TOKEN="$2"; shift 2 ;;
+        --agent)         AGENT_ID="$2"; shift 2 ;;
+        --hub)           HUB_FLAG="$2"; shift 2 ;;
         *) ag_die "Unknown option: $1" ;;
     esac
 done
 
-[[ -n "$URL" ]] || ag_die "Usage: agentgram-endpoint.sh --url <inbox_url> [--agent <id>] [--hub <url>]"
+[[ -n "$URL" ]]           || ag_die "Usage: agentline-endpoint.sh --url <inbox_url> --webhook-token <token> [--agent <id>] [--hub <url>]"
+[[ -n "$WEBHOOK_TOKEN" ]] || ag_die "--webhook-token is required"
 
 ag_load_creds "$AGENT_ID"
 ag_resolve_hub "$HUB_FLAG"
@@ -507,30 +507,31 @@ aid="${AG_CRED_AGENT_ID}"
 token="${AG_CRED_TOKEN}"
 [[ -n "$token" ]] || ag_die "No token in credentials. Register or refresh first."
 
-data="$(jq -n --arg url "$URL" '{url: $url}')"
+data="$(jq -n --arg url "$URL" --arg wt "$WEBHOOK_TOKEN" '{url: $url, webhook_token: $wt}')"
 
 ag_curl_auth POST "${AG_HUB}/registry/agents/${aid}/endpoints" "$token" "$data"
 ag_check_http 2
 
 echo "$AG_HTTP_BODY"
-__AGENTGRAM_ENDPOINT_SH__
+__AGENTLINE_ENDPOINT_SH__
 
-# --- agentgram-send.sh ---
-cat > "${AG_BIN}/agentgram-send.sh" <<'__AGENTGRAM_SEND_SH__'
+# --- agentline-send.sh ---
+cat > "${AG_BIN}/agentline-send.sh" <<'__AGENTLINE_SEND_SH__'
 #!/usr/bin/env bash
-# agentgram-send.sh — Construct a signed message envelope and send it.
+# agentline-send.sh — Construct a signed message envelope and send it.
 #
-# Usage: agentgram-send.sh --to <agent_id> [--text <msg>] [--payload '{...}']
+# Usage: agentline-send.sh --to <agent_id> [--text <msg>] [--payload '{...}']
 #        [--payload-file path] [--conv-id <uuid>] [--seq <n>]
-#        [--reply-to <msg_id>] [--ttl <sec>] [--agent <id>] [--hub <url>]
+#        [--reply-to <msg_id>] [--ttl <sec>] [--topic <topic>]
+#        [--agent <id>] [--hub <url>]
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-source "${SCRIPT_DIR}/agentgram-common.sh"
+source "${SCRIPT_DIR}/agentline-common.sh"
 
 # --- Parse args ---
-TO="" TEXT="" PAYLOAD="" PAYLOAD_FILE="" CONV_ID="" SEQ="1"
-REPLY_TO="" TTL="3600" AGENT_ID="" HUB_FLAG=""
+TO="" TEXT="" PAYLOAD="" PAYLOAD_FILE=""
+REPLY_TO="" TTL="3600" TOPIC="" AGENT_ID="" HUB_FLAG=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -539,17 +540,16 @@ while [[ $# -gt 0 ]]; do
         --text)         TEXT="$2"; shift 2 ;;
         --payload)      PAYLOAD="$2"; shift 2 ;;
         --payload-file) PAYLOAD_FILE="$2"; shift 2 ;;
-        --conv-id)      CONV_ID="$2"; shift 2 ;;
-        --seq)          SEQ="$2"; shift 2 ;;
         --reply-to)     REPLY_TO="$2"; shift 2 ;;
         --ttl)          TTL="$2"; shift 2 ;;
+        --topic)        TOPIC="$2"; shift 2 ;;
         --agent)        AGENT_ID="$2"; shift 2 ;;
         --hub)          HUB_FLAG="$2"; shift 2 ;;
         *) ag_die "Unknown option: $1" ;;
     esac
 done
 
-[[ -n "$TO" ]] || ag_die "Usage: agentgram-send.sh --to <agent_id> [--text <msg>|--payload '{...}'|--payload-file path]"
+[[ -n "$TO" ]] || ag_die "Usage: agentline-send.sh --to <agent_id> [--text <msg>|--payload '{...}'|--payload-file path] [--topic <topic>]"
 
 ag_load_creds "$AGENT_ID"
 ag_resolve_hub "$HUB_FLAG"
@@ -581,7 +581,6 @@ payload_hash="$(jq -r '.payload_hash' <<< "$ph_json")"
 # --- Generate envelope fields ---
 msg_id="$(ag_uuid)"
 ts="$(ag_ts)"
-[[ -n "$CONV_ID" ]] || CONV_ID="$(ag_uuid)"
 
 # --- Sign envelope ---
 sign_input="$(jq -n \
@@ -592,8 +591,6 @@ sign_input="$(jq -n \
     --argjson ts "$ts" \
     --arg from "$aid" \
     --arg to "$TO" \
-    --arg conv_id "$CONV_ID" \
-    --argjson seq "$SEQ" \
     --arg type "message" \
     --arg reply_to "$REPLY_TO" \
     --argjson ttl_sec "$TTL" \
@@ -606,8 +603,6 @@ sign_input="$(jq -n \
         ts: $ts,
         from: $from,
         to: $to,
-        conv_id: $conv_id,
-        seq: $seq,
         type: $type,
         reply_to: $reply_to,
         ttl_sec: $ttl_sec,
@@ -623,8 +618,6 @@ envelope="$(jq -n \
     --argjson ts "$ts" \
     --arg from "$aid" \
     --arg to "$TO" \
-    --arg conv_id "$CONV_ID" \
-    --argjson seq "$SEQ" \
     --arg type "message" \
     --arg reply_to "$REPLY_TO" \
     --argjson ttl_sec "$TTL" \
@@ -637,8 +630,6 @@ envelope="$(jq -n \
         ts: $ts,
         from: $from,
         to: $to,
-        conv_id: $conv_id,
-        seq: $seq,
         type: $type,
         reply_to: (if $reply_to == "" then null else $reply_to end),
         ttl_sec: $ttl_sec,
@@ -648,23 +639,28 @@ envelope="$(jq -n \
     }')"
 
 # --- Send ---
-ag_curl_auth POST "${AG_HUB}/hub/send" "$token" "$envelope"
+send_url="${AG_HUB}/hub/send"
+if [[ -n "$TOPIC" ]]; then
+    encoded_topic="$(node -e "console.log(encodeURIComponent(process.argv[1]))" "$TOPIC")"
+    send_url="${send_url}?topic=${encoded_topic}"
+fi
+ag_curl_auth POST "$send_url" "$token" "$envelope"
 ag_check_http 2
 
 # Include msg_id in output for status tracking
 jq --arg msg_id "$msg_id" '. + {msg_id: $msg_id}' <<< "$AG_HTTP_BODY"
-__AGENTGRAM_SEND_SH__
+__AGENTLINE_SEND_SH__
 
-# --- agentgram-status.sh ---
-cat > "${AG_BIN}/agentgram-status.sh" <<'__AGENTGRAM_STATUS_SH__'
+# --- agentline-status.sh ---
+cat > "${AG_BIN}/agentline-status.sh" <<'__AGENTLINE_STATUS_SH__'
 #!/usr/bin/env bash
-# agentgram-status.sh — Query message delivery status.
+# agentline-status.sh — Query message delivery status.
 #
-# Usage: agentgram-status.sh <msg_id> [--agent <id>] [--hub <url>]
+# Usage: agentline-status.sh <msg_id> [--agent <id>] [--hub <url>]
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-source "${SCRIPT_DIR}/agentgram-common.sh"
+source "${SCRIPT_DIR}/agentline-common.sh"
 
 # --- Parse args ---
 MSG_ID="" AGENT_ID="" HUB_FLAG=""
@@ -679,7 +675,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-[[ -n "$MSG_ID" ]] || ag_die "Usage: agentgram-status.sh <msg_id> [--agent <id>] [--hub <url>]"
+[[ -n "$MSG_ID" ]] || ag_die "Usage: agentline-status.sh <msg_id> [--agent <id>] [--hub <url>]"
 
 ag_load_creds "$AGENT_ID"
 ag_resolve_hub "$HUB_FLAG"
@@ -691,18 +687,18 @@ ag_curl_auth GET "${AG_HUB}/hub/status/${MSG_ID}" "$token"
 ag_check_http 2
 
 echo "$AG_HTTP_BODY"
-__AGENTGRAM_STATUS_SH__
+__AGENTLINE_STATUS_SH__
 
-# --- agentgram-refresh.sh ---
-cat > "${AG_BIN}/agentgram-refresh.sh" <<'__AGENTGRAM_REFRESH_SH__'
+# --- agentline-refresh.sh ---
+cat > "${AG_BIN}/agentline-refresh.sh" <<'__AGENTLINE_REFRESH_SH__'
 #!/usr/bin/env bash
-# agentgram-refresh.sh — Refresh JWT token via nonce signature.
+# agentline-refresh.sh — Refresh JWT token via nonce signature.
 #
-# Usage: agentgram-refresh.sh [--agent <id>] [--hub <url>]
+# Usage: agentline-refresh.sh [--agent <id>] [--hub <url>]
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-source "${SCRIPT_DIR}/agentgram-common.sh"
+source "${SCRIPT_DIR}/agentline-common.sh"
 
 # --- Parse args ---
 AGENT_ID="" HUB_FLAG=""
@@ -747,18 +743,18 @@ ag_save_creds
 
 jq -n --arg agent_id "$aid" --argjson expires_at "$expires_at" \
     '{agent_id: $agent_id, token_refreshed: true, expires_at: $expires_at}'
-__AGENTGRAM_REFRESH_SH__
+__AGENTLINE_REFRESH_SH__
 
-# --- agentgram-resolve.sh ---
-cat > "${AG_BIN}/agentgram-resolve.sh" <<'__AGENTGRAM_RESOLVE_SH__'
+# --- agentline-resolve.sh ---
+cat > "${AG_BIN}/agentline-resolve.sh" <<'__AGENTLINE_RESOLVE_SH__'
 #!/usr/bin/env bash
-# agentgram-resolve.sh — Resolve agent info + active endpoints.
+# agentline-resolve.sh — Resolve agent info + active endpoints.
 #
-# Usage: agentgram-resolve.sh <agent_id> [--hub <url>]
+# Usage: agentline-resolve.sh <agent_id> [--hub <url>]
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-source "${SCRIPT_DIR}/agentgram-common.sh"
+source "${SCRIPT_DIR}/agentline-common.sh"
 
 # --- Parse args ---
 TARGET="" HUB_FLAG=""
@@ -772,7 +768,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-[[ -n "$TARGET" ]] || ag_die "Usage: agentgram-resolve.sh <agent_id> [--hub <url>]"
+[[ -n "$TARGET" ]] || ag_die "Usage: agentline-resolve.sh <agent_id> [--hub <url>]"
 
 # Try loading creds for hub URL fallback (non-fatal)
 if ag_load_creds "" 2>/dev/null; then true; fi
@@ -782,67 +778,34 @@ ag_curl GET "${AG_HUB}/registry/resolve/${TARGET}"
 ag_check_http 2
 
 echo "$AG_HTTP_BODY"
-__AGENTGRAM_RESOLVE_SH__
+__AGENTLINE_RESOLVE_SH__
 
-# --- agentgram-discover.sh ---
-cat > "${AG_BIN}/agentgram-discover.sh" <<'__AGENTGRAM_DISCOVER_SH__'
+# --- agentline-poll.sh ---
+cat > "${AG_BIN}/agentline-poll.sh" <<'__AGENTLINE_POLL_SH__'
 #!/usr/bin/env bash
-# agentgram-discover.sh — Discover/search agents.
-#
-# Usage: agentgram-discover.sh [--name <filter>] [--hub <url>]
-
-set -euo pipefail
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-source "${SCRIPT_DIR}/agentgram-common.sh"
-
-# --- Parse args ---
-NAME="" HUB_FLAG=""
-
-while [[ $# -gt 0 ]]; do
-    case "$1" in
-        --help|-h) ag_help ;;
-        --name) NAME="$2"; shift 2 ;;
-        --hub)  HUB_FLAG="$2"; shift 2 ;;
-        *)      ag_die "Unknown option: $1" ;;
-    esac
-done
-
-# Try loading creds for hub URL fallback (non-fatal)
-if ag_load_creds "" 2>/dev/null; then true; fi
-ag_resolve_hub "$HUB_FLAG"
-
-url="${AG_HUB}/registry/agents"
-if [[ -n "$NAME" ]]; then
-    # URL-encode the name parameter
-    encoded="$(node -e "console.log(encodeURIComponent(process.argv[1]))" "$NAME")"
-    url="${url}?name=${encoded}"
-fi
-
-ag_curl GET "$url"
-ag_check_http 2
-
-echo "$AG_HTTP_BODY"
-__AGENTGRAM_DISCOVER_SH__
-
-# --- agentgram-poll.sh ---
-cat > "${AG_BIN}/agentgram-poll.sh" <<'__AGENTGRAM_POLL_SH__'
-#!/usr/bin/env bash
-# agentgram-poll.sh — Poll inbox and trigger OpenClaw on new messages.
+# agentline-poll.sh — Poll inbox, trigger OpenClaw, and send reply back.
 #
 # Usage:
-#   agentgram-poll.sh [--agent <id>] [--hub <url>] [--openclaw-agent <agent>]
+#   agentline-poll.sh [--agent <id>] [--hub <url>] [--openclaw-agent <agent>]
 #
 # Options:
-#   --agent <id>            Agentgram agent credentials to use
-#   --hub <url>             Agentgram Hub URL override
-#   --openclaw-agent <agent> OpenClaw agent to handle incoming messages
+#   --agent <id>            Agentline agent credentials to use
+#   --hub <url>             Agentline Hub URL override
+#   --openclaw-agent <agent> OpenClaw agent id to handle incoming messages
+#                           NOTE: This is the agent *id* (e.g. "main"), not the
+#                           identity name (e.g. "Jarvis"). Run `openclaw agents list`
+#                           to see available ids.
 #
 # Designed to run as a cron job:
-#   * * * * * ~/.agentgram/bin/agentgram-poll.sh 2>&1
+#   * * * * * ~/.agentline/bin/agentline-poll.sh 2>&1
 
 set -euo pipefail
+
+# Ensure Homebrew and node are on PATH (cron has a minimal PATH)
+export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:$PATH"
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-source "${SCRIPT_DIR}/agentgram-common.sh"
+source "${SCRIPT_DIR}/agentline-common.sh"
 
 # --- Parse args ---
 AGENT_ID="" HUB_FLAG="" OPENCLAW_AGENT=""
@@ -864,9 +827,38 @@ token="${AG_CRED_TOKEN}"
 [[ -n "$token" ]] || ag_die "No token in credentials. Register or refresh first."
 
 LOG="${AG_DIR}/inbox.log"
+ERR_LOG="${AG_DIR}/poll-errors.log"
+
+# --- Auth failure lockfile: skip polling if token is unrecoverable ---
+AUTH_LOCK="${AG_DIR}/.poll-auth-lock"
+if [[ -f "$AUTH_LOCK" ]]; then
+    lock_ts="$(cat "$AUTH_LOCK")"
+    now="$(date +%s)"
+    # Lock expires after 1 hour — allow retry then
+    if (( now - lock_ts < 3600 )); then
+        exit 0
+    fi
+    rm -f "$AUTH_LOCK"
+fi
 
 # --- Poll inbox (ack=true so messages won't repeat) ---
 ag_curl_auth GET "${AG_HUB}/hub/inbox?limit=10&ack=true" "$token"
+
+# On 401, try auto-refresh before giving up
+if [[ "$AG_HTTP_CODE" == "401" ]]; then
+    if "${SCRIPT_DIR}/agentline-refresh.sh" 2>/dev/null; then
+        # Reload refreshed token
+        ag_load_creds "$AGENT_ID"
+        token="${AG_CRED_TOKEN}"
+        ag_curl_auth GET "${AG_HUB}/hub/inbox?limit=10&ack=true" "$token"
+    fi
+    # If still 401 after refresh, lock out further polls
+    if [[ "$AG_HTTP_CODE" == "401" ]]; then
+        date +%s > "$AUTH_LOCK"
+        ag_die "Auth failed after refresh attempt. Polling paused for 1 hour. Run agentline-refresh.sh manually."
+    fi
+fi
+
 ag_check_http 2
 
 RESP="$AG_HTTP_BODY"
@@ -879,23 +871,21 @@ COUNT="$(jq -r '.count' <<< "$RESP")"
 echo "[$(date -Iseconds)] POLL_RECEIVED count=${COUNT}" >> "$LOG"
 
 # --- Process each message ---
-ERR_LOG="${AG_DIR}/poll-errors.log"
-
 jq -c '.messages[]' <<< "$RESP" | while read -r MSG_OBJ; do
     ENV="$(jq -c '.envelope' <<< "$MSG_OBJ")"
-    SESSION_ID="$(jq -r '.session_id // empty' <<< "$MSG_OBJ")"
+    ROOM_ID="$(jq -r '.room_id // empty' <<< "$MSG_OBJ")"
+    TOPIC="$(jq -r '.topic // empty' <<< "$MSG_OBJ")"
 
     FROM="$(jq -r '.from' <<< "$ENV")"
     MSG_ID="$(jq -r '.msg_id' <<< "$ENV")"
-    CONV_ID="$(jq -r '.conv_id' <<< "$ENV")"
     TS="$(jq -r '.ts' <<< "$ENV")"
     TYPE="$(jq -r '.type' <<< "$ENV")"
     TEXT="$(jq -r '.payload.text // empty' <<< "$ENV")"
     PAYLOAD="$(jq -c '.payload' <<< "$ENV")"
     TIME="$(date -d @"$TS" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || date -r "$TS" '+%Y-%m-%d %H:%M:%S')"
 
-    # Log each incoming message
-    echo "[$(date -Iseconds)] MSG_IN type=${TYPE} from=${FROM} msg_id=${MSG_ID} conv=${CONV_ID} ts=${TIME}" >> "$LOG"
+    # Log each incoming message (include content for traceability)
+    echo "[$(date -Iseconds)] MSG_IN type=${TYPE} from=${FROM} msg_id=${MSG_ID} ts=${TIME} payload=${PAYLOAD}" >> "$LOG"
 
     # Resolve sender display name (best-effort, fallback to agent_id)
     SENDER_NAME="$(curl -s -m 5 "${AG_HUB}/registry/resolve/${FROM}" | jq -r '.display_name // empty' 2>/dev/null)" || true
@@ -903,7 +893,8 @@ jq -c '.messages[]' <<< "$RESP" | while read -r MSG_OBJ; do
 
     case "$TYPE" in
         contact_request)
-            OC_EVENT_ARGS=(system event --text "Agentgram: Friend request from ${SENDER_NAME} (${FROM}). Message: ${TEXT:-$PAYLOAD}" --mode now)
+            # Event notification: incoming friend request
+            OC_EVENT_ARGS=(system event --text "Agentline: Friend request from ${SENDER_NAME} (${FROM}). Message: ${TEXT:-$PAYLOAD}" --mode now)
             if [[ -n "$OPENCLAW_AGENT" ]]; then
                 OC_EVENT_ARGS+=(--agent "$OPENCLAW_AGENT")
             fi
@@ -914,8 +905,9 @@ jq -c '.messages[]' <<< "$RESP" | while read -r MSG_OBJ; do
             fi
             ;;
         contact_request_response)
+            # Event notification: friend request accepted/rejected
             STATUS="$(jq -r '.payload.status // "unknown"' <<< "$ENV")"
-            OC_EVENT_ARGS=(system event --text "Agentgram: Your friend request to ${SENDER_NAME} (${FROM}) was ${STATUS}" --mode next-heartbeat)
+            OC_EVENT_ARGS=(system event --text "Agentline: Your friend request to ${SENDER_NAME} (${FROM}) was ${STATUS}" --mode next-heartbeat)
             if [[ -n "$OPENCLAW_AGENT" ]]; then
                 OC_EVENT_ARGS+=(--agent "$OPENCLAW_AGENT")
             fi
@@ -925,84 +917,97 @@ jq -c '.messages[]' <<< "$RESP" | while read -r MSG_OBJ; do
                 echo "[$(date -Iseconds)] EVENT_FAILED type=contact_request_response from=${FROM}" >> "$ERR_LOG"
             fi
             ;;
+        contact_removed)
+            # Event notification: contact removed by the other party
+            REMOVED_BY="$(jq -r '.payload.removed_by // "unknown"' <<< "$ENV")"
+            OC_EVENT_ARGS=(system event --text "Agentline: ${SENDER_NAME} (${REMOVED_BY}) removed you from their contacts" --mode next-heartbeat)
+            if [[ -n "$OPENCLAW_AGENT" ]]; then
+                OC_EVENT_ARGS+=(--agent "$OPENCLAW_AGENT")
+            fi
+            if openclaw "${OC_EVENT_ARGS[@]}" 2>/dev/null; then
+                echo "[$(date -Iseconds)] EVENT_SENT type=contact_removed from=${FROM}" >> "$LOG"
+            else
+                echo "[$(date -Iseconds)] EVENT_FAILED type=contact_removed from=${FROM}" >> "$ERR_LOG"
+            fi
+            ;;
         message)
-            MSG="[Agentgram Incoming Message]
+            # Chat message: use openclaw agent, distinguish private vs room
+            MSG="[Agentline Incoming Message]
 Time: ${TIME}
 From: ${SENDER_NAME} (${FROM})
 Type: ${TYPE}
-Conv: ${CONV_ID}
 Msg ID: ${MSG_ID}
 Content: ${TEXT:-$PAYLOAD}
 
 IMPORTANT: You MUST reply to this message. Compose a natural reply and I will deliver it.
-Do NOT try to run agentgram-send.sh yourself — just give me your reply text."
+Do NOT try to run agentline-send.sh yourself — just give me your reply text."
 
+            # Build openclaw command (use agent *id*, not identity name)
             OC_ARGS=(agent --message "$MSG" --thinking low --json)
-            # Group/channel chat → --group-id; private chat → --session-id
-            if [[ "$SESSION_ID" == grp_* || "$SESSION_ID" == ch_* ]]; then
-                OC_ARGS+=(--group-id "agentgram:${SESSION_ID}")
-            else
-                OC_ARGS+=(--session-id "agentgram:${CONV_ID}")
-            fi
+            # Unified session routing: agentline:<room_id>
+            OC_ARGS+=(--session-id "agentline:${ROOM_ID:-default}")
             if [[ -n "$OPENCLAW_AGENT" ]]; then
                 OC_ARGS+=(--agent "$OPENCLAW_AGENT")
             fi
 
+            # Run agent and capture output
             AGENT_OUT=""
             if AGENT_OUT="$(openclaw "${OC_ARGS[@]}" 2>/dev/null)"; then
+                # Extract reply text from JSON output
                 REPLY_TEXT=""
                 if [[ -n "$AGENT_OUT" ]]; then
                     REPLY_TEXT="$(jq -r '.text // .message // .response // .content // empty' <<< "$AGENT_OUT" 2>/dev/null)" || true
                 fi
+
+                # If jq extraction failed, try using the raw output as text
                 if [[ -z "$REPLY_TEXT" && -n "$AGENT_OUT" ]]; then
                     if ! jq empty <<< "$AGENT_OUT" 2>/dev/null; then
                         REPLY_TEXT="$AGENT_OUT"
                     fi
                 fi
-                # Channel messages: subscribers are read-only, skip auto-reply
-                if [[ -n "$REPLY_TEXT" && "$SESSION_ID" != ch_* ]]; then
-                    if "${SCRIPT_DIR}/agentgram-send.sh" \
+
+                # Send reply back via agentline (always reply as DM to sender)
+                if [[ -n "$REPLY_TEXT" ]]; then
+                    if "${SCRIPT_DIR}/agentline-send.sh" \
                         --to "$FROM" \
                         --text "$REPLY_TEXT" \
-                        --conv-id "$CONV_ID" \
                         --reply-to "$MSG_ID" 2>/dev/null; then
-                        echo "[$(date -Iseconds)] REPLY_SENT conv=${CONV_ID} to=${FROM} reply_to=${MSG_ID}" >> "$LOG"
+                        echo "[$(date -Iseconds)] REPLY_SENT to=${FROM} reply_to=${MSG_ID}" >> "$LOG"
                     else
-                        echo "[$(date -Iseconds)] REPLY_SEND_FAILED conv=${CONV_ID} to=${FROM}" >> "$ERR_LOG"
+                        echo "[$(date -Iseconds)] REPLY_SEND_FAILED to=${FROM}" >> "$ERR_LOG"
                     fi
-                elif [[ -n "$REPLY_TEXT" && "$SESSION_ID" == ch_* ]]; then
-                    echo "[$(date -Iseconds)] CHANNEL_MSG_NO_REPLY channel=${SESSION_ID} from=${FROM} msg_id=${MSG_ID}" >> "$LOG"
                 else
-                    echo "[$(date -Iseconds)] EMPTY_REPLY conv=${CONV_ID} from=${FROM} msg_id=${MSG_ID}" >> "$ERR_LOG"
+                    echo "[$(date -Iseconds)] EMPTY_REPLY from=${FROM} msg_id=${MSG_ID}" >> "$ERR_LOG"
                 fi
             else
-                echo "[$(date -Iseconds)] AGENT_FAILED conv=${CONV_ID} from=${FROM} msg_id=${MSG_ID}" >> "$ERR_LOG"
+                echo "[$(date -Iseconds)] AGENT_FAILED from=${FROM} msg_id=${MSG_ID}" >> "$ERR_LOG"
             fi
             ;;
         *)
+            # Skip ack, result, error, etc.
             echo "[$(date -Iseconds)] MSG_SKIP type=${TYPE} from=${FROM} msg_id=${MSG_ID}" >> "$LOG"
             continue
             ;;
     esac
 done
-__AGENTGRAM_POLL_SH__
+__AGENTLINE_POLL_SH__
 
-# --- agentgram-contact.sh ---
-cat > "${AG_BIN}/agentgram-contact.sh" <<'__AGENTGRAM_CONTACT_SH__'
+# --- agentline-contact.sh ---
+cat > "${AG_BIN}/agentline-contact.sh" <<'__AGENTLINE_CONTACT_SH__'
 #!/usr/bin/env bash
-# agentgram-contact.sh — Manage contacts (list, get, remove).
-# Adding contacts is done via the contact request flow (agentgram-contact-request.sh).
+# agentline-contact.sh — Manage contacts (list, get, remove).
+# Adding contacts is done via the contact request flow (agentline-contact-request.sh).
 #
 # Usage:
-#   agentgram-contact.sh list  [--agent <id>] [--hub <url>]
-#   agentgram-contact.sh get   --id <agent_id> [--agent <id>] [--hub <url>]
-#   agentgram-contact.sh remove --id <agent_id> [--agent <id>] [--hub <url>]
+#   agentline-contact.sh list  [--agent <id>] [--hub <url>]
+#   agentline-contact.sh get   --id <agent_id> [--agent <id>] [--hub <url>]
+#   agentline-contact.sh remove --id <agent_id> [--agent <id>] [--hub <url>]
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-source "${SCRIPT_DIR}/agentgram-common.sh"
+source "${SCRIPT_DIR}/agentline-common.sh"
 
-USAGE="Usage: agentgram-contact.sh <list|get|remove> [options]"
+USAGE="Usage: agentline-contact.sh <list|get|remove> [options]"
 
 [[ $# -gt 0 ]] || ag_die "$USAGE"
 [[ "$1" == "--help" || "$1" == "-h" ]] && ag_help
@@ -1035,13 +1040,13 @@ case "$CMD" in
         echo "$AG_HTTP_BODY"
         ;;
     get)
-        [[ -n "$CONTACT_ID" ]] || ag_die "Usage: agentgram-contact.sh get --id <agent_id>"
+        [[ -n "$CONTACT_ID" ]] || ag_die "Usage: agentline-contact.sh get --id <agent_id>"
         ag_curl_auth GET "${AG_HUB}/registry/agents/${aid}/contacts/${CONTACT_ID}" "$token"
         ag_check_http 2
         echo "$AG_HTTP_BODY"
         ;;
     remove)
-        [[ -n "$CONTACT_ID" ]] || ag_die "Usage: agentgram-contact.sh remove --id <agent_id>"
+        [[ -n "$CONTACT_ID" ]] || ag_die "Usage: agentline-contact.sh remove --id <agent_id>"
         ag_curl_auth DELETE "${AG_HUB}/registry/agents/${aid}/contacts/${CONTACT_ID}" "$token"
         ag_check_http 2
         jq -n --arg id "$CONTACT_ID" '{removed: $id}'
@@ -1050,25 +1055,25 @@ case "$CMD" in
         ag_die "$USAGE"
         ;;
 esac
-__AGENTGRAM_CONTACT_SH__
+__AGENTLINE_CONTACT_SH__
 
-# --- agentgram-contact-request.sh ---
-cat > "${AG_BIN}/agentgram-contact-request.sh" <<'__AGENTGRAM_CONTACT_REQUEST_SH__'
+# --- agentline-contact-request.sh ---
+cat > "${AG_BIN}/agentline-contact-request.sh" <<'__AGENTLINE_CONTACT_REQUEST_SH__'
 #!/usr/bin/env bash
-# agentgram-contact-request.sh — Manage contact requests (send, list, accept, reject).
+# agentline-contact-request.sh — Manage contact requests (send, list, accept, reject).
 #
 # Usage:
-#   agentgram-contact-request.sh send     --to <agent_id> [--message <text>] [--agent <id>] [--hub <url>]
-#   agentgram-contact-request.sh received [--state pending|accepted|rejected] [--agent <id>] [--hub <url>]
-#   agentgram-contact-request.sh sent     [--state pending|accepted|rejected] [--agent <id>] [--hub <url>]
-#   agentgram-contact-request.sh accept   --id <request_id> [--agent <id>] [--hub <url>]
-#   agentgram-contact-request.sh reject   --id <request_id> [--agent <id>] [--hub <url>]
+#   agentline-contact-request.sh send     --to <agent_id> [--message <text>] [--agent <id>] [--hub <url>]
+#   agentline-contact-request.sh received [--state pending|accepted|rejected] [--agent <id>] [--hub <url>]
+#   agentline-contact-request.sh sent     [--state pending|accepted|rejected] [--agent <id>] [--hub <url>]
+#   agentline-contact-request.sh accept   --id <request_id> [--agent <id>] [--hub <url>]
+#   agentline-contact-request.sh reject   --id <request_id> [--agent <id>] [--hub <url>]
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-source "${SCRIPT_DIR}/agentgram-common.sh"
+source "${SCRIPT_DIR}/agentline-common.sh"
 
-USAGE="Usage: agentgram-contact-request.sh <send|received|sent|accept|reject> [options]"
+USAGE="Usage: agentline-contact-request.sh <send|received|sent|accept|reject> [options]"
 
 [[ $# -gt 0 ]] || ag_die "$USAGE"
 [[ "$1" == "--help" || "$1" == "-h" ]] && ag_help
@@ -1099,7 +1104,7 @@ token="${AG_CRED_TOKEN}"
 
 case "$CMD" in
     send)
-        [[ -n "$TO" ]] || ag_die "Usage: agentgram-contact-request.sh send --to <agent_id> [--message <text>]"
+        [[ -n "$TO" ]] || ag_die "Usage: agentline-contact-request.sh send --to <agent_id> [--message <text>]"
 
         key_id="${AG_CRED_KEY_ID}"
         priv_key="${AG_CRED_PRIVATE_KEY}"
@@ -1118,7 +1123,6 @@ case "$CMD" in
         # Generate envelope fields
         msg_id="$(ag_uuid)"
         ts="$(ag_ts)"
-        conv_id="$(ag_uuid)"
 
         # Sign envelope
         sign_input="$(jq -n \
@@ -1129,8 +1133,6 @@ case "$CMD" in
             --argjson ts "$ts" \
             --arg from "$aid" \
             --arg to "$TO" \
-            --arg conv_id "$conv_id" \
-            --argjson seq 1 \
             --arg type "contact_request" \
             --arg reply_to "" \
             --argjson ttl_sec 3600 \
@@ -1143,8 +1145,6 @@ case "$CMD" in
                 ts: $ts,
                 from: $from,
                 to: $to,
-                conv_id: $conv_id,
-                seq: $seq,
                 type: $type,
                 reply_to: $reply_to,
                 ttl_sec: $ttl_sec,
@@ -1160,8 +1160,6 @@ case "$CMD" in
             --argjson ts "$ts" \
             --arg from "$aid" \
             --arg to "$TO" \
-            --arg conv_id "$conv_id" \
-            --argjson seq 1 \
             --arg type "contact_request" \
             --argjson ttl_sec 3600 \
             --argjson payload "$payload" \
@@ -1173,8 +1171,6 @@ case "$CMD" in
                 ts: $ts,
                 from: $from,
                 to: $to,
-                conv_id: $conv_id,
-                seq: $seq,
                 type: $type,
                 reply_to: null,
                 ttl_sec: $ttl_sec,
@@ -1205,14 +1201,14 @@ case "$CMD" in
         ;;
 
     accept)
-        [[ -n "$REQUEST_ID" ]] || ag_die "Usage: agentgram-contact-request.sh accept --id <request_id>"
+        [[ -n "$REQUEST_ID" ]] || ag_die "Usage: agentline-contact-request.sh accept --id <request_id>"
         ag_curl_auth POST "${AG_HUB}/registry/agents/${aid}/contact-requests/${REQUEST_ID}/accept" "$token"
         ag_check_http 2
         echo "$AG_HTTP_BODY"
         ;;
 
     reject)
-        [[ -n "$REQUEST_ID" ]] || ag_die "Usage: agentgram-contact-request.sh reject --id <request_id>"
+        [[ -n "$REQUEST_ID" ]] || ag_die "Usage: agentline-contact-request.sh reject --id <request_id>"
         ag_curl_auth POST "${AG_HUB}/registry/agents/${aid}/contact-requests/${REQUEST_ID}/reject" "$token"
         ag_check_http 2
         echo "$AG_HTTP_BODY"
@@ -1222,23 +1218,23 @@ case "$CMD" in
         ag_die "$USAGE"
         ;;
 esac
-__AGENTGRAM_CONTACT_REQUEST_SH__
+__AGENTLINE_CONTACT_REQUEST_SH__
 
-# --- agentgram-block.sh ---
-cat > "${AG_BIN}/agentgram-block.sh" <<'__AGENTGRAM_BLOCK_SH__'
+# --- agentline-block.sh ---
+cat > "${AG_BIN}/agentline-block.sh" <<'__AGENTLINE_BLOCK_SH__'
 #!/usr/bin/env bash
-# agentgram-block.sh — Manage blocked agents (add, list, remove).
+# agentline-block.sh — Manage blocked agents (add, list, remove).
 #
 # Usage:
-#   agentgram-block.sh add    --id <agent_id> [--agent <id>] [--hub <url>]
-#   agentgram-block.sh list   [--agent <id>] [--hub <url>]
-#   agentgram-block.sh remove --id <agent_id> [--agent <id>] [--hub <url>]
+#   agentline-block.sh add    --id <agent_id> [--agent <id>] [--hub <url>]
+#   agentline-block.sh list   [--agent <id>] [--hub <url>]
+#   agentline-block.sh remove --id <agent_id> [--agent <id>] [--hub <url>]
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-source "${SCRIPT_DIR}/agentgram-common.sh"
+source "${SCRIPT_DIR}/agentline-common.sh"
 
-USAGE="Usage: agentgram-block.sh <add|list|remove> [options]"
+USAGE="Usage: agentline-block.sh <add|list|remove> [options]"
 
 [[ $# -gt 0 ]] || ag_die "$USAGE"
 [[ "$1" == "--help" || "$1" == "-h" ]] && ag_help
@@ -1266,7 +1262,7 @@ token="${AG_CRED_TOKEN}"
 
 case "$CMD" in
     add)
-        [[ -n "$BLOCKED_ID" ]] || ag_die "Usage: agentgram-block.sh add --id <agent_id>"
+        [[ -n "$BLOCKED_ID" ]] || ag_die "Usage: agentline-block.sh add --id <agent_id>"
         data="$(jq -n --arg bid "$BLOCKED_ID" '{blocked_agent_id: $bid}')"
         ag_curl_auth POST "${AG_HUB}/registry/agents/${aid}/blocks" "$token" "$data"
         ag_check_http 2
@@ -1278,7 +1274,7 @@ case "$CMD" in
         echo "$AG_HTTP_BODY"
         ;;
     remove)
-        [[ -n "$BLOCKED_ID" ]] || ag_die "Usage: agentgram-block.sh remove --id <agent_id>"
+        [[ -n "$BLOCKED_ID" ]] || ag_die "Usage: agentline-block.sh remove --id <agent_id>"
         ag_curl_auth DELETE "${AG_HUB}/registry/agents/${aid}/blocks/${BLOCKED_ID}" "$token"
         ag_check_http 2
         jq -n --arg id "$BLOCKED_ID" '{unblocked: $id}'
@@ -1287,22 +1283,22 @@ case "$CMD" in
         ag_die "$USAGE"
         ;;
 esac
-__AGENTGRAM_BLOCK_SH__
+__AGENTLINE_BLOCK_SH__
 
-# --- agentgram-policy.sh ---
-cat > "${AG_BIN}/agentgram-policy.sh" <<'__AGENTGRAM_POLICY_SH__'
+# --- agentline-policy.sh ---
+cat > "${AG_BIN}/agentline-policy.sh" <<'__AGENTLINE_POLICY_SH__'
 #!/usr/bin/env bash
-# agentgram-policy.sh — Get or update message policy.
+# agentline-policy.sh — Get or update message policy.
 #
 # Usage:
-#   agentgram-policy.sh get [<agent_id>] [--hub <url>]
-#   agentgram-policy.sh set --policy <open|contacts_only> [--agent <id>] [--hub <url>]
+#   agentline-policy.sh get [<agent_id>] [--hub <url>]
+#   agentline-policy.sh set --policy <open|contacts_only> [--agent <id>] [--hub <url>]
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-source "${SCRIPT_DIR}/agentgram-common.sh"
+source "${SCRIPT_DIR}/agentline-common.sh"
 
-USAGE="Usage: agentgram-policy.sh <get|set> [options]"
+USAGE="Usage: agentline-policy.sh <get|set> [options]"
 
 [[ $# -gt 0 ]] || ag_die "$USAGE"
 [[ "$1" == "--help" || "$1" == "-h" ]] && ag_help
@@ -1341,7 +1337,7 @@ case "$CMD" in
         echo "$AG_HTTP_BODY"
         ;;
     set)
-        [[ -n "$POLICY" ]] || ag_die "Usage: agentgram-policy.sh set --policy <open|contacts_only>"
+        [[ -n "$POLICY" ]] || ag_die "Usage: agentline-policy.sh set --policy <open|contacts_only>"
         ag_load_creds "$AGENT_ID"
         ag_resolve_hub "$HUB_FLAG"
         aid="${AG_CRED_AGENT_ID}"
@@ -1356,178 +1352,73 @@ case "$CMD" in
         ag_die "$USAGE"
         ;;
 esac
-__AGENTGRAM_POLICY_SH__
+__AGENTLINE_POLICY_SH__
 
-# --- agentgram-group.sh ---
-cat > "${AG_BIN}/agentgram-group.sh" <<'__AGENTGRAM_GROUP_SH__'
+# --- agentline-room.sh ---
+cat > "${AG_BIN}/agentline-room.sh" <<'__AGENTLINE_ROOM_SH__'
 #!/usr/bin/env bash
-# agentgram-group.sh — Manage groups (create, get, add-member, remove-member,
-#                       leave, dissolve, transfer, mute).
+# agentline-room.sh — Manage rooms (unified social container replacing groups,
+#                      channels, and sessions).
 #
 # Usage:
-#   agentgram-group.sh create  --name <name> [--members <id1,id2,...>] [--agent <id>] [--hub <url>]
-#   agentgram-group.sh get     <group_id> [--agent <id>] [--hub <url>]
-#   agentgram-group.sh add-member    --group <group_id> --id <agent_id> [--agent <id>] [--hub <url>]
-#   agentgram-group.sh remove-member --group <group_id> --id <agent_id> [--agent <id>] [--hub <url>]
-#   agentgram-group.sh leave    --group <group_id> [--agent <id>] [--hub <url>]
-#   agentgram-group.sh dissolve --group <group_id> [--agent <id>] [--hub <url>]
-#   agentgram-group.sh transfer --group <group_id> --id <agent_id> [--agent <id>] [--hub <url>]
-#   agentgram-group.sh mute     --group <group_id> [--unmute] [--agent <id>] [--hub <url>]
+#   agentline-room.sh create      --name <name> [--description <text>] [--visibility public|private]
+#                                  [--join-policy open|invite_only] [--default-send true|false]
+#                                  [--max-members <n>] [--members <id1,id2,...>]
+#                                  [--agent <id>] [--hub <url>]
+#   agentline-room.sh get         <room_id> [--agent <id>] [--hub <url>]
+#   agentline-room.sh discover    [--name <filter>] [--hub <url>]
+#   agentline-room.sh my-rooms    [--agent <id>] [--hub <url>]
+#   agentline-room.sh update      --room <room_id> [--name <name>] [--description <text>]
+#                                  [--visibility public|private] [--join-policy open|invite_only]
+#                                  [--default-send true|false] [--agent <id>] [--hub <url>]
+#   agentline-room.sh dissolve    --room <room_id> [--agent <id>] [--hub <url>]
+#   agentline-room.sh add-member  --room <room_id> [--id <agent_id>] [--agent <id>] [--hub <url>]
+#   agentline-room.sh remove-member --room <room_id> --id <agent_id> [--agent <id>] [--hub <url>]
+#   agentline-room.sh leave       --room <room_id> [--agent <id>] [--hub <url>]
+#   agentline-room.sh transfer    --room <room_id> --id <new_owner> [--agent <id>] [--hub <url>]
+#   agentline-room.sh promote     --room <room_id> --id <agent_id> --role <admin|member>
+#                                  [--agent <id>] [--hub <url>]
+#   agentline-room.sh mute        --room <room_id> [--muted true|false] [--agent <id>] [--hub <url>]
+#   agentline-room.sh permissions --room <room_id> --id <agent_id>
+#                                  [--can-send true|false] [--can-invite true|false]
+#                                  [--agent <id>] [--hub <url>]
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-source "${SCRIPT_DIR}/agentgram-common.sh"
+source "${SCRIPT_DIR}/agentline-common.sh"
 
-USAGE="Usage: agentgram-group.sh <create|get|add-member|remove-member|leave|dissolve|transfer|mute> [options]"
+USAGE="Usage: agentline-room.sh <create|get|discover|my-rooms|update|dissolve|add-member|remove-member|leave|transfer|promote|mute|permissions> [options]"
 
 [[ $# -gt 0 ]] || ag_die "$USAGE"
 [[ "$1" == "--help" || "$1" == "-h" ]] && ag_help
 CMD="$1"; shift
 
 # --- Parse args ---
-GROUP_NAME="" GROUP_ID="" TARGET_ID="" MEMBERS="" AGENT_ID="" HUB_FLAG="" UNMUTE=false
+ROOM_NAME="" ROOM_DESC="" ROOM_VIS="" ROOM_JOIN_POLICY="" ROOM_DEFAULT_SEND=""
+ROOM_MAX_MEMBERS="" ROOM_ID="" TARGET_ID="" ROLE="" MEMBERS=""
+CAN_SEND="" CAN_INVITE="" MUTED=""
+AGENT_ID="" HUB_FLAG="" NAME_FILTER=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --help|-h) ag_help ;;
-        --name)    GROUP_NAME="$2"; shift 2 ;;
-        --group)   GROUP_ID="$2"; shift 2 ;;
-        --id)      TARGET_ID="$2"; shift 2 ;;
-        --members) MEMBERS="$2"; shift 2 ;;
-        --agent)   AGENT_ID="$2"; shift 2 ;;
-        --hub)     HUB_FLAG="$2"; shift 2 ;;
-        --unmute)  UNMUTE=true; shift ;;
-        -*)        ag_die "Unknown option: $1" ;;
-        *)         GROUP_ID="$1"; shift ;;
-    esac
-done
-
-ag_load_creds "$AGENT_ID"
-ag_resolve_hub "$HUB_FLAG"
-
-aid="${AG_CRED_AGENT_ID}"
-token="${AG_CRED_TOKEN}"
-[[ -n "$token" ]] || ag_die "No token in credentials. Register or refresh first."
-
-case "$CMD" in
-    create)
-        [[ -n "$GROUP_NAME" ]] || ag_die "Usage: agentgram-group.sh create --name <name> [--members <id1,id2,...>]"
-        if [[ -n "$MEMBERS" ]]; then
-            # Convert comma-separated to JSON array
-            member_array="$(echo "$MEMBERS" | jq -R 'split(",")')"
-            data="$(jq -n --arg name "$GROUP_NAME" --argjson members "$member_array" \
-                '{name: $name, member_ids: $members}')"
-        else
-            data="$(jq -n --arg name "$GROUP_NAME" '{name: $name, member_ids: []}')"
-        fi
-        ag_curl_auth POST "${AG_HUB}/hub/groups" "$token" "$data"
-        ag_check_http 2
-        echo "$AG_HTTP_BODY"
-        ;;
-    get)
-        [[ -n "$GROUP_ID" ]] || ag_die "Usage: agentgram-group.sh get <group_id>"
-        ag_curl_auth GET "${AG_HUB}/hub/groups/${GROUP_ID}" "$token"
-        ag_check_http 2
-        echo "$AG_HTTP_BODY"
-        ;;
-    add-member)
-        [[ -n "$GROUP_ID" && -n "$TARGET_ID" ]] || ag_die "Usage: agentgram-group.sh add-member --group <group_id> --id <agent_id>"
-        data="$(jq -n --arg id "$TARGET_ID" '{agent_id: $id}')"
-        ag_curl_auth POST "${AG_HUB}/hub/groups/${GROUP_ID}/members" "$token" "$data"
-        ag_check_http 2
-        echo "$AG_HTTP_BODY"
-        ;;
-    remove-member)
-        [[ -n "$GROUP_ID" && -n "$TARGET_ID" ]] || ag_die "Usage: agentgram-group.sh remove-member --group <group_id> --id <agent_id>"
-        ag_curl_auth DELETE "${AG_HUB}/hub/groups/${GROUP_ID}/members/${TARGET_ID}" "$token"
-        ag_check_http 2
-        echo "$AG_HTTP_BODY"
-        ;;
-    leave)
-        [[ -n "$GROUP_ID" ]] || ag_die "Usage: agentgram-group.sh leave --group <group_id>"
-        ag_curl_auth POST "${AG_HUB}/hub/groups/${GROUP_ID}/leave" "$token"
-        ag_check_http 2
-        echo "$AG_HTTP_BODY"
-        ;;
-    dissolve)
-        [[ -n "$GROUP_ID" ]] || ag_die "Usage: agentgram-group.sh dissolve --group <group_id>"
-        ag_curl_auth DELETE "${AG_HUB}/hub/groups/${GROUP_ID}" "$token"
-        ag_check_http 2
-        echo "$AG_HTTP_BODY"
-        ;;
-    transfer)
-        [[ -n "$GROUP_ID" && -n "$TARGET_ID" ]] || ag_die "Usage: agentgram-group.sh transfer --group <group_id> --id <new_owner_id>"
-        data="$(jq -n --arg id "$TARGET_ID" '{new_owner_id: $id}')"
-        ag_curl_auth POST "${AG_HUB}/hub/groups/${GROUP_ID}/transfer" "$token" "$data"
-        ag_check_http 2
-        echo "$AG_HTTP_BODY"
-        ;;
-    mute)
-        [[ -n "$GROUP_ID" ]] || ag_die "Usage: agentgram-group.sh mute --group <group_id> [--unmute]"
-        if [[ "$UNMUTE" == true ]]; then
-            data='{"muted":false}'
-        else
-            data='{"muted":true}'
-        fi
-        ag_curl_auth POST "${AG_HUB}/hub/groups/${GROUP_ID}/mute" "$token" "$data"
-        ag_check_http 2
-        echo "$AG_HTTP_BODY"
-        ;;
-    *)
-        ag_die "$USAGE"
-        ;;
-esac
-__AGENTGRAM_GROUP_SH__
-
-# --- agentgram-channel.sh ---
-cat > "${AG_BIN}/agentgram-channel.sh" <<'__AGENTGRAM_CHANNEL_SH__'
-#!/usr/bin/env bash
-# agentgram-channel.sh — Manage channels (create, get, discover, subscribe,
-#                         unsubscribe, add-subscriber, remove-subscriber,
-#                         update, dissolve, promote, transfer, mute).
-#
-# Usage:
-#   agentgram-channel.sh create     --name <name> [--desc <text>] [--visibility public|private] [--agent <id>] [--hub <url>]
-#   agentgram-channel.sh get        <channel_id> [--agent <id>] [--hub <url>]
-#   agentgram-channel.sh discover   [--name <filter>] [--hub <url>]
-#   agentgram-channel.sh subscribe  --channel <channel_id> [--agent <id>] [--hub <url>]
-#   agentgram-channel.sh unsubscribe --channel <channel_id> [--agent <id>] [--hub <url>]
-#   agentgram-channel.sh add-subscriber    --channel <channel_id> --id <agent_id> [--agent <id>] [--hub <url>]
-#   agentgram-channel.sh remove-subscriber --channel <channel_id> --id <agent_id> [--agent <id>] [--hub <url>]
-#   agentgram-channel.sh update     --channel <channel_id> [--name <name>] [--desc <text>] [--visibility public|private] [--agent <id>] [--hub <url>]
-#   agentgram-channel.sh dissolve   --channel <channel_id> [--agent <id>] [--hub <url>]
-#   agentgram-channel.sh promote    --channel <channel_id> --id <agent_id> --role <admin|subscriber> [--agent <id>] [--hub <url>]
-#   agentgram-channel.sh transfer   --channel <channel_id> --id <agent_id> [--agent <id>] [--hub <url>]
-#   agentgram-channel.sh mute       --channel <channel_id> [--unmute] [--agent <id>] [--hub <url>]
-
-set -euo pipefail
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-source "${SCRIPT_DIR}/agentgram-common.sh"
-
-USAGE="Usage: agentgram-channel.sh <create|get|discover|subscribe|unsubscribe|add-subscriber|remove-subscriber|update|dissolve|promote|transfer|mute> [options]"
-
-[[ $# -gt 0 ]] || ag_die "$USAGE"
-[[ "$1" == "--help" || "$1" == "-h" ]] && ag_help
-CMD="$1"; shift
-
-# --- Parse args ---
-CH_NAME="" CH_DESC="" CH_VIS="" CHANNEL_ID="" TARGET_ID="" ROLE=""
-AGENT_ID="" HUB_FLAG="" UNMUTE=false NAME_FILTER=""
-
-while [[ $# -gt 0 ]]; do
-    case "$1" in
-        --help|-h)       ag_help ;;
-        --name)          CH_NAME="$2"; NAME_FILTER="$2"; shift 2 ;;
-        --desc)          CH_DESC="$2"; shift 2 ;;
-        --visibility)    CH_VIS="$2"; shift 2 ;;
-        --channel)       CHANNEL_ID="$2"; shift 2 ;;
-        --id)            TARGET_ID="$2"; shift 2 ;;
-        --role)          ROLE="$2"; shift 2 ;;
-        --agent)         AGENT_ID="$2"; shift 2 ;;
-        --hub)           HUB_FLAG="$2"; shift 2 ;;
-        --unmute)        UNMUTE=true; shift ;;
-        -*)              ag_die "Unknown option: $1" ;;
-        *)               CHANNEL_ID="$1"; shift ;;
+        --help|-h)        ag_help ;;
+        --name)           ROOM_NAME="$2"; NAME_FILTER="$2"; shift 2 ;;
+        --description)    ROOM_DESC="$2"; shift 2 ;;
+        --visibility)     ROOM_VIS="$2"; shift 2 ;;
+        --join-policy)    ROOM_JOIN_POLICY="$2"; shift 2 ;;
+        --default-send)   ROOM_DEFAULT_SEND="$2"; shift 2 ;;
+        --max-members)    ROOM_MAX_MEMBERS="$2"; shift 2 ;;
+        --members)        MEMBERS="$2"; shift 2 ;;
+        --room)           ROOM_ID="$2"; shift 2 ;;
+        --id)             TARGET_ID="$2"; shift 2 ;;
+        --role)           ROLE="$2"; shift 2 ;;
+        --can-send)       CAN_SEND="$2"; shift 2 ;;
+        --can-invite)     CAN_INVITE="$2"; shift 2 ;;
+        --muted)          MUTED="$2"; shift 2 ;;
+        --agent)          AGENT_ID="$2"; shift 2 ;;
+        --hub)            HUB_FLAG="$2"; shift 2 ;;
+        -*)               ag_die "Unknown option: $1" ;;
+        *)                ROOM_ID="$1"; shift ;;
     esac
 done
 
@@ -1537,7 +1428,7 @@ case "$CMD" in
         if ag_load_creds "" 2>/dev/null; then true; fi
         ag_resolve_hub "$HUB_FLAG"
 
-        url="${AG_HUB}/hub/channels"
+        url="${AG_HUB}/hub/rooms"
         if [[ -n "$NAME_FILTER" ]]; then
             encoded="$(node -e "console.log(encodeURIComponent(process.argv[1]))" "$NAME_FILTER")"
             url="${url}?name=${encoded}"
@@ -1556,89 +1447,128 @@ case "$CMD" in
 
         case "$CMD" in
             create)
-                [[ -n "$CH_NAME" ]] || ag_die "Usage: agentgram-channel.sh create --name <name> [--desc <text>] [--visibility public|private]"
-                data="$(jq -n --arg name "$CH_NAME" --arg desc "$CH_DESC" --arg vis "${CH_VIS:-private}" \
-                    '{name: $name, description: $desc, visibility: $vis}')"
-                ag_curl_auth POST "${AG_HUB}/hub/channels" "$token" "$data"
+                [[ -n "$ROOM_NAME" ]] || ag_die "Usage: agentline-room.sh create --name <name> [options]"
+                data="$(jq -n --arg name "$ROOM_NAME" '{name: $name}')"
+                if [[ -n "$ROOM_DESC" ]]; then
+                    data="$(jq --arg v "$ROOM_DESC" '. + {description: $v}' <<< "$data")"
+                fi
+                if [[ -n "$ROOM_VIS" ]]; then
+                    data="$(jq --arg v "$ROOM_VIS" '. + {visibility: $v}' <<< "$data")"
+                fi
+                if [[ -n "$ROOM_JOIN_POLICY" ]]; then
+                    data="$(jq --arg v "$ROOM_JOIN_POLICY" '. + {join_policy: $v}' <<< "$data")"
+                fi
+                if [[ -n "$ROOM_DEFAULT_SEND" ]]; then
+                    data="$(jq --argjson v "$ROOM_DEFAULT_SEND" '. + {default_send: $v}' <<< "$data")"
+                fi
+                if [[ -n "$ROOM_MAX_MEMBERS" ]]; then
+                    data="$(jq --argjson v "$ROOM_MAX_MEMBERS" '. + {max_members: $v}' <<< "$data")"
+                fi
+                if [[ -n "$MEMBERS" ]]; then
+                    member_array="$(echo "$MEMBERS" | jq -R 'split(",")')"
+                    data="$(jq --argjson m "$member_array" '. + {member_ids: $m}' <<< "$data")"
+                fi
+                ag_curl_auth POST "${AG_HUB}/hub/rooms" "$token" "$data"
                 ag_check_http 2
                 echo "$AG_HTTP_BODY"
                 ;;
             get)
-                [[ -n "$CHANNEL_ID" ]] || ag_die "Usage: agentgram-channel.sh get <channel_id>"
-                ag_curl_auth GET "${AG_HUB}/hub/channels/${CHANNEL_ID}" "$token"
+                [[ -n "$ROOM_ID" ]] || ag_die "Usage: agentline-room.sh get <room_id>"
+                ag_curl_auth GET "${AG_HUB}/hub/rooms/${ROOM_ID}" "$token"
                 ag_check_http 2
                 echo "$AG_HTTP_BODY"
                 ;;
-            subscribe)
-                [[ -n "$CHANNEL_ID" ]] || ag_die "Usage: agentgram-channel.sh subscribe --channel <channel_id>"
-                ag_curl_auth POST "${AG_HUB}/hub/channels/${CHANNEL_ID}/subscribe" "$token"
-                ag_check_http 2
-                echo "$AG_HTTP_BODY"
-                ;;
-            unsubscribe)
-                [[ -n "$CHANNEL_ID" ]] || ag_die "Usage: agentgram-channel.sh unsubscribe --channel <channel_id>"
-                ag_curl_auth POST "${AG_HUB}/hub/channels/${CHANNEL_ID}/unsubscribe" "$token"
-                ag_check_http 2
-                echo "$AG_HTTP_BODY"
-                ;;
-            add-subscriber)
-                [[ -n "$CHANNEL_ID" && -n "$TARGET_ID" ]] || ag_die "Usage: agentgram-channel.sh add-subscriber --channel <channel_id> --id <agent_id>"
-                data="$(jq -n --arg id "$TARGET_ID" '{agent_id: $id}')"
-                ag_curl_auth POST "${AG_HUB}/hub/channels/${CHANNEL_ID}/subscribers" "$token" "$data"
-                ag_check_http 2
-                echo "$AG_HTTP_BODY"
-                ;;
-            remove-subscriber)
-                [[ -n "$CHANNEL_ID" && -n "$TARGET_ID" ]] || ag_die "Usage: agentgram-channel.sh remove-subscriber --channel <channel_id> --id <agent_id>"
-                ag_curl_auth DELETE "${AG_HUB}/hub/channels/${CHANNEL_ID}/subscribers/${TARGET_ID}" "$token"
+            my-rooms)
+                ag_curl_auth GET "${AG_HUB}/hub/rooms/me" "$token"
                 ag_check_http 2
                 echo "$AG_HTTP_BODY"
                 ;;
             update)
-                [[ -n "$CHANNEL_ID" ]] || ag_die "Usage: agentgram-channel.sh update --channel <channel_id> [--name ...] [--desc ...] [--visibility ...]"
-                # Build PATCH body with only provided fields
+                [[ -n "$ROOM_ID" ]] || ag_die "Usage: agentline-room.sh update --room <room_id> [--name ...] [--description ...] ..."
                 data="{}"
-                if [[ -n "$CH_NAME" ]]; then
-                    data="$(jq --arg v "$CH_NAME" '. + {name: $v}' <<< "$data")"
+                if [[ -n "$ROOM_NAME" ]]; then
+                    data="$(jq --arg v "$ROOM_NAME" '. + {name: $v}' <<< "$data")"
                 fi
-                if [[ -n "$CH_DESC" ]]; then
-                    data="$(jq --arg v "$CH_DESC" '. + {description: $v}' <<< "$data")"
+                if [[ -n "$ROOM_DESC" ]]; then
+                    data="$(jq --arg v "$ROOM_DESC" '. + {description: $v}' <<< "$data")"
                 fi
-                if [[ -n "$CH_VIS" ]]; then
-                    data="$(jq --arg v "$CH_VIS" '. + {visibility: $v}' <<< "$data")"
+                if [[ -n "$ROOM_VIS" ]]; then
+                    data="$(jq --arg v "$ROOM_VIS" '. + {visibility: $v}' <<< "$data")"
                 fi
-                ag_curl_auth PATCH "${AG_HUB}/hub/channels/${CHANNEL_ID}" "$token" "$data"
+                if [[ -n "$ROOM_JOIN_POLICY" ]]; then
+                    data="$(jq --arg v "$ROOM_JOIN_POLICY" '. + {join_policy: $v}' <<< "$data")"
+                fi
+                if [[ -n "$ROOM_DEFAULT_SEND" ]]; then
+                    data="$(jq --argjson v "$ROOM_DEFAULT_SEND" '. + {default_send: $v}' <<< "$data")"
+                fi
+                ag_curl_auth PATCH "${AG_HUB}/hub/rooms/${ROOM_ID}" "$token" "$data"
                 ag_check_http 2
                 echo "$AG_HTTP_BODY"
                 ;;
             dissolve)
-                [[ -n "$CHANNEL_ID" ]] || ag_die "Usage: agentgram-channel.sh dissolve --channel <channel_id>"
-                ag_curl_auth DELETE "${AG_HUB}/hub/channels/${CHANNEL_ID}" "$token"
+                [[ -n "$ROOM_ID" ]] || ag_die "Usage: agentline-room.sh dissolve --room <room_id>"
+                ag_curl_auth DELETE "${AG_HUB}/hub/rooms/${ROOM_ID}" "$token"
                 ag_check_http 2
                 echo "$AG_HTTP_BODY"
                 ;;
-            promote)
-                [[ -n "$CHANNEL_ID" && -n "$TARGET_ID" && -n "$ROLE" ]] || ag_die "Usage: agentgram-channel.sh promote --channel <channel_id> --id <agent_id> --role <admin|subscriber>"
-                data="$(jq -n --arg id "$TARGET_ID" --arg role "$ROLE" '{agent_id: $id, role: $role}')"
-                ag_curl_auth POST "${AG_HUB}/hub/channels/${CHANNEL_ID}/promote" "$token" "$data"
+            add-member)
+                [[ -n "$ROOM_ID" ]] || ag_die "Usage: agentline-room.sh add-member --room <room_id> [--id <agent_id>]"
+                if [[ -n "$TARGET_ID" ]]; then
+                    data="$(jq -n --arg id "$TARGET_ID" '{agent_id: $id}')"
+                else
+                    data="{}"
+                fi
+                ag_curl_auth POST "${AG_HUB}/hub/rooms/${ROOM_ID}/members" "$token" "$data"
+                ag_check_http 2
+                echo "$AG_HTTP_BODY"
+                ;;
+            remove-member)
+                [[ -n "$ROOM_ID" && -n "$TARGET_ID" ]] || ag_die "Usage: agentline-room.sh remove-member --room <room_id> --id <agent_id>"
+                ag_curl_auth DELETE "${AG_HUB}/hub/rooms/${ROOM_ID}/members/${TARGET_ID}" "$token"
+                ag_check_http 2
+                echo "$AG_HTTP_BODY"
+                ;;
+            leave)
+                [[ -n "$ROOM_ID" ]] || ag_die "Usage: agentline-room.sh leave --room <room_id>"
+                ag_curl_auth POST "${AG_HUB}/hub/rooms/${ROOM_ID}/leave" "$token"
                 ag_check_http 2
                 echo "$AG_HTTP_BODY"
                 ;;
             transfer)
-                [[ -n "$CHANNEL_ID" && -n "$TARGET_ID" ]] || ag_die "Usage: agentgram-channel.sh transfer --channel <channel_id> --id <new_owner_id>"
+                [[ -n "$ROOM_ID" && -n "$TARGET_ID" ]] || ag_die "Usage: agentline-room.sh transfer --room <room_id> --id <new_owner_id>"
                 data="$(jq -n --arg id "$TARGET_ID" '{new_owner_id: $id}')"
-                ag_curl_auth POST "${AG_HUB}/hub/channels/${CHANNEL_ID}/transfer" "$token" "$data"
+                ag_curl_auth POST "${AG_HUB}/hub/rooms/${ROOM_ID}/transfer" "$token" "$data"
+                ag_check_http 2
+                echo "$AG_HTTP_BODY"
+                ;;
+            promote)
+                [[ -n "$ROOM_ID" && -n "$TARGET_ID" && -n "$ROLE" ]] || ag_die "Usage: agentline-room.sh promote --room <room_id> --id <agent_id> --role <admin|member>"
+                data="$(jq -n --arg id "$TARGET_ID" --arg role "$ROLE" '{agent_id: $id, role: $role}')"
+                ag_curl_auth POST "${AG_HUB}/hub/rooms/${ROOM_ID}/promote" "$token" "$data"
                 ag_check_http 2
                 echo "$AG_HTTP_BODY"
                 ;;
             mute)
-                [[ -n "$CHANNEL_ID" ]] || ag_die "Usage: agentgram-channel.sh mute --channel <channel_id> [--unmute]"
-                if [[ "$UNMUTE" == true ]]; then
+                [[ -n "$ROOM_ID" ]] || ag_die "Usage: agentline-room.sh mute --room <room_id> [--muted true|false]"
+                if [[ "$MUTED" == "false" ]]; then
                     data='{"muted":false}'
                 else
                     data='{"muted":true}'
                 fi
-                ag_curl_auth POST "${AG_HUB}/hub/channels/${CHANNEL_ID}/mute" "$token" "$data"
+                ag_curl_auth POST "${AG_HUB}/hub/rooms/${ROOM_ID}/mute" "$token" "$data"
+                ag_check_http 2
+                echo "$AG_HTTP_BODY"
+                ;;
+            permissions)
+                [[ -n "$ROOM_ID" && -n "$TARGET_ID" ]] || ag_die "Usage: agentline-room.sh permissions --room <room_id> --id <agent_id> [--can-send true|false] [--can-invite true|false]"
+                data="$(jq -n --arg id "$TARGET_ID" '{agent_id: $id}')"
+                if [[ -n "$CAN_SEND" ]]; then
+                    data="$(jq --argjson v "$CAN_SEND" '. + {can_send: $v}' <<< "$data")"
+                fi
+                if [[ -n "$CAN_INVITE" ]]; then
+                    data="$(jq --argjson v "$CAN_INVITE" '. + {can_invite: $v}' <<< "$data")"
+                fi
+                ag_curl_auth POST "${AG_HUB}/hub/rooms/${ROOM_ID}/permissions" "$token" "$data"
                 ag_check_http 2
                 echo "$AG_HTTP_BODY"
                 ;;
@@ -1648,15 +1578,15 @@ case "$CMD" in
         esac
         ;;
 esac
-__AGENTGRAM_CHANNEL_SH__
+__AGENTLINE_ROOM_SH__
 
-# --- agentgram-healthcheck.sh ---
-cat > "${AG_BIN}/agentgram-healthcheck.sh" <<'__AGENTGRAM_HEALTHCHECK_SH__'
+# --- agentline-healthcheck.sh ---
+cat > "${AG_BIN}/agentline-healthcheck.sh" <<'__AGENTLINE_HEALTHCHECK_SH__'
 #!/usr/bin/env bash
-# agentgram-healthcheck.sh — Pre-flight health check for OpenClaw + Agentgram integration.
+# agentline-healthcheck.sh — Pre-flight health check for OpenClaw + Agentline integration.
 #
 # Usage:
-#   agentgram-healthcheck.sh [--agent <id>] [--hub <url>] [--openclaw-home <path>]
+#   agentline-healthcheck.sh [--agent <id>] [--hub <url>] [--openclaw-home <path>]
 #
 # Checks:
 #   1. OpenClaw hooks configuration (hooks mapping, auth token, bind port)
@@ -1669,7 +1599,7 @@ set -euo pipefail
 export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:$PATH"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-source "${SCRIPT_DIR}/agentgram-common.sh"
+source "${SCRIPT_DIR}/agentline-common.sh"
 
 # --- Parse args ---
 AGENT_ID="" HUB_FLAG="" OC_HOME_FLAG=""
@@ -1716,9 +1646,21 @@ print_info() {
 }
 
 # =============================================
-# 0. Agentgram Credentials
+# Version
 # =============================================
-print_header "Agentgram Credentials"
+AG_VERSION_FILE="${HOME}/.agentline/version"
+if [[ -f "$AG_VERSION_FILE" ]]; then
+    AG_VERSION="$(cat "$AG_VERSION_FILE")"
+else
+    AG_VERSION="unknown"
+fi
+echo ""
+echo "  Agentline CLI v${AG_VERSION}"
+
+# =============================================
+# 0. Agentline Credentials
+# =============================================
+print_header "Agentline Credentials"
 
 CREDS_LOADED=false
 if ag_load_creds "$AGENT_ID" 2>/dev/null; then
@@ -1739,16 +1681,16 @@ if ag_load_creds "$AGENT_ID" 2>/dev/null; then
                 MINS=$(( (REMAINING % 3600) / 60 ))
                 print_ok "JWT token valid (expires in ${HOURS}h ${MINS}m)"
             else
-                print_fail "JWT token expired. Run: agentgram-refresh.sh"
+                print_fail "JWT token expired. Run: agentline-refresh.sh"
             fi
         else
             print_warn "JWT token present but no expiry recorded"
         fi
     else
-        print_fail "No JWT token found. Run: agentgram-register.sh or agentgram-refresh.sh"
+        print_fail "No JWT token found. Run: agentline-register.sh or agentline-refresh.sh"
     fi
 else
-    print_fail "Cannot load agentgram credentials. Run: agentgram-register.sh --name <name> --set-default"
+    print_fail "Cannot load agentline credentials. Run: agentline-register.sh --name <name> --set-default"
 fi
 
 # =============================================
@@ -1820,6 +1762,58 @@ if [[ -f "$OC_CONFIG" ]]; then
         print_info "Webhook delivery will fail without a matching token"
     fi
 
+    # --- allowRequestSessionKey ---
+    ALLOW_REQ_SK="$(jq -r '.hooks.allowRequestSessionKey // empty' "$OC_CONFIG" 2>/dev/null)" || true
+    if [[ "$ALLOW_REQ_SK" == "true" ]]; then
+        print_ok "allowRequestSessionKey = true (Hub can specify session per message)"
+    elif [[ "$ALLOW_REQ_SK" == "false" ]]; then
+        print_fail "allowRequestSessionKey = false — Hub payload 包含 sessionKey，OpenClaw 将返回 400 拒绝投递"
+        print_info "Fix: set \"hooks.allowRequestSessionKey\": true in ${OC_CONFIG}"
+    else
+        print_fail "allowRequestSessionKey 未设置（默认为 false）— Hub payload 包含 sessionKey，OpenClaw 将返回 400 拒绝投递"
+        print_info "Fix: add \"hooks.allowRequestSessionKey\": true to .hooks in ${OC_CONFIG}"
+    fi
+
+    # --- allowedSessionKeyPrefixes ---
+    SK_PREFIXES="$(jq -r '.hooks.allowedSessionKeyPrefixes // empty' "$OC_CONFIG" 2>/dev/null)" || true
+    if [[ -n "$SK_PREFIXES" && "$SK_PREFIXES" != "null" ]]; then
+        HAS_HOOK_PREFIX=false
+        HAS_AG_PREFIX=false
+        if jq -e '.hooks.allowedSessionKeyPrefixes | index("hook:")' "$OC_CONFIG" >/dev/null 2>&1; then
+            HAS_HOOK_PREFIX=true
+        fi
+        if jq -e '.hooks.allowedSessionKeyPrefixes | index("agentline:")' "$OC_CONFIG" >/dev/null 2>&1; then
+            HAS_AG_PREFIX=true
+        fi
+
+        # "hook:" is required by OpenClaw when defaultSessionKey is unset (gateway won't start without it)
+        DEFAULT_SK_SET="$(jq -r '.hooks.defaultSessionKey // empty' "$OC_CONFIG" 2>/dev/null)" || true
+        if [[ "$HAS_HOOK_PREFIX" != "true" && -z "$DEFAULT_SK_SET" ]]; then
+            print_fail "allowedSessionKeyPrefixes 缺少 \"hook:\" — defaultSessionKey 未设置时 OpenClaw 要求必须包含 \"hook:\"，否则 gateway 无法启动"
+            print_info "Fix: add \"hook:\" to .hooks.allowedSessionKeyPrefixes in ${OC_CONFIG}"
+        elif [[ "$HAS_HOOK_PREFIX" == "true" ]]; then
+            print_ok "allowedSessionKeyPrefixes 包含 \"hook:\""
+        fi
+
+        if [[ "$HAS_AG_PREFIX" == "true" ]]; then
+            print_ok "allowedSessionKeyPrefixes 包含 \"agentline:\""
+        else
+            print_fail "allowedSessionKeyPrefixes 不包含 \"agentline:\" — Hub 生成的 session key 将被拒绝"
+            print_info "Fix: add \"agentline:\" to .hooks.allowedSessionKeyPrefixes in ${OC_CONFIG}"
+        fi
+    else
+        print_warn "allowedSessionKeyPrefixes 未设置（无前缀限制，任意来源均可指定 session key）"
+        print_info "建议设置 \"hooks.allowedSessionKeyPrefixes\": [\"hook:\", \"agentline:\"] 以限制来源"
+    fi
+
+    # --- defaultSessionKey ---
+    DEFAULT_SK="$(jq -r '.hooks.defaultSessionKey // empty' "$OC_CONFIG" 2>/dev/null)" || true
+    if [[ -n "$DEFAULT_SK" ]]; then
+        print_ok "defaultSessionKey: ${DEFAULT_SK}"
+    else
+        print_info "defaultSessionKey 未设置（可选，建议设为 \"agentline:default\" 作为回退会话）"
+    fi
+
     # --- Gateway port (where OpenClaw HTTP server listens) ---
     HOOKS_PORT="$(jq -r '.gateway.port // empty' "$OC_CONFIG" 2>/dev/null)" || true
     if [[ -n "$HOOKS_PORT" ]]; then
@@ -1835,10 +1829,27 @@ if [[ -f "$OC_CONFIG" ]]; then
             fi
         fi
 
-        # Show bind address
+        # Check bind address — does it allow external access?
         BIND_HOST="$(jq -r '.gateway.customBindHost // .gateway.bind // empty' "$OC_CONFIG" 2>/dev/null)" || true
         if [[ -n "$BIND_HOST" ]]; then
-            print_info "Bind address: ${BIND_HOST}"
+            case "$BIND_HOST" in
+                localhost|127.0.0.1|::1)
+                    print_warn "Bind address: ${BIND_HOST} (localhost only — external services cannot reach hooks)"
+                    print_info "The Agentline Hub needs to deliver webhooks to this gateway."
+                    print_info "Fix: set \"gateway.bind\" to \"lan\" or \"0.0.0.0\" in ${OC_CONFIG}"
+                    ;;
+                lan|0.0.0.0|::)
+                    print_ok "Bind address: ${BIND_HOST} (allows external access)"
+                    ;;
+                *)
+                    # Specific IP — could be external or internal, just info
+                    print_ok "Bind address: ${BIND_HOST}"
+                    ;;
+            esac
+        else
+            print_warn "Bind address not set (.gateway.bind is missing)"
+            print_info "If using default (localhost), external webhook delivery will not work"
+            print_info "Fix: set \"gateway.bind\" to \"lan\" or \"0.0.0.0\" in ${OC_CONFIG}"
         fi
     else
         print_warn "Gateway port not set (.gateway.port)"
@@ -1854,15 +1865,15 @@ if [[ -f "$OC_CONFIG" ]]; then
             print_info "Fix: add the required mappings to ${OC_CONFIG}:"
             cat <<'SNIPPET'
          "mappings": [
-           {"id":"agentgram-agent","match":{"path":"/agentgram_inbox/agent"},"action":"agent","messageTemplate":"[Agentgram] {{body}}"},
-           {"id":"agentgram-wake","match":{"path":"/agentgram_inbox/wake"},"action":"wake","wakeMode":"now","textTemplate":"{{body}}"},
-           {"id":"agentgram-default","match":{"path":"/agentgram_inbox"},"action":"agent","messageTemplate":"[Agentgram] {{body}}"}
+           {"id":"agentline-agent","match":{"path":"/agentgram_inbox/agent"},"action":"agent","messageTemplate":"[Agentline] {{body}}"},
+           {"id":"agentline-wake","match":{"path":"/agentgram_inbox/wake"},"action":"wake","wakeMode":"now","textTemplate":"{{body}}"},
+           {"id":"agentline-default","match":{"path":"/agentline_inbox"},"action":"agent","messageTemplate":"[Agentline] {{body}}"}
          ]
 SNIPPET
         else
             print_ok "Hooks mappings configured: ${MAPPING_COUNT} route(s)"
 
-            # Check for agentgram-related mappings (agentgram_inbox/agent and agentgram_inbox/wake)
+            # Check for agentline-related mappings (agentgram_inbox/agent and agentgram_inbox/wake)
             HAS_AGENT_ROUTE=false
             HAS_WAKE_ROUTE=false
             AGENT_ACTION=""
@@ -1897,7 +1908,7 @@ SNIPPET
             else
                 print_fail "No /agentgram_inbox/agent route found in hooks mappings"
                 print_info "Fix: add this mapping to .hooks.mappings in ${OC_CONFIG}:"
-                echo '         {"id":"agentgram-agent","match":{"path":"/agentgram_inbox/agent"},"action":"agent","messageTemplate":"[Agentgram] {{body}}"}'
+                echo '         {"id":"agentline-agent","match":{"path":"/agentgram_inbox/agent"},"action":"agent","messageTemplate":"[Agentline] {{body}}"}'
             fi
 
             if [[ "$HAS_WAKE_ROUTE" == "true" ]]; then
@@ -1909,7 +1920,7 @@ SNIPPET
             else
                 print_fail "No /agentgram_inbox/wake route found in hooks mappings"
                 print_info "Fix: add this mapping to .hooks.mappings in ${OC_CONFIG}:"
-                echo '         {"id":"agentgram-wake","match":{"path":"/agentgram_inbox/wake"},"action":"wake","wakeMode":"now","textTemplate":"{{body}}"}'
+                echo '         {"id":"agentline-wake","match":{"path":"/agentgram_inbox/wake"},"action":"wake","wakeMode":"now","textTemplate":"{{body}}"}'
             fi
 
             # Print all mappings for reference
@@ -1926,9 +1937,9 @@ SNIPPET
         print_info "Fix: add a \"mappings\" array to .hooks in ${OC_CONFIG}:"
         cat <<'SNIPPET'
          "mappings": [
-           {"id":"agentgram-agent","match":{"path":"/agentgram_inbox/agent"},"action":"agent","messageTemplate":"[Agentgram] {{body}}"},
-           {"id":"agentgram-wake","match":{"path":"/agentgram_inbox/wake"},"action":"wake","wakeMode":"now","textTemplate":"{{body}}"},
-           {"id":"agentgram-default","match":{"path":"/agentgram_inbox"},"action":"agent","messageTemplate":"[Agentgram] {{body}}"}
+           {"id":"agentline-agent","match":{"path":"/agentgram_inbox/agent"},"action":"agent","messageTemplate":"[Agentline] {{body}}"},
+           {"id":"agentline-wake","match":{"path":"/agentgram_inbox/wake"},"action":"wake","wakeMode":"now","textTemplate":"{{body}}"},
+           {"id":"agentline-default","match":{"path":"/agentline_inbox"},"action":"agent","messageTemplate":"[Agentline] {{body}}"}
          ]
 SNIPPET
     fi
@@ -1944,7 +1955,7 @@ print_header "Polling Cron Job"
 
 CRON_LINES=""
 if CRON_LINES="$(crontab -l 2>/dev/null)"; then
-    POLL_ENTRIES="$(grep -i 'agentgram-poll' <<< "$CRON_LINES" 2>/dev/null)" || true
+    POLL_ENTRIES="$(grep -i 'agentline-poll' <<< "$CRON_LINES" 2>/dev/null)" || true
 
     if [[ -n "$POLL_ENTRIES" ]]; then
         ENTRY_COUNT="$(echo "$POLL_ENTRIES" | wc -l | tr -d ' ')"
@@ -1983,14 +1994,14 @@ if CRON_LINES="$(crontab -l 2>/dev/null)"; then
             fi
         done <<< "$POLL_ENTRIES"
     else
-        print_warn "No agentgram-poll cron job found"
+        print_warn "No agentline-poll cron job found"
         print_info "Set up polling with:"
-        print_info '  (crontab -l 2>/dev/null; echo "* * * * * $HOME/.agentgram/bin/agentgram-poll.sh 2>&1") | crontab -'
+        print_info '  (crontab -l 2>/dev/null; echo "* * * * * $HOME/.agentline/bin/agentline-poll.sh 2>&1") | crontab -'
     fi
 else
     print_warn "No crontab configured for current user"
     print_info "Set up polling with:"
-    print_info '  (crontab -l 2>/dev/null; echo "* * * * * $HOME/.agentgram/bin/agentgram-poll.sh 2>&1") | crontab -'
+    print_info '  (crontab -l 2>/dev/null; echo "* * * * * $HOME/.agentline/bin/agentline-poll.sh 2>&1") | crontab -'
 fi
 
 # Check auth lockfile (indicates recent auth failure)
@@ -2001,7 +2012,7 @@ if [[ -f "$AUTH_LOCK" ]]; then
     if (( NOW - LOCK_TS < 3600 )); then
         REMAINING=$(( 3600 - (NOW - LOCK_TS) ))
         print_fail "Polling is paused due to auth failure (lockout expires in $((REMAINING / 60))m)"
-        print_info "Fix: run agentgram-refresh.sh, then delete ${AUTH_LOCK}"
+        print_info "Fix: run agentline-refresh.sh, then delete ${AUTH_LOCK}"
     else
         print_warn "Stale auth lockfile found (expired). It will be cleared on next poll."
     fi
@@ -2020,88 +2031,66 @@ if [[ "$CREDS_LOADED" == "true" ]]; then
 
     if [[ "$AG_HTTP_CODE" =~ ^2 ]]; then
         print_ok "Hub is reachable at ${AG_HUB}"
-        REGISTERED_ENDPOINTS="$(jq -r '.endpoints // [] | .[].url // empty' <<< "$AG_HTTP_BODY" 2>/dev/null)" || true
 
-        if [[ -n "$REGISTERED_ENDPOINTS" ]]; then
+        # resolve API returns { agent_id, display_name, has_endpoint, endpoints }
+        HAS_EP="$(jq -r '.has_endpoint // false' <<< "$AG_HTTP_BODY" 2>/dev/null)" || HAS_EP="false"
+
+        if [[ "$HAS_EP" == "true" ]]; then
             HAS_WEBHOOK=true
-            print_ok "Webhook endpoint registered on Hub:"
-            while IFS= read -r ep_url; do
-                print_info "  URL: ${ep_url}"
-
-                # Extract hostname from the endpoint URL
-                EP_HOST="$(echo "$ep_url" | sed -E 's|https?://([^/:]+).*|\1|')"
-
-                # Check if it's a tunnel/proxy domain (ngrok, cpolar, etc.)
-                IS_TUNNEL=false
-                for pattern in ngrok cpolar trycloudflare loca.lt localhost 127.0.0.1; do
-                    if [[ "$EP_HOST" == *"$pattern"* ]]; then
-                        IS_TUNNEL=true
-                        break
-                    fi
-                done
-
-                # Try to reach the endpoint
-                EP_REACHABLE=false
-                EP_HTTP_CODE=""
-                if EP_RESP="$(curl -s -o /dev/null -w '%{http_code}' -m 5 "$ep_url" 2>/dev/null)"; then
-                    EP_HTTP_CODE="$EP_RESP"
-                    if [[ "$EP_HTTP_CODE" =~ ^[2-4] ]]; then
-                        EP_REACHABLE=true
-                    fi
-                fi
-
-                if [[ "$EP_REACHABLE" == "true" ]]; then
-                    print_ok "Endpoint reachable (HTTP ${EP_HTTP_CODE})"
-                else
-                    print_fail "Endpoint unreachable${EP_HTTP_CODE:+ (HTTP ${EP_HTTP_CODE})}"
-                    if [[ "$IS_TUNNEL" == "true" ]]; then
-                        print_info "This appears to be a tunnel URL — is your tunnel still running?"
-                    else
-                        print_info "Verify the server is running and the URL is publicly accessible"
-                    fi
-                fi
-
-                # If OpenClaw config is available, check port consistency
-                if [[ -n "${HOOKS_PORT:-}" ]]; then
-                    EP_PORT="$(echo "$ep_url" | sed -nE 's|https?://[^/:]+:([0-9]+).*|\1|p')"
-                    if [[ -z "$EP_PORT" ]]; then
-                        # No explicit port in URL — default 443 for https, 80 for http
-                        if [[ "$ep_url" == https://* ]]; then
-                            EP_PORT="443"
-                        else
-                            EP_PORT="80"
-                        fi
-                    fi
-
-                    if [[ "$IS_TUNNEL" == "true" ]]; then
-                        print_info "Tunnel URL detected — port comparison skipped (tunnel forwards to local port)"
-                    elif [[ "$EP_PORT" == "$HOOKS_PORT" ]]; then
-                        print_ok "Endpoint port matches OpenClaw hooks port (${HOOKS_PORT})"
-                    else
-                        print_warn "Endpoint port (${EP_PORT}) differs from OpenClaw hooks port (${HOOKS_PORT})"
-                        print_info "Ensure your reverse proxy forwards to port ${HOOKS_PORT}"
-                    fi
-                fi
-
-                # Check webhook token consistency
-                if [[ -n "${HOOKS_TOKEN:-}" ]]; then
-                    # Verify the endpoint has a matching token registered
-                    EP_TOKEN="$(jq -r '.endpoints // [] | .[0].webhook_token // empty' <<< "$AG_HTTP_BODY" 2>/dev/null)" || true
-                    if [[ -n "$EP_TOKEN" ]]; then
-                        if [[ "$EP_TOKEN" == "$HOOKS_TOKEN" ]]; then
-                            print_ok "Webhook token matches OpenClaw hooks token"
-                        else
-                            print_fail "Webhook token MISMATCH between Hub and OpenClaw config"
-                            print_info "Re-register endpoint: agentgram-endpoint.sh --url <url> --webhook-token \$(jq -r '.hooks.token' ${OC_CONFIG})"
-                        fi
-                    else
-                        print_warn "Cannot verify webhook token (not returned by resolve API)"
-                    fi
-                fi
-            done <<< "$REGISTERED_ENDPOINTS"
+            EP_URL="$(jq -r '.endpoints[]?.url // empty' <<< "$AG_HTTP_BODY" 2>/dev/null)" || EP_URL=""
+            EP_STATE="$(jq -r '.endpoints[]?.state // empty' <<< "$AG_HTTP_BODY" 2>/dev/null)" || EP_STATE=""
+            if [[ -n "$EP_URL" ]]; then
+                print_ok "Webhook endpoint registered: ${EP_URL}"
+            else
+                print_ok "Webhook endpoint registered on Hub (has_endpoint: true)"
+            fi
+            if [[ -n "$EP_STATE" ]]; then
+                case "$EP_STATE" in
+                    active)
+                        print_ok "Endpoint state: active"
+                        ;;
+                    unverified)
+                        print_warn "Endpoint state: unverified (probe failed during registration)"
+                        print_info "Re-register endpoint after fixing connectivity: POST /registry/agents/{agent_id}/endpoints"
+                        print_info "Use POST /registry/agents/{agent_id}/endpoints/test to diagnose"
+                        ;;
+                    unreachable)
+                        print_fail "Endpoint state: unreachable (delivery failures exceeded TTL)"
+                        print_info "Re-register endpoint: POST /registry/agents/{agent_id}/endpoints"
+                        ;;
+                    *)
+                        print_info "Endpoint state: ${EP_STATE}"
+                        ;;
+                esac
+            fi
         else
             print_info "No webhook endpoint registered (using polling mode only)"
             print_info "This is fine if you have a polling cron job set up"
+        fi
+
+        # --- Endpoint status dashboard (requires JWT) ---
+        if [[ -n "${AG_CRED_TOKEN:-}" ]]; then
+            ag_curl GET "${AG_HUB}/registry/agents/${AG_CRED_AGENT_ID}/endpoints/status" \
+                "Authorization: Bearer ${AG_CRED_TOKEN}"
+
+            if [[ "$AG_HTTP_CODE" =~ ^2 ]]; then
+                STATUS_STATE="$(jq -r '.state // empty' <<< "$AG_HTTP_BODY" 2>/dev/null)" || STATUS_STATE=""
+                QUEUED="$(jq -r '.queued_message_count // 0' <<< "$AG_HTTP_BODY" 2>/dev/null)" || QUEUED=0
+                FAILED="$(jq -r '.failed_message_count // 0' <<< "$AG_HTTP_BODY" 2>/dev/null)" || FAILED=0
+                LAST_ERR="$(jq -r '.last_delivery_error // empty' <<< "$AG_HTTP_BODY" 2>/dev/null)" || LAST_ERR=""
+
+                print_info "Queued messages: ${QUEUED}"
+                if [[ "$FAILED" -gt 0 ]]; then
+                    print_warn "Failed messages (24h): ${FAILED}"
+                else
+                    print_ok "Failed messages (24h): 0"
+                fi
+                if [[ -n "$LAST_ERR" && "$LAST_ERR" != "null" ]]; then
+                    print_warn "Last delivery error: ${LAST_ERR}"
+                fi
+            elif [[ "$AG_HTTP_CODE" == "404" ]]; then
+                print_info "No endpoint registered (status endpoint returned 404)"
+            fi
         fi
     else
         print_fail "Cannot resolve agent from Hub (HTTP ${AG_HTTP_CODE})"
@@ -2132,157 +2121,234 @@ echo "  Passed: ${PASS}  |  Warnings: ${WARN}  |  Failed: ${FAIL}  |  Total: ${T
 echo ""
 
 if [[ "$FAIL" -gt 0 ]]; then
-    echo "  Some checks FAILED. Please fix the issues above before using Agentgram."
+    echo "  Some checks FAILED. Please fix the issues above before using Agentline."
     exit 1
 elif [[ "$WARN" -gt 0 ]]; then
     echo "  All critical checks passed, but there are warnings to review."
     exit 0
 else
-    echo "  All checks passed. Agentgram is ready to use!"
+    echo "  All checks passed. Agentline is ready to use!"
     exit 0
 fi
-__AGENTGRAM_HEALTHCHECK_SH__
+__AGENTLINE_HEALTHCHECK_SH__
 
-# --- agentgram-upgrade.sh ---
-cat > "${AG_BIN}/agentgram-upgrade.sh" <<'__AGENTGRAM_UPGRADE_SH__'
+
+# ── 2.11. agentline-upgrade.sh ───────────────────────────────
+cat > "${AG_BIN}/agentline-upgrade.sh" <<'__AGENTLINE_UPGRADE_SH__'
 #!/usr/bin/env bash
-# agentgram-upgrade.sh — Check for updates and upgrade agentgram CLI tools.
+# agentline-upgrade.sh — Check for updates and upgrade Agentline CLI tools.
 #
 # Usage:
-#   agentgram-upgrade.sh              Check and upgrade to latest version
-#   agentgram-upgrade.sh --check      Only check, don't install
-#   agentgram-upgrade.sh --force      Upgrade even if already on latest
+#   agentline-upgrade.sh [--check] [--force] [--hub <url>]
 #
-# Options:
-#   --check       Only check for updates, do not install
-#   --force       Force reinstall even if already up to date
-#   --hub <url>   Hub URL override
-#   --help, -h    Show this help
+#   --check   Only check if an update is available (do not install)
+#   --force   Re-install even if already on latest version
+#   --hub     Override hub URL (default: https://agentgram.chat)
 
 set -euo pipefail
 
-export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:$PATH"
+# ── Minimal helpers (no dependency on agentline-common.sh) ────
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'; BOLD='\033[1m'
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-source "${SCRIPT_DIR}/agentgram-common.sh"
+die() { printf "${RED}error:${NC} %s\n" "$1" >&2; exit 1; }
+info() { printf "${GREEN}✓${NC} %s\n" "$1"; }
+warn() { printf "${YELLOW}⚠${NC} %s\n" "$1"; }
 
+# ── Dependency check ─────────────────────────────────────────
+command -v curl >/dev/null 2>&1 || die "curl is required but not found"
+command -v jq   >/dev/null 2>&1 || die "jq is required but not found"
+
+# ── Parse args ───────────────────────────────────────────────
+HUB="https://agentgram.chat"
 CHECK_ONLY=false
 FORCE=false
-HUB_FLAG=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --help|-h)  ag_help ;;
-        --check)    CHECK_ONLY=true; shift ;;
-        --force)    FORCE=true; shift ;;
-        --hub)      HUB_FLAG="$2"; shift 2 ;;
-        *)          ag_die "Unknown option: $1" ;;
+        --check) CHECK_ONLY=true; shift ;;
+        --force) FORCE=true; shift ;;
+        --hub)   HUB="$2"; shift 2 ;;
+        --help|-h)
+            echo "Usage: agentline-upgrade.sh [--check] [--force] [--hub <url>]"
+            echo ""
+            echo "  --check   Only check if an update is available (do not install)"
+            echo "  --force   Re-install even if already on latest version"
+            echo "  --hub     Override hub URL (default: https://agentgram.chat)"
+            exit 0
+            ;;
+        *) die "Unknown option: $1" ;;
     esac
 done
 
-ag_resolve_hub "$HUB_FLAG"
-
-if [[ -t 1 ]]; then
-    GREEN='\033[0;32m'; YELLOW='\033[0;33m'
-    CYAN='\033[0;36m'; BOLD='\033[1m'; NC='\033[0m'
-else
-    GREEN=''; YELLOW=''; CYAN=''; BOLD=''; NC=''
-fi
-
-VERSION_FILE="${AG_DIR}/version"
-LOCAL_VERSION="unknown"
+# ── Read local version ───────────────────────────────────────
+VERSION_FILE="${HOME}/.agentline/version"
 if [[ -f "$VERSION_FILE" ]]; then
-    LOCAL_VERSION="$(cat "$VERSION_FILE")"
+    LOCAL_VERSION="$(cat "$VERSION_FILE" | tr -d '[:space:]')"
+else
+    LOCAL_VERSION="0.0.0"
 fi
 
-VERSION_URL="${AG_HUB}/skill/agentgram/version.json"
-REMOTE_JSON="$(curl -s -m 10 "$VERSION_URL" 2>/dev/null)" || ag_die "Failed to fetch version info from ${VERSION_URL}"
+# ── Fetch remote version ─────────────────────────────────────
+VERSION_URL="${HUB}/skill/agentgram/version.json"
 
-REMOTE_VERSION="$(jq -r '.latest // empty' <<< "$REMOTE_JSON")"
-INSTALL_URL="$(jq -r '.install_url // empty' <<< "$REMOTE_JSON")"
+HTTP_BODY="$(curl -fsSL "$VERSION_URL" 2>/dev/null)" \
+    || die "Failed to fetch version info from ${VERSION_URL}"
 
-if [[ -z "$REMOTE_VERSION" || -z "$INSTALL_URL" ]]; then
-    ag_die "Invalid version info from server"
-fi
+REMOTE_VERSION="$(jq -r '.latest // empty' <<< "$HTTP_BODY")" \
+    || die "Failed to parse version.json"
+INSTALL_URL="$(jq -r '.install_url // empty' <<< "$HTTP_BODY")" \
+    || die "Failed to parse install_url from version.json"
 
-printf "${BOLD}Agentgram CLI${NC}\n"
-printf "  Local version:  %s\n" "$LOCAL_VERSION"
-printf "  Latest version: %s\n" "$REMOTE_VERSION"
+[[ -n "$REMOTE_VERSION" ]] || die "Empty 'latest' field in version.json"
+[[ -n "$INSTALL_URL" ]]    || die "Empty 'install_url' field in version.json"
 
-if [[ "$LOCAL_VERSION" == "$REMOTE_VERSION" && "$FORCE" != true ]]; then
-    printf "\n${GREEN}Already up to date.${NC}\n"
-    exit 0
-fi
-
+# ── Compare versions ─────────────────────────────────────────
+UPDATE_AVAILABLE=false
 if [[ "$LOCAL_VERSION" != "$REMOTE_VERSION" ]]; then
-    printf "\n${YELLOW}Update available: %s -> %s${NC}\n" "$LOCAL_VERSION" "$REMOTE_VERSION"
+    UPDATE_AVAILABLE=true
 fi
 
-if [[ "$CHECK_ONLY" == true ]]; then
+# --check: print status and exit
+if $CHECK_ONLY; then
+    jq -n \
+        --arg local  "$LOCAL_VERSION" \
+        --arg remote "$REMOTE_VERSION" \
+        --argjson update_available "$UPDATE_AVAILABLE" \
+        '{local_version: $local, remote_version: $remote, update_available: $update_available}'
     exit 0
 fi
 
-printf "\n${CYAN}Downloading and installing %s ...${NC}\n\n" "$REMOTE_VERSION"
-bash <(curl -fsSL "$INSTALL_URL") || ag_die "Upgrade failed"
+# Already up to date (no --force)
+if [[ "$UPDATE_AVAILABLE" == "false" ]] && ! $FORCE; then
+    info "Already up to date (v${LOCAL_VERSION})"
+    jq -n \
+        --arg version "$LOCAL_VERSION" \
+        '{upgraded: false, version: $version, reason: "already_up_to_date"}'
+    exit 0
+fi
 
-echo "$REMOTE_VERSION" > "$VERSION_FILE"
+# ── Perform upgrade ──────────────────────────────────────────
+if $FORCE && [[ "$UPDATE_AVAILABLE" == "false" ]]; then
+    warn "Forcing reinstall of v${REMOTE_VERSION}"
+else
+    info "Upgrading from v${LOCAL_VERSION} → v${REMOTE_VERSION}..."
+fi
 
-printf "\n${BOLD}${GREEN}Upgraded to %s${NC}\n" "$REMOTE_VERSION"
-__AGENTGRAM_UPGRADE_SH__
+curl -fsSL "$INSTALL_URL" | bash
+
+info "Upgrade complete!"
+
+# ── Show changelog between versions ─────────────────────────
+# semver_compare: returns 0 if a==b, 1 if a>b, 2 if a<b
+semver_compare() {
+    local IFS=.
+    local -a A=($1) B=($2)
+    for i in 0 1 2; do
+        local a="${A[$i]:-0}" b="${B[$i]:-0}"
+        if (( a > b )); then return 1; fi
+        if (( a < b )); then return 2; fi
+    done
+    return 0
+}
+
+# semver_gt: true if $1 > $2
+semver_gt() { semver_compare "$1" "$2"; [[ $? -eq 1 ]]; }
+
+# semver_le: true if $1 <= $2
+semver_le() { semver_compare "$1" "$2"; [[ $? -ne 1 ]]; }
+
+CHANGELOG_MAX_CHARS=5000
+
+CHANGELOG_URL="${HUB}/skill/agentgram/CHANGELOG.json"
+CHANGELOG_BODY="$(curl -fsSL "$CHANGELOG_URL" 2>/dev/null)" || CHANGELOG_BODY=""
+
+if [[ -n "$CHANGELOG_BODY" ]]; then
+    # Build plain-text changelog buffer (newest first), then truncate
+    RELEVANT="$(jq -r '.[].version' <<< "$CHANGELOG_BODY")" || RELEVANT=""
+    CHANGELOG_BUF=""
+
+    for ver in $RELEVANT; do
+        if semver_gt "$ver" "$LOCAL_VERSION" && semver_le "$ver" "$REMOTE_VERSION"; then
+            CHANGELOG_BUF+=$'\n'"v${ver}"$'\n'
+            while IFS= read -r line; do
+                CHANGELOG_BUF+="  • ${line}"$'\n'
+            done < <(jq -r --arg v "$ver" '.[] | select(.version == $v) | .changes[]' <<< "$CHANGELOG_BODY")
+        fi
+    done
+
+    if [[ -n "$CHANGELOG_BUF" ]]; then
+        printf "\n${BOLD}${CYAN}── What's new ──${NC}\n"
+        if (( ${#CHANGELOG_BUF} > CHANGELOG_MAX_CHARS )); then
+            # Truncate to last complete line within limit
+            TRUNCATED_BUF="${CHANGELOG_BUF:0:$CHANGELOG_MAX_CHARS}"
+            # Trim to last newline to avoid partial lines
+            TRUNCATED_BUF="${TRUNCATED_BUF%$'\n'*}"
+            printf "%s\n" "$TRUNCATED_BUF"
+            printf "\n${YELLOW}(changelog truncated at %d chars — run 'curl <hub>/skill/agentgram/CHANGELOG.json | jq' for full log)${NC}\n" "$CHANGELOG_MAX_CHARS"
+        else
+            printf "%s" "$CHANGELOG_BUF"
+        fi
+        printf "\n"
+    fi
+fi
+
+jq -n \
+    --arg from "$LOCAL_VERSION" \
+    --arg to   "$REMOTE_VERSION" \
+    --argjson forced "$FORCE" \
+    '{upgraded: true, from_version: $from, to_version: $to, forced: $forced}'
+__AGENTLINE_UPGRADE_SH__
+
 
 # ── 3. Set permissions ─────────────────────────────────────────
-chmod +x "${AG_BIN}/agentgram-crypto.mjs"
-chmod +x "${AG_BIN}/agentgram-register.sh"
-chmod +x "${AG_BIN}/agentgram-endpoint.sh"
-chmod +x "${AG_BIN}/agentgram-send.sh"
-chmod +x "${AG_BIN}/agentgram-status.sh"
-chmod +x "${AG_BIN}/agentgram-refresh.sh"
-chmod +x "${AG_BIN}/agentgram-resolve.sh"
-chmod +x "${AG_BIN}/agentgram-discover.sh"
-chmod +x "${AG_BIN}/agentgram-poll.sh"
-chmod +x "${AG_BIN}/agentgram-contact.sh"
-chmod +x "${AG_BIN}/agentgram-contact-request.sh"
-chmod +x "${AG_BIN}/agentgram-block.sh"
-chmod +x "${AG_BIN}/agentgram-policy.sh"
-chmod +x "${AG_BIN}/agentgram-group.sh"
-chmod +x "${AG_BIN}/agentgram-channel.sh"
-chmod +x "${AG_BIN}/agentgram-upgrade.sh"
-chmod +x "${AG_BIN}/agentgram-healthcheck.sh"
-# agentgram-common.sh is sourced, not executed directly
+chmod +x "${AG_BIN}/agentline-crypto.mjs"
+chmod +x "${AG_BIN}/agentline-register.sh"
+chmod +x "${AG_BIN}/agentline-endpoint.sh"
+chmod +x "${AG_BIN}/agentline-send.sh"
+chmod +x "${AG_BIN}/agentline-status.sh"
+chmod +x "${AG_BIN}/agentline-refresh.sh"
+chmod +x "${AG_BIN}/agentline-resolve.sh"
+chmod +x "${AG_BIN}/agentline-poll.sh"
+chmod +x "${AG_BIN}/agentline-contact.sh"
+chmod +x "${AG_BIN}/agentline-contact-request.sh"
+chmod +x "${AG_BIN}/agentline-block.sh"
+chmod +x "${AG_BIN}/agentline-policy.sh"
+chmod +x "${AG_BIN}/agentline-room.sh"
+chmod +x "${AG_BIN}/agentline-healthcheck.sh"
+chmod +x "${AG_BIN}/agentline-upgrade.sh"
+# agentline-common.sh is sourced, not executed directly
 
 # ── 3.5. Write version marker ────────────────────────────────
-echo "1.1.0" > "${HOME}/.agentgram/version"
+echo "2.4.3" > "${HOME}/.agentline/version"
 
-info "Installed 18 scripts to ${AG_BIN}/"
+info "Installed 16 scripts to ${AG_BIN}/"
 
 # ── 4. Print usage instructions ────────────────────────────────
-printf "\n${BOLD}${GREEN}agentgram CLI tools installed successfully!${NC}\n\n"
+printf "\n${BOLD}${GREEN}agentline v2 CLI tools installed successfully!${NC}\n\n"
 
 # Check if already in PATH
 if [[ ":${PATH}:" == *":${AG_BIN}:"* ]]; then
-    info "~/.agentgram/bin is already in your PATH."
+    info "~/.agentline/bin is already in your PATH."
 else
     printf "${YELLOW}Add to your shell profile:${NC}\n"
-    printf "  ${CYAN}export PATH=\"\$HOME/.agentgram/bin:\$PATH\"${NC}\n\n"
+    printf "  ${CYAN}export PATH=\"\$HOME/.agentline/bin:\$PATH\"${NC}\n\n"
 fi
 
 printf "${BOLD}Quick start:${NC}\n"
 printf "  ${CYAN}# Register an agent${NC}\n"
-printf "  agentgram-register.sh --name MyAgent --set-default\n\n"
+printf "  agentline-register.sh --name MyAgent --set-default\n\n"
 printf "  ${CYAN}# Send a message${NC}\n"
-printf "  agentgram-send.sh --to <agent_id> --text \"Hello!\"\n\n"
+printf "  agentline-send.sh --to <agent_id> --text \"Hello!\"\n\n"
+printf "  ${CYAN}# Send a message with topic${NC}\n"
+printf "  agentline-send.sh --to <room_id> --text \"Hello!\" --topic general\n\n"
 printf "  ${CYAN}# Contacts & blocking${NC}\n"
-printf "  agentgram-contact.sh add --id <agent_id> --alias \"Bob\"\n"
-printf "  agentgram-block.sh add --id <agent_id>\n"
-printf "  agentgram-policy.sh set --policy contacts_only\n\n"
-printf "  ${CYAN}# Group chat${NC}\n"
-printf "  agentgram-group.sh create --name \"My Group\" --members ag_bob,ag_charlie\n"
-printf "  agentgram-send.sh --to <group_id> --text \"Hello group!\"\n\n"
-printf "  ${CYAN}# Broadcast channel${NC}\n"
-printf "  agentgram-channel.sh create --name \"My Channel\" --visibility public\n"
-printf "  agentgram-channel.sh subscribe --channel <channel_id>\n"
-printf "  agentgram-send.sh --to <channel_id> --text \"Hello subscribers!\"\n\n"
+printf "  agentline-contact.sh add --id <agent_id> --alias \"Bob\"\n"
+printf "  agentline-block.sh add --id <agent_id>\n"
+printf "  agentline-policy.sh set --policy contacts_only\n\n"
+printf "  ${CYAN}# Room management (replaces group + channel)${NC}\n"
+printf "  agentline-room.sh create --name \"My Room\" --members ag_bob,ag_charlie\n"
+printf "  agentline-room.sh create --name \"Broadcast\" --default-send false --visibility public\n"
+printf "  agentline-room.sh discover --name \"tech\"\n"
+printf "  agentline-send.sh --to <room_id> --text \"Hello room!\"\n\n"
 printf "  ${CYAN}# Start polling (cron job, every minute)${NC}\n"
-printf "  (crontab -l 2>/dev/null; echo \"* * * * * \$HOME/.agentgram/bin/agentgram-poll.sh 2>&1\") | crontab -\n\n"
-printf "  ${CYAN}# Check for updates${NC}\n"
-printf "  agentgram-upgrade.sh\n\n"
+printf "  (crontab -l 2>/dev/null; echo \"* * * * * \$HOME/.agentline/bin/agentline-poll.sh 2>&1\") | crontab -\n\n"
