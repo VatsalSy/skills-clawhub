@@ -3,9 +3,15 @@
   "slug": "agent-meter",
   "displayName": "Meter",
   "latest": {
-    "version": "0.4.0",
-    "publishedAt": 1772674697090,
-    "commit": "https://github.com/openclaw/skills/commit/5497a5ad553d0eee355b980c3f842009bb107026"
+    "version": "0.6.3",
+    "publishedAt": 1772802860795,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.4.0",
+      "publishedAt": 1772674697090,
+      "commit": "https://github.com/openclaw/skills/commit/5497a5ad553d0eee355b980c3f842009bb107026"
+    }
+  ]
 }
