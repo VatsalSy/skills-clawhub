@@ -1,0 +1,11 @@
+{
+  "owner": "aurexcards",
+  "slug": "aurex",
+  "displayName": "Aurex",
+  "latest": {
+    "version": "1.0.2",
+    "publishedAt": 1772585908746,
+    "commit": null
+  },
+  "history": []
+}
