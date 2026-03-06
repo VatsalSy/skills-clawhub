@@ -58,6 +58,13 @@ The setup script creates a Python virtual environment, installs dependencies, an
 
 > On Debian/Ubuntu, you may need to install the venv package first: `sudo apt install python3-venv`
 
+To verify that everything is configured correctly, run the diagnostic script:
+```bash
+bash check.sh
+```
+
+It checks Python, FFmpeg, virtual environment, dependencies, and API keys — and tells you exactly what to fix if something is missing.
+
 ## Configuration
 
 ### 1. Set API keys (recommended — via OpenClaw config)

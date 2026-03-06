@@ -21,7 +21,15 @@ echo "Installing Python dependencies..."
 
 # 2. Configuration files
 if [ ! -f ".env" ]; then
-    cp assets/env.example .env
+    if [ -f "assets/env.example" ]; then
+        cp assets/env.example .env
+    else
+        cat > .env <<'ENVEOF'
+YANDEX_API_KEY=your_api_key_here
+YANDEX_FOLDER_ID=your_folder_id_here
+STT_DEFAULT_PROVIDER=yandex
+ENVEOF
+    fi
     echo "Created .env from template."
 else
     echo ".env already exists, skipping."

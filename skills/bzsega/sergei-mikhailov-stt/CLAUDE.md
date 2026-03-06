@@ -1,9 +1,14 @@
 # Project Notes for Claude
 
+## Workflow rules
+
+- **Never** commit, push, or publish to ClawHub without explicit user permission. Always ask first.
+
 ## Reference Documentation
 
 Before answering any question about ClawHub commands, SKILL.md format, or skill configuration — fetch and read the relevant documentation page first:
 
+- https://docs.openclaw.ai/ OpenClaw docs.
 - https://docs.openclaw.ai/tools/clawhub — ClawHub CLI commands (install, update, list, publish, etc.)
 - https://docs.openclaw.ai/tools/skills — SKILL.md structure and frontmatter spec
 - https://docs.openclaw.ai/tools/skills-config — skill configuration and openclaw.json
@@ -17,6 +22,14 @@ clawhub update --all
 clawhub update --version <version>   # single slug only
 clawhub update --force               # overwrite when local files don't match published version
 clawhub list                         # reads .clawhub/lock.json
+
+clawhub publish <path>               # publish skill from folder
+  --slug <slug>                      # skill slug (unique ID)
+  --name <name>                      # display name shown in search
+  --version <version>                # semver (e.g. 1.1.3)
+  --changelog <text>                 # changelog text
+  --tags <tags>                      # comma-separated tags (default: "latest")
+  --fork-of <slug[@version]>         # mark as a fork of an existing skill
 ```
 
 ## Key conventions
