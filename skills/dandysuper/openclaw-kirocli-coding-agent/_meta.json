@@ -3,9 +3,15 @@
   "slug": "openclaw-kirocli-coding-agent",
   "displayName": "openclaw-kirocli-coding-agent",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1771274852220,
-    "commit": "https://github.com/openclaw/skills/commit/c39b02b7dce2dea1ab1ee09814d851a1b60c9e2a"
+    "version": "1.5.0",
+    "publishedAt": 1772634946229,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1771274852220,
+      "commit": "https://github.com/openclaw/skills/commit/c39b02b7dce2dea1ab1ee09814d851a1b60c9e2a"
+    }
+  ]
 }
