@@ -1,6 +1,16 @@
 ---
 name: sealvera
 description: "Tamper-evident audit trail for AI agent decisions. Use when logging LLM decisions, setting up AI compliance, auditing agents for EU AI Act, HIPAA, GDPR or SOC 2, or when a user asks about AI decision audit trails, explainability, or SealVera."
+credentials:
+  - name: SEALVERA_API_KEY
+    description: "Your SealVera API key (starts with sv_). Get a free key at app.sealvera.com."
+    required: true
+  - name: SEALVERA_ENDPOINT
+    description: "SealVera server URL. Defaults to https://app.sealvera.com."
+    required: false
+  - name: SEALVERA_AGENT
+    description: "Agent name shown in dashboard. Defaults to 'openclaw-agent'."
+    required: false
 tags:
   - compliance
   - audit
