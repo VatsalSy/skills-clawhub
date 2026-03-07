@@ -1,8 +1,10 @@
 ---
+version: 1.0.0
 name: aerobase-travel-lounges
 description: Airport lounge access with recovery scores, Priority Pass, and jetlag-friendly recommendations
 metadata: {"openclaw": {"emoji": "🏧", "primaryEnv": "AEROBASE_API_KEY", "user-invocable": true, "homepage": "https://aerobase.app"}}
 ---
+version: 1.0.0
 
 # Aerobase Airport Lounges 🏧
 
@@ -65,7 +67,7 @@ Returns lounges with recovery scores, amenities, access info.
 - **Free**: 5 requests/day
 - **Premium**: Unlimited + all skills + recovery plans
 
-Get premium: https://aerobase.app/concierge/pricing
+Get premium: https://aerobase.app/openclaw-travel-agent/pricing
 
 ## Get Everything
 
