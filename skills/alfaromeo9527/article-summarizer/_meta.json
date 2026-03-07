@@ -1,0 +1,11 @@
+{
+  "owner": "alfaromeo9527",
+  "slug": "article-summarizer",
+  "displayName": "文章摘要生成器",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1772868124229,
+    "commit": null
+  },
+  "history": []
+}
