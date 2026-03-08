@@ -1,55 +1,52 @@
 #!/bin/bash
-# tweet.sh — Open Twitter compose, type tweet, press Cmd+Enter to post
-# Usage: bash tweet.sh "tweet content" [base_url]
-
-set -e
+# Twitter Web AutoPost Script
+# Usage: bash tweet.sh "tweet content" "base_url"
 
 TWEET_TEXT="$1"
 BASE_URL="${2:-https://x.com}"
 
 if [ -z "$TWEET_TEXT" ]; then
-  echo "Usage: bash tweet.sh \"tweet content\" [base_url]"
-  exit 1
+    echo "Error: Tweet content is required"
+    exit 1
 fi
 
-CLI="openclaw browser"
+echo "Opening Twitter compose page..."
+openclaw browser open --target-url "${BASE_URL}/compose/post"
 
-echo "=== Step 1: Opening compose page ==="
-$CLI open "${BASE_URL}/compose/post" 2>/dev/null | grep -E "opened|error" || \
-$CLI open "${BASE_URL}/compose/tweet" 2>/dev/null | grep -E "opened|error" || \
-{ echo "ERROR: Could not open compose page"; exit 1; }
-
+echo "Waiting for page to load..."
 sleep 3
 
-echo "=== Step 2: Finding textbox ==="
-SNAP=$($CLI snapshot 2>/dev/null)
-TEXTBOX_REF=$(echo "$SNAP" | grep -i 'textbox' | grep -oE 'ref=e[0-9]+' | head -1 | sed 's/ref=//')
+echo "Getting page snapshot..."
+SNAPSHOT=$(openclaw browser snapshot --interactive)
+
+echo "Finding text input..."
+# Extract the ref for the textbox
+TEXTBOX_REF=$(echo "$SNAPSHOT" | grep -o 'textbox.*\[ref=e[0-9]*\]' | head -1 | grep -o 'e[0-9]*')
 
 if [ -z "$TEXTBOX_REF" ]; then
-  echo "ERROR: Could not find textbox"
-  exit 1
-fi
-echo "Found textbox: $TEXTBOX_REF"
-
-echo "=== Step 3: Typing tweet ==="
-$CLI type "$TEXTBOX_REF" "$TWEET_TEXT" 2>/dev/null | grep -E "typed|error"
-echo "Content: $TWEET_TEXT"
-
-sleep 1
-
-echo "=== Step 4: Posting (Cmd+Enter) ==="
-$CLI press "Meta+Enter" 2>/dev/null | grep -E "pressed|error"
-
-sleep 3
-
-echo "=== Step 5: Verifying ==="
-SNAP2=$($CLI snapshot 2>/dev/null)
-if echo "$SNAP2" | grep -q "已发布\|Your post was sent\|was sent"; then
-  echo "SUCCESS: Tweet posted!"
-else
-  echo "POSTED: Cmd+Enter sent. Check your Twitter timeline to confirm."
+    echo "Error: Could not find text input box"
+    exit 1
 fi
 
-echo ""
-echo "=== Done ==="
-echo "Tweet: $TWEET_TEXT"
+echo "Typing tweet content into ref: $TEXTBOX_REF"
+openclaw browser act --kind type --ref "$TEXTBOX_REF" --text "$TWEET_TEXT"
+
+echo "Waiting for content to be typed..."
+sleep 2
+
+echo "Getting updated snapshot..."
+SNAPSHOT2=$(openclaw browser snapshot --interactive)
+
+echo "Finding post button..."
+# Extract the ref for the post button (发帖)
+POST_BUTTON_REF=$(echo "$SNAPSHOT2" | grep -o 'button "发帖".*\[ref=e[0-9]*\]' | grep -o 'e[0-9]*')
+
+if [ -z "$POST_BUTTON_REF" ]; then
+    echo "Error: Could not find post button"
+    exit 1
+fi
+
+echo "Clicking post button ref: $POST_BUTTON_REF"
+openclaw browser act --kind click --ref "$POST_BUTTON_REF"
+
+echo "Tweet posted successfully!"
