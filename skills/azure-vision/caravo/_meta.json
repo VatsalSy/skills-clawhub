@@ -3,11 +3,16 @@
   "slug": "caravo",
   "displayName": "Caravo Service Marketplace",
   "latest": {
-    "version": "0.4.20",
-    "publishedAt": 1772786840639,
-    "commit": "https://github.com/openclaw/skills/commit/49e0867de1087cc6925e70b3390c85339b283c61"
+    "version": "0.4.22",
+    "publishedAt": 1772800850811,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.4.20",
+      "publishedAt": 1772786840639,
+      "commit": "https://github.com/openclaw/skills/commit/49e0867de1087cc6925e70b3390c85339b283c61"
+    },
     {
       "version": "0.4.13",
       "publishedAt": 1772617965445,
