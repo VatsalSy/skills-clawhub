@@ -14,8 +14,8 @@
  */
 
 import { spawn, execFileSync, type ChildProcess } from "node:child_process";
-import { existsSync } from "node:fs";
-import { homedir } from "node:os";
+import { existsSync, mkdtempSync, mkdirSync, copyFileSync, rmSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 
 const CDP_PORT = 9222;
@@ -212,6 +212,75 @@ async function launchChromeHeadless(
   );
 }
 
+// ─── Temp Profile Copy (for profile-lock workaround) ─────────────────────────
+
+/**
+ * Copy essential Chrome profile files to a temp directory so we can launch
+ * headless Chrome without conflicting with the running Chrome's profile lock.
+ * Chrome can still decrypt App-Bound Encrypted cookies because the same
+ * IElevator COM service + DPAPI context is used (same binary, same OS user).
+ */
+function copyProfileToTempDir(
+  userDataDir: string,
+  profile: string,
+  log: CdpLogger
+): string | null {
+  try {
+    const tempBase = mkdtempSync(join(tmpdir(), "redbook-cdp-"));
+
+    // Copy Local State (contains os_crypt.encrypted_key for cookie decryption)
+    const localState = join(userDataDir, "Local State");
+    if (existsSync(localState)) {
+      copyFileSync(localState, join(tempBase, "Local State"));
+    }
+
+    // Create profile directory in temp
+    const tempProfileDir = join(tempBase, profile);
+    mkdirSync(tempProfileDir, { recursive: true });
+
+    // Helper: copy a file if it exists, ignore errors (e.g. locked files)
+    const tryCopy = (src: string, dest: string) => {
+      try {
+        if (existsSync(src)) copyFileSync(src, dest);
+      } catch {
+        // File may be locked; skip it
+      }
+    };
+
+    const srcProfile = join(userDataDir, profile);
+
+    // Copy Cookies database + journal/WAL files (older Chrome path)
+    for (const f of ["Cookies", "Cookies-journal", "Cookies-wal", "Cookies-shm"]) {
+      tryCopy(join(srcProfile, f), join(tempProfileDir, f));
+    }
+
+    // Copy Network/Cookies (newer Chrome versions store cookies here)
+    const srcNetwork = join(srcProfile, "Network");
+    if (existsSync(srcNetwork)) {
+      const tempNetwork = join(tempProfileDir, "Network");
+      mkdirSync(tempNetwork, { recursive: true });
+      for (const f of ["Cookies", "Cookies-journal", "Cookies-wal", "Cookies-shm"]) {
+        tryCopy(join(srcNetwork, f), join(tempNetwork, f));
+      }
+    }
+
+    log("Copied Chrome profile to temp dir: " + tempBase);
+    return tempBase;
+  } catch (err) {
+    log("Failed to copy profile to temp dir: " + (err instanceof Error ? err.message : String(err)));
+    return null;
+  }
+}
+
+function cleanupTempDir(dir: string, log: CdpLogger): void {
+  try {
+    rmSync(dir, { recursive: true, force: true });
+    log("Cleaned up temporary profile directory.");
+  } catch {
+    // Ignore cleanup errors
+  }
+}
+
 // ─── Public API ──────────────────────────────────────────────────────────────
 
 /**
@@ -238,6 +307,7 @@ export async function extractCookiesViaCdp(options?: {
   log("Checking for existing Chrome debugging session on port " + CDP_PORT + "...");
   let wsUrl = await getDebuggerWebSocketUrl();
   let launchedProcess: ChildProcess | null = null;
+  let tempDir: string | null = null;
 
   if (wsUrl) {
     log("Found existing Chrome debugging session.");
@@ -270,7 +340,37 @@ export async function extractCookiesViaCdp(options?: {
       wsUrl = await getDebuggerWebSocketUrl();
     } catch (err) {
       log(err instanceof Error ? err.message : String(err));
-      return null;
+
+      // Profile lock detected — retry with a temp copy of the profile
+      const isProfileLock =
+        err instanceof Error && err.message.includes("Chrome exited immediately");
+
+      if (isProfileLock) {
+        log("");
+        log("Retrying with a temporary copy of the Chrome profile...");
+        const profileName = options?.profile || "Default";
+        tempDir = copyProfileToTempDir(userDataDir, profileName, log);
+
+        if (tempDir) {
+          try {
+            launchedProcess = await launchChromeHeadless(
+              chromeBinary,
+              tempDir,
+              profileName,
+              log
+            );
+            wsUrl = await getDebuggerWebSocketUrl();
+          } catch (retryErr) {
+            log(retryErr instanceof Error ? retryErr.message : String(retryErr));
+            cleanupTempDir(tempDir, log);
+            return null;
+          }
+        } else {
+          return null;
+        }
+      } else {
+        return null;
+      }
     }
   }
 
@@ -313,6 +413,9 @@ export async function extractCookiesViaCdp(options?: {
       launchedProcess.kill();
       // Give Chrome a moment to clean up
       await sleep(500);
+    }
+    if (tempDir) {
+      cleanupTempDir(tempDir, log);
     }
   }
 }
