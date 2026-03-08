@@ -1,6 +1,7 @@
 ---
 name: flight-search
 description: 查询指定日期内的城市之间的航班信息 (不需要权限验证信息).
+metadata: { "openclaw": { "emoji": "✈️" } }
 ---
 
 # flight-search
@@ -18,11 +19,12 @@ Activate this skill when the user:
 Run the query script, passing the user's complete natural language query:
 
 ```bash
-python SKILL_DIR/scripts/flightSearch.sh <出发日期> <出发城市> <目的城市> <用户唯一标识>
+python3 SKILL_DIR/scripts/flightsearch.py <出发日期> <出发城市> <目的城市>
 ```
 ## 例子
+user: 帮我查一下2026年3月8日从北京到上海的航班信息。
 ```bash
-python ./scripts/flightSearch.sh 2026-03-08 北京市 上海市
+python3 ./scripts/flightsearch.py 2026-03-08 北京市 上海市
 ```
 # Output: 
 ```json

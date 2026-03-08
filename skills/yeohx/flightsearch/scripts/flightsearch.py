@@ -11,11 +11,11 @@ import json
 tripStartDate = sys.argv[1] if len(sys.argv) > 1 else "2026-03-08"
 startCityName = sys.argv[2] if len(sys.argv) > 2 else "北京市"
 endCityName = sys.argv[3] if len(sys.argv) > 3 else "上海市"
-userId = sys.argv[4] if len(sys.argv) > 4 else "65979bcc3fef3041109d878e"
+openId = os.getenv('FEISHU_SENDER_ID') if os.getenv('FEISHU_SENDER_ID') else (sys.argv[4] if len(sys.argv) > 4 else "")
 limitSize = int(sys.argv[5]) if len(sys.argv) > 5 else 5
 
 # 准备请求数据
-url = "https://webapp-gate.fenbeitong.com/trip/recommend/flight/recommendOnceV2"
+url = "https://webapp-gate-fat.fenbeijinfu.com/trip/recommend/flight/recommendOnceV2"
 headers = {
     "Content-Type": "application/json"
 }
@@ -23,7 +23,7 @@ data = {
     "tripStartDate": tripStartDate,
     "startCityName": startCityName,
     "endCityName": endCityName,
-    "userId": userId,
+    "openId": openId,
     "limitSize": limitSize
 }
 
