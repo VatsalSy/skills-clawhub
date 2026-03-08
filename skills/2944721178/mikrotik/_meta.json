@@ -1,13 +1,18 @@
 {
   "owner": "2944721178",
   "slug": "mikrotik",
-  "displayName": "MikroTik RouterOS 管理",
+  "displayName": "Mikrotik",
   "latest": {
-    "version": "1.8.3",
-    "publishedAt": 1772793012003,
-    "commit": "https://github.com/openclaw/skills/commit/c9b242ea1c77e040dd5e4d8f22bfe500f841f73e"
+    "version": "1.8.4",
+    "publishedAt": 1772945736132,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.8.3",
+      "publishedAt": 1772793012003,
+      "commit": "https://github.com/openclaw/skills/commit/c9b242ea1c77e040dd5e4d8f22bfe500f841f73e"
+    },
     {
       "version": "1.8.2",
       "publishedAt": 1772792069478,

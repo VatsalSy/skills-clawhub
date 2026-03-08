@@ -86,6 +86,113 @@ def get_device_config(device_name=None):
     return None
 
 
+def backup_config(api, quick):
+    """备份路由器配置"""
+    try:
+        # 创建备份文件
+        backup_cmd = '/system/backup/save name=backup-' + quick.api._send_word('/system/clock/print')[0].split('=')[1]
+        result = api.run_cmd(backup_cmd)
+        
+        # 列出备份文件
+        files = api.run_cmd('/file/print where name~"backup"')
+        
+        lines = [
+            "💾 MikroTik 配置备份",
+            "=" * 60,
+        ]
+        
+        if files:
+            for f in files:
+                lines.append(f"  ✅ {f.get('name', 'N/A')} ({f.get('size', 'N/A')} bytes)")
+        
+        lines.append("=" * 60)
+        lines.append("💡 提示：备份文件可通过 Files 菜单下载，或使用 /export 命令导出配置")
+        
+        return "\n".join(lines)
+    except Exception as e:
+        return f"❌ 备份失败：{e}"
+
+
+def cleanup_storage(api, quick):
+    """清理路由器存储空间"""
+    try:
+        # 获取文件列表
+        files = api.run_cmd('/file/print')
+        
+        # 找出可删除的文件（日志、备份等）
+        deletable = []
+        for f in files:
+            name = f.get('name', '')
+            if any(x in name.lower() for x in ['.log', 'backup-', 'debug']):
+                deletable.append(f)
+        
+        lines = [
+            "🧹 存储空间清理建议",
+            "=" * 60,
+        ]
+        
+        if deletable:
+            lines.append("可删除的文件:")
+            for f in deletable[:10]:  # 最多显示 10 个
+                lines.append(f"  - {f.get('name', 'N/A')} ({f.get('size', '0')} bytes)")
+            
+            if len(deletable) > 10:
+                lines.append(f"  ... 还有 {len(deletable) - 10} 个文件")
+            
+            lines.append("")
+            lines.append("💡 执行清理命令:")
+            lines.append("  在 mikrotik 上执行：/file remove [find name~\"backup\"]")
+        else:
+            lines.append("✅ 无需清理，存储空间充足")
+        
+        # 显示存储使用情况
+        resource = quick.system.get_resource()
+        free_mem = resource.get('free-memory', 'N/A')
+        lines.append("")
+        lines.append(f"当前可用内存：{free_mem}")
+        lines.append("=" * 60)
+        
+        return "\n".join(lines)
+    except Exception as e:
+        return f"❌ 清理检查失败：{e}"
+
+
+def configure_api_access(api, quick):
+    """配置 API 访问限制"""
+    try:
+        # 获取当前 API 服务配置
+        api_services = api.run_cmd('/ip/service/print where name="api"')
+        api_ssl_services = api.run_cmd('/ip/service/print where name="api-ssl"')
+        
+        lines = [
+            "🔐 API 访问配置",
+            "=" * 60,
+        ]
+        
+        if api_services:
+            svc = api_services[0]
+            lines.append(f"API 服务：{'✅ 启用' if not svc.get('disabled', True) else '❌ 禁用'}")
+            lines.append(f"  端口：{svc.get('port', '8728')}")
+            lines.append(f"  地址：{svc.get('address', '0.0.0.0/0')}")
+        
+        if api_ssl_services:
+            svc = api_ssl_services[0]
+            lines.append(f"API-SSL 服务：{'✅ 启用' if not svc.get('disabled', True) else '❌ 禁用'}")
+            lines.append(f"  端口：{svc.get('port', '8729')}")
+            lines.append(f"  地址：{svc.get('address', '0.0.0.0/0')}")
+        
+        lines.append("")
+        lines.append("💡 安全建议:")
+        lines.append("  1. 限制 API 访问地址：/ip/service set api address=10.254.252.0/24")
+        lines.append("  2. 禁用不必要的服务：/ip/service disable api-ssl")
+        lines.append("  3. 使用强密码")
+        lines.append("=" * 60)
+        
+        return "\n".join(lines)
+    except Exception as e:
+        return f"❌ 查询失败：{e}"
+
+
 def format_status(api, quick):
     """格式化设备状态"""
     identity = quick.system.get_identity()
@@ -1062,6 +1169,12 @@ def execute_command(device, command):
         # 根据命令类型返回不同格式
         if 'status' in command.lower() or '状态' in command:
             result = format_status(api, quick)
+        elif '备份' in command or 'backup' in command.lower():
+            result = backup_config(api, quick)
+        elif '清理' in command or 'cleanup' in command.lower() or '存储' in command:
+            result = cleanup_storage(api, quick)
+        elif 'api' in command.lower() and ('配置' in command or 'access' in command.lower()):
+            result = configure_api_access(api, quick)
         elif 'firewall' in command.lower() or '防火墙' in command:
             result = format_firewall(api, quick)
         elif 'interface' in command.lower() or '接口' in command:
