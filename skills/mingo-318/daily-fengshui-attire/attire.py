@@ -89,48 +89,30 @@ def analyze_relationship(today_wuxing: str, tomorrow_wuxing: str) -> dict:
 
 
 def generate_advice(today_dizhi: str, tomorrow_dizhi: str) -> str:
-    """生成穿衣建议"""
+    """生成穿衣建议 - 核心原则：穿当日所生的颜色"""
     today_wuxing = get_wuxing(today_dizhi)
     tomorrow_wuxing = get_wuxing(tomorrow_dizhi)
-    relation = analyze_relationship(today_wuxing, tomorrow_wuxing)
     
-    # 根据关系类型给出建议
+    # 核心逻辑：当日五行生什么，就穿什么颜色
+    sheng_wuxing = get_sheng(today_wuxing)  # 今日所生的五行
+    color_info = WUXING_COLORS[sheng_wuxing]
+    
     suggestions = []
     
-    if relation["type"] == "相生":
-        # 穿明日所生的颜色，助长能量
-        next_wuxing = get_sheng(tomorrow_wuxing)
-        color_info = WUXING_COLORS[next_wuxing]
-        suggestions.append(
-            f"建议穿 {color_info['colors'][0]}/{color_info['colors'][1]}（{next_wuxing}），"
-            f"助长明日气场，能量满满"
-        )
-    elif relation["type"] == "相克":
-        # 穿相生的颜色来化解
-        sheng_wuxing = get_sheng(tomorrow_wuxing)
-        color_info = WUXING_COLORS[sheng_wuxing]
-        suggestions.append(
-            f"建议穿 {color_info['colors'][0]}/{color_info['colors'][1]}（{sheng_wuxing}）来化解相克"
-        )
-        # 也建议穿同色增强明日气场
-        tomorrow_color = WUXING_COLORS[tomorrow_wuxing]
-        suggestions.append(f"或穿 {tomorrow_color['colors'][0]}/{tomorrow_color['colors'][1]} 增强明日气场")
-    elif relation["type"] == "同气":
-        # 穿相同颜色保持能量
-        color_info = WUXING_COLORS[tomorrow_wuxing]
-        suggestions.append(
-            f"建议穿 {color_info['colors'][0]}/{color_info['colors'][1]}（{tomorrow_wuxing}），"
-            f"保持能量稳定"
-        )
-    else:  # 泄气
-        # 穿明日所生的颜色来补强
-        sheng_wuxing = get_sheng(tomorrow_wuxing)
-        color_info = WUXING_COLORS[sheng_wuxing]
-        suggestions.append(
-            f"建议穿 {color_info['colors'][0]}/{color_info['colors'][1]}（{sheng_wuxing}）来补强明日气场"
-        )
+    # 最佳推荐：穿当日所生的颜色
+    suggestions.append(
+        f"🧧 最佳推荐：{color_info['colors'][0]}/{color_info['colors'][1]}（{sheng_wuxing}）\n"
+        f"   今日{today_dizhi}（{today_wuxing}）生{sheng_wuxing}，穿此颜色助长今日气场"
+    )
     
-    return "\n".join(suggestions)
+    # 次选：穿当日同属性颜色
+    today_color = WUXING_COLORS[today_wuxing]
+    suggestions.append(
+        f"📘 次选：{today_color['colors'][0]}/{today_color['colors'][1]}（{today_wuxing}）\n"
+        f"   保持与今日五行同气，能量稳定"
+    )
+    
+    return "\n\n".join(suggestions)
 
 
 def cmd_today():
