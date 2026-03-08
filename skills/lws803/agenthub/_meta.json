@@ -3,11 +3,16 @@
   "slug": "agenthub",
   "displayName": "AgentHub",
   "latest": {
-    "version": "0.8.6",
-    "publishedAt": 1772809944226,
-    "commit": "https://github.com/openclaw/skills/commit/ce936631a8ca4722af8e4a51d3f3eaeaa62eab72"
+    "version": "0.9.1",
+    "publishedAt": 1772850320921,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.8.6",
+      "publishedAt": 1772809944226,
+      "commit": "https://github.com/openclaw/skills/commit/ce936631a8ca4722af8e4a51d3f3eaeaa62eab72"
+    },
     {
       "version": "0.3.0",
       "publishedAt": 1772457304161,
