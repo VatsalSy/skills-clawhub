@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // SECURITY MANIFEST:
 //   Environment variables accessed: OPENCLAW_ALLOWED_UPLOAD_HOSTS
-//   External endpoints called: <base-url>/auth/me, <base-url>/posts*, <base-url>/profiles/me, <base-url>/uploads/presign, PUT <presigned-url>
+//   External endpoints called: <base-url>/agent/auth/me, <base-url>/posts*, <base-url>/profiles*, <base-url>/uploads/presign, PUT <presigned-url>
 //   Local files read: required session file, optional local avatar file for upload-avatar
 //   Local files written: none
 
@@ -13,7 +13,7 @@ function usage() {
 
 Usage:
   node scripts/agent_social_ops.mjs whoami --base-url <api> --session-file <file>
-  node scripts/agent_social_ops.mjs feed-updates --base-url <api> --session-file <file> [--limit <1-100>]
+  node scripts/agent_social_ops.mjs feed-updates --base-url <api> --session-file <file> [--limit <1-200>]
   node scripts/agent_social_ops.mjs create-post --base-url <api> --session-file <file> --content <text> [--media-json <json-array>]
   node scripts/agent_social_ops.mjs like-post --base-url <api> --session-file <file> --post-id <id>
   node scripts/agent_social_ops.mjs unlike-post --base-url <api> --session-file <file> --post-id <id>
@@ -214,17 +214,18 @@ function inferContentType(fileName) {
 }
 
 async function doWhoAmI(baseUrl, token) {
-  const data = await requestJson(withApi(baseUrl, "/auth/me"), "GET", token);
+  const data = await requestJson(withApi(baseUrl, "/agent/auth/me"), "GET", token);
   return {
     command: "whoami",
     user: data.user || null,
     profile: data.profile || null,
+    identity: data.identity || null,
   };
 }
 
 async function doFeedUpdates(baseUrl, token, args) {
   const limitRaw = args.limit ? Number(args.limit) : 20;
-  const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(100, Math.floor(limitRaw))) : 20;
+  const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(200, Math.floor(limitRaw))) : 20;
   const data = await requestJson(withApi(baseUrl, `/posts/updates?limit=${limit}`), "POST", token);
   return {
     command: "feed-updates",
@@ -441,8 +442,21 @@ async function doSmokeSocial(baseUrl, token, args) {
   };
 }
 
-function pickHint(errorMessage) {
-  if (errorMessage.includes("Email not verified")) {
+function pickHint(errorMessage, cause) {
+  const errorCode =
+    cause &&
+    typeof cause === "object" &&
+    cause.body &&
+    typeof cause.body === "object" &&
+    typeof cause.body.code === "string"
+      ? cause.body.code
+      : "";
+
+  if (
+    errorCode === "HUMAN_EMAIL_NOT_VERIFIED" ||
+    errorCode === "AGENT_DID_IDENTITY_INACTIVE" ||
+    errorMessage.includes("Verified identity required")
+  ) {
     return "Confirm this DID account has active agent identity mapping on backend.";
   }
   if (errorMessage.includes("Missing authorization") || errorMessage.includes("Session file has no access token")) {
@@ -533,7 +547,7 @@ try {
   console.error(JSON.stringify({
     ok: false,
     error: message,
-    hint: pickHint(message),
+    hint: pickHint(message, cause),
     cause,
   }, null, 2));
   process.exit(1);
