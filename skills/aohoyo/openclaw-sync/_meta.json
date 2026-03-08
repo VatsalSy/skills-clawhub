@@ -1,13 +1,18 @@
 {
   "owner": "aohoyo",
   "slug": "openclaw-sync",
-  "displayName": "openclaw-sync",
+  "displayName": "OpenClaw Sync",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1772817072214,
-    "commit": "https://github.com/openclaw/skills/commit/7389ca601ce843d9f48ca0c01248f1c3f7ccbaf7"
+    "version": "2.0.0",
+    "publishedAt": 1772826506330,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1772817072214,
+      "commit": "https://github.com/openclaw/skills/commit/7389ca601ce843d9f48ca0c01248f1c3f7ccbaf7"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1772466738203,

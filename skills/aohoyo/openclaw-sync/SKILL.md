@@ -1,141 +1,176 @@
 ---
 name: openclaw-sync
 description: |
-  OpenClaw 数据实时同步技能。使用 inotify 监控文件变化，自动将记忆数据、
-  配置文件同步到云对象存储（七牛云/腾讯云/阿里云），实现数据持久化。
+  OpenClaw 数据轻量同步技能。基于 rclone + cron，支持 70+ 云存储后端，
+  定时备份 workspace 数据，资源占用极低。
 metadata:
   {
     "openclaw":
       {
         "emoji": "🔄",
-        "requires": { "bins": ["rclone", "inotifywait", "python3"] },
-        "install":
-          [
-            { "id": "rclone", "kind": "bin", "package": "rclone", "label": "Install rclone" },
-            { "id": "inotify-tools", "kind": "apt", "package": "inotify-tools", "label": "Install inotify-tools" },
-          ],
+        "requires": { "bins": ["rclone"] },
       },
   }
 ---
 
-# 🔄 OpenClaw 实时同步技能
+# 🔄 OpenClaw 轻量同步
 
-使用 **inotify** 实时监控文件变化，自动同步到云对象存储。
+基于 **rclone + cron** 的数据备份方案，定时同步 workspace 到云端。
 
----
+## 特点
 
-## 🎯 支持的云服务商
+- ✅ **轻量**：无常驻进程，cron 定时触发
+- ✅ **通用**：支持 70+ 云存储（七牛/腾讯/阿里/百度/Google Drive...）
+- ✅ **智能**：无变化不传输，节省流量
+- ✅ **简单**：一条命令完成配置
 
-| 云服务商 | 免费额度 | 推荐指数 |
-|---------|---------|---------|
-| **七牛云 Kodo** | 每月 10GB | ⭐⭐⭐⭐⭐ |
-| **腾讯云 COS** | 6个月 50GB | ⭐⭐⭐⭐ |
-| **阿里云 OSS** | 无 | ⭐⭐⭐ |
+## 快速开始
 
----
-
-## 🚀 快速开始
-
-### 1. 安装依赖
+### 1. 安装 rclone
 
 ```bash
-# 安装 rclone
-curl https://rclone.org/install.sh | bash
+# 自动安装
+curl https://rclone.org/install.sh | sudo bash
 
-# 安装 inotify-tools（实时监控必需）
-apt-get install inotify-tools
+# 或手动安装
+sudo apt-get install rclone
 ```
 
 ### 2. 配置云存储
 
 ```bash
-cd config/
+# 交互式配置
+rclone config
 
-# 选择云服务商，复制配置模板
-cp rclone-qiniu.conf.example rclone.conf
-cp backup-qiniu.json.example backup.json
-
-# 编辑配置文件
-vim rclone.conf
-vim backup.json
+# 按照提示选择云服务商，填写密钥
 ```
 
-### 3. 启动实时同步
+### 3. 配置同步
 
-**方式一：手动启动**
 ```bash
-bash scripts/sync-monitor.sh
+cd skills/openclaw-sync
+
+# 编辑配置
+vim config/sync-config.json
 ```
 
-**方式二：systemd 服务（推荐）**
+```json
+{
+  "remote": "myqiniu",           // rclone 配置的 remote 名称
+  "bucket": "mybucket",          // 存储桶名称
+  "prefix": "openclaw-backup",   // 云端目录前缀
+  "interval": "5"                // 同步间隔（分钟）
+}
+```
+
+### 4. 启动同步
+
 ```bash
-# 复制服务文件
-sudo cp systemd/openclaw-sync.service /etc/systemd/system/
+# 手动测试
+bash scripts/sync.sh
 
-# 启动服务
-sudo systemctl daemon-reload
-sudo systemctl enable openclaw-sync
-sudo systemctl start openclaw-sync
-
-# 查看状态
-sudo systemctl status openclaw-sync
-sudo journalctl -u openclaw-sync -f
+# 添加到 cron（推荐）
+bash scripts/setup-cron.sh
 ```
 
----
+## 目录结构
 
-## 📋 常用命令
+```
+skills/openclaw-sync/
+├── config/
+│   ├── sync-config.json      # 同步配置
+│   └── sync-list.txt         # 文件过滤规则
+├── scripts/
+│   ├── sync.sh               # 同步脚本
+│   ├── setup-cron.sh         # 安装定时任务
+│   └── status.sh             # 查看状态
+├── logs/
+│   └── sync.log              # 同步日志
+└── SKILL.md                  # 本文件
+```
+
+## 配置文件
+
+### sync-config.json
+
+```json
+{
+  "remote": "myqiniu",           // rclone remote 名称
+  "bucket": "mybucket",          // 存储桶
+  "prefix": "openclaw-backup",   // 云端前缀
+  "interval": "5",               // 同步间隔（分钟）
+  "syncDelete": false            // 是否同步删除
+}
+```
+
+### sync-list.txt
+
+```
+# 包含规则（+开头）
++MEMORY.md
++memory/
++IDENTITY.md
++USER.md
++SOUL.md
++AGENTS.md
++TOOLS.md
++HEARTBEAT.md
++BOOTSTRAP.md
++README.md
++skills/
++tools/
+
+# 排除规则（-开头）
+-.git/**
+-node_modules/**
+-*.tmp
+-*.log
+-.DS_Store
+```
+
+## 常用命令
 
 | 命令 | 说明 |
 |------|------|
-| `sync-now.sh` | 立即手动同步 |
-| `sync-monitor.sh` | 启动实时监控 |
-| `list-remote.sh` | 查看云端文件 |
-| `restore.sh` | 恢复数据 |
-| `test-config.sh` | 测试配置 |
+| `bash scripts/sync.sh` | 手动执行同步 |
+| `bash scripts/setup-cron.sh` | 安装定时任务 |
+| `bash scripts/remove-cron.sh` | 移除定时任务 |
+| `bash scripts/status.sh` | 查看同步状态 |
+| `tail -f logs/sync.log` | 查看实时日志 |
 
----
+## 支持的后端
 
-## 📁 同步的数据
+- 七牛云 Kodo
+- 腾讯云 COS
+- 阿里云 OSS
+- 百度云 BOS
+- Google Drive
+- Dropbox
+- OneDrive
+- WebDAV
+- FTP/SFTP
+- ...（共 70+）
 
-默认同步（可在 `data/sync-list.txt` 中修改）：
-- **核心数据**：MEMORY.md, memory/, USER.md, IDENTITY.md, SOUL.md
-- **配置文件**：AGENTS.md, TOOLS.md, HEARTBEAT.md
-- **技能配置**：skills/*/config.json
+配置方法：`rclone config` 交互式配置
 
----
+## 故障排查
 
-## 🎨 多实例支持
-
-支持多个 OpenClaw 实例共享一个存储桶：
-
-```
-云存储桶
-├── instance-main/        # 主服务器
-├── instance-dev/         # 开发服务器
-└── instance-烧烤店/       # 业务服务器
-```
-
----
-
-## 🔧 服务管理
-
+### 检查 rclone 配置
 ```bash
-# 查看状态
-sudo systemctl status openclaw-sync
-
-# 查看日志
-sudo journalctl -u openclaw-sync -f
-
-# 停止服务
-sudo systemctl stop openclaw-sync
-
-# 重启服务
-sudo systemctl restart openclaw-sync
+rclone listremotes          # 列出已配置的 remote
+rclone ls myqiniu:mybucket  # 测试连接
 ```
 
----
+### 检查同步日志
+```bash
+tail -50 logs/sync.log
+```
 
-## 📄 许可证
+### 手动测试同步
+```bash
+bash scripts/sync.sh --dry-run  # 模拟运行，不实际上传
+```
+
+## 许可证
 
 MIT License
