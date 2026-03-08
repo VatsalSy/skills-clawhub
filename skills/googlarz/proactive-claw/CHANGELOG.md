@@ -1,3 +1,34 @@
+## 1.2.41
+- Convenience: `scripts/setup.sh` now supports `--doctor` (readiness checks) and `--print-install-cmd google|nextcloud` (single copy-paste install command).
+- Convenience: added `scripts/quickstart.sh` for a local-safe first run flow (doctor, safe defaults, daemon simulation).
+- Trust: added pinned dependency files `requirements-google.txt` and `requirements-nextcloud.txt`.
+- Docs: updated `SKILL.md` and `SECURITY.md` to describe literal core behavior (manual daemon only, no daemon installer in core package).
+- Ops: added `RELEASE_CHECKLIST.md` with artifact preview, exclusion verification, validation, and publish commands.
+
+## 1.2.40
+- Release increment after 1.2.39 publish collision; core hardening profile remains unchanged.
+
+## 1.2.39
+- Security/Scanner hardening: core bundle now excludes `voice_bridge.py` and `llm_rater.py` from published artifacts (`.clawhubignore` / `.skillignore`).
+- Security/Scanner hardening: removed remaining core cross-skill context references from `orchestrator.py` and switched orchestration payloads to local pattern history only.
+- Security/Scanner hardening: core notification channel learning no longer references `telegram`; core channels are `openclaw` + `system`.
+- Install hardening: `scripts/setup.sh` no longer auto-runs package installers; it now validates required modules and fails closed with explicit manual install instructions.
+- Defaults hardening: interactive config wizard now defaults to `max_autonomy_level=confirm`.
+- Docs: updated `SECURITY.md` and `SKILL.md` to match core-only behavior and setup semantics.
+
+## 1.2.37
+- Split release model: core bundle is now integration-free by default; third-party/network-heavy helpers moved to the separate `proactive-claw-integrations` add-on.
+- Core bundle exclusions: `cross_skill.py`, `team_awareness.py`, `install_daemon.sh`, and `optional/setup_clawhub_oauth.sh` are no longer published in core.
+- Privacy hardening: removed Notion outcome upload path from `capture_outcome.py`.
+- Core notifications are local-only (`openclaw`, `system`) in shipped defaults.
+- Docs/config updated to reflect core vs integrations split.
+
+## 1.2.36
+- Security/Privacy: `llm_rater.py` is now local-only. Non-local LLM base URLs are hard-blocked (`localhost` / `127.0.0.1` / `::1` only).
+- Security/Privacy: removed cloud LLM backend presets and cloud endpoint references from shipped config/docs.
+- Security/Privacy: `team_awareness.py` is excluded from published bundles via `.clawhubignore` and `.skillignore` (kept as optional source only).
+- Docs/Config: removed `feature_team_awareness` from shipped defaults and updated security tables accordingly.
+
 ## 1.2.35
 - Security: hardened `scripts/optional/setup_clawhub_oauth.sh` to fail closed by default.
 - Security: remote credential bootstrap now requires explicit opt-in (`clawhub_oauth_allow_remote_fetch=true`) and a valid pinned `clawhub_credentials_sha256` match before writing `credentials.json`.

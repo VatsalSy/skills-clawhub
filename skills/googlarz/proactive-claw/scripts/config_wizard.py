@@ -69,23 +69,8 @@ DEFAULT_CONFIG = {
     "feature_behaviour_report": False,
     "feature_config_wizard": False,
     "feature_policy_conflict_detection": False,
-    "feature_cross_skill": False,
-    "feature_voice": False,
-    "feature_team_awareness": False,
-    "feature_llm_rater": False,
     "notification_channels": ["openclaw", "system"],
-    "telegram": {"bot_token": "", "chat_id": ""},
-    "clawhub_token": "",
     "nextcloud": {"url": "", "username": "", "password": "", "openclaw_calendar_url": ""},
-    "llm_rater": {
-        "enabled": False,
-        "base_url": "http://localhost:11434/v1",
-        "model": "qwen2.5:3b",
-        "api_key_env": "",
-        "timeout": 30,
-        "max_tokens": 256,
-        "temperature": 0.1,
-    },
 }
 
 
@@ -168,21 +153,15 @@ def run_wizard() -> dict:
     print("  advisory   — never auto-act, just suggest")
     print("  confirm    — always ask before acting")
     print("  autonomous — trust policies to auto-execute")
-    autonomy = _ask("Max autonomy level", "autonomous", ["advisory", "confirm", "autonomous"])
+    autonomy = _ask("Max autonomy level", "confirm", ["advisory", "confirm", "autonomous"])
     config["max_autonomy_level"] = autonomy
 
     # 6. Notification channels
     print("\nNotification channels (comma-separated):")
     print("  openclaw — in-chat nudges (default)")
     print("  system   — desktop notifications (default)")
-    print("  telegram — Telegram bot messages")
     channels_str = _ask("Channels", "openclaw,system")
     config["notification_channels"] = [c.strip() for c in channels_str.split(",") if c.strip()]
-
-    if "telegram" in config["notification_channels"]:
-        token = _ask("Telegram bot token", "")
-        chat_id = _ask("Telegram chat ID", "")
-        config["telegram"] = {"bot_token": token, "chat_id": chat_id}
 
     # 7. Quiet hours
     use_quiet = _ask("Enable quiet hours?", "yes", ["yes", "no"])
@@ -292,8 +271,7 @@ def main():
         SKILL_DIR.mkdir(parents=True, exist_ok=True)
         with open(CONFIG_FILE, "w") as f:
             json.dump(config, f, indent=2)
-        print(f"
-📝 Config written to {CONFIG_FILE}")
+        print(f"\n📝 Config written to {CONFIG_FILE}")
         print("   Next: run setup.sh to connect your calendar.")
 
 
