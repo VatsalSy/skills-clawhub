@@ -49,7 +49,11 @@ def main():
         with urllib.request.urlopen(req) as resp:
             data = json.loads(resp.read().decode())
             att_id = data['name'].split('/')[-1]
-            print(f"Uploaded [{att_id}] {data['filename']} ({data.get('size', '?')} bytes)")
+            att_size = int(data.get('size', 0))
+            print(f"Uploaded [{att_id}] {data['filename']} ({att_size} bytes)")
+            if att_size == 0:
+                print("Error: attachment uploaded with size 0 — file may be empty or upload failed", file=sys.stderr)
+                sys.exit(1)
     except urllib.error.HTTPError as e:
         print(f"HTTP Error: {e.code} - {e.read().decode()}", file=sys.stderr)
         sys.exit(1)

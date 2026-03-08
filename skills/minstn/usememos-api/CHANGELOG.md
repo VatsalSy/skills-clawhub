@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.2 (2026-03-06)
+
+### Added
+- `memo_comments.py` script to list, add, and delete comments on memos
+- Comments API documentation in references/api.md
+
+### Fixed
+- Upload scripts now validate attachment size > 0 to catch silent upload failures
+- `upload_and_link_attachment.py` accepts full resource names (`memos/...`) by
+  stripping the prefix automatically
+
 ## 1.0.1 (2026-03-05)
 
 ### Fixed

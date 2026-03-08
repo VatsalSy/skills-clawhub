@@ -1,6 +1,6 @@
 ---
 name: usememos-api
-version: "1.0.0"
+version: "1.0.2"
 description: Interact with UseMemos — a lightweight, self-hosted memo hub. Create, search, list memos and upload attachments.
 tags: ["memos", "notes", "self-hosted", "knowledge-base", "attachments"]
 homepage: https://github.com/minstn/usememos
@@ -33,6 +33,7 @@ Requires environment variables in `.env`:
 | `search_memos.py` | `<query> [limit]` | Search memos by content |
 | `upload_attachment.py` | `<filepath> [filename] [type]` | Upload a file attachment |
 | `upload_and_link_attachment.py` | `<memo_id> <filepath> [filename] [type]` | Upload and link attachment to a memo |
+| `memo_comments.py` | `<list\|add\|delete> [args...]` | Manage comments on a memo |
 
 All scripts are in `scripts/` and run with `python3 scripts/<script>`.
 
@@ -55,6 +56,15 @@ python3 scripts/upload_attachment.py photo.jpg "sale_photo.jpg" "image/jpeg"
 python3 scripts/create_memo.py "Sale: Stromer Charger #eBike #income"
 # Use the memo ID from output:
 python3 scripts/upload_and_link_attachment.py <memo_id> charger_photo.jpg
+
+# Add a comment to a memo
+python3 scripts/memo_comments.py add <memo_id> "Looks great!"
+
+# List comments on a memo
+python3 scripts/memo_comments.py list <memo_id>
+
+# Delete a comment
+python3 scripts/memo_comments.py delete <comment_id>
 ```
 
 ## Notes

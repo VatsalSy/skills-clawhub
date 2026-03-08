@@ -70,6 +70,43 @@ Body:
 DELETE /api/v1/memos/{id}
 ```
 
+### Comments
+
+Comments are memos linked to a parent memo.
+
+**List Comments**
+```
+GET /api/v1/memos/{id}/comments
+```
+Response:
+```json
+{
+  "memos": [...],
+  "nextPageToken": "...",
+  "totalSize": 0
+}
+```
+
+**Create Comment**
+```
+POST /api/v1/memos/{id}/comments
+```
+Body:
+```json
+{
+  "content": "string",
+  "visibility": "PRIVATE | PROTECTED | PUBLIC"
+}
+```
+Response: A memo object representing the created comment.
+
+**Delete Comment**
+
+Use the standard delete memo endpoint with the comment's memo ID:
+```
+DELETE /api/v1/memos/{comment_id}
+```
+
 ### Attachments
 
 **Create Attachment**

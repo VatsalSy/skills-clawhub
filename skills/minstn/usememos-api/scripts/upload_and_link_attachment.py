@@ -20,7 +20,11 @@ def main():
         print("Usage: upload_and_link_attachment.py <memo_id> <filepath> [filename] [type]", file=sys.stderr)
         sys.exit(1)
 
-    memo_id = urllib.parse.quote(sys.argv[1], safe='')
+    raw_memo_id = sys.argv[1]
+    # Strip 'memos/' prefix if the full resource name was passed
+    if raw_memo_id.startswith('memos/'):
+        raw_memo_id = raw_memo_id[len('memos/'):]
+    memo_id = urllib.parse.quote(raw_memo_id, safe='')
     filepath = sys.argv[2]
     filename = sys.argv[3] if len(sys.argv) > 3 else os.path.basename(filepath)
     filetype = sys.argv[4] if len(sys.argv) > 4 else 'image/jpeg'
@@ -58,7 +62,12 @@ def main():
         sys.exit(1)
 
     attachment_name = attachment['name']
-    print(f"Uploaded [{attachment_name}] ({attachment.get('size', '?')} bytes)")
+    attachment_size = int(attachment.get('size', 0))
+    print(f"Uploaded [{attachment_name}] ({attachment_size} bytes)")
+
+    if attachment_size == 0:
+        print(f"Error: attachment uploaded with size 0 — file may be empty or upload failed", file=sys.stderr)
+        sys.exit(1)
 
     # Step 2: Get existing memo to preserve current attachments
     get_req = urllib.request.Request(

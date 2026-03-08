@@ -121,6 +121,30 @@ curl -X PATCH "${USEMEMOS_URL}/api/v1/memos/<memo_id>" \
   -d '{"attachments": [{"name": "attachments/att999", "filename": "receipt.jpg", "type": "image/jpeg"}]}'
 ```
 
+### Comments
+
+**Add a comment to a memo:**
+
+```bash
+python3 scripts/memo_comments.py add memo123 "Sold for 240 CHF, shipped today"
+# Comment [cmt456] added to memo [memo123]
+```
+
+**List comments on a memo:**
+
+```bash
+python3 scripts/memo_comments.py list memo123
+# [cmt456] 2026-03-06T20:57:54Z by users/1
+#   Sold for 240 CHF, shipped today
+```
+
+**Delete a comment:**
+
+```bash
+python3 scripts/memo_comments.py delete cmt456
+# Deleted comment [cmt456]
+```
+
 ## Scripts
 
 | Script | Arguments | Description |
@@ -130,6 +154,7 @@ curl -X PATCH "${USEMEMOS_URL}/api/v1/memos/<memo_id>" \
 | `search_memos.py` | `<query> [limit]` | Search memos by content |
 | `upload_attachment.py` | `<filepath> [filename] [type]` | Upload a file attachment |
 | `upload_and_link_attachment.py` | `<memo_id> <filepath> [filename] [type]` | Upload and link to a memo |
+| `memo_comments.py` | `<list\|add\|delete> [args...]` | Manage comments on a memo |
 
 ## Requirements
 
