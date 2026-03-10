@@ -19,6 +19,14 @@ cmd_complete() {
     exit 1
   fi
 
+  local verify_cmd
+  verify_cmd=$(sql "SELECT verification_cmd FROM tasks WHERE id = $id;" 2>/dev/null) || true
+  
+  if [ -n "$verify_cmd" ]; then
+    printf '\033[1;33mManual Checkpoint Required:\033[0m %s\n' "$verify_cmd"
+    printf '\033[1;34mNote:\033[0m Auto-execution disabled for security (RCE prevention).\n'
+  fi
+
   sql "UPDATE tasks SET status = 'done', completed_at = datetime('now'), last_updated = datetime('now'), started_at = COALESCE(started_at, datetime('now')) WHERE id = $id;"
   ok "Completed task #$id"
 

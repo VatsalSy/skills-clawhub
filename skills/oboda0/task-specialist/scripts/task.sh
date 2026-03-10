@@ -44,7 +44,9 @@ CREATE TABLE IF NOT EXISTS tasks (
   started_at   TEXT,
   completed_at TEXT,
   last_updated TEXT    NOT NULL,
-  notes        TEXT
+  notes        TEXT,
+  due_date     TEXT,
+  tags         TEXT
 );
 CREATE TABLE IF NOT EXISTS dependencies (
   task_id           INTEGER NOT NULL,
@@ -58,23 +60,52 @@ SQL
   if [ "$has_project" -eq 0 ]; then
     sqlite3 -batch "$DB" "ALTER TABLE tasks ADD COLUMN project TEXT;"
   fi
+  
+  local has_verify
+  has_verify=$(sqlite3 -batch "$DB" "SELECT COUNT(*) FROM pragma_table_info('tasks') WHERE name='verification_cmd';")
+  if [ "$has_verify" -eq 0 ]; then
+    sqlite3 -batch "$DB" "ALTER TABLE tasks ADD COLUMN verification_cmd TEXT;"
+  fi
+
+  local has_assignee
+  has_assignee=$(sqlite3 -batch "$DB" "SELECT COUNT(*) FROM pragma_table_info('tasks') WHERE name='assignee';")
+  if [ "$has_assignee" -eq 0 ]; then
+    sqlite3 -batch "$DB" "ALTER TABLE tasks ADD COLUMN assignee TEXT;"
+  fi
+
+  local has_due_date
+  has_due_date=$(sqlite3 -batch "$DB" "SELECT COUNT(*) FROM pragma_table_info('tasks') WHERE name='due_date';")
+  if [ "$has_due_date" -eq 0 ]; then
+    sqlite3 -batch "$DB" "ALTER TABLE tasks ADD COLUMN due_date TEXT;"
+  fi
+
+  local has_tags
+  has_tags=$(sqlite3 -batch "$DB" "SELECT COUNT(*) FROM pragma_table_info('tasks') WHERE name='tags';")
+  if [ "$has_tags" -eq 0 ]; then
+    sqlite3 -batch "$DB" "ALTER TABLE tasks ADD COLUMN tags TEXT;"
+  fi
 }
 usage() {
 cat <<'EOF'
 task — local task management
 USAGE:
-  task create "description" [--priority=N] [--parent=ID] [--project=NAME]
-  task edit    ID [--desc="new text"] [--priority=N] [--project=NAME]
+  task create "description" [--priority=N] [--parent=ID] [--project=NAME] [--verify="cmd"] [--due="YYYY-MM-DD"] [--tags="a,b"]
+  task edit    ID [--desc="new text"] [--priority=N] [--project=NAME] [--verify="cmd"] [--assignee="NAME"|--unassign] [--due="YYYY-MM-DD"] [--tags="a,b"]
   task start   ID
   task block   ID "reason"
   task complete ID
-  task list    [--status=STATUS] [--parent=ID] [--project=NAME]
+  task list    [--status=STATUS] [--parent=ID] [--project=NAME] [--format=chat] [--tag="foo"]
   task show    ID
-  task export  [--status=STATUS] [--project=NAME]
+  task board
+  task claim   [--agent="NAME"]
+  task note    ID "context"
+  task export  [--status=STATUS] [--project=NAME] [--json]
   task stuck
   task break   ID "subtask 1" "subtask 2" ...
   task delete  ID [--force]
   task depend  ID DEPENDS_ON_ID
+  task unblock ID
+  task restart ID
 STATUSES: pending, in_progress, blocked, done
 ENVIRONMENT:
   TASK_DB   Path to SQLite database (default: ./tasks.db)
@@ -96,11 +127,16 @@ case "$1" in
   complete) shift; cmd_complete "$@" ;;
   delete)   shift; cmd_delete "$@" ;;
   list)     shift; cmd_list "$@" ;;
+  board)    shift; cmd_board "$@" ;;
   show)     shift; cmd_show "$@" ;;
+  claim)    shift; cmd_claim "$@" ;;
+  note)     shift; cmd_note "$@" ;;
   export)   shift; cmd_export "$@" ;;
   stuck)    shift; cmd_stuck "$@" ;;
   break)    shift; cmd_break "$@" ;;
   depend)   shift; cmd_depend "$@" ;;
+  unblock)  shift; cmd_unblock "$@" ;;
+  restart)  shift; cmd_restart "$@" ;;
   help|--help|-h) usage ;;
   *)        die "Unknown command: $1. Run 'task help' for usage." ;;
 esac
