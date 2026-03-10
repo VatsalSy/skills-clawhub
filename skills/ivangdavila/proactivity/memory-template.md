@@ -1,66 +1,78 @@
-# Memory Template
+# Memory Template - Proactivity
 
-Copy this structure to `~/proactivity/memory.md` on first use.
+Create `~/proactivity/memory.md` with this structure:
 
 ```markdown
 # Proactivity Memory
 
-## Boundaries
-<!-- Learned autonomy levels. Format: domain: action → LEVEL (status) -->
-<!-- Example: calendar: block focus time → DO (confirmed) -->
-<!-- Example: email: send replies → ASK (confirmed) -->
-<!-- Example: slack: post messages → NEVER (rejected) -->
+## Status
+status: ongoing
+version: 1.0.1
+last: YYYY-MM-DD
+integration: pending | complete | paused | never_ask
 
-## Patterns
-<!-- Recurring proactive behaviors. Format: trigger → response (status) -->
-<!-- Example: invoice overdue 7 days → send reminder (confirmed) -->
-<!-- Example: meeting tomorrow → prep packet tonight (confirmed) -->
+## Activation Preferences
+- When this skill should auto-activate
+- Whether it should jump in on blocked work, context drift, or missing next steps
+- Quiet hours, batching, and message style
 
-## Preferences
-<!-- How user wants proactivity delivered -->
-<!-- Example: morning digest only -->
-<!-- Example: no weekend alerts -->
-<!-- Example: max 3 alerts per day -->
+## Action Boundaries
+- Safe actions it may do automatically
+- Actions it should suggest first
+- Actions that always require approval
+- Actions it should never take
+
+## State Rules
+- What belongs in the session-state file
+- When the working-buffer file should be used
+- When active state should be cleared or refreshed
+
+## Heartbeat Behavior
+- What should be re-checked in the background
+- Which changes deserve a message
+- What should stay silent unless asked
+
+## Notes
+- Durable operating preferences
+- Reliable trigger patterns
+- Boundary exceptions worth keeping
+
+---
+*Updated: YYYY-MM-DD*
 ```
 
-## Initial Directory Structure
+## Status Values
 
-Create on first activation:
+| Value | Meaning | Behavior |
+|-------|---------|----------|
+| `ongoing` | Setup still evolving | Keep learning useful boundaries |
+| `complete` | Stable proactivity setup | Focus on execution and follow-through |
+| `paused` | User wants less proactivity | Run only on explicit request |
+| `never_ask` | User does not want setup prompts | Stop proactive setup questions |
+
+## Local Files to Initialize
 
 ```bash
-mkdir -p ~/proactivity/domains
-touch ~/proactivity/{memory.md,patterns.md,log.md}
+mkdir -p ~/proactivity/{domains,memory}
+touch ~/proactivity/{memory.md,session-state.md,heartbeat.md,patterns.md,log.md}
+touch ~/proactivity/memory/working-buffer.md
 ```
 
-## Log Template
+## Templates for Other Files
 
-For `~/proactivity/log.md`:
-
+`session-state.md`
 ```markdown
-# Proactive Actions Log
-
-<!-- Format:
-## YYYY-MM-DD
-- [HH:MM] LEVEL: action → outcome
-  Domain: calendar|email|code|content|...
-  Trigger: what prompted this
-  User reaction: positive|neutral|negative|none
--->
+# Session State
+- Current objective
+- Last confirmed decision
+- Blocker or open question
+- Next useful move
 ```
 
-## Domain Template
-
-For `~/proactivity/domains/{domain}.md`:
-
+`heartbeat.md`
 ```markdown
-# {Domain} Proactivity Rules
-
-## Autonomy Overrides
-<!-- Domain-specific level changes -->
-
-## Triggers
-<!-- What prompts proactive action in this domain -->
-
-## Constraints
-<!-- What to avoid -->
+# Heartbeat
+- Active follow-ups worth re-checking
+- Recurring checks that should stay lightweight
+- Conditions that justify messaging the user
 ```
