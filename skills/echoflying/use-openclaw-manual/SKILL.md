@@ -1,327 +1,259 @@
-# use-openclaw-manual - 基于文档的 OpenClaw 配置技能
+# use-openclaw-manual - OpenClaw 文档管理技能
 
 ## 描述
 
-在配置 OpenClaw 前自动查阅本地官方文档，确保配置操作准确、规范。首次使用时自动同步最新文档到本地。
+在配置 OpenClaw 前自动查阅本地官方文档，确保配置操作准确、规范。支持文档同步、快速搜索、文件阅读。
 
-**通知渠道**: 默认使用 webchat，可通过环境变量 `DOC_NOTIFY_CHANNEL` 覆盖（如：discord、telegram 等）。
+**特点**: 零依赖、快速、简洁 —— 直接使用脚本，无需通过 clawhub CLI 调用。
 
 ## 核心功能
 
-1. **文档同步** - 从 GitHub 同步 OpenClaw 官方文档到本地
-2. **文档搜索** - 快速搜索本地文档中的配置相关信息
-3. **配置规范** - 强制要求配置前查阅文档
-4. **引用来源** - 所有配置方案必须引用文档来源
+| 功能 | 命令 | 说明 |
+|------|------|------|
+| 文档同步 | `--init` / `--sync` | 从 GitHub 同步官方文档 |
+| 内容搜索 | `--search <词>` | 搜索文档内容 |
+| 标题搜索 | `--title <词>` | 搜索文档标题 |
+| 文件搜索 | `--file <词>` | 搜索文件名 |
+| 阅读文档 | `--read <文件>` | 阅读指定文档 |
+| 统计信息 | `--stats` | 显示文档统计 |
 
-## 首次安装
+## 快速开始
 
-### 1. 安装技能
+### 1. 安装（可选）
+
+通过 ClawHub 安装技能：
 
 ```bash
 clawhub skill install use-openclaw-manual
 ```
 
-### 2. 配置 Agent（重要）
-
-安装后需要在 **AGENTS.md** 中添加使用指南，让 Agent 知道使用此技能：
-
-```markdown
-## 工作流程
-1. 配置问题 → 使用 `use-openclaw-manual` 技能搜索文档
-   - `clawhub skill run use-openclaw-manual --search <关键词>`
-   - 配置方案必须引用文档来源
-2. 技能操作 → 使用 `clawhub skill` 命令
-3. 系统检查 → 使用 `healthcheck` 技能
-4. 变更操作 → 必须用户批准
-```
-
-**位置**: `~/.openclaw/workspace-sys/AGENTS.md`（或其他 workspace 的 AGENTS.md）
-
-### 3. 初始化文档
-
-首次使用本技能时，会自动执行文档同步：
+或直接克隆使用：
 
 ```bash
-# 技能安装后首次使用时自动触发
-clawhub skill run use-openclaw-manual --init
+# 技能目录：~/.openclaw/workspace/skills/use-openclaw-manual/
+```
+
+### 2. 初始化文档
+
+首次使用需同步文档：
+
+```bash
+cd ~/.openclaw/workspace/skills/use-openclaw-manual
+./run.sh --init
 ```
 
 **同步内容**:
 - 从 `github.com/openclaw/openclaw/docs/` 克隆
 - 保存到 `~/.openclaw/workspace/docs/openclaw_manual/`
-- 约 713 个文件，44 个子目录
-- 耗时约 30 秒
+- 约 700+ 文件，耗时约 30 秒
 
-### 手动初始化
-
-如需手动触发同步：
+### 3. 使用技能
 
 ```bash
-clawhub skill run use-openclaw-manual --init
+# 搜索内容
+./run.sh --search "agent binding"
+
+# 搜索标题
+./run.sh --title "cron"
+
+# 搜索文件名
+./run.sh --file "gateway"
+
+# 阅读文档
+./run.sh --read concepts/agent.md
+
+# 查看统计
+./run.sh --stats
 ```
 
-## 使用方法
+## 环境变量（可选）
 
-### 1. 配置前搜索文档
+| 变量名 | 默认值 | 说明 |
+|--------|--------|------|
+| `OPENCLAW_MANUAL_PATH` | `~/.openclaw/workspace/docs/openclaw_manual` | 文档存储路径 |
+| `LAST_COMMIT_FILE` | `$OPENCLAW_MANUAL_PATH/.last-docs-commit` | 同步基线文件路径 |
+| `DOC_UPDATE_LOG` | 技能目录内 `docs-update.log` | 日志文件路径 |
 
-收到配置需求后，先搜索相关文档：
+## 前置依赖
+
+确保系统已安装以下工具：
+
+| 工具 | 用途 | 检查命令 |
+|------|------|----------|
+| `git` | 克隆文档仓库 | `git --version` |
+| `curl` | 调用 GitHub API | `curl --version` |
+| `python3` | 解析 JSON 响应 | `python3 --version` |
+
+## 调用方式对比
+
+### ✅ 推荐：直接执行脚本
 
 ```bash
-# 搜索关键词
+# 快速、无额外开销
+./run.sh --search "binding"
+./scripts/search-docs.sh --search "binding"
+./scripts/sync-docs.sh --sync
+```
+
+**优点**: 
+- 启动快（~0.8 秒）
+- 零额外依赖
+- 输出简洁，便于 Agent 处理
+- 可管道组合
+
+### ⚠️ 可选：通过 clawhub 调用
+
+```bash
 clawhub skill run use-openclaw-manual --search "binding"
-
-# 或指定主题
-clawhub skill run use-openclaw-manual --search "agent workspace"
-clawhub skill run use-openclaw-manual --search "cron schedule"
-clawhub skill run use-openclaw-manual --search "tools profile"
 ```
 
-### 2. 查阅特定主题文档
+**缺点**: 
+- 启动慢（~3 秒，含 CLI 加载）
+- 依赖 clawhub CLI
+- 输出格式化，不利于程序处理
 
-```bash
-# 列出相关文档
-clawhub skill run use-openclaw-manual --list "agent"
+## Agent 集成
 
-# 查看文档内容
-clawhub skill run use-openclaw-manual --read "concepts/agent-workspace.md"
+在 AGENTS.md 中添加：
+
+```markdown
+## 文档查阅
+
+配置 OpenClaw 前必须查阅文档：
+
+1. 搜索相关文档
+   ```bash
+   ~/.openclaw/workspace/skills/use-openclaw-manual/run.sh --search "<关键词>"
+   ```
+
+2. 阅读具体文档
+   ```bash
+   ./run.sh --read <文件路径>
+   ```
+
+3. 配置方案必须引用文档来源
+   ```
+   根据 docs/openclaw_manual/gateway/config.md 第 45 行...
+   ```
 ```
 
-### 3. 检查文档更新
+## 输出格式
 
-```bash
-# 检查是否有新文档
-clawhub skill run use-openclaw-manual --check
-
-# 手动同步更新
-clawhub skill run use-openclaw-manual --sync
-```
-
-### 4. 配置操作规范
-
-**标准流程**:
-
-1. **搜索** - `grep -r` 搜索本地文档
-2. **阅读** - 理解相关文档内容
-3. **设计** - 基于文档设计配置方案
-4. **引用** - 在方案中引用文档来源
-5. **批准** - 用户确认方案
-6. **执行** - 按方案执行配置
-
-**示例**:
+### 搜索输出
 
 ```
-用户：帮我配置 Discord 通知
+🔍 搜索内容：'binding'
+📁 路径：/home/claw/.openclaw/workspace/docs/openclaw_manual
+---
+channels/channel-routing.md:62
+  1. **Exact peer match** (`bindings` with `peer.kind` + `peer.id`).
 
-助手：
-1. 先查阅文档...
-   $ clawhub skill run use-openclaw-manual --search "discord notification"
-   
-2. 找到相关文档:
-   - channels/discord.md
-   - automation/notifications.md
-   
-3. 基于文档设计配置方案:
-   [方案内容，引用文档来源]
-   
-4. 用户批准后执行配置
+automation/cron-jobs.md:105
+  - optional **agent binding** (`agentId`): run the job under a specific agent
+---
+共 15 个匹配（显示前 10 个）
 ```
 
-## 文档优先级
+### 统计输出
 
-| 优先级 | 目录 | 说明 | 查阅时机 |
-|--------|------|------|---------|
-| **P0** | `concepts/` | 核心概念 | 所有配置前必读 |
-| **P1** | `cli/` | 命令参考 | 执行命令前查阅 |
-| **P2** | `channels/` | 渠道配置 | 配置渠道时查阅 |
-| **P3** | `automation/` | 自动化 | 配置定时任务时查阅 |
+```
+📊 文档统计
+---
+路径：/home/claw/.openclaw/workspace/docs/openclaw_manual
 
-## 脚本说明
+文件：713 个 (Markdown: 689 个)
+目录：44 个
+总行数：45230
+总词数：312450
 
-### sync-docs.sh
-
-**位置**: `scripts/sync-docs.sh`（技能目录内）
-
-**功能**: 同步 OpenClaw 官方文档到本地
-
-**参数**:
-- `--init` - 首次初始化（完整同步）
-- `--sync` - 增量同步（仅更新变更文件）
-- `--check` - 仅检查更新，不同步
-
-**环境变量**:
-- `OPENCLAW_MANUAL_PATH` - 文档目录路径（默认：`$HOME/.openclaw/workspace/docs/openclaw_manual`）
-- `LAST_COMMIT_FILE` - Baseline 文件路径（默认：`$OPENCLAW_MANUAL_PATH/.last-docs-commit`）
-- `DOC_UPDATE_LOG` - 日志文件路径（默认：技能目录内 `docs-update.log`）
-- `DOC_NOTIFY_CHANNEL` - 通知渠道（默认：`webchat`）
-
-**输出**:
-- 同步文件数量
-- 变更文件列表
-- 通知（通过指定渠道发送）
-
-### search-docs.sh
-
-**位置**: `scripts/search-docs.sh`（技能目录内）
-
-**功能**: 搜索本地文档
-
-**参数**:
-- `--keyword <词>` - 搜索关键词
-- `--type <content|filename|title>` - 搜索类型（内容/文件名/标题）
-- `--limit <数>` - 结果数量限制
-
-**环境变量**:
-- `OPENCLAW_MANUAL_PATH` - 文档目录路径
-- `DOC_UPDATE_LOG` - 日志文件路径
+主要目录:
+  📁 automation/ (89 个文件)
+  📁 channels/ (52 个文件)
+  📁 concepts/ (34 个文件)
+  ...
+```
 
 ## 文件结构
 
 ```
 use-openclaw-manual/
-├── SKILL.md                          # 技能说明
-├── run.sh                            # 入口脚本
-├── scripts/
-│   ├── sync-docs.sh                  # 文档同步脚本
-│   └── search-docs.sh                # 文档搜索脚本
-└── .initialized                      # 初始化标记文件（自动创建）
+├── SKILL.md              # 技能文档
+├── run.sh                # 主入口脚本
+├── LICENSE.txt           # MIT 许可证
+├── docs-update.log       # 同步日志（运行时生成）
+├── _meta.json            # ClawHub 元数据
+└── scripts/
+    ├── sync-docs.sh      # 文档同步脚本
+    └── search-docs.sh    # 文档搜索脚本
 ```
 
-## 相关文件
+## 高级用法
 
-| 文件 | 路径 | 用途 |
-|------|------|------|
-| 本地文档 | `~/.openclaw/workspace/docs/openclaw_manual/` | 官方文档（约 713 个文件） |
-| Baseline | `$OPENCLAW_MANUAL_PATH/.last-docs-commit` | 记录同步的 commit hash |
-| 日志 | `$DOC_UPDATE_LOG` | 同步日志（默认技能目录内） |
-
-## 自动同步
-
-技能支持定时同步功能，用户可自行配置 crontab：
+### 管道组合
 
 ```bash
-# 示例：每天 4:44 AM (Asia/Shanghai) 检查更新
-44 4 * * * clawhub skill run use-openclaw-manual --sync
+# 搜索并提取文件名
+./run.sh --search "binding" | grep "\.md:" | cut -d: -f1 | sort -u
+
+# 搜索并统计
+./run.sh --search "agent" | grep -c "^  "
 ```
 
-### 通知渠道
+### 定期检查更新
 
-通过环境变量 `DOC_NOTIFY_CHANNEL` 指定通知渠道：
-
-| 渠道 | 说明 | 配置 |
-|------|------|------|
-| **webchat** | Web 界面通知 | 默认 |
-| **discord** | Discord DM | `DOC_NOTIFY_CHANNEL=discord` |
-| **telegram** | Telegram 消息 | `DOC_NOTIFY_CHANNEL=telegram` |
-| **其他** | 其他支持的渠道 | 按需设置 |
-
-## 配置规范
-
-### ✅ 必须做
-
-- 配置前必须搜索本地文档
-- 配置方案必须引用文档来源
-- 文档与经验冲突时，以文档为准
-- 定期同步确保文档最新
-
-### ❌ 禁止做
-
-- 未查文档直接配置
-- 凭经验或猜测操作
-- 忽略文档中的警告
-- 跳过用户批准步骤
-
-## 示例场景
-
-### 场景 1: 配置 Agent
-
-```
-用户：帮我配置一个新的 agent
-
-助手：
-1. 运行：clawhub skill run use-openclaw-manual --search "agent configuration"
-2. 查阅：concepts/agent.md, cli/agents.md
-3. 设计方案（引用文档）
-4. 用户批准
-5. 执行配置
+```bash
+# 添加到 cron，每日检查
+0 9 * * * cd ~/.openclaw/workspace/skills/use-openclaw-manual && ./run.sh --sync
 ```
 
-### 场景 2: 配置定时任务
+### 自定义文档路径
 
-```
-用户：设置一个每天运行的任务
-
-助手：
-1. 运行：clawhub skill run use-openclaw-manual --search "cron schedule"
-2. 查阅：automation/cron.md, cli/cron.md
-3. 设计方案（引用文档）
-4. 用户批准
-5. 执行配置
-```
-
-### 场景 3: 配置通知
-
-```
-用户：配置 Discord 通知
-
-助手：
-1. 运行：clawhub skill run use-openclaw-manual --search "discord notification"
-2. 查阅：channels/discord.md, automation/notifications.md
-3. 设计方案（引用文档）
-4. 用户批准
-5. 执行配置
+```bash
+export OPENCLAW_MANUAL_PATH=/custom/path/docs
+./run.sh --search "binding"
 ```
 
 ## 故障排除
 
-### 问题：文档目录为空
+### 文档未同步
 
-**原因**: 首次同步未执行或失败
-
-**解决**:
-```bash
-clawhub skill run use-openclaw-manual --init
+```
+❌ 文档未同步，请先运行：./run.sh --init
 ```
 
-### 问题：搜索无结果
+**解决**: 运行初始化命令
 
-**原因**: 关键词不匹配或文档未同步
+### 同步失败
 
-**解决**:
-1. 尝试不同关键词
-2. 检查文档是否已同步：`ls ~/.openclaw/workspace/docs/openclaw_manual/`
-3. 重新同步：`clawhub skill run use-openclaw-manual --sync`
+```
+❌ 获取 commit 失败，请检查网络连接
+```
 
-### 问题：同步失败
+**解决**: 检查网络连接，确保可访问 GitHub API
 
-**原因**: 网络问题或 GitHub API 限流
+### 搜索无结果
 
-**解决**:
-1. 检查网络连接
-2. 等待几分钟后重试
-3. 查看日志：`cat ~/.openclaw/workspace-sys/docs-update.log`
+```
+未找到匹配项
+```
 
-## 版本历史
-
-### v1.0.0 (2026-03-05)
-
-- 首次发布
-- 文档自动同步
-- 文档搜索功能
-- 配置操作规范
-- 定时更新任务
-
-## 相关技能
-
-- **healthcheck** - 系统健康检查
-- **clawhub** - 技能管理
-- **skill-creator** - 技能创建
+**解决**: 尝试其他关键词，或使用 `--stats` 查看文档结构
 
 ## 许可证
 
-与 OpenClaw 相同
+MIT License - 与 OpenClaw 相同
 
-## 支持
+## 更新日志
 
-- 文档：`~/.openclaw/workspace/docs/openclaw_manual/`
-- 社区：https://discord.com/invite/clawd
-- 技能市场：https://clawhub.com
+### 1.0.2 (2026-03-11)
+- 重构：简化调用方式，直接执行脚本
+- 移除：clawhub CLI 依赖（改为可选）
+- 优化：输出格式更简洁，便于 Agent 处理
+- 修复：元数据声明不一致问题
+
+### 1.0.1 (2026-03-10)
+- 添加：前置依赖和环境变量声明
+- 修复：元数据与实际依赖不一致问题
+
+### 1.0.0 (2026-03-05)
+- 初始版本
