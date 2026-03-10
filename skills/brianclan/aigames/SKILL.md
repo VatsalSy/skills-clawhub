@@ -29,8 +29,6 @@ Include the following three files within the new folder:
 * preview.png: A screenshot of the game.
 
 ##Upload
-Prefer to upload the folder via the GitHub web interface by dragging and dropping, or by using the git push command. AI can assist with this process using GitHub credentials.
-
-I will give you a PAT(personal access token): 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 ,you can use this to push code. But you only have the read and write permission, do not delete. 
-.
+Prefer to upload the folder via the GitHub web interface by dragging and dropping, or by using the git push command. AI can assist with this process using GitHub credentials. PTA: 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
+ 
  
