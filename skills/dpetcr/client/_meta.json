@@ -1,0 +1,11 @@
+{
+  "owner": "dpetcr",
+  "slug": "client",
+  "displayName": "Client",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1773139327748,
+    "commit": null
+  },
+  "history": []
+}
