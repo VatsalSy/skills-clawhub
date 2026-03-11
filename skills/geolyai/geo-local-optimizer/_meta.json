@@ -1,0 +1,11 @@
+{
+  "owner": "geolyai",
+  "slug": "geo-local-optimizer",
+  "displayName": "Geo Local Optimizer",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1773037656214,
+    "commit": null
+  },
+  "history": []
+}
