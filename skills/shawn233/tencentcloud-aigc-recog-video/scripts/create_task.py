@@ -12,39 +12,21 @@ Usage:
 
 import json
 import os
-import subprocess
 import sys
 
-
-# ============================================================
-# Part 1: Auto-install dependencies
-# ============================================================
-
-def ensure_dependencies():
-    """Ensure tencentcloud-sdk-python is installed; auto-install if missing."""
-    try:
-        import tencentcloud.vm.v20210922  # noqa: F401
-    except ImportError:
-        print("[INFO] tencentcloud-sdk-python is not installed, installing now...", file=sys.stderr)
-        subprocess.check_call(
-            [sys.executable, "-m", "pip", "install", "tencentcloud-sdk-python", "-q"],
-            stdout=sys.stderr,
-            stderr=sys.stderr,
-        )
-        print("[INFO] tencentcloud-sdk-python installed successfully.", file=sys.stderr)
-
-
-ensure_dependencies()
-
-from tencentcloud.common import credential  # noqa: E402
-from tencentcloud.common.profile.client_profile import ClientProfile  # noqa: E402
-from tencentcloud.common.profile.http_profile import HttpProfile  # noqa: E402
-from tencentcloud.common.exception.tencent_cloud_sdk_exception import TencentCloudSDKException  # noqa: E402
-from tencentcloud.vm.v20210922 import vm_client, models  # noqa: E402
+try:
+    from tencentcloud.common import credential  # noqa: E402
+    from tencentcloud.common.profile.client_profile import ClientProfile  # noqa: E402
+    from tencentcloud.common.profile.http_profile import HttpProfile  # noqa: E402
+    from tencentcloud.common.exception.tencent_cloud_sdk_exception import TencentCloudSDKException  # noqa: E402
+    from tencentcloud.vm.v20210922 import vm_client, models  # noqa: E402
+except ImportError:
+    print("错误: 缺少依赖 tencentcloud-sdk-python，请执行: pip install tencentcloud-sdk-python", file=sys.stderr)
+    sys.exit(1)
 
 
 # ============================================================
-# Part 2: Credential checking
+# Part 1: Credential checking
 # ============================================================
 
 def get_credentials():
@@ -115,7 +97,7 @@ def get_biz_type():
 
 
 # ============================================================
-# Part 3: Command-line argument parsing
+# Part 2: Command-line argument parsing
 # ============================================================
 
 def parse_args():
@@ -186,7 +168,7 @@ def get_video_url(args):
 
 
 # ============================================================
-# Part 4: API call and result output
+# Part 3: API call and result output
 # ============================================================
 
 def create_video_moderation_task(cred, video_url, data_id=None, biz_type=None):
