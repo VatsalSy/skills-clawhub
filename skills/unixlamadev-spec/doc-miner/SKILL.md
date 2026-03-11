@@ -1,6 +1,6 @@
 ---
 name: doc-miner
-description: Extract key points, summary, and answers from any PDF or webpage URL
+description: Extract summaries, answers, or structured data from any URL, PDF, or raw text. Auto-detects mode from task.
 acceptLicenseTerms: true
 metadata:
   clawdbot:
@@ -13,21 +13,22 @@ metadata:
 
 # Doc Miner
 
-Extract insights, key points, and answers from PDFs and webpages. Ask questions about documents or get comprehensive summaries.
+Extract insights, answers, and structured data from PDFs, webpages, or raw text. Auto-detects the right mode from your task: summarization, Q&A, or structured extraction of entities, dates, and numbers.
 
 ## When to Use
 
 - Summarizing long PDFs or articles
-- Extracting specific information from documents
 - Answering questions about document contents
+- Extracting named entities, dates, or figures
+- Analyzing raw text without a URL
 - Research and literature review
 
 ## Usage Flow
 
-1. Provide a URL to a PDF or webpage
-2. Specify what to extract or questions to answer
+1. Provide a `url` (PDF or webpage) **or** paste `text` directly
+2. Optionally specify a `task` — asking a question triggers Q&A mode; "extract" triggers extraction mode; default is summarization
 3. AIProx routes to the doc-miner agent
-4. Returns answer, summary, and key_points array
+4. Returns mode-specific fields: summary/key_points/word_count, or answer/context/confidence, or entities/dates/numbers
 
 ## Security Manifest
 
@@ -43,25 +44,36 @@ curl -X POST https://aiprox.dev/api/orchestrate \
   -H "Content-Type: application/json" \
   -H "X-Spend-Token: $AIPROX_SPEND_TOKEN" \
   -d '{
-    "task": "What are the main findings and recommendations?",
-    "url": "https://example.com/report.pdf"
+    "task": "extract all dates and key entities",
+    "text": "On January 15, 2024, Acme Corp announced a merger with GlobalTech valued at $2.4 billion..."
   }'
 ```
 
-### Response
+### Response (extraction mode)
 
 ```json
 {
-  "answer": "The report identifies three main findings: increased user engagement, declining conversion rates, and opportunities in mobile.",
-  "summary": "Q3 2024 product analytics report covering user metrics, conversion funnels, and strategic recommendations for mobile-first approach.",
-  "key_points": [
-    "User engagement up 23% quarter-over-quarter",
-    "Mobile conversion rate 40% below desktop",
-    "Recommendation: prioritize mobile UX improvements"
-  ]
+  "mode": "extraction",
+  "key_points": ["Acme Corp merging with GlobalTech", "Deal valued at $2.4 billion"],
+  "entities": ["Acme Corp", "GlobalTech"],
+  "dates": ["January 15, 2024"],
+  "numbers": ["$2.4 billion"],
+  "source_type": "text"
+}
+```
+
+### Response (summary mode)
+
+```json
+{
+  "mode": "summary",
+  "summary": "Q3 2024 product analytics report covering user metrics and strategic recommendations.",
+  "key_points": ["User engagement up 23%", "Mobile conversion 40% below desktop"],
+  "word_count": 1240,
+  "source_type": "webpage"
 }
 ```
 
 ## Trust Statement
 
-Doc Miner fetches and analyzes document contents via URL. Documents are processed transiently and not stored. Analysis is performed by Claude via LightningProx. Your spend token is used for payment only.
+Doc Miner fetches and analyzes document contents via URL or processes provided text. Documents are processed transiently and not stored. Analysis is performed by Claude via LightningProx. Your spend token is used for payment only.
