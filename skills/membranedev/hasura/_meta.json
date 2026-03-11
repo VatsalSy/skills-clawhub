@@ -1,0 +1,11 @@
+{
+  "owner": "membranedev",
+  "slug": "hasura",
+  "displayName": "Hasura",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1773097361462,
+    "commit": null
+  },
+  "history": []
+}
