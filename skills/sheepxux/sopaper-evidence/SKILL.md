@@ -7,7 +7,7 @@ description: Evidence-first research workflow for paper writing. Use when the ta
 
 Sopaper Evidence is an evidence-first research skill. Its job is to build a reliable evidence pack before supporting any paper outline, abstract, related work summary, experiment plan, or draft section.
 
-Version: `v0.2`
+Version: `v0.3`
 
 ## Use this skill when
 
@@ -65,6 +65,7 @@ Search for:
 For each source, capture the title, URL or path, source type, and why it matters.
 
 Use [references/prior-work-search-playbook.md](references/prior-work-search-playbook.md) for a repeatable search process.
+For OpenClaw-specific work, use [references/openclaw-evidence-playbook.md](references/openclaw-evidence-playbook.md).
 
 ### 3. Verify and classify
 
@@ -103,6 +104,10 @@ Organize findings into:
 
 Use [assets/claim-evidence-map-template.md](assets/claim-evidence-map-template.md) when the user needs a reusable deliverable.
 Use [assets/related-work-matrix-template.md](assets/related-work-matrix-template.md) when comparing papers, baselines, and benchmark coverage.
+Use [assets/experiment-gap-report-template.md](assets/experiment-gap-report-template.md) when the task requires prioritizing missing experiments before drafting.
+Use `scripts/build_evidence_ledger.py` when the user already has markdown notes or source lists and needs a first-pass evidence ledger.
+Use `scripts/bootstrap_claim_map.py` when the user already has a claims list and a ledger draft and needs a first-pass claim map.
+Use `scripts/triage_evidence_gaps.py` when the user needs a first-pass blocker/major/minor gap report from the current claims and evidence ledger.
 
 ### 6. Support writing
 
@@ -126,6 +131,7 @@ Unless the user asks for something else, default to this output shape:
 3. `Claim-to-evidence map`
 4. `Evidence gaps`
 5. `Safe writing notes`
+6. `Experiment gap report` when blocker gaps exist
 
 See the example set in:
 
@@ -133,6 +139,12 @@ See the example set in:
 - [examples/openclaw-search-plan.md](examples/openclaw-search-plan.md)
 - [examples/openclaw-evidence-brief.md](examples/openclaw-evidence-brief.md)
 - [examples/openclaw-claim-map.md](examples/openclaw-claim-map.md)
+- [examples/openclaw-gap-report.md](examples/openclaw-gap-report.md)
+- [examples/openclaw-source-list.md](examples/openclaw-source-list.md)
+- [examples/openclaw-ledger-draft.md](examples/openclaw-ledger-draft.md)
+- [examples/openclaw-claims.md](examples/openclaw-claims.md)
+- [examples/openclaw-claim-map-draft.md](examples/openclaw-claim-map-draft.md)
+- [examples/openclaw-gap-report-draft.md](examples/openclaw-gap-report-draft.md)
 - [examples/openclaw-paper-outline.md](examples/openclaw-paper-outline.md)
 
 ## Writing constraints
@@ -156,3 +168,4 @@ When the user is working on OpenClaw or a similar embodied AI / robotics project
 
 Do not assume OpenClaw has capabilities, datasets, or benchmark wins unless they are present in project artifacts or verified sources.
 Use [references/benchmark-baseline-checklist.md](references/benchmark-baseline-checklist.md) before accepting benchmark-fit or baseline coverage claims.
+Use [references/evidence-gap-triage.md](references/evidence-gap-triage.md) when deciding whether to keep drafting or stop and report blockers.

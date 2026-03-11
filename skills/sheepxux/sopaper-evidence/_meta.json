@@ -3,9 +3,15 @@
   "slug": "sopaper-evidence",
   "displayName": "Sopaper Evidence",
   "latest": {
-    "version": "0.2.0",
-    "publishedAt": 1773199951385,
-    "commit": "https://github.com/openclaw/skills/commit/513ec59ec41ac55a66c615550ebaadf6e89c06de"
+    "version": "0.4.1",
+    "publishedAt": 1773249754266,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.2.0",
+      "publishedAt": 1773199951385,
+      "commit": "https://github.com/openclaw/skills/commit/513ec59ec41ac55a66c615550ebaadf6e89c06de"
+    }
+  ]
 }
