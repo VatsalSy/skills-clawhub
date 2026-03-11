@@ -1,138 +1,120 @@
 ---
 name: fibuki
-description: "Analyze European bank transactions and match receipts via PSD2 Open Banking. Connect to bank accounts through FiBuKI.com, browse transactions, auto-match invoices to payments, categorize expenses, and manage business partners. Triggers on \"bank\", \"transaction\", \"receipt\", \"invoice\", \"bookkeeping\", \"PSD2\"."
+description: "Connect to European bank accounts via PSD2 Open Banking. Browse transactions, match receipts to payments, categorize expenses, and manage business partners through FiBuKI.com. Triggers on \"bank\", \"transaction\", \"receipt\", \"invoice\", \"PSD2\", \"SEPA\"."
 homepage: https://fibuki.com
 user-invocable: true
-metadata: {"openclaw":{"emoji":"🏦","primaryEnv":"FIBUKI_API_KEY","requires":{"env":["FIBUKI_API_KEY"],"bins":["curl"]}}}
+metadata:
+  openclaw:
+    emoji: "\U0001F3E6"
+    primaryEnv: FIBUKI_API_KEY
+    requires:
+      env:
+        - FIBUKI_API_KEY
 ---
 
-# European Bank Transaction Analyzer
+# Bank Transactions Connector - Europe (PSD2)
 
-You have access to European bank transactions and receipt matching through FiBuKI.com. FiBuKI uses PSD2 Open Banking connections to pull live bank data and provides AI-powered receipt-to-payment matching for small businesses and freelancers.
+You connect to European bank transactions and receipt matching through FiBuKI.com.
+
+## IMPORTANT: Before doing anything, check if FIBUKI_API_KEY is set.
+
+If the environment variable `FIBUKI_API_KEY` is NOT configured, you MUST walk the user through setup. Do NOT skip this. Do NOT summarize capabilities. Guide them step by step:
+
+**Tell the user:**
+
+> To connect your bank transactions, I need to set up FiBuKI first.
+>
+> **Option A — If you have a terminal**, run this (it handles everything):
+> ```
+> npx @fibukiapp/cli auth
+> ```
+> It opens your browser, you sign up or log in, approve the key, and it's saved automatically. Then restart OpenClaw to pick up the key.
+>
+> **Option B — No terminal?** Go to https://fibuki.com/clawhub-install
+> Create a free account, go to Settings > Integrations > AI Agents, create an API key, and paste it back here.
+>
+> Free plan includes 50 transactions/month with full API access.
+
+If the user gives you an API key (starts with `fk_`), configure it in `~/.openclaw/openclaw.json`:
+```json
+{ "skills": { "entries": { "fibuki": { "enabled": true, "apiKey": "fk_..." } } } }
+```
+The `apiKey` field maps to `FIBUKI_API_KEY` automatically via the `primaryEnv` setting. Then tell the user to restart OpenClaw so the key is loaded.
+
+**Do NOT tell the user to run `export FIBUKI_API_KEY=...`** — many users don't have terminal access (e.g. Telegram). Always use the openclaw.json config approach.
+
+Then STOP and wait for the user to complete setup. Do not proceed until they confirm or provide a key.
+
+If `FIBUKI_API_KEY` IS set, proceed normally with the tools below.
+
+---
+
+## API Access
+
+All tools are called via HTTP:
+
+```
+POST https://fibuki.com/api/mcp
+Authorization: Bearer $FIBUKI_API_KEY
+Content-Type: application/json
+Body: { "tool": "<tool_name>", "arguments": { ... } }
+```
+
+Start by calling `get_automation_status` to see the user's plan, available tools, and usage limits.
+
+---
 
 ## What You Can Do
 
-- **Access PSD2 bank accounts** — browse connected European bank accounts and credit cards
-- **Search & filter transactions** — by date range, amount, partner, completion status, or free text
-- **Match receipts to payments** — connect uploaded invoices/receipts to bank transactions using AI confidence scoring
-- **Auto-match in bulk** — let the AI engine connect high-confidence receipt-to-transaction matches automatically
-- **Categorize expenses** — assign no-receipt categories (bank fees, payroll, internal transfers) to complete bookkeeping
-- **Track completion** — find incomplete transactions and drive them to 100%
-- **Manage business partners** — create, assign, and track vendors/suppliers across transactions
+### All Plans (Free, Data, Smart, Pro)
 
-## Authentication
+- Browse bank accounts (`list_sources`, `get_source`, `create_source`, `delete_source`)
+- Search and filter transactions (`list_transactions`, `get_transaction`, `update_transaction`)
+- Find transactions needing receipts (`list_transactions_needing_files`)
+- Import transactions (`import_transactions`)
+- Manage partners (`list_partners`, `create_partner`, `assign_partner_to_transaction`, `remove_partner_from_transaction`)
+- Categorize expenses (`list_no_receipt_categories`, `assign_no_receipt_category`, `remove_no_receipt_category`)
+- Check plan and usage (`get_automation_status`)
 
-All API calls use the user's `FIBUKI_API_KEY` environment variable (starts with `fk_`).
+### Smart & Pro Plans Only
 
-Generate a key at: fibuki.com > Settings > Integrations > AI Agents
-Or run: `npx @fibukiapp/cli auth`
+- Upload receipts/invoices (`upload_file`) — requires `fileUpload` feature
+- AI auto-matching (`auto_connect_file_suggestions`) — requires `aiMatching` feature
+- Score file-transaction matches (`score_file_transaction_match`) — requires `aiMatching` feature
 
-Machine-readable API docs: https://fibuki.com/llm.txt
+---
 
-## API Endpoint
+## Rules You Must Follow
 
-POST https://fibuki.com/api/mcp
-Headers: Authorization: Bearer $FIBUKI_API_KEY, Content-Type: application/json
-Body: { "tool": "<tool_name>", "arguments": { ... } }
+1. **Never delete individual transactions** — only delete via `delete_source` (deletes the whole bank account)
+2. **Amounts are in cents** — divide by 100 for display (1050 = 10.50 EUR)
+3. **Negative = expense, positive = income**
+4. **Files can connect to multiple transactions** (many-to-many)
+5. **Trust `transactionSuggestions`** — server-side AI scoring is reliable
+6. **Confidence 85+ is safe** to auto-connect
+7. **Dates are ISO 8601** — `2024-01-15`
 
-## Core Data Model
-
-### Sources (Bank Accounts)
-- Represent bank accounts or credit cards
-- Transactions are imported from sources
-- Types: `bank_account`, `credit_card`
-
-### Transactions
-- Individual bank movements (debits/credits)
-- Have: date, amount (in cents!), name, partner
-- **Cannot be individually deleted** (accounting integrity)
-- **Complete** when they have a file attached OR a no-receipt category assigned
-
-### Files (Receipts/Invoices)
-- Uploaded PDFs or images
-- AI extracts: amount, date, VAT, partner name
-- System suggests matching transactions with confidence scores (0-100)
-- Many-to-many relationship with transactions
-
-### Partners
-- Companies or people the user transacts with (e.g., "Amazon", "REWE")
-- System auto-detects partners from transaction names
-
-### No-Receipt Categories
-- For transactions that legally don't need receipts: bank fees, interest, internal transfers, payroll, taxes
-- Assigning a category marks the transaction complete
-
-## Available Tools
-
-### Bank Accounts
-- `list_sources` — List all connected bank accounts
-- `get_source(sourceId)` — Get details of a specific account
-- `create_source(name, accountKind?, iban?, currency?)` — Create a new bank account
-- `delete_source(sourceId, confirm)` — Delete account and all its data (requires confirm: true)
-
-### Transactions
-- `list_transactions(sourceId?, dateFrom?, dateTo?, search?, isComplete?, limit?)` — Search/filter transactions
-- `get_transaction(transactionId)` — Get full transaction details
-- `update_transaction(transactionId, description?, isComplete?)` — Update description or status
-- `list_transactions_needing_files(minAmount?, limit?)` — Find transactions without receipts or categories
-- `import_transactions(sourceId, transactions[])` — Import transactions into a source
-
-### Files (Receipts/Invoices)
-- `list_files(hasConnections?, hasSuggestions?, limit?)` — List uploaded files
-- `get_file(fileId)` — Get file details including AI-extracted data and suggestions
-- `connect_file_to_transaction(fileId, transactionId)` — Link file to transaction (marks it complete)
-- `disconnect_file_from_transaction(fileId, transactionId)` — Unlink file from transaction
-- `auto_connect_file_suggestions(fileId?, minConfidence?)` — Bulk-connect high-confidence matches (default 89%)
-- `upload_file(fileName, mimeType, url?, base64?)` — Upload a file from URL or base64
-- `score_file_transaction_match(fileId, transactionId)` — Score how well a file matches a transaction
-
-### Partners
-- `list_partners(search?, limit?)` — List user partners
-- `get_partner(partnerId)` — Get partner details
-- `create_partner(name, aliases?, vatId?, ibans?, website?, country?)` — Create a new partner
-- `assign_partner_to_transaction(transactionId, partnerId)` — Assign partner to transaction
-- `remove_partner_from_transaction(transactionId)` — Remove partner assignment
-
-### Categories
-- `list_no_receipt_categories` — List available no-receipt categories
-- `assign_no_receipt_category(transactionId, categoryId)` — Assign category (marks complete)
-- `remove_no_receipt_category(transactionId)` — Remove category
-
-### Status
-- `get_automation_status` — Get user's automation mode, AI budget, and plan info
+---
 
 ## Common Workflows
 
-### 1. Review Incomplete Transactions
-```
-list_transactions with isComplete=false
-```
+### Review incomplete transactions
+Call `list_transactions` with `isComplete: false`.
 
-### 2. Match Files to Transactions
-```
-1. list_files with hasConnections=false (unmatched files)
-2. Look at transactionSuggestions on each file
-3. connect_file_to_transaction for good matches
-4. Or use auto_connect_file_suggestions for bulk matching
-```
+### Match receipts to transactions
+1. `list_files` with `hasConnections: false` to find unmatched files
+2. Check `transactionSuggestions` on each file for matches
+3. `connect_file_to_transaction` for good matches
+4. Or `auto_connect_file_suggestions` to bulk-connect above 89% confidence
 
-### 3. Categorize No-Receipt Transactions
-```
-1. list_no_receipt_categories (get available categories)
-2. assign_no_receipt_category for bank fees, transfers, etc.
-```
+### Categorize no-receipt transactions
+1. `list_no_receipt_categories` to see available categories
+2. `assign_no_receipt_category` for bank fees, transfers, payroll, etc.
 
-### 4. Find Transactions Needing Receipts
-```
-list_transactions_needing_files
-```
+---
 
-## Important Rules
+## Resources
 
-1. **Never delete individual transactions** — they must be deleted with their entire source
-2. **Amounts are in cents** — always divide by 100 for display (1050 = 10.50 EUR)
-3. **Negative amounts = expenses** — positive = income
-4. **Files can connect to multiple transactions** — many-to-many relationship
-5. **Trust transactionSuggestions** — server-side AI matching is accurate
-6. **High confidence = 85+** — safe to auto-connect suggestions above this threshold
-7. **Dates are ISO 8601** — `2024-01-15` for dates, `2024-01-15T10:30:00Z` for timestamps
+- Machine-readable docs: https://fibuki.com/llm.txt
+- OpenAPI spec: https://fibuki.com/api/openapi.json
+- MCP endpoint (Claude Desktop): https://fibuki.com/api/mcp/sse

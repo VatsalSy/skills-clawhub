@@ -1,11 +1,17 @@
 {
   "owner": "felixtosh",
   "slug": "fibuki",
-  "displayName": "European Bank Transaction Analyzer",
+  "displayName": "Bank Transactions Connector - Europe (PSD2)",
   "latest": {
-    "version": "0.1.4",
-    "publishedAt": 1772930136805,
-    "commit": "https://github.com/openclaw/skills/commit/31b86e6ed2d9f37b712b1f90b0cddd94c5140adb"
+    "version": "0.1.14",
+    "publishedAt": 1773143837444,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.1.4",
+      "publishedAt": 1772930136805,
+      "commit": "https://github.com/openclaw/skills/commit/31b86e6ed2d9f37b712b1f90b0cddd94c5140adb"
+    }
+  ]
 }
