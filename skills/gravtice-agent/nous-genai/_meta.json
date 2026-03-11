@@ -1,0 +1,11 @@
+{
+  "owner": "gravtice-agent",
+  "slug": "nous-genai",
+  "displayName": "GenAI CLI",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1773137501945,
+    "commit": null
+  },
+  "history": []
+}
