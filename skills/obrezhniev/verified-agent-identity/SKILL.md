@@ -1,7 +1,7 @@
 ---
 name: verified-agent-identity
 description: Billions/Iden3 authentication and identity management tools for agents. Link, proof, sign, and verify.
-metadata: { "category": "identity", "clawbot": { "requires": { "bins": ["node", "openclaw"] } }}
+metadata: { "category": "identity", "clawdbot": { "requires": { "bins": ["node", "openclaw"] } }}
 homepage: https://billions.network/
 ---
 

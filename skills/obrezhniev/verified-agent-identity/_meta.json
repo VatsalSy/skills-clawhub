@@ -1,13 +1,18 @@
 {
   "owner": "obrezhniev",
   "slug": "verified-agent-identity",
-  "displayName": "Verified Agent Identity",
+  "displayName": "Verified Agent Identity by Billions",
   "latest": {
-    "version": "0.0.7",
-    "publishedAt": 1772648736710,
-    "commit": "https://github.com/openclaw/skills/commit/211ebfba0b25a37beb958b3e36f93cf51a1d358e"
+    "version": "0.0.13",
+    "publishedAt": 1773334985239,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.0.7",
+      "publishedAt": 1772648736710,
+      "commit": "https://github.com/openclaw/skills/commit/211ebfba0b25a37beb958b3e36f93cf51a1d358e"
+    },
     {
       "version": "0.0.2",
       "publishedAt": 1772537183523,
