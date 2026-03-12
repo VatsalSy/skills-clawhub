@@ -1,11 +1,17 @@
 {
   "owner": "mjzj-tec",
   "slug": "mjzj-sp",
-  "displayName": "卖家之家跨境电商服务商查询、服务产品查询、产品发布",
+  "displayName": "卖家之家(跨境电商)服务商搜索",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773155409004,
-    "commit": "https://github.com/openclaw/skills/commit/34ab3811cf9d17d67b982d6512d288c22bc7facf"
+    "version": "1.0.1",
+    "publishedAt": 1773333172859,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773155409004,
+      "commit": "https://github.com/openclaw/skills/commit/34ab3811cf9d17d67b982d6512d288c22bc7facf"
+    }
+  ]
 }
