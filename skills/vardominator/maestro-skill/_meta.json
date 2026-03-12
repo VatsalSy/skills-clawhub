@@ -1,13 +1,18 @@
 {
   "owner": "vardominator",
   "slug": "maestro-skill",
-  "displayName": "Maestro Bitcoin",
+  "displayName": "Maestro Api",
   "latest": {
-    "version": "0.2.1",
-    "publishedAt": 1772575604051,
-    "commit": "https://github.com/openclaw/skills/commit/21d0558123a991ec6ccbfc1a848e5c464d2aea14"
+    "version": "0.2.4",
+    "publishedAt": 1773247158877,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.2.1",
+      "publishedAt": 1772575604051,
+      "commit": "https://github.com/openclaw/skills/commit/21d0558123a991ec6ccbfc1a848e5c464d2aea14"
+    },
     {
       "version": "0.1.7",
       "publishedAt": 1771627646521,
