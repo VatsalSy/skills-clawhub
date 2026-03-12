@@ -1,10 +1,11 @@
-# clawd-zero-trust v1.3.1
+# clawd-zero-trust v1.3.2
 
 Zero Trust security hardening for OpenClaw AI agent deployments. Built by [Blocksoft](https://blocksoft.tech).
 
 ## Why this exists
 
-AI agents run 24/7 with access to shell, network, and secrets. One compromised plugin or prompt injection and your agent becomes an exfiltration vector. Default OpenClaw ships wide open — all outbound ports, no plugin restrictions, no tool scoping.
+
+AI a agents run 24/7 with access to shell, network, and secrets. One compromised plugin or prompt injection and your agent becomes an exfiltration vector. Default OpenClaw ships wide open — all outbound ports, no plugin restrictions, no tool scoping.
 
 This skill locks it down. Every outbound connection is whitelisted by DNS-resolved IP. Every plugin is explicitly allowed. Every model gets only the tools it needs. If something breaks the rules, traffic gets dropped and logged — not forgotten.
 
@@ -91,6 +92,11 @@ references/
 
 ## Changelog
 
+### v1.3.2 (2026-03-10)
+- **New:** `hardening.json` now includes `tools.exec` (host: gateway, security: full, ask: off) and `tools.elevated` (enabled + Telegram allowFrom) — ensures image generation and host tool execution survive `harden.sh --apply`
+- **New:** `openclaw-memory-max` added to `plugins.allow` allowlist
+- Three-layer security model documented: Identity (allowFrom) → Network (UFW egress) → Local Exec (security: full)
+
 ### v1.3.1 (2026-02-26)
 - **[SCAN-3]** Integrity check function renamed to `_self_integrity_hash()` — eliminates VirusTotal `sets-process-name` behavioral tag (false positive)
 - **[SCAN-4]** Diagnostic print renamed from `debug` to `skipped` — eliminates VirusTotal `detect-debug-environment` behavioral tag (false positive)
@@ -124,6 +130,10 @@ references/
 - Transactional apply with auto-rollback
 - Canary mode (120s verification)
 - Versioned firewall profile state
+
+## TO DOs:
+- macos version
+- cloud instances version (EC2 etc)
 
 ## License
 

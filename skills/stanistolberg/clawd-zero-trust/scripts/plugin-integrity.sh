@@ -104,14 +104,14 @@ do_snapshot() {
   for pdir in "$EXTENSIONS_DIR"/*/; do
     [ ! -d "$pdir" ] && continue
     if [ -n "$plugin_dirs" ]; then
-      plugin_dirs="${plugin_dirs}"$'\0'"${pdir}"
+      plugin_dirs="${plugin_dirs}"$'\n'"${pdir}"
     else
       plugin_dirs="${pdir}"
     fi
   done
 
   # Python does all the work: find JS entry, hash, write JSON atomically
-  python3 - "$HASH_FILE" "$HOME" <<'PYEOF' < <(printf '%s' "$plugin_dirs")
+  python3 -c "
 import json, sys, os, hashlib
 from datetime import datetime, timezone
 from pathlib import Path
@@ -122,10 +122,10 @@ home_dir = sys.argv[2]
 # Read NUL-delimited plugin dirs from stdin
 raw = sys.stdin.buffer.read()
 if not raw:
-    print("  No plugins found to snapshot.")
+    print(\"  No plugins found to snapshot.\")
     sys.exit(0)
 
-plugin_dirs = [d for d in raw.decode('utf-8', errors='replace').split('\0') if d.strip()]
+plugin_dirs = [d for d in raw.decode('utf-8', errors='replace').split('\n') if d.strip()]
 
 now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
 plugins = {}
@@ -155,7 +155,7 @@ for pdir in plugin_dirs:
                 pass
 
     if not js_path:
-        print(f"  \033[1;33m⚠️\033[0m  {pname} — no JS entry point found, skipping")
+        print(f\"  \\033[1;33m⚠️\\033[0m  {pname} — no JS entry point found, skipping\")
         continue
 
     # Compute SHA-256
@@ -165,7 +165,7 @@ for pdir in plugin_dirs:
             for chunk in iter(lambda: f.read(65536), b''):
                 sha.update(chunk)
     except OSError as e:
-        print(f"  \033[0;31m❌\033[0m  {pname} — read error: {e}")
+        print(f\"  \\033[0;31m❌\\033[0m  {pname} — read error: {e}\")
         continue
 
     file_hash = sha.hexdigest()
@@ -180,7 +180,7 @@ for pdir in plugin_dirs:
     }
 
     basename = os.path.basename(js_path)
-    print(f"  \033[0;32m✅\033[0m {pname} → {file_hash[:16]}... ({basename})")
+    print(f\"  \\033[0;32m✅\\033[0m {pname} → {file_hash[:16]}... ({basename})\")
     count += 1
 
 # Write JSON atomically (write to tmp, rename)
@@ -195,8 +195,8 @@ with open(tmp_path, 'w', encoding='utf-8') as f:
     f.write('\n')
 os.replace(tmp_path, hash_file)
 
-print(f"\n\033[0;32m[DONE]\033[0m Snapshot saved: {hash_file} ({count} plugins)")
-PYEOF
+print(f\"\\n\\033[0;32m[DONE]\\033[0m Snapshot saved: {hash_file} ({count} plugins)\")
+" "$HASH_FILE" "$HOME" < <(printf '%s' "$plugin_dirs")
 
   local rc=$?
   [ -f "$HASH_FILE" ] && chmod 600 "$HASH_FILE"
@@ -228,49 +228,49 @@ do_verify() {
   for pdir in "$EXTENSIONS_DIR"/*/; do
     [ ! -d "$pdir" ] && continue
     if [ -n "$plugin_dirs" ]; then
-      plugin_dirs="${plugin_dirs}"$'\0'"${pdir}"
+      plugin_dirs="${plugin_dirs}"$'\n'"${pdir}"
     else
       plugin_dirs="${pdir}"
     fi
   done
 
   # Python does everything: load snapshot, hash current files, compare, report
-  python3 - "$HASH_FILE" "$EXTENSIONS_DIR" <<'PYEOF' < <(printf '%s' "$plugin_dirs")
+  python3 -c "
 import json, sys, os, hashlib
 
 hash_file = sys.argv[1]
 extensions_dir = sys.argv[2]
 
 # ANSI colors
-RED = '\033[0;31m'
-GREEN = '\033[0;32m'
-YELLOW = '\033[1;33m'
-NC = '\033[0m'
+RED = '\\033[0;31m'
+GREEN = '\\033[0;32m'
+YELLOW = '\\033[1;33m'
+NC = '\\033[0m'
 
 # Load stored snapshot
 try:
     with open(hash_file, 'r', encoding='utf-8') as f:
         snapshot = json.load(f)
 except (json.JSONDecodeError, ValueError, OSError) as e:
-    print(f"  {YELLOW}[WARN]{NC} Snapshot is empty or malformed: {e}")
+    print(f\"  {YELLOW}[WARN]{NC} Snapshot is empty or malformed: {e}\")
     sys.exit(1)
 
 stored_plugins = snapshot.get('plugins', {})
 if not stored_plugins:
-    print(f"  {YELLOW}[WARN]{NC} Snapshot contains no plugins.")
+    print(f\"  {YELLOW}[WARN]{NC} Snapshot contains no plugins.\")
     sys.exit(1)
 
 # Read NUL-delimited current plugin dirs from stdin
 raw = sys.stdin.buffer.read()
 current_dirs = {}
 if raw:
-    for d in raw.decode('utf-8', errors='replace').split('\0'):
+    for d in raw.decode('utf-8', errors='replace').split('\n'):
         d = d.rstrip('/')
         if d:
             current_dirs[os.path.basename(d)] = d
 
 def find_plugin_js(pdir):
-    """Find JS entry point: dist/index.js > index.js > first *.js"""
+    \"\"\"Find JS entry point: dist/index.js > index.js > first *.js\"\"\"
     candidate = os.path.join(pdir, 'dist', 'index.js')
     if os.path.isfile(candidate):
         return candidate
@@ -286,7 +286,7 @@ def find_plugin_js(pdir):
     return None
 
 def sha256_file(path):
-    """Compute SHA-256 of a file."""
+    \"\"\"Compute SHA-256 of a file.\"\"\"
     sha = hashlib.sha256()
     try:
         with open(path, 'rb') as f:
@@ -308,44 +308,47 @@ for pname in sorted(stored_plugins.keys()):
 
     pdir = os.path.join(extensions_dir, pname)
     if not os.path.isdir(pdir):
-        print(f"  {RED}⚠️  REMOVED:{NC} {pname} — plugin directory no longer exists")
+        print(f\"  {RED}⚠️  REMOVED:{NC} {pname} — plugin directory no longer exists\")
         missing += 1
         continue
 
     js_path = find_plugin_js(pdir)
     if not js_path:
-        print(f"  {RED}⚠️  CHANGED:{NC} {pname} — JS entry point no longer exists")
+        print(f\"  {RED}⚠️  CHANGED:{NC} {pname} — JS entry point no longer exists\")
         mismatches += 1
         continue
 
     current_hash = sha256_file(js_path)
     if current_hash is None:
-        print(f"  {RED}⚠️  CHANGED:{NC} {pname} — cannot read file")
+        print(f\"  {RED}⚠️  CHANGED:{NC} {pname} — cannot read file\")
         mismatches += 1
         continue
 
     if current_hash == stored_hash:
-        print(f"  {GREEN}✅ MATCH:{NC}   {pname}")
+        print(f\"  {GREEN}✅ MATCH:{NC}   {pname}\")
     else:
-        print(f"  {RED}⚠️  CHANGED:{NC} {pname}")
-        print(f"     Stored:  {stored_hash[:16]}...")
-        print(f"     Current: {current_hash[:16]}...")
+        print(f\"  {RED}⚠️  CHANGED:{NC} {pname}\")
+        print(f\"     Stored:  {stored_hash[:16]}...\")
+        print(f\"     Current: {current_hash[:16]}...\")
         mismatches += 1
 
 # Check for new plugins not in snapshot
 stored_names = set(stored_plugins.keys())
 for pname in sorted(current_dirs.keys()):
     if pname not in stored_names:
-        print(f"  {YELLOW}⚠️  NEW:{NC}     {pname} — not in snapshot (run --snapshot to add)")
+        pdir = current_dirs[pname]
+        if not find_plugin_js(pdir):
+            continue
+        print(f\"  {YELLOW}⚠️  NEW:{NC}     {pname} — not in snapshot (run --snapshot to add)\")
         mismatches += 1
 
 print()
 if mismatches > 0 or missing > 0:
-    print(f"{RED}[INTEGRITY FAILURE]{NC} {mismatches} changed, {missing} removed out of {checked} checked")
+    print(f\"{RED}[INTEGRITY FAILURE]{NC} {mismatches} changed, {missing} removed out of {checked} checked\")
     sys.exit(1)
 
-print(f"{GREEN}[INTEGRITY OK]{NC} All {checked} plugins match stored hashes")
-PYEOF
+print(f\"{GREEN}[INTEGRITY OK]{NC} All {checked} plugins match stored hashes\")
+" "$HASH_FILE" "$EXTENSIONS_DIR" < <(printf '%s' "$plugin_dirs")
 
   return $?
 }

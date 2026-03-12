@@ -1,5 +1,14 @@
 # Changelog — clawd-zero-trust
 
+## [1.3.2] — 2026-03-10
+### Added
+- `hardening.json`: Added `tools.elevated` (enabled + Telegram allowFrom) and `tools.exec` (host: gateway, security: full, ask: off) exec policy settings
+- These settings survive `harden.sh --apply` via the shallow merge, ensuring image generation and host tool execution remain functional
+- `openclaw-memory-max` added to `plugins.allow` allowlist
+### Notes
+- `tools.exec.security: "full"` is safe when combined with identity-gated `channels.telegram.allowFrom` and network-level UFW egress filtering
+- The three security layers (Identity → Network → Local Exec) remain independently enforced
+
 ## [1.3.1] — 2026-02-26
 ### Fixed
 - [SCAN-3] Integrity check function renamed to `_self_integrity_hash()` — eliminates VirusTotal `sets-process-name` behavioral heuristic (false positive; function performs tamper-detection, not process manipulation)
