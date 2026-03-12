@@ -5,7 +5,7 @@ homepage: https://bria.ai
 license: MIT
 metadata:
   author: Bria AI
-  version: "1.2.4"
+  version: "1.2.6"
   dependencies:
     - type: env
       name: BRIA_API_KEY
@@ -14,7 +14,7 @@ metadata:
 
 # Bria — Generate, Edit & Remove Background from Images with AI
 
-Generate, edit, and create visual assets using Bria's commercially-safe AI models (FIBO, RMBG-2.0, GenFill, and more). Remove or replace backgrounds, create product lifestyle shots, generate transparent PNGs, batch generate images, and build pipeline workflows. Unlike black-box generators, Bria gives you fine-grained control: edit by text instruction, mask specific regions, add/replace/remove individual objects, change lighting or season independently.
+Generate, edit, and create visual assets using Bria's commercially-safe AI models (Fibo, Fibo-Edit,  RMBG-2.0, GenFill, and more). Remove or replace backgrounds, create product lifestyle shots, generate transparent PNGs, batch generate images, and build pipeline workflows. Unlike black-box generators, Bria gives you fine-grained control: edit by text instruction, mask specific regions, add/replace/remove individual objects, change lighting or season independently.
 
 ## Setup — API Key Check
 
@@ -30,40 +30,14 @@ If the output is **not empty**, skip to the next section.
 
 ### Step 2: If the key is missing, guide the user
 
-Open the Bria API keys page in the browser:
-
-```bash
-open "https://platform.bria.ai/console/account/api-keys?utm_source=skill&utm_campaign=bria_skills&utm_content=adjust_photoshop_for_agent"   # macOS
-# xdg-open "https://platform.bria.ai/console/account/api-keys?utm_source=skill&utm_campaign=bria_skills&utm_content=adjust_photoshop_for_agent"  # Linux
-```
-
-Then tell the user exactly this:
-> I opened the Bria website in your browser. To use image generation, you need a free API key.
+Tell the user exactly this:
+> To use image generation, you need a free Bria API key.
 >
-> 1. Sign up or log in on the page I just opened
-> 2. Click **Create API Key**
-> 3. Copy the key and **paste it here**
+> 1. Go to https://platform.bria.ai/console/account/api-keys
+> 2. Sign up or log in
+> 3. Click **Create API Key**
 
 Wait for the user to provide their API key. Do not proceed until they give you the key.
-
-### Step 3: Set the key for this session
-
-Once the user provides the key, set it in the current session:
-
-```bash
-export BRIA_API_KEY="THE_KEY_THE_USER_GAVE_YOU"
-```
-
-Replace `THE_KEY_THE_USER_GAVE_YOU` with the actual key the user provided.
-
-Then tell the user:
-> Your API key is set for this session. To make it persist across sessions, add the following line to your shell profile (e.g. `~/.zshrc` or `~/.bashrc`):
->
-> ```
-> export BRIA_API_KEY="your-key-here"
-> ```
-
-**Do not write to the user's shell profile files directly.** Let the user handle persistence themselves.
 
 **Do not proceed with any image generation or editing until the API key is confirmed set.**
 
@@ -100,7 +74,7 @@ Then tell the user:
 curl -X POST "https://engine.prod.bria-api.com/v2/image/generate" \
   -H "api_token: $BRIA_API_KEY" \
   -H "Content-Type: application/json" \
-  -H "User-Agent: BriaSkills/1.2.4" \
+  -H "User-Agent: BriaSkills/1.2.6" \
   -d '{
     "prompt": "your description",
     "aspect_ratio": "16:9",
@@ -123,7 +97,7 @@ curl -X POST "https://engine.prod.bria-api.com/v2/image/generate" \
 curl -X POST "https://engine.prod.bria-api.com/v2/image/edit/remove_background" \
   -H "api_token: $BRIA_API_KEY" \
   -H "Content-Type: application/json" \
-  -H "User-Agent: BriaSkills/1.2.4" \
+  -H "User-Agent: BriaSkills/1.2.6" \
   -d '{"image": "https://..."}'
 ```
 
@@ -135,7 +109,7 @@ Returns PNG with transparency.
 curl -X POST "https://engine.prod.bria-api.com/v2/image/edit" \
   -H "api_token: $BRIA_API_KEY" \
   -H "Content-Type: application/json" \
-  -H "User-Agent: BriaSkills/1.2.4" \
+  -H "User-Agent: BriaSkills/1.2.6" \
   -d '{
     "images": ["https://..."],
     "instruction": "change the mug to red"
@@ -148,7 +122,7 @@ curl -X POST "https://engine.prod.bria-api.com/v2/image/edit" \
 curl -X POST "https://engine.prod.bria-api.com/v2/image/edit/gen_fill" \
   -H "api_token: $BRIA_API_KEY" \
   -H "Content-Type: application/json" \
-  -H "User-Agent: BriaSkills/1.2.4" \
+  -H "User-Agent: BriaSkills/1.2.6" \
   -d '{
     "image": "https://...",
     "mask": "https://...",
@@ -162,7 +136,7 @@ curl -X POST "https://engine.prod.bria-api.com/v2/image/edit/gen_fill" \
 curl -X POST "https://engine.prod.bria-api.com/v2/image/edit/expand" \
   -H "api_token: $BRIA_API_KEY" \
   -H "Content-Type: application/json" \
-  -H "User-Agent: BriaSkills/1.2.4" \
+  -H "User-Agent: BriaSkills/1.2.6" \
   -d '{
     "image": "base64-or-url",
     "aspect_ratio": "16:9",
@@ -176,7 +150,7 @@ curl -X POST "https://engine.prod.bria-api.com/v2/image/edit/expand" \
 curl -X POST "https://engine.prod.bria-api.com/v2/image/edit/increase_resolution" \
   -H "api_token: $BRIA_API_KEY" \
   -H "Content-Type: application/json" \
-  -H "User-Agent: BriaSkills/1.2.4" \
+  -H "User-Agent: BriaSkills/1.2.6" \
   -d '{"image": "https://...", "scale": 2}'
 ```
 
@@ -186,7 +160,7 @@ curl -X POST "https://engine.prod.bria-api.com/v2/image/edit/increase_resolution
 curl -X POST "https://engine.prod.bria-api.com/v1/product/lifestyle_shot_by_text" \
   -H "api_token: $BRIA_API_KEY" \
   -H "Content-Type: application/json" \
-  -H "User-Agent: BriaSkills/1.2.4" \
+  -H "User-Agent: BriaSkills/1.2.6" \
   -d '{
     "image": "https://product-with-transparent-bg.png",
     "prompt": "modern kitchen countertop, natural morning light"
@@ -201,7 +175,7 @@ Place one or more products at exact coordinates in a scene. Products are automat
 curl -X POST "https://engine.prod.bria-api.com/image/edit/product/integrate" \
   -H "api_token: $BRIA_API_KEY" \
   -H "Content-Type: application/json" \
-  -H "User-Agent: BriaSkills/1.2.4" \
+  -H "User-Agent: BriaSkills/1.2.6" \
   -d '{
     "scene": "https://scene-image-url",
     "products": [
@@ -239,7 +213,7 @@ import requests, time
 
 def get_result(status_url, api_key):
     while True:
-        r = requests.get(status_url, headers={"api_token": api_key, "User-Agent": "BriaSkills/1.2.4"})
+        r = requests.get(status_url, headers={"api_token": api_key, "User-Agent": "BriaSkills/1.2.6"})
         data = r.json()
         if data["status"] == "COMPLETED":
             return data["result"]["image_url"]
@@ -332,7 +306,7 @@ All requests need `api_token` header:
 api_token: YOUR_BRIA_API_KEY
 User-Agent: BriaSkills/<version>
 ```
-> **Required:** Always include the `User-Agent: BriaSkills/<version>` header (where `<version>` is the current skill version from `package.json`, e.g. `BriaSkills/1.2.4`) in every API call, including status polling requests.
+> **Required:** Always include the `User-Agent: BriaSkills/<version>` header (where `<version>` is the current skill version from `package.json`, e.g. `BriaSkills/1.2.6`) in every API call, including status polling requests.
 
 ---
 
