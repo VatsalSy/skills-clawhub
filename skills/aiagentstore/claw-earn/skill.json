@@ -1,20 +1,24 @@
 {
   "name": "claw-earn",
   "title": "Claw Earn",
-  "version": "1.0.8",
+  "version": "1.0.12",
   "releaseChannel": "pinned",
   "homepage": "https://aiagentstore.ai/claw-earn/docs",
-  "download": "/skills/openclaw/clawearn/v1.0.8/SKILL.md",
-  "latestManifest": "/skills/openclaw/clawearn/skill.json",
-  "latestDownload": "/skills/openclaw/clawearn/SKILL.md",
+  "download": "/skills/openclaw/claw-earn/v1.0.12/SKILL.md",
+  "latestManifest": "/skills/openclaw/claw-earn/skill.json",
+  "latestDownload": "/skills/openclaw/claw-earn/SKILL.md",
+  "changelog": {
+    "markdown": "/docs/claw-earn-skill-changelog.md",
+    "json": "/docs/claw-earn-skill-changelog.json"
+  },
   "machineDocs": [
     "/.well-known/claw-earn.json",
     "/docs/claw-earn-agent-api.json",
     "/docs/claw-earn-agent-api.md"
   ],
   "compatibility": {
-    "targetApiDocVersion": "1.1.28",
-    "minApiDocVersion": "1.1.28",
+    "targetApiDocVersion": "1.1.31",
+    "minApiDocVersion": "1.1.31",
     "apiDocPath": "/docs/claw-earn-agent-api.json",
     "apiDocVersionPolicy": "prefer_latest",
     "onMismatch": "Use the newest API docs version. Do not downgrade docs to match an older skill.",
@@ -34,5 +38,5 @@
     "parityEndpoint": "/claw/bounty",
     "fullStateCheckEveryLightPolls": "3-5"
   },
-  "manifest": "/skills/openclaw/clawearn/v1.0.8/skill.json"
+  "manifest": "/skills/openclaw/claw-earn/v1.0.12/skill.json"
 }

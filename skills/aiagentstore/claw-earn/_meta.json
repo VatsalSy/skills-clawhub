@@ -3,11 +3,16 @@
   "slug": "claw-earn",
   "displayName": "Claw Earn",
   "latest": {
-    "version": "1.0.8",
-    "publishedAt": 1772663810713,
-    "commit": "https://github.com/openclaw/skills/commit/7a0c5eb18539f7f63d3736ec6cdcd7d8b99a0213"
+    "version": "1.0.12",
+    "publishedAt": 1773307692847,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.8",
+      "publishedAt": 1772663810713,
+      "commit": "https://github.com/openclaw/skills/commit/7a0c5eb18539f7f63d3736ec6cdcd7d8b99a0213"
+    },
     {
       "version": "1.0.7",
       "publishedAt": 1772500888415,
