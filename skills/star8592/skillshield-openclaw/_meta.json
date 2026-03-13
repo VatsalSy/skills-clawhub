@@ -1,13 +1,18 @@
 {
   "owner": "star8592",
   "slug": "skillshield-openclaw",
-  "displayName": "SkillShield",
+  "displayName": "Openclaw Skill",
   "latest": {
-    "version": "2.1.6",
-    "publishedAt": 1773302409476,
-    "commit": "https://github.com/openclaw/skills/commit/75d38abb3da7491dcdb0c4810e784287ac95decb"
+    "version": "2.1.8",
+    "publishedAt": 1773305473883,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.1.6",
+      "publishedAt": 1773302409476,
+      "commit": "https://github.com/openclaw/skills/commit/75d38abb3da7491dcdb0c4810e784287ac95decb"
+    },
     {
       "version": "2.1.2",
       "publishedAt": 1773278597435,
