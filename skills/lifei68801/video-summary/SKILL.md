@@ -1,12 +1,14 @@
 ---
 name: video-summary
-version: 1.6.1
+version: 1.6.4
 description: "Video summarization for Bilibili, Xiaohongshu, Douyin, and YouTube. Extract insights from video content through transcription and summarization."
 
 # 🔒 Security Declaration
-# This skill downloads videos/subtitles from YouTube/Bilibili/Xiaohongshu/Douyin and uses LLM APIs for summarization.
-# User must provide API keys via environment variables: OPENAI_API_KEY and OPENAI_BASE_URL.
-# No config files written. No secrets stored. No telemetry, no analytics, no hidden data collection.
+# This skill downloads videos/subtitles from YouTube/Bilibili/Xiaohongshu/Douyin.
+# It does NOT directly call external LLM APIs - it outputs structured requests for agent processing.
+# OPENAI_API_KEY and OPENAI_BASE_URL are optional - used by agent, not by this script.
+# Cookie files are read locally only, never transmitted externally.
+# No config files written. No secrets stored. No telemetry, no analytics.
 metadata:
   openclaw:
     requires:
@@ -43,18 +45,22 @@ Intelligent video summarization for multi-platform content. Supports Bilibili, X
 
 ## Quick Setup
 
-Set environment variables before use:
+**No API key required to run.** This skill extracts video content and outputs structured requests for summarization. The agent (or external tool) handles LLM calls.
 
 ```bash
-# Required: Your LLM API key
+# Optional: If you want the agent to call LLM for summarization
 export OPENAI_API_KEY="your-api-key-here"
-
-# Optional: Custom API endpoint (for Zhipu, DeepSeek, etc.)
 export OPENAI_BASE_URL=https://open.bigmodel.cn/api/paas/v4
 
-# Optional: Whisper model for transcription
+# Optional: Whisper model for transcription (default: base)
 export VIDEO_SUMMARY_WHISPER_MODEL=base
 ```
+
+**How it works:**
+1. Script extracts video subtitles/transcript
+2. Script outputs a structured summary request (JSON/text)
+3. Agent or external tool calls LLM API with the request
+4. Script does NOT directly call any external APIs
 
 ### Supported LLM Providers
 
@@ -76,6 +82,12 @@ export VIDEO_SUMMARY_COOKIES=/path/to/cookies.txt
 # Or use --cookies flag
 video-summary "https://xiaohongshu.com/..." --cookies cookies.txt
 ```
+
+**⚠️ Cookie Security Note:**
+- Cookie files contain session tokens and are sensitive
+- Only use cookies from your own browser sessions
+- Do not share cookie files with others
+- Cookie files are read locally and never transmitted externally by this script
 
 ### Manual Trigger
 
@@ -240,10 +252,12 @@ export VIDEO_SUMMARY_WHISPER_MODEL=base  # tiny, base, small, medium, large
 
 ### OpenAI API for Summarization
 
-For direct LLM-powered summaries, configure your API:
+**This script does NOT directly call LLM APIs.** It outputs structured requests for the agent to process.
+
+If you want the agent to call LLM for summarization, configure:
 
 ```bash
-# Required: API key for your LLM provider
+# Optional: API key for your LLM provider
 export OPENAI_API_KEY="your-api-key-here"
 
 # Optional: Custom API endpoint (for non-OpenAI providers)
@@ -255,7 +269,7 @@ export OPENAI_BASE_URL=https://open.bigmodel.cn/api/paas/v4  # Zhipu
 export OPENAI_MODEL=gpt-4o-mini
 ```
 
-**Without API key:** Script outputs structured request for agent to process.
+**Without API key:** Script outputs transcript and structured request. Agent handles summarization.
 
 ### Cookie Configuration for Restricted Content
 
@@ -372,11 +386,11 @@ This video explains...
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `OPENAI_API_KEY` | - | API key for your LLM provider |
-| `OPENAI_BASE_URL` | `https://api.openai.com/v1` | Custom API endpoint |
-| `OPENAI_MODEL` | `gpt-4o-mini` | Model for summarization |
+| `OPENAI_API_KEY` | - | **Optional** - API key for LLM summarization (used by agent, not this script) |
+| `OPENAI_BASE_URL` | `https://api.openai.com/v1` | **Optional** - Custom API endpoint |
+| `OPENAI_MODEL` | `gpt-4o-mini` | **Optional** - Model for summarization |
 | `VIDEO_SUMMARY_WHISPER_MODEL` | `base` | Whisper model size |
-| `VIDEO_SUMMARY_COOKIES` | - | Path to cookies file |
+| `VIDEO_SUMMARY_COOKIES` | - | **Optional** - Path to cookies file (read locally only) |
 
 ---
 
@@ -461,6 +475,21 @@ Found a bug or want to add platform support?
 ---
 
 ## Changelog
+
+### v1.6.4 (2026-03-13)
+- Security: Fixed script syntax error (missing closing brace in call_llm function)
+- Security: Clarified that script does NOT directly call LLM APIs - outputs structured requests for agent processing
+- Security: OPENAI_API_KEY is now clearly marked as optional (used by agent, not by script)
+- Security: Added cookie security note - files are read locally only, never transmitted
+- Security: Removed "required" claim for API key - honest documentation matching actual behavior
+
+### v1.6.3 (2026-03-12)
+- Fix: Version sync between _meta.json and SKILL.md
+- No functional changes
+
+### v1.6.2 (2026-03-12)
+- Fix: Synced _meta.json version with SKILL.md to resolve packaging inconsistencies warning
+- No functional changes
 
 ### v1.6.1 (2026-03-12)
 - Security: Removed "sk-xxx" placeholder from docs - use "your-api-key-here" instead

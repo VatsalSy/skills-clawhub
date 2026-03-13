@@ -432,6 +432,7 @@ Generate | 生成:
 
 EOF
     fi
+}
 
 # Output result | 输出结果
 output_result() {
