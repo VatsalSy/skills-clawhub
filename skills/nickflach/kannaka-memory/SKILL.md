@@ -15,6 +15,10 @@ metadata:
       bins:
         - name: kannaka
           label: "Required: build with `cargo build --release --bin kannaka` (see README)"
+        - name: classify
+          label: "SGA classification — binary subcommand: `kannaka classify` (any data → geometric fingerprint)"
+        - name: cross-modal-dream
+          label: "Cross-modal dream pipeline — binary subcommand: `kannaka cross-modal-dream` (SGA → dream synthesis)"
       env: []
     optional:
       bins:
@@ -59,6 +63,10 @@ metadata:
           label: "DoltHub remote name for push/pull (default: origin)"
         - name: DOLT_BRANCH
           label: "Default branch name (default: main)"
+        - name: RADIO_PORT
+          label: "Port for the radio service in constellation mode (used by constellation.sh)"
+        - name: EYE_PORT
+          label: "Port for the eye service in constellation mode (used by constellation.sh)"
     data_destinations:
       - id: local-disk
         description: "Memory snapshots written to KANNAKA_DATA_DIR (always)"
@@ -79,10 +87,14 @@ metadata:
         description: "Agent status/events auto-published to Flux world-state when FLUX_URL is set"
         remote: true
         condition: "FLUX_URL is set (built into kannaka binary; no separate flux.sh calls required)"
+      - id: constellation
+        description: "Constellation orchestration — constellation.sh manages the kannaka binary, radio, and eye services as a unified system"
+        remote: false
+        condition: "constellation.sh start is used to launch all three services"
     install:
       - id: kannaka-binary
         kind: manual
-        label: "Clone and build: cargo build --release --bin kannaka"
+        label: "Clone and build: cargo build --release --features audio,glyph,collective --bin kannaka"
         url: "https://github.com/NickFlach/kannaka-memory"
 ---
 
@@ -108,6 +120,8 @@ when contextually relevant, and can be versioned and shared via DoltHub.
   cargo build --release --features audio --bin kannaka
   # CLI + glyph perception (store files as visual memories)
   cargo build --release --features glyph --bin kannaka
+  # Full-featured build (audio + glyph + collective — used by constellation.sh)
+  cargo build --release --features audio,glyph,collective --bin kannaka
   # MCP server
   cargo build --release --features mcp --bin kannaka-mcp
   ```
@@ -154,6 +168,9 @@ Without Ollama, hash-based fallback encoding is used automatically.
 | `DOLT_AUTHOR` | `Kannaka Agent <kannaka@local>` | Author for Dolt commits |
 | `DOLT_REMOTE` | `origin` | DoltHub remote name |
 | `DOLT_BRANCH` | `main` | Default branch |
+| `DOLTHUB_API_KEY` | *(empty)* | DoltHub API key for authenticated push/pull |
+| `RADIO_PORT` | *(varies)* | Port for the radio service (constellation mode) |
+| `EYE_PORT` | *(varies)* | Port for the eye service (constellation mode) |
 
 ## Scripts
 
@@ -192,6 +209,20 @@ Use the CLI wrapper in `scripts/`:
 ./scripts/kannaka.sh dolt branch create "kannaka/working"       # Agent working branch
 ./scripts/kannaka.sh dolt branch create "kannaka/dream/2026-03-07"  # Dream cycle branch
 ./scripts/kannaka.sh dolt branch create "collective/topic-name" # Shared speculation space
+
+# SGA classification (any data → geometric fingerprint)
+echo "data" | kannaka classify                    # stdin
+kannaka classify --file image.png                  # file input
+
+# Cross-modal dream pipeline (pipe classify output)
+echo '{"fold_sequence":[...],...}' | kannaka cross-modal-dream
+kannaka cross-modal-dream --threshold 0.5 --no-hallucinate
+
+# Constellation orchestration
+./scripts/constellation.sh start    # build binary + start radio + eye
+./scripts/constellation.sh stop     # stop all services
+./scripts/constellation.sh status   # health check all three
+./scripts/constellation.sh build    # cargo build --release
 ```
 
 ## Common Patterns
@@ -345,6 +376,84 @@ How it works:
 
 The `collective` flag adds no new CLI commands — it transparently accelerates `dream` on multi-core hardware.
 
+## Glyph-Encoded Privacy for DoltHub
+
+The `glyph` feature flag enables **privacy protection** for memories pushed to DoltHub public repositories.
+
+Requires: `cargo build --release --features "dolt glyph" --bin kannaka`
+
+**Architecture:**
+```
+Local (kannaka/working)  ← plain text content + full fidelity
+      ↓ glyph encode
+DoltHub (main)          ← glyph_content (JSON) + category placeholders
+```
+
+When glyph encoding is enabled:
+- **Locally**: memories store full plain-text content as normal
+- **DoltHub push**: sensitive content is automatically encoded as SGA glyphs before push
+- **Public content**: only category labels like `[knowledge]`, `[experience]`, `[insight]` are human-readable
+- **Vectors preserved**: cosine similarity and semantic search still work normally
+
+**Privacy guarantees:**
+- Personal information, API keys, private details encoded as geometric fold sequences
+- Glyph JSON contains no human-readable text from original content
+- Wave parameters (amplitude, phase, frequency) unchanged — memory search unaffected
+- Only agents with glyph decoder can reconstruct original content
+
+**Branch strategy for privacy:**
+```bash
+# Working branch: full content for local agent
+./scripts/kannaka.sh dolt branch checkout "kannaka/working"
+./scripts/kannaka.sh --dolt remember "My personal API key: sk-secret123"
+
+# Main branch: privacy-protected for public sharing
+./scripts/kannaka.sh dolt branch checkout main
+./scripts/kannaka.sh dolt pull origin kannaka/working  # triggers glyph encoding
+./scripts/kannaka.sh dolt push origin main            # safe for public DoltHub
+
+# Content on main branch shows: "[knowledge]" instead of API key
+```
+
+The `glyph` flag adds no new CLI commands — it transparently protects sensitive content during DoltHub push operations.
+
+## Constellation Integration (ADR-0016)
+
+The constellation is a 3-service architecture that unifies kannaka's core binary with its
+sensory services into a single orchestrated system:
+
+```
+┌─────────────────────────────────────────┐
+│             constellation.sh            │
+│  ┌───────────┐ ┌───────┐ ┌───────────┐ │
+│  │  kannaka   │ │ radio │ │    eye    │ │
+│  │  (binary)  │ │(audio)│ │  (glyph)  │ │
+│  └───────────┘ └───────┘ └───────────┘ │
+└─────────────────────────────────────────┘
+```
+
+- **kannaka** — the core memory binary (classify, dream, remember, recall)
+- **radio** — audio perception service, listens on `RADIO_PORT`
+- **eye** — glyph/visual perception service, listens on `EYE_PORT`
+
+`constellation.sh` builds the full-featured binary (`cargo build --release --features audio,glyph,collective`),
+starts all three services, and provides unified health checks and lifecycle management.
+
+```bash
+# Start the full constellation
+./scripts/constellation.sh start
+
+# Check health of all services
+./scripts/constellation.sh status
+
+# Stop everything cleanly
+./scripts/constellation.sh stop
+```
+
+The `classify` subcommand produces SGA geometric fingerprints from any input data, and
+`cross-modal-dream` consumes those fingerprints to synthesize cross-modal dream artifacts —
+connecting audio, glyph, and textual memories through shared geometric structure.
+
 ## Notes
 
 - Memories are never hard-deleted — they fade via wave decay and can be ghost-pruned during dream
@@ -358,3 +467,4 @@ The `collective` flag adds no new CLI commands — it transparently accelerates 
 - Full Dolt SQL / DoltHub operations: see references/dolt.md
 - Collective memory architecture and wave merge rules: ADR-0011
 - Paradox engine and dream efficiency: ADR-0012
+- Constellation integration and 3-service architecture: ADR-0016
