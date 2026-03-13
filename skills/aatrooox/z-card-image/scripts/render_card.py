@@ -22,6 +22,8 @@ from pathlib import Path
 
 SKILL_DIR = Path(__file__).parent.parent
 TEMPLATES_DIR = SKILL_DIR / "assets" / "templates"
+ICONS_DIR = SKILL_DIR / "assets" / "icons"
+WECHAT_SPLIT_DEFAULT_ICON = "/Users/aatrox/.openclaw/agents/zoe/workspace/skills/z-card-image/assets/icons/zzclub-logo-black.jpg"
 
 CHROME_PATHS = [
     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
@@ -29,6 +31,8 @@ CHROME_PATHS = [
     "google-chrome",
     "chromium",
 ]
+
+WECHAT_SPLIT_WINDOW_EXTRA_HEIGHT = 87
 
 def find_chrome():
     for p in CHROME_PATHS:
@@ -53,10 +57,19 @@ def main():
     ap.add_argument("--highlight-words", default="", help="要高亮的词，逗号分隔，如 '测试,openclaw'")
     args = ap.parse_args()
 
+    if args.template == "wechat-cover-split":
+        lines = [line for line in [args.line1, args.line2, args.line3] if line]
+        args.line1 = lines[0] if lines else ""
+        args.line2 = "".join(lines[1:]) if len(lines) > 1 else ""
+        args.line3 = ""
+        args.hl2 = args.hl2 or args.hl3
+        args.hl3 = False
+
     # 自动选图标
-    ICONS_DIR = SKILL_DIR / "assets" / "icons"
     if args.icon:
         icon_path = args.icon
+    elif args.template == "wechat-cover-split":
+        icon_path = WECHAT_SPLIT_DEFAULT_ICON
     else:
         texts = " ".join([args.line1, args.line2, args.line3]).lower()
         if "openclaw" in texts:
@@ -102,6 +115,7 @@ def main():
     # 判断尺寸
     size_map = {
         "poster-3-4": (900, 1200),
+        "wechat-cover-split": (1340, 400),
     }
     w, h = size_map.get(args.template, (900, 1200))
 
@@ -115,19 +129,47 @@ def main():
 
     # 输出路径统一用 workspace/tmp/，不要用 /tmp/（飞书无法上传系统临时目录）
     out = Path(args.out)
+    screenshot_path = out
+    window_h = h
+    if args.template == "wechat-cover-split":
+        window_h = h + WECHAT_SPLIT_WINDOW_EXTRA_HEIGHT
+        screenshot_path = out.with_name(f"{out.stem}.raw{out.suffix}")
+
     cmd = [
         chrome,
         "--headless",
         "--disable-gpu",
         "--no-sandbox",
         "--disable-web-security=false",
-        f"--screenshot={out}",
-        f"--window-size={w},{h}",
+        f"--screenshot={screenshot_path}",
+        f"--window-size={w},{window_h}",
         f"file://{tmp_html}",
     ]
     result = subprocess.run(cmd, capture_output=True)
     if result.returncode != 0:
         sys.exit(f"Chrome failed:\n{result.stderr.decode()}")
+
+    if args.template == "wechat-cover-split":
+        ffmpeg = shutil.which("ffmpeg")
+        if not ffmpeg:
+            sys.exit("wechat-cover-split 需要 ffmpeg 做顶部裁切")
+        crop_cmd = [
+            ffmpeg,
+            "-y",
+            "-loglevel",
+            "error",
+            "-i",
+            str(screenshot_path),
+            "-vf",
+            f"crop={w}:{h}:0:0",
+            "-frames:v",
+            "1",
+            str(out),
+        ]
+        crop_result = subprocess.run(crop_cmd, capture_output=True)
+        screenshot_path.unlink(missing_ok=True)
+        if crop_result.returncode != 0:
+            sys.exit(f"ffmpeg crop failed:\n{crop_result.stderr.decode()}")
 
     Path(tmp_html).unlink(missing_ok=True)
     print(f"✅ Saved to {out}")
