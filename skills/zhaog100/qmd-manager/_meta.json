@@ -3,9 +3,15 @@
   "slug": "qmd-manager",
   "displayName": "QMD Manager",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1772765399092,
-    "commit": "https://github.com/openclaw/skills/commit/f87089c902bb1ace47deb958eb90a0bdbf127f54"
+    "version": "1.1.0",
+    "publishedAt": 1773209644442,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1772765399092,
+      "commit": "https://github.com/openclaw/skills/commit/f87089c902bb1ace47deb958eb90a0bdbf127f54"
+    }
+  ]
 }
