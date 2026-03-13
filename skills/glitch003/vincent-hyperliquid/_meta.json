@@ -3,9 +3,15 @@
   "slug": "vincent-hyperliquid",
   "displayName": "Vincent - Hyperliquid",
   "latest": {
-    "version": "1.0.69",
-    "publishedAt": 1773088123504,
-    "commit": "https://github.com/openclaw/skills/commit/b27c1a6d61e7e9b6dc79c59d48e8b009aaa27975"
+    "version": "1.0.70",
+    "publishedAt": 1773276273684,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.69",
+      "publishedAt": 1773088123504,
+      "commit": "https://github.com/openclaw/skills/commit/b27c1a6d61e7e9b6dc79c59d48e8b009aaa27975"
+    }
+  ]
 }

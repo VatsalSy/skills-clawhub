@@ -103,7 +103,27 @@ Parameters:
 - `202` — `status: "pending_approval"` (human approval required by policy)
 - `403` — `status: "denied"` (rejected by policy)
 
-### 5. Fund the Wallet
+### 5. Withdraw USDC to External Address
+
+Send USDC from this HyperLiquid wallet to another HyperLiquid address via `usdSend`. This is an on-chain HL→HL transfer (instant, no gas).
+
+```bash
+# Withdraw 100 USDC to another HL address
+npx @vincentai/cli@latest hyperliquid withdraw --key-id <KEY_ID> \
+  --destination 0x1234567890abcdef1234567890abcdef12345678 --amount 100
+```
+
+Parameters:
+
+- `--destination`: Target 0x address (must be a valid 40-hex-char Ethereum address)
+- `--amount`: USDC amount to send (string, numeric)
+
+**Response codes:**
+- `200` — `status: "executed"` — withdrawal completed
+- `202` — `status: "pending_approval"` (human approval required by policy)
+- `403` — `status: "denied"` (rejected by policy)
+
+### 6. Fund the Wallet
 
 Deposit USDC to the EOA address via:
 
@@ -112,7 +132,7 @@ Deposit USDC to the EOA address via:
 
 Minimum for a BTC perp trade: **$2 USDC** (covers $10 notional at 20x default leverage + taker fees).
 
-### 6. Browse Markets
+### 7. Browse Markets
 
 ```bash
 npx @vincentai/cli@latest hyperliquid markets --key-id <KEY_ID>
@@ -120,7 +140,7 @@ npx @vincentai/cli@latest hyperliquid markets --key-id <KEY_ID>
 
 Returns a JSON object mapping coin names to mid prices (e.g. `{"BTC": "105234.5", "ETH": "3412.0", ...}`).
 
-### 7. Get Order Book
+### 8. Get Order Book
 
 ```bash
 npx @vincentai/cli@latest hyperliquid orderbook --key-id <KEY_ID> --coin BTC
@@ -128,7 +148,7 @@ npx @vincentai/cli@latest hyperliquid orderbook --key-id <KEY_ID> --coin BTC
 
 Returns `levels` — a two-element array `[bids, asks]`. Each entry is `[price, size, numOrders]`. Use `levels[1][0][0]` for best ask, `levels[0][0][0]` for best bid.
 
-### 8. Place a Trade
+### 9. Place a Trade
 
 ```bash
 # Market buy (IoC — fills immediately or cancels)
@@ -163,7 +183,7 @@ Parameters:
 - `202` — `status: "pending_approval"` (human approval required by policy)
 - `403` — `status: "denied"` (rejected by policy)
 
-### 9. View Open Orders
+### 10. View Open Orders
 
 ```bash
 # All open orders
@@ -173,7 +193,7 @@ npx @vincentai/cli@latest hyperliquid open-orders --key-id <KEY_ID>
 npx @vincentai/cli@latest hyperliquid open-orders --key-id <KEY_ID> --coin BTC
 ```
 
-### 10. View Trade History
+### 11. View Trade History
 
 ```bash
 # All fills
@@ -183,7 +203,7 @@ npx @vincentai/cli@latest hyperliquid trades --key-id <KEY_ID>
 npx @vincentai/cli@latest hyperliquid trades --key-id <KEY_ID> --coin ETH
 ```
 
-### 11. Cancel Orders
+### 12. Cancel Orders
 
 ```bash
 # Cancel a specific order (requires coin and numeric order ID)
@@ -297,21 +317,25 @@ npx @vincentai/cli@latest hyperliquid internal-transfer --key-id <KEY_ID> --amou
 # Move 50 USDC from perps → spot before spot trading:
 npx @vincentai/cli@latest hyperliquid internal-transfer --key-id <KEY_ID> --amount 50 --to-perp false
 
-# 5. Get BTC mid price
+# 5. Withdraw USDC to another HL address
+npx @vincentai/cli@latest hyperliquid withdraw --key-id <KEY_ID> \
+  --destination 0xRecipientAddress --amount 50
+
+# 6. Get BTC mid price
 npx @vincentai/cli@latest hyperliquid markets --key-id <KEY_ID>
 
-# 6. Get order book to find best ask
+# 7. Get order book to find best ask
 npx @vincentai/cli@latest hyperliquid orderbook --key-id <KEY_ID> --coin BTC
 # → levels[1][0][0] is best ask, e.g. "105200.0"
 
-# 7. Open long — 0.5% above ask to ensure IoC fill
+# 8. Open long — 0.5% above ask to ensure IoC fill
 npx @vincentai/cli@latest hyperliquid trade --key-id <KEY_ID> \
   --coin BTC --is-buy true --sz 0.0001 --limit-px 105726 --order-type market
 
-# 8. Check fills
+# 9. Check fills
 npx @vincentai/cli@latest hyperliquid trades --key-id <KEY_ID> --coin BTC
 
-# 9. Close long — 0.5% below bid
+# 10. Close long — 0.5% below bid
 npx @vincentai/cli@latest hyperliquid orderbook --key-id <KEY_ID> --coin BTC
 npx @vincentai/cli@latest hyperliquid trade --key-id <KEY_ID> \
   --coin BTC --is-buy false --sz 0.0001 --limit-px 104674 --order-type market --reduce-only
@@ -403,6 +427,32 @@ All CLI commands return JSON to stdout.
   "status": "denied",
   "transactionLogId": "clx...",
   "walletAddress": "0x...",
+  "reason": "Exceeds daily spending limit"
+}
+```
+
+**withdraw (executed):**
+```json
+{
+  "status": "executed",
+  "transactionLogId": "clx..."
+}
+```
+
+**withdraw (pending approval):**
+```json
+{
+  "status": "pending_approval",
+  "transactionLogId": "clx...",
+  "reason": "Exceeds approval threshold"
+}
+```
+
+**withdraw (denied):**
+```json
+{
+  "status": "denied",
+  "transactionLogId": "clx...",
   "reason": "Exceeds daily spending limit"
 }
 ```
