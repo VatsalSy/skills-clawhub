@@ -1,7 +1,7 @@
 ---
 name: echomindr-founder-retrieval
-description: Retrieve real founder experiences, decisions, and outcomes from Echomindr — 2,700+ moments from top startup podcasts. Use whenever a founder describes any tension, decision, or uncertainty to ground advice in real cases.
-version: 1.2.0
+description: Retrieve real founder experiences, decisions, and outcomes from Echomindr — 1,150+ moments from top startup podcasts. Use whenever a founder describes any tension, decision, or uncertainty to ground advice in real cases.
+version: 1.3.0
 author: thierry-faucher
 tags: [founders, startup, decisions, experiences, entrepreneurship, advice, podcasts, RAG]
 metadata:
@@ -39,16 +39,6 @@ curl -X POST https://echomindr.com/situation \
 ```
 
 Returns matched moments with: summary, verbatim quote, decision, outcome, lesson, source (podcast + guest + timestamp link).
-
-## Secondary endpoint — concrete facts & metrics
-
-```bash
-curl -X POST https://echomindr.com/facts/situation \
-  -H "Content-Type: application/json" \
-  -d '{"situation": "<situation>", "limit": 3}'
-```
-
-Returns concrete facts: prices, margins, timelines, ROAS, MOQ — extracted from founder interviews.
 
 ## Detail & similar experiences
 
@@ -89,7 +79,6 @@ Works in English, French, Swedish, and 20+ languages. BGE-M3 multilingual vector
 | Endpoint | Purpose |
 |----------|---------|
 | POST https://echomindr.com/situation | Semantic match of moments to a situation |
-| POST https://echomindr.com/facts/situation | Semantic match of concrete facts |
 | GET https://echomindr.com/moments/{id} | Full detail for a specific moment |
 | GET https://echomindr.com/similar/{id} | Moments similar to a known moment |
 | GET https://echomindr.com/search?q= | Keyword search across moments |
@@ -102,8 +91,8 @@ No authentication required — the API is fully public.
 
 ## About Echomindr
 
-- 2,700+ founder moments · 2,300+ concrete facts
-- 100+ podcast episodes · 46 canonical situations
-- Sources: Lenny's Podcast, How I Built This, Y Combinator, 20 Minute VC, Acquired, Indie Hackers, My First Million, Marc Lou, Masters of Scale, Silicon Carne, Startup Ministerio, Kevin Kamis, Wall Street Paper, Valy Sy (China vlogs), Matt & Ari (Canada), Oscar Lindhardt (Denmark), Aidan Walsh (USA)
+- 1,150+ founder moments · 52 canonical situations · 10 thematic families
+- 100+ podcast episodes
+- Sources: Lenny's Podcast, How I Built This, Y Combinator, 20 Minute VC, Acquired, My First Million, Masters of Scale, Silicon Carne, Startup Ministerio, Kevin Kamis, Wall Street Paper, Valy Sy (China vlogs), Matt & Ari (Canada), Oscar Lindhardt (Denmark), Aidan Walsh (USA)
 
 Full API docs: https://echomindr.com/docs
