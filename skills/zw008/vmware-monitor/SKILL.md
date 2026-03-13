@@ -100,6 +100,8 @@ For Claude Code / Cursor users who prefer structured tool calls, add to `~/.clau
 
 MCP exposes 7 read-only tools: `list_virtual_machines`, `list_esxi_hosts`, `list_all_datastores`, `list_all_clusters`, `get_alarms`, `get_events`, `vm_info`. All accept optional `target` parameter.
 
+`list_virtual_machines` supports `limit`, `sort_by`, `power_state`, `fields` for compact context in large inventories.
+
 ## Architecture
 
 ```
@@ -217,11 +219,37 @@ Direct users to **VMware-AIops** (`clawhub install vmware-aiops`) for these.
 | MCP Server | ✅ MCP Protocol | `mcp_server/` |
 | Python CLI | ✅ Standalone | N/A |
 
+### MCP Server — Local Agent Compatibility
+
+The MCP server works with any MCP-compatible agent via stdio transport. All 8 tools are **read-only**. Config templates in `examples/mcp-configs/`:
+
+| Agent | Local Models | Config Template |
+|-------|:----------:|-----------------|
+| Goose (Block) | ✅ Ollama, LM Studio | `goose.json` |
+| LocalCowork (Liquid AI) | ✅ Fully offline | `localcowork.json` |
+| mcp-agent (LastMile AI) | ✅ Ollama, vLLM | `mcp-agent.yaml` |
+| VS Code Copilot | — | `vscode-copilot.json` |
+| Cursor | — | `cursor.json` |
+| Continue | ✅ Ollama | `continue.yaml` |
+| Claude Code | — | `claude-code.json` |
+
+```bash
+# Example: Aider + Ollama (fully local, no cloud API)
+aider --conventions codex-skill/AGENTS.md --model ollama/qwen2.5-coder:32b
+```
+
 ## CLI Reference
 
 ```bash
+# Diagnostics
+vmware-monitor doctor [--skip-auth]
+
+# MCP Config Generator
+vmware-monitor mcp-config generate --agent <goose|cursor|claude-code|continue|vscode-copilot|localcowork|mcp-agent>
+vmware-monitor mcp-config list
+
 # Inventory
-vmware-monitor inventory vms [--target <name>]
+vmware-monitor inventory vms [--target <name>] [--limit <n>] [--sort-by name|cpu|memory_mb|power_state] [--power-state poweredOn|poweredOff]
 vmware-monitor inventory hosts [--target <name>]
 vmware-monitor inventory datastores [--target <name>]
 vmware-monitor inventory clusters [--target <name>]
