@@ -1,11 +1,17 @@
 {
   "owner": "xueyetianya",
   "slug": "newsletter-writer",
-  "displayName": "newsletter-writer",
+  "displayName": "Newsletter Writer",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773206280547,
-    "commit": "https://github.com/openclaw/skills/commit/48366ee07c0db642647f465a9f14bd6a0cac8fc3"
+    "version": "2.2.0",
+    "publishedAt": 1773421575243,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773206280547,
+      "commit": "https://github.com/openclaw/skills/commit/48366ee07c0db642647f465a9f14bd6a0cac8fc3"
+    }
+  ]
 }
