@@ -1,0 +1,11 @@
+{
+  "owner": "googleworkspace-bot",
+  "slug": "recipe-forward-labeled-emails",
+  "displayName": "Recipe Forward Labeled Emails",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1773404039835,
+    "commit": null
+  },
+  "history": []
+}
