@@ -9,7 +9,7 @@ description: >
   Image generation with IMA Open API using only Nano Banana series: Nano Banana,
   Nano Banana Pro, Nano Banana 2. Budget (Nano Banana2 512px), balanced (Nano Banana2/Pro),
   premium (Nano Banana Pro 4K). Native aspect_ratio (1:1, 16:9, 9:16, 4:3, 3:4).
-  Requires ima_* API key. Bundled script: scripts/ima_image_create.py.
+  Requires IMA API key. Bundled script: scripts/ima_image_create.py.
 ---
 
 # IMA Nano Banana (Image Generation)
@@ -462,3 +462,11 @@ Poll every 2–5s. On completion, medias[].url, width, height, format (jpg/png).
 | Base URL | https://api.imastudio.com |
 | 生成密钥 | https://www.imaclaw.ai/imaclaw/apikey |
 | 购买积分 | https://www.imaclaw.ai/imaclaw/subscription |
+
+---
+
+## Supported Models & Search Terms
+
+**Models:** Nano Banana, Nano Banana 2, Nano Banana Pro (also known as: gemini image, lightweight image)
+
+**Capabilities:** image generation, text-to-image, image-to-image, budget image generation, AI art, lightweight

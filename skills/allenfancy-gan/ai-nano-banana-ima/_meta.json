@@ -1,11 +1,17 @@
 {
   "owner": "allenfancy-gan",
   "slug": "ai-nano-banana-ima",
-  "displayName": "Google Nano Banana Pro & 2",
+  "displayName": "IMA Nano Banana  Pro, Nano Banana 2",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773068765989,
-    "commit": "https://github.com/openclaw/skills/commit/cdb61ded6d98685f9e846ad1a3276e3edeebf6ef"
+    "version": "1.0.1",
+    "publishedAt": 1773332001499,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773068765989,
+      "commit": "https://github.com/openclaw/skills/commit/cdb61ded6d98685f9e846ad1a3276e3edeebf6ef"
+    }
+  ]
 }
