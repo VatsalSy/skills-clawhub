@@ -1,83 +1,56 @@
 ---
 name: pi-ppt
-description: 调用 Pi Integration API 生成 PPT，并通过状态接口轮询直到返回可访问 URL。Use when 用户提到 generate_pi_ppt_2、Pi PPT 两步生成（create_document + get_status）、通过接口生成幻灯片并等待完成链接。
+description: 调用 Pi API 生成 PPT。通过传入要生成的PPT的内容描述、PPT的页数和PPT的语言来控制。
 ---
 
-# Pi PPT 2-Step 生成
-
-将 `scripts/generate_pi_ppt_2.py` 作为默认实现，执行完整流程：
-1. `create_document(...)` 触发生成任务
-2. `get_status(resource_id)` 轮询，`status=done` 时返回 `url`
+# Pi PPT 生成
 
 ## 触发条件
-
 当用户出现以下意图时使用本 skill：
-- 提到 `generate_pi_ppt_2`
-- 提到 “Pi API 生成 PPT”
-- 明确要求“两步流程：先触发任务，再轮询状态”
-- 需要最终返回可访问的文档链接
+- 提到 “生成 PPT”
+- 提到 “使用pi-ppt skill 生成PPT”
 
-## 代码位置
+## 使用方法
 
-- 主实现文件：`scripts/generate_pi_ppt_2.py`
-- 关键函数：
-  - `set_app_id_and_app_secret(app_id, app_secret)`
-  - `create_document(content, cards=8, language="cn")`
-  - `get_status(resource_id)`
-  - `generate_pi_ppt_2(content, cards=8, language="cn", timeout_s=300, poll_interval_s=20)`
+1. **配置认证凭据**：调用 API 前，需先设置 `PIPPT_APP_ID` 和 `PIPPT_APP_SECRET`。推荐通过环境变量注入：
+   ```bash
+   export PIPPT_APP_ID="你的 app_id"
+   export PIPPT_APP_SECRET="你的 app_secret"
+   ```
+2. 执行代码 `scripts/generate_pi_ppt.py`
+  - 调用 `generate_pi_ppt(content, cards, language, timeout_s, poll_interval_s)` 函数生成PPT，参数说明：
+    - `content`（str）：PPT 的主题或描述，例如 "大模型介绍"
+    - `cards`（int）：幻灯片页数，默认 8
+    - `language`（str）：语言，`zh` 中文 / `en` 英文
 
-## 使用前必填配置
+     该函数实际上首先调用`create_document`函数触发生成任务，然后通过轮询调用`get_status`函数查看PPT的生成状态. get_status 接口状态：
+        - `running`：继续轮询
+        - `done`：返回 `url`
+        - `fail`：抛出失败异常
+      超时未完成则抛 `TimeoutError`
 
-**在使用此 skill 前，请让用户输出APP_ID和APP_SECRET并填写在下方，否则不能使用该skill**
-
-- APP_ID = ""
-- APP_SECRET = ""
-
-
-然后必须先调用：
-- `set_app_id_and_app_secret(APPID, APP_SECRET)`
-
-未先调用该函数时，签名参数会是空值，接口会失败。
-
-## 标准工作流
-
-1. 校验输入参数：`content/cards/language`
-2. 生成签名并请求 generation 接口创建任务
-3. 提取 `resource_id`
-4. 轮询 status 接口：
-   - `running`：继续轮询
-   - `done`：返回 `url`
-   - `fail`：抛出失败异常
-5. 超时未完成则抛 `TimeoutError`
+ **返回值**（成功时）：
+    `generate_pi_ppt(...)` 成功时返回至少包含：
+        - `resource_id`: 任务 ID
+        - `status`: `"done"`
+        - `url`: 文档可访问链接
 
 ## 最小调用示例
 
 ```python
-from scripts.generate_pi_ppt_2 import set_app_id_and_app_secret, generate_pi_ppt_2
+from scripts.generate_pi_ppt import generate_pi_ppt
 
-APPID = "你的 app_id"
-APP_SECRET = "你的 app_secret"
+PIPPT_APP_ID     = os.getenv("PIPPT_APP_ID", "").strip()
+PIPPT_APP_SECRET = os.getenv("PIPPT_APP_SECRET", "").strip()
 
-set_app_id_and_app_secret(APPID, APP_SECRET)
-
-result = generate_pi_ppt_2(
+result = generate_pi_ppt(
     content="做一个关于AI的PPT",
     cards=8,
-    language="cn",
+    language="zh",
 )
 print(result["url"])
 ```
 
-## 返回约定
-
-`generate_pi_ppt_2(...)` 成功时返回至少包含：
-- `name`: `"generate_pi_ppt_2"`
-- `resource_id`: 任务 ID
-- `status`: `"done"`
-- `url`: 文档可访问链接
-
-## 注意事项
-
-- `language` 当前支持：`cn` / `zh` / `en`
-- `url` 仅在 `status=done` 时可用
-- 若要调试签名问题，优先核对 `APPID`、`APP_SECRET` 和本地时间戳偏差
+## 注意
+- 调用API前首先要检查 PIPPT_APP_ID 和 PIPPT_APP_SECRET 这两个环境变量是否设置，如果没有设置要提醒用户设置。 
+- 生成一个PPT大概要耗时2-3分钟，需要提醒用户耐心等待。
