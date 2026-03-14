@@ -45,7 +45,7 @@ Users read these results on mobile (Telegram, Slack, etc.) where long messages g
 2. **Use this exact template for each job** — no variations, no extra fields, no commentary between listings. Blank line between each job.
 ```
 **{n}. {title}**
-{company.name} · {location}
+{company.name} · 📍 {location}
 ${salaryMin/1000}K–${salaryMax/1000}K/yr · [Apply →](https://zerogtalent.com/space-jobs/{company.slug}/{slug})
 ```
 3. **If `salaryMin` is null**, omit salary from line 3 — just show the link: `[Apply →](url)`
