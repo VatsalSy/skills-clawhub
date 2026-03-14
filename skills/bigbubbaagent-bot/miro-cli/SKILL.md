@@ -1,96 +1,112 @@
 ---
 name: miro-cli
 description: Miro CLI tool for board/team/org management via command line. Use when querying boards, exporting data, viewing teams/organizations, or automating Miro workflows from the terminal.
+required_binaries:
+  - mirocli
+  - jq
+  - column
+required_credentials:
+  - miro_org_id
+  - miro_client_id
+  - miro_client_secret
 metadata:
-  {
-    "openclaw":
-      {
-        "requires":
-          {
-            "bins": ["mirocli", "jq", "column"],
-            "system": ["bash"],
-            "credentials": ["miro_org_id", "miro_client_id", "miro_client_secret"]
-          },
-        "install":
-          [
-            {
-              "id": "node",
-              "kind": "node",
-              "package": "davitp/mirocli",
-              "bins": ["mirocli"],
-              "label": "Install Miro CLI from npm (davitp/mirocli)",
-              "verify": "Verify package author on https://www.npmjs.com/package/mirocli"
-            },
-            {
-              "id": "jq",
-              "kind": "homebrew",
-              "package": "jq",
-              "bins": ["jq"],
-              "label": "Install jq (JSON processor)",
-              "optional": true
-            },
-            {
-              "id": "column",
-              "kind": "system",
-              "bins": ["column"],
-              "label": "column command (usually pre-installed)",
-              "optional": true
-            }
-          ],
-        "credentials":
-          [
-            {
-              "name": "miro_org_id",
-              "type": "text",
-              "description": "Miro Organization ID (from organization settings)"
-            },
-            {
-              "name": "miro_client_id",
-              "type": "text",
-              "description": "Miro App Client ID (from app settings)"
-            },
-            {
-              "name": "miro_client_secret",
-              "type": "password",
-              "description": "Miro App Client Secret (stored in system keyring by mirocli, never in this skill)"
-            }
-          ]
-      }
-  }
+  openclaw:
+    type: cli-tool
+    trust_model: external-binary-managed-credentials
+    requires:
+      binaries:
+        - mirocli
+        - jq
+        - column
+      system_tools:
+        - bash
+      credentials:
+        miro_org_id: Organization ID from Miro settings
+        miro_client_id: OAuth Client ID from Miro app
+        miro_client_secret: OAuth Client Secret (stored in system keyring, NOT in skill)
+    install:
+      - id: mirocli
+        package: davitp/mirocli
+        kind: npm
+        command: npm install -g mirocli
+        required: true
+        verify_url: https://www.npmjs.com/package/mirocli
+      - id: jq
+        package: jq
+        kind: homebrew
+        command: brew install jq
+        required: false
+        note: Optional but recommended for JSON filtering
+      - id: column
+        package: util-linux
+        kind: system
+        command: Usually pre-installed
+        required: false
+        note: Optional for table formatting in helper scripts
+    security:
+      external_binary: true
+      binary_name: mirocli
+      manages_credentials: true
+      credential_storage: system-keyring
+      credential_scope: local-only
+    capabilities:
+      - read-boards
+      - read-teams
+      - read-organization
+      - export-boards
+      - view-audit-logs
+      - view-content-logs
+    limitations:
+      - read-only (no create/update/delete)
+      - requires-oauth-setup
+      - trusts-external-npm-package
 ---
 
 # Miro CLI Skill
 
 A comprehensive guide for using the Miro CLI tool to interact with the Miro Platform API from the command line.
 
-## ⚠️ Before Installing - Important Security Notes
+## ⚠️ Trust Model & Security Declaration
 
-**1. Verify the mirocli npm Package**
-- Package: `davitp/mirocli` on npm
-- Verify on https://www.npmjs.com/package/mirocli
-- Check: Package author, GitHub repo, recent releases
-- Official Miro integration? No. Community tool? Yes.
-- **You decide:** Is this trustworthy for your use case?
+**Metadata Declaration:**
+- Type: CLI tool wrapper (external binary management)
+- External Binary: `mirocli` (npm package: davitp/mirocli)
+- Manages Credentials: YES (stores in system keyring, NOT in skill)
+- Credential Storage: System keyring (local-only, OS-managed)
+- Capabilities: Read-only access to boards, teams, organization, logs
+- Limitations: No create/update/delete; requires OAuth setup
 
-**2. External Binary Trust**
-- This skill runs `mirocli` (external npm package) as a subprocess
-- Your Client ID and Client Secret are entered interactively and managed by that external binary
-- **You must trust:** Where mirocli stores OAuth tokens (system keyring) and how it handles credentials
+**Critical Trust Requirements:**
 
-**3. Helper Binaries**
-- Scripts use `jq` (JSON processor) and `column` (text formatter)
-- Both are standard Unix tools, but they **must be installed separately**
-- jq is optional for basic use; column is optional for helper scripts
+**1. You must trust the `mirocli` npm package:**
+- Author: @davitp (community-maintained, not official Miro)
+- Package: https://www.npmjs.com/package/mirocli
+- Source: https://github.com/davitp/mirocli
+- Verification: Check npm downloads, last update date, issues, GitHub stars
+- **Why it matters:** This external binary handles your Client ID, Client Secret, and OAuth tokens
 
-**4. PATH Modification (Optional)**
-- Helper scripts can optionally be added to your PATH: `export PATH="$PATH:~/.openclaw/workspace/skills/miro-cli/scripts"`
-- This allows running scripts from anywhere: `export-team-boards.sh <team-id>`
-- Understand this PATH change before doing it
+**2. You must trust your system keyring:**
+- macOS: Keychain
+- Linux: Secret Service
+- Windows: Credential Manager
+- **This skill does NOT:** Store credentials, cache tokens, or transmit them
 
-**5. Recommendation**
-- Test in an isolated environment or with a non-sensitive account first
-- Verify mirocli's behavior before using with production credentials
-- Review mirocli's source code: https://github.com/davitp/mirocli
+**3. Helper binaries are standard Unix tools:**
+- `jq` — JSON processor (widely used, open source)
+- `column` — Text formatter (standard utility)
+- These are optional and do NOT handle credentials
+
+**4. Network access:**
+- Direct HTTPS calls to api.miro.com (official Miro endpoint)
+- OAuth browser-based authentication on your machine
+- No data proxying or credential transmission through third parties
+
+**Recommendation:**
+Before using with production credentials:
+1. Review mirocli source code: https://github.com/davitp/mirocli
+2. Test with a non-sensitive Miro account
+3. Verify OAuth token storage in `~/.mirocli/`
+4. Run in isolated environment initially
 
 ## What It Does
 

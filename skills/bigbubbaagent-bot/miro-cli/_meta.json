@@ -3,9 +3,15 @@
   "slug": "miro-cli",
   "displayName": "Miro CLI",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1773502922958,
-    "commit": "https://github.com/openclaw/skills/commit/f7be6e4f50577345af75ff5d90de6a397219acc5"
+    "version": "1.0.5",
+    "publishedAt": 1773503494434,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1773502922958,
+      "commit": "https://github.com/openclaw/skills/commit/f7be6e4f50577345af75ff5d90de6a397219acc5"
+    }
+  ]
 }
