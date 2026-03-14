@@ -1,0 +1,11 @@
+{
+  "owner": "x-rayluan",
+  "slug": "openclaw-workspace-backup-restore",
+  "displayName": "OpenClaw Backup Restore",
+  "latest": {
+    "version": "1.5.2",
+    "publishedAt": 1773481117588,
+    "commit": null
+  },
+  "history": []
+}
