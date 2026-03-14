@@ -1,0 +1,11 @@
+{
+  "owner": "jimpang8",
+  "slug": "hashicorp-vault",
+  "displayName": "HashiCorp Vault",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1773509109759,
+    "commit": null
+  },
+  "history": []
+}
