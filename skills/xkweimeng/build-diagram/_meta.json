@@ -1,0 +1,11 @@
+{
+  "owner": "xkweimeng",
+  "slug": "build-diagram",
+  "displayName": "An AI skill for OpenClaw that generates professional diagrams from natural language descriptions using EdrawMax AI APIs.",
+  "latest": {
+    "version": "1.0.2",
+    "publishedAt": 1773408949839,
+    "commit": null
+  },
+  "history": []
+}
