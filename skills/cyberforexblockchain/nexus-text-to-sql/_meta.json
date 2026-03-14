@@ -1,0 +1,11 @@
+{
+  "owner": "cyberforexblockchain",
+  "slug": "nexus-text-to-sql",
+  "displayName": "NEXUS Schema-Aware SQL Generator",
+  "latest": {
+    "version": "1.0.3",
+    "publishedAt": 1773450311144,
+    "commit": null
+  },
+  "history": []
+}
