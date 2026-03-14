@@ -1,6 +1,6 @@
 {
   "name": "@openclaw/skill-weryai-podcast",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Generate AI podcasts using the WeryAI API.",
   "author": "OpenClaw Community",
   "license": "MIT",
