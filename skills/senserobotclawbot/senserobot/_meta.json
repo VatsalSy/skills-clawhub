@@ -1,0 +1,11 @@
+{
+  "owner": "senserobotclawbot",
+  "slug": "senserobot",
+  "displayName": "SenseRobot元萝卜AI下棋机器人",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1773409620256,
+    "commit": null
+  },
+  "history": []
+}
