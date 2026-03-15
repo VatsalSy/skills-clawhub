@@ -1,11 +1,17 @@
 {
   "owner": "xueyetianya",
   "slug": "grammar-check",
-  "displayName": "grammar-check",
+  "displayName": "Grammar Check",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773187482287,
-    "commit": "https://github.com/openclaw/skills/commit/5043ac9361e2bad878a59f3c2e3aedd02ed96583"
+    "version": "2.3.2",
+    "publishedAt": 1773613528564,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773187482287,
+      "commit": "https://github.com/openclaw/skills/commit/5043ac9361e2bad878a59f3c2e3aedd02ed96583"
+    }
+  ]
 }

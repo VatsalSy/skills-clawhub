@@ -1,9 +1,6 @@
 ---
 name: grammar-check
-version: 1.0.0
-description: "语法检查助手。英语纠错、语法解释、难度分级、语法练习题、中英对比分析。Grammar checker with error correction, explanations, difficulty levels, practice exercises, Chinese-English comparison."
-author: BytesAgain
-tags: [grammar, English, 语法检查, 英语纠错, 语法解释, 语法练习, 中英对比, 难度分级]
+description: "语法检查助手。英语纠错、语法解释、难度分级、语法练习题、中英对比分析。Grammar checker with error correction, explanations, difficulty levels, practice exercises, Chinese-English comparison. Use when you need grammar check capabilities. Triggers on: grammar check."
 ---
 # grammar-check
 
@@ -28,7 +25,6 @@ A: 主要输出Markdown格式，方便复制和编辑。
   compare         compare
 ```
 
-
 ## 专业建议
 
 - 冠词遗漏**: ~~I am student~~ → I am **a** student
@@ -39,3 +35,10 @@ A: 主要输出Markdown格式，方便复制和编辑。
 
 ---
 *grammar-check by BytesAgain*
+---
+💬 Feedback & Feature Requests: https://bytesagain.com/feedback
+Powered by BytesAgain | bytesagain.com
+
+## Commands
+
+Run `grammar-check help` to see all available commands.
