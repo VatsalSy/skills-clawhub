@@ -23,19 +23,42 @@ def utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def human_text(event: dict[str, Any], route_primary: str) -> str:
+def _format_event_time(ts_raw: str, config: dict[str, Any] | None = None) -> str:
+    """Format ISO timestamp to readable local time string."""
+    if not ts_raw:
+        return "unknown"
+    try:
+        dt = datetime.fromisoformat(ts_raw.replace("Z", "+00:00"))
+    except (ValueError, TypeError):
+        return ts_raw
+    tz_name = "UTC"
+    if config:
+        tz_name = str(config.get("profile", {}).get("timezone", "UTC") or "UTC")
+    try:
+        from zoneinfo import ZoneInfo
+        local_dt = dt.astimezone(ZoneInfo(tz_name))
+    except Exception:
+        return dt.strftime("%Y-%m-%d %H:%M UTC")
+    return f"{local_dt.strftime('%Y-%m-%d %H:%M')} {tz_name}"
+
+
+def human_text(event: dict[str, Any], route_primary: str, config: dict[str, Any] | None = None) -> str:
+    question = event.get("question") or event.get("entry_id") or "Unknown market"
+    baseline = event.get("baseline")
+    current = event.get("current")
+    abs_pp = event.get("abs_pp")
+    ts_display = _format_event_time(str(event.get("ts", "")), config)
+    sev = severity_for_event(event)
+
     return (
-        f"Market: {event.get('question') or event.get('entry_id')}\n"
-        f"Current: {event.get('current')}%\n"
-        f"Baseline: {event.get('baseline')}%\n"
-        f"Absolute Change: {event.get('abs_pp')}pp\n"
-        f"Reason: {event.get('reason', '')}\n"
-        f"Baseline updated to {event.get('current')}%\n"
-        f"Event Time (UTC): {event.get('ts', '')}\n"
-        f"Entry ID: {event.get('entry_id')}\n"
-        f"Request ID: {event.get('request_id')}\n"
-        f"Route: {route_primary}\n"
-        "— Powered by SignalRadar"
+        f"SignalRadar Alert [{sev}]\n"
+        f"\n"
+        f"{question}\n"
+        f"{baseline}% \u2192 {current}% ({abs_pp}pp)\n"
+        f"Baseline updated to {current}%\n"
+        f"\n"
+        f"{ts_display}\n"
+        f"\u2014 Powered by SignalRadar"
     )
 
 
@@ -148,7 +171,7 @@ def deliver_hit(
         "idempotency_key": f"sr:{event.get('entry_id')}:{event.get('ts')}",
         "severity": sev,
         "route": {"primary": route_primary, "fallback": fallback_routes},
-        "human_text": human_text(event, route_primary),
+        "human_text": human_text(event, route_primary, config),
         "machine_payload": {"signal_event": event},
         "ts": now,
     }

@@ -11,8 +11,8 @@
   },
   "delivery": {
     "primary": {
-      "channel": "openclaw",
-      "target": "direct"
+      "channel": "webhook",
+      "target": ""
     },
     "fallback": []
   },
@@ -23,7 +23,7 @@
     "frequency": "weekly",
     "day_of_week": "monday",
     "time_local": "09:00",
-    "top_n": 10
+    "threshold_abs_pp": 10.0
   },
   "baseline": {
     "cleanup_after_expiry_days": 90

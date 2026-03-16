@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""SignalRadar v0.9.0 unified CLI entrypoint.
+"""SignalRadar v0.9.931 unified CLI entrypoint.
 
 Commands: doctor, add, list, show, remove, run, config, schedule, digest, onboard
 Single source of truth: ~/.signalradar/config/watchlist.json
@@ -729,29 +729,18 @@ def _add_result_payload(
 def _openclaw_run_text(hits: list[dict[str, Any]], run_ts: str, config: dict[str, Any]) -> str:
     if not hits:
         return "HEARTBEAT_OK"
-    lang = _resolve_language(config)
     ts_display = _format_user_time(run_ts, config)
-    if lang == "zh":
-        lines = [f"信号雷达检测到 {len(hits)} 个市场变化：", ""]
-    else:
-        lines = [f"SignalRadar detected {len(hits)} market change(s):", ""]
+    lines = [f"SignalRadar detected {len(hits)} market change(s):", ""]
     for idx, hit in enumerate(hits, 1):
         question = str(hit.get("question") or hit.get("entry_id") or "Unknown market")
         baseline = hit.get("baseline")
         current = hit.get("current")
         abs_pp = hit.get("abs_pp")
         lines.append(f"{idx}. {question}")
-        if lang == "zh":
-            lines.append(f"   {baseline}% → {current}%（{abs_pp}pp）")
-            lines.append(f"   基线已更新至 {current}%")
-        else:
-            lines.append(f"   {baseline}% -> {current}% ({abs_pp}pp)")
-            lines.append(f"   Baseline updated to {current}%")
+        lines.append(f"   {baseline}% \u2192 {current}% ({abs_pp}pp)")
+        lines.append(f"   Baseline updated to {current}%")
     lines.append("")
-    if lang == "zh":
-        lines.append(f"运行时间：{ts_display}")
-    else:
-        lines.append(f"Run time: {ts_display}")
+    lines.append(f"Run time: {ts_display}")
     return "\n".join(lines)
 
 
@@ -762,15 +751,8 @@ def _join_openclaw_messages(*parts: str) -> str:
     return "\n\n".join(kept)
 
 
-def _digest_title(frequency: str, lang: str) -> str:
+def _digest_title(frequency: str) -> str:
     freq = str(frequency or "weekly").strip().lower()
-    if lang == "zh":
-        labels = {
-            "daily": "日报",
-            "weekly": "周报",
-            "biweekly": "双周报",
-        }
-        return f"SignalRadar {labels.get(freq, '定期报告')}"
     labels = {
         "daily": "Daily Digest",
         "weekly": "Weekly Digest",
@@ -1000,12 +982,21 @@ def _build_digest_report(
         if abs(delta) > 0:
             changed_rows.append(row)
 
-    top_n = int(config.get("digest", {}).get("top_n", 10) or 10)
     top_movers = sorted(
         changed_rows,
         key=lambda item: abs(float(item.get("week_abs_pp", 0.0) or 0.0)),
         reverse=True,
-    )[:top_n]
+    )
+
+    # Collect unchanged rows for digest "No changes" block
+    unchanged_rows: list[dict[str, Any]] = []
+    for row in snapshot_rows:
+        if row.get("state") != "checked":
+            continue
+        entry_id = str(row.get("entry_id", "") or "")
+        if entry_id and entry_id not in {str(r.get("entry_id", "")) for r in changed_rows} \
+                and entry_id not in {str(r.get("entry_id", "")) for r in new_rows}:
+            unchanged_rows.append(row)
 
     event_groups: dict[str, dict[str, Any]] = {}
     for row in snapshot_rows:
@@ -1064,6 +1055,7 @@ def _build_digest_report(
             "changed": len(changed_rows),
         },
         "top_movers": top_movers,
+        "unchanged_rows": unchanged_rows,
         "events": grouped_events[:5],
         "hidden_event_count": max(0, len(grouped_events) - 5),
         "new_entries": new_rows[:10],
@@ -1080,134 +1072,166 @@ def _build_digest_report(
 
 
 def _format_digest_text(report: dict[str, Any], config: dict[str, Any]) -> str:
-    lang = _resolve_language(config)
     generated_display = _format_user_time(str(report.get("generated_at", "")), config)
     frequency = str(report.get("frequency", "weekly") or "weekly")
     summary = report.get("summary", {})
-    top_movers = report.get("top_movers", [])
-    events = report.get("events", [])
+    all_rows = report.get("top_movers", [])  # all changed rows (sorted by abs delta)
+    digest_threshold = float(config.get("digest", {}).get("threshold_abs_pp", 10.0) or 10.0)
 
-    if lang == "zh":
-        lines = [f"{_digest_title(frequency, lang)}（{generated_display}）", ""]
-        if report.get("first_report"):
-            lines.append("说明：这是第一份周报，暂无上期快照对比。")
-            lines.append("")
-        lines.extend(
-            [
-                "本期概览",
-                f"- 活跃监控：{summary.get('active', 0)}",
-                f"- 本期净变化条目：{summary.get('changed', 0)}",
-                f"- 本期新增：{summary.get('new', 0)}",
-                f"- 已结算：{summary.get('settled', 0)}",
-                f"- 检查异常：{summary.get('errors', 0)}",
-                "",
-            ]
-        )
-        if top_movers:
-            lines.append("全局变化最大")
-            for idx, row in enumerate(top_movers, 1):
-                delta = float(row.get("week_abs_pp", 0.0) or 0.0)
-                sign = "+" if delta >= 0 else ""
-                lines.append(
-                    f"{idx}. {row.get('question', row.get('entry_id', '?'))}  "
-                    f"{row.get('previous_probability')}% -> {row.get('current')}%  ({sign}{delta}pp)"
-                )
-            lines.append("")
-        if events:
-            lines.append("重点事件")
-            for event in events:
-                lines.append(
-                    f"{event.get('event_title', event.get('event_key', '?'))}"
-                    f"\n- tracked: {event.get('tracked_count', 0)}, changed: {event.get('changed_count', 0)}"
-                )
-                for mover in event.get("top_movers", []):
-                    delta = float(mover.get("week_abs_pp", 0.0) or 0.0)
-                    sign = "+" if delta >= 0 else ""
-                    lines.append(
-                        f"- {mover.get('question', mover.get('entry_id', '?'))}: "
-                        f"{mover.get('previous_probability')}% -> {mover.get('current')}% ({sign}{delta}pp)"
-                    )
-                hidden = int(event.get("hidden_changed_count", 0) or 0)
-                if hidden > 0:
-                    lines.append(f"- 以及另外 {hidden} 个变化市场")
-                lines.append("")
-        if report.get("new_entries"):
-            lines.append("新增条目")
-            for row in report["new_entries"]:
-                lines.append(f"- {row.get('question', row.get('entry_id', '?'))}")
-            if report.get("hidden_new_count", 0):
-                lines.append(f"- 以及另外 {report.get('hidden_new_count', 0)} 个新增条目")
-            lines.append("")
-        if report.get("settled_entries"):
-            lines.append("已结算，建议移除")
-            for row in report["settled_entries"]:
-                lines.append(f"- {row.get('question', row.get('entry_id', '?'))}")
-            if report.get("hidden_settled_count", 0):
-                lines.append(f"- 以及另外 {report.get('hidden_settled_count', 0)} 个已结算条目")
-            lines.append("")
-        if report.get("error_entries"):
-            lines.append(f"说明：有 {summary.get('errors', 0)} 个条目本次暂时无法获取。")
-        return "\n".join(line for line in lines if line is not None).strip()
+    # Collect all rows including unchanged ones
+    unchanged_rows = [r for r in report.get("unchanged_rows", []) if r]
+    settled_entries = report.get("settled_entries", []) or []
+    error_entries = report.get("error_entries", []) or []
+    new_entries = report.get("new_entries", []) or []
 
-    lines = [f"{_digest_title(frequency, lang)} ({generated_display})", ""]
+    lines = [f"{_digest_title(frequency)} ({generated_display})", ""]
     if report.get("first_report"):
         lines.append("Note: this is the first digest. No previous digest snapshot is available yet.")
         lines.append("")
-    lines.extend(
-        [
-            "Summary",
-            f"- Active monitored entries: {summary.get('active', 0)}",
-            f"- Changed this period: {summary.get('changed', 0)}",
-            f"- New entries: {summary.get('new', 0)}",
-            f"- Settled entries: {summary.get('settled', 0)}",
-            f"- Errors: {summary.get('errors', 0)}",
-            "",
-        ]
-    )
-    if top_movers:
-        lines.append("Top movers")
-        for idx, row in enumerate(top_movers, 1):
-            delta = float(row.get("week_abs_pp", 0.0) or 0.0)
-            sign = "+" if delta >= 0 else ""
-            lines.append(
-                f"{idx}. {row.get('question', row.get('entry_id', '?'))}  "
-                f"{row.get('previous_probability')}% -> {row.get('current')}%  ({sign}{delta}pp)"
-            )
-        lines.append("")
-    if events:
-        lines.append("Event groups")
-        for event in events:
-            lines.append(
-                f"{event.get('event_title', event.get('event_key', '?'))}"
-                f"\n- tracked: {event.get('tracked_count', 0)}, changed: {event.get('changed_count', 0)}"
-            )
-            for mover in event.get("top_movers", []):
-                delta = float(mover.get("week_abs_pp", 0.0) or 0.0)
+
+    # Overview line
+    active = int(summary.get("active", 0))
+    changed = int(summary.get("changed", 0))
+    settled_count = int(summary.get("settled", 0))
+    stable = active - changed
+    lines.append(f"Overview: {active} markets monitored, {changed} changed, {settled_count} settled, {stable} stable")
+    lines.append("")
+
+    # --- Classify rows by event and assign to blocks ---
+    # Build event groups: event_title -> list of rows
+    event_map: dict[str, list[dict[str, Any]]] = {}
+    standalone_changed: list[dict[str, Any]] = []
+    for row in all_rows:
+        et = str(row.get("event_title", "") or "")
+        if et:
+            event_map.setdefault(et, []).append(row)
+        else:
+            standalone_changed.append(row)
+
+    # Determine event block assignment (highest priority wins)
+    # Priority: Changes > Minor changes > No changes
+    event_block: dict[str, str] = {}  # event_title -> "changes" | "minor"
+    for et, rows in event_map.items():
+        has_major = any(abs(float(r.get("week_abs_pp", 0) or 0)) >= digest_threshold for r in rows)
+        event_block[et] = "changes" if has_major else "minor"
+
+    # Add unchanged rows to event_map for no-changes block
+    unchanged_event_map: dict[str, list[dict[str, Any]]] = {}
+    standalone_unchanged: list[dict[str, Any]] = []
+    for row in unchanged_rows:
+        et = str(row.get("event_title", "") or "")
+        if et and et not in event_block:  # only if event not already in changes/minor
+            unchanged_event_map.setdefault(et, []).append(row)
+        elif not et:
+            standalone_unchanged.append(row)
+
+    # --- Changes block ---
+    changes_lines: list[str] = []
+    for et, block in sorted(event_block.items(), key=lambda x: x[0]):
+        if block != "changes":
+            continue
+        rows = event_map[et]
+        major = [r for r in rows if abs(float(r.get("week_abs_pp", 0) or 0)) >= digest_threshold]
+        minor_in_event = [r for r in rows if abs(float(r.get("week_abs_pp", 0) or 0)) < digest_threshold]
+        # Show event title if multiple markets
+        if len(rows) > 1:
+            changes_lines.append(f"  {et}")
+            for r in major:
+                delta = float(r.get("week_abs_pp", 0) or 0)
                 sign = "+" if delta >= 0 else ""
-                lines.append(
-                    f"- {mover.get('question', mover.get('entry_id', '?'))}: "
-                    f"{mover.get('previous_probability')}% -> {mover.get('current')}% ({sign}{delta}pp)"
-                )
-            hidden = int(event.get("hidden_changed_count", 0) or 0)
-            if hidden > 0:
-                lines.append(f"- and {hidden} more changed markets")
-            lines.append("")
-    if report.get("new_entries"):
+                changes_lines.append(f"    {r.get('question', r.get('entry_id', '?'))}")
+                changes_lines.append(f"      {r.get('previous_probability')}% \u2192 {r.get('current')}% ({sign}{delta}pp)")
+        else:
+            for r in major:
+                delta = float(r.get("week_abs_pp", 0) or 0)
+                sign = "+" if delta >= 0 else ""
+                changes_lines.append(f"  {r.get('question', r.get('entry_id', '?'))}")
+                changes_lines.append(f"    {r.get('previous_probability')}% \u2192 {r.get('current')}% ({sign}{delta}pp)")
+        changes_lines.append("")
+    # Standalone major changes
+    for r in standalone_changed:
+        delta = float(r.get("week_abs_pp", 0) or 0)
+        if abs(delta) >= digest_threshold:
+            sign = "+" if delta >= 0 else ""
+            changes_lines.append(f"  {r.get('question', r.get('entry_id', '?'))}")
+            changes_lines.append(f"    {r.get('previous_probability')}% \u2192 {r.get('current')}% ({sign}{delta}pp)")
+            changes_lines.append("")
+
+    if changes_lines:
+        lines.append("Changes")
+        lines.extend(changes_lines)
+
+    # --- Minor changes block ---
+    minor_lines: list[str] = []
+    for et, block in sorted(event_block.items(), key=lambda x: x[0]):
+        rows = event_map[et]
+        if block == "changes":
+            # Fold remaining minor rows from this event
+            minor_in_event = [r for r in rows if abs(float(r.get("week_abs_pp", 0) or 0)) < digest_threshold]
+            if minor_in_event:
+                top_row = max(minor_in_event, key=lambda r: float(r.get("current", 0) or 0))
+                top_name = top_row.get("question", top_row.get("entry_id", "?"))
+                top_prob = top_row.get("current", "?")
+                minor_lines.append(f"  {et} ({len(minor_in_event)} more markets, top: {top_name} at {top_prob}%)")
+        elif block == "minor":
+            if len(rows) > 1:
+                top_row = max(rows, key=lambda r: float(r.get("current", 0) or 0))
+                top_name = top_row.get("question", top_row.get("entry_id", "?"))
+                top_prob = top_row.get("current", "?")
+                minor_lines.append(f"  {et} ({len(rows)} markets, top: {top_name} at {top_prob}%)")
+            else:
+                r = rows[0]
+                minor_lines.append(f"  {r.get('question', r.get('entry_id', '?'))}  ({r.get('current', '?')}%)")
+    # Standalone minor changes
+    for r in standalone_changed:
+        delta = float(r.get("week_abs_pp", 0) or 0)
+        if abs(delta) < digest_threshold:
+            minor_lines.append(f"  {r.get('question', r.get('entry_id', '?'))}  ({r.get('current', '?')}%)")
+
+    if minor_lines:
+        lines.append(f"Minor changes (< {int(digest_threshold)}pp)")
+        lines.extend(minor_lines)
+        lines.append("")
+
+    # --- No changes block ---
+    no_change_lines: list[str] = []
+    for et, rows in sorted(unchanged_event_map.items()):
+        if len(rows) > 1:
+            top_row = max(rows, key=lambda r: float(r.get("current", 0) or 0))
+            top_name = top_row.get("question", top_row.get("entry_id", "?"))
+            top_prob = top_row.get("current", "?")
+            no_change_lines.append(f"  {et} ({len(rows)} markets, top: {top_name} at {top_prob}%)")
+        else:
+            r = rows[0]
+            no_change_lines.append(f"  {r.get('question', r.get('entry_id', '?'))}  ({r.get('current', '?')}%)")
+    for r in standalone_unchanged:
+        no_change_lines.append(f"  {r.get('question', r.get('entry_id', '?'))}  ({r.get('current', '?')}%)")
+
+    if no_change_lines:
+        lines.append("No changes")
+        lines.extend(no_change_lines)
+        lines.append("")
+
+    # --- New entries ---
+    if new_entries:
         lines.append("New entries")
-        for row in report["new_entries"]:
-            lines.append(f"- {row.get('question', row.get('entry_id', '?'))}")
-        if report.get("hidden_new_count", 0):
-            lines.append(f"- and {report.get('hidden_new_count', 0)} more new entries")
+        for row in new_entries:
+            lines.append(f"  {row.get('question', row.get('entry_id', '?'))}")
         lines.append("")
-    if report.get("settled_entries"):
-        lines.append("Settled, recommended to remove")
-        for row in report["settled_entries"]:
-            lines.append(f"- {row.get('question', row.get('entry_id', '?'))}")
-        if report.get("hidden_settled_count", 0):
-            lines.append(f"- and {report.get('hidden_settled_count', 0)} more settled entries")
+
+    # --- Settled ---
+    if settled_entries:
+        lines.append("Settled (recommend removal)")
+        for row in settled_entries:
+            lines.append(f"  {row.get('question', row.get('entry_id', '?'))}")
         lines.append("")
-    if report.get("error_entries"):
-        lines.append(f"Note: {summary.get('errors', 0)} entries could not be fetched this period.")
+
+    # --- Errors ---
+    if error_entries:
+        lines.append(f"Note: {len(error_entries)} markets could not be fetched this period.")
+        lines.append("")
+
+    lines.append("\u2014 Powered by SignalRadar")
     return "\n".join(line for line in lines if line is not None).strip()
 
 
@@ -1252,7 +1276,7 @@ def _run_digest_delivery(
     output_mode: str,
     dry_run: bool,
 ) -> dict[str, Any]:
-    primary_channel = str(config.get("delivery", {}).get("primary", {}).get("channel", "openclaw") or "openclaw")
+    primary_channel = str(config.get("delivery", {}).get("primary", {}).get("channel", "webhook") or "webhook")
     payload = {
         "status": "NO_REPLY",
         "sent": False,
@@ -1418,7 +1442,11 @@ def _push_message(text: str) -> dict[str, Any]:
 def _cron_command_line() -> str:
     """Build the crontab command that runs SignalRadar."""
     log_path = _cron_log_path()
-    push_flag = " --push" if _has_openclaw_cli() else ""
+    # Only add --push when delivery channel is openclaw (needs reply route).
+    # For webhook/file channels, deliver_hit()/deliver_digest() handle delivery directly.
+    config = _load_config(None)
+    primary_ch = str(config.get("delivery", {}).get("primary", {}).get("channel", "webhook") or "webhook")
+    push_flag = " --push" if primary_ch == "openclaw" and _has_openclaw_cli() else ""
     return (
         f"{_scheduler_run_command('json')}{push_flag} "
         f">> {shlex.quote(str(log_path))} 2>&1  {_CRON_TAG}"
@@ -1663,30 +1691,39 @@ def _ensure_auto_monitoring(interval: int = 10, config_override: str = "", quiet
 
     resolved_driver = _resolve_schedule_driver(driver)
 
-    # Route gate: crontab + openclaw delivery needs a stored reply route
-    if resolved_driver == "crontab":
-        config = _load_config(config_override)
-        primary_ch = str(config.get("delivery", {}).get("primary", {}).get("channel", "openclaw") or "openclaw")
-        if primary_ch == "openclaw" and _load_reply_route() is None:
-            msg = (
-                "Auto-monitoring NOT armed. Background push requires a captured reply route, "
-                "but none was found. Chat with the bot first to capture the route, "
-                "then run 'schedule' to enable."
+    # Delivery readiness check
+    route_missing = False
+    webhook_unconfigured = False
+    config = _load_config(config_override)
+    primary_ch = str(config.get("delivery", {}).get("primary", {}).get("channel", "openclaw") or "openclaw")
+
+    if resolved_driver == "crontab" and primary_ch == "openclaw" and _load_reply_route() is None:
+        route_missing = True
+        if not quiet:
+            print(
+                "\nWarning: Background push is NOT READY (no reply route captured). "
+                "Monitoring will start, but alerts cannot be pushed until you chat "
+                "with the bot to capture the route."
             )
+    elif primary_ch == "webhook":
+        target = str(config.get("delivery", {}).get("primary", {}).get("target", "") or "").strip()
+        if not target.startswith("http://") and not target.startswith("https://"):
+            webhook_unconfigured = True
             if not quiet:
-                print(f"\n{msg}")
-            return {
-                "auto_enabled": False,
-                "interval_minutes": interval,
-                "driver": resolved_driver,
-                "message": msg,
-                "route_missing": True,
-            }
+                print(
+                    "\nWarning: Webhook URL not configured. Background alerts will not be "
+                    "delivered until you set a webhook URL.\n"
+                    "  Use: signalradar.py config delivery.primary.target <YOUR_WEBHOOK_URL>"
+                )
 
     ok, msg = _setup_cron(interval, resolved_driver)
     if ok:
         refreshed = _check_cron_status()
         message = f"Auto-monitoring enabled: checking every {interval} minutes."
+        if route_missing:
+            message += " (push NOT READY — no reply route)"
+        elif webhook_unconfigured:
+            message += " (webhook URL not configured — alerts will not be delivered)"
         if not quiet:
             print(f"\n{message}")
             if refreshed.get("driver") and refreshed.get("driver") != "none":
@@ -1695,12 +1732,17 @@ def _ensure_auto_monitoring(interval: int = 10, config_override: str = "", quiet
             print(f"To disable: signalradar.py schedule disable")
         # Sync check_interval_minutes to config
         _save_config_key(config_override, "check_interval_minutes", interval)
-        return {
+        result = {
             "auto_enabled": True,
             "interval_minutes": interval,
             "driver": refreshed.get("driver", resolved_driver),
             "message": message,
         }
+        if route_missing:
+            result["route_missing"] = True
+        if webhook_unconfigured:
+            result["webhook_unconfigured"] = True
+        return result
     if not quiet:
         print(f"\n{msg}")
     return {
@@ -1749,17 +1791,26 @@ def cmd_doctor(args: argparse.Namespace) -> int:
 
     cfg_path = _config_path(args.config)
     check("config_exists_optional", True, str(cfg_path) if cfg_path.exists() else f"missing(optional): {cfg_path}")
-    primary_channel = str(config.get("delivery", {}).get("primary", {}).get("channel", "openclaw") or "openclaw").strip().lower()
+    primary_channel = str(config.get("delivery", {}).get("primary", {}).get("channel", "webhook") or "webhook").strip().lower()
     check(
         "delivery_primary_supported",
         primary_channel in _SUPPORTED_DELIVERY_CHANNELS,
         primary_channel if primary_channel else "missing",
     )
+    # Webhook URL readiness check
+    if primary_channel == "webhook":
+        target = str(config.get("delivery", {}).get("primary", {}).get("target", "") or "").strip()
+        webhook_ok = target.startswith("http://") or target.startswith("https://")
+        check(
+            "webhook_url_configured",
+            webhook_ok,
+            target[:80] if webhook_ok else "not configured — use: signalradar.py config delivery.primary.target <URL>",
+        )
     cache_dir = _user_data_root() / "cache"
     check("cache_dir_writable", cache_dir.exists() and os.access(cache_dir, os.W_OK), str(cache_dir))
 
     interval = config.get("check_interval_minutes", 10)
-    non_blocking_checks = {"openclaw_cli_available"}
+    non_blocking_checks = {"openclaw_cli_available", "webhook_url_configured"}
     ok = all(
         item["ok"]
         for item in checks
@@ -2080,6 +2131,22 @@ def cmd_config(args: argparse.Namespace) -> int:
 
     key = args.key
 
+    # Shortcut: "config delivery webhook <url>" sets both channel and target
+    if key == "delivery" and args.value is not None:
+        val = str(args.value).strip()
+        if val.startswith("webhook ") or val.startswith("webhook\t"):
+            url = val.split(None, 1)[1].strip()
+            if not url.startswith("http://") and not url.startswith("https://"):
+                print("Error: Webhook URL must start with http:// or https://")
+                return 1
+            set_nested_value(user_cfg, "delivery.primary.channel", "webhook")
+            set_nested_value(user_cfg, "delivery.primary.target", url)
+            save_json_config(cfg_path, user_cfg)
+            print(f"Set delivery.primary.channel = webhook")
+            print(f"Set delivery.primary.target = {url}")
+            print(f"Saved to {cfg_path}")
+            return 0
+
     # No value specified: show current value for that key
     if args.value is None:
         found, value = get_nested_value(merged, key)
@@ -2138,12 +2205,33 @@ def cmd_schedule(args: argparse.Namespace) -> int:
                 last_delivery_error = lr.get("delivery_error", "")
             except Exception:
                 pass
+        # Channel-aware delivery readiness
+        webhook_target = str(config.get("delivery", {}).get("primary", {}).get("target", "") or "").strip()
+        if primary_ch == "webhook":
+            delivery_ready = bool(webhook_target)
+            delivery_status = "ready" if delivery_ready else "webhook_url_missing"
+        elif primary_ch == "openclaw":
+            delivery_ready = route_ready
+            delivery_status = "ready" if route_ready else "route_missing"
+        elif primary_ch == "file":
+            delivery_ready = bool(webhook_target)  # target is file path for file channel
+            delivery_status = "ready" if delivery_ready else "file_target_missing"
+        else:
+            delivery_ready = False
+            delivery_status = "unknown_channel"
+
         if args.output == "json":
             payload = dict(status)
             payload["default_driver"] = resolved_default
-            payload["route_ready"] = route_ready
-            payload["route_channel"] = route.get("channel", "") if route else ""
-            payload["route_captured_at"] = route.get("captured_at", "") if route else ""
+            payload["delivery_channel"] = primary_ch
+            payload["delivery_status"] = delivery_status
+            # Channel-specific fields (only include what's relevant)
+            if primary_ch == "openclaw":
+                payload["route_ready"] = route_ready
+                payload["route_channel"] = route.get("channel", "") if route else ""
+                payload["route_captured_at"] = route.get("captured_at", "") if route else ""
+            elif primary_ch == "webhook":
+                payload["webhook_url_configured"] = bool(webhook_target)
             payload["last_delivery_status"] = last_delivery_status
             payload["last_delivery_error"] = last_delivery_error
             _json_print(payload)
@@ -2162,13 +2250,25 @@ def cmd_schedule(args: argparse.Namespace) -> int:
                     print(f"  Last run: {_format_user_time(status['last_run'], config)}")
                     print(f"  Last status: {status['last_run_status']}")
                 print("\nTo enable: signalradar.py schedule 10")
-            # Delivery readiness
-            if primary_ch == "openclaw":
+            # Channel-aware delivery readiness
+            print(f"  Delivery channel: {primary_ch}")
+            if primary_ch == "webhook":
+                if delivery_ready:
+                    print(f"  Background delivery: ready (webhook configured)")
+                else:
+                    print("  Background delivery: NOT READY (webhook URL not configured)")
+                    print("    Set it with: signalradar.py config delivery webhook <URL>")
+            elif primary_ch == "openclaw":
                 if route_ready:
                     print(f"  Background delivery: ready (route: {route['channel']})")
                 else:
                     print("  Background delivery: NOT READY (no reply route captured yet)")
                     print("    A foreground bot interaction is needed to capture the reply route.")
+            elif primary_ch == "file":
+                if delivery_ready:
+                    print(f"  Background delivery: ready (file target configured)")
+                else:
+                    print("  Background delivery: NOT READY (file target not configured)")
             if last_delivery_status:
                 print(f"  Last delivery: {last_delivery_status}")
                 if last_delivery_error:
@@ -2197,6 +2297,18 @@ def cmd_schedule(args: argparse.Namespace) -> int:
         print("Error: No scheduler available. Install openclaw CLI or crontab.")
         return 1
 
+    # Route gate warning: crontab + openclaw delivery + no route → warn but proceed
+    config_override = getattr(args, "config", "")
+    if driver == "crontab":
+        config = _load_config(config_override)
+        primary_ch = str(config.get("delivery", {}).get("primary", {}).get("channel", "openclaw") or "openclaw")
+        if primary_ch == "openclaw" and _load_reply_route() is None:
+            print(
+                "Warning: Background push is NOT READY (no reply route captured). "
+                "Monitoring will start, but alerts cannot be pushed until you chat "
+                "with the bot to capture the route."
+            )
+
     # Remove existing first (any driver), then set up new
     _remove_cron()
 
@@ -2205,7 +2317,6 @@ def cmd_schedule(args: argparse.Namespace) -> int:
 
     if ok:
         # Sync check_interval_minutes to config
-        config_override = getattr(args, "config", "")
         _save_config_key(config_override, "check_interval_minutes", interval)
         print(f"To change: signalradar.py schedule {interval}")
         print(f"To disable: signalradar.py schedule disable")
@@ -2219,6 +2330,32 @@ def cmd_schedule(args: argparse.Namespace) -> int:
 
 def cmd_list(args: argparse.Namespace) -> int:
     wl = load_watchlist(_watchlist_path())
+
+    if getattr(args, "output", "text") == "json":
+        entries = wl.get("entries", [])
+        if args.archived:
+            entries = wl.get("archived", [])
+        result_entries = []
+        for i, entry in enumerate(entries, 1):
+            cat = entry.get("category", "default")
+            if args.category and cat != args.category:
+                continue
+            entry_id = str(entry.get("entry_id", ""))
+            baseline_val = _read_baseline_value(entry_id)
+            baseline_ts = _read_baseline_ts(entry_id)
+            result_entries.append({
+                "number": i,
+                "entry_id": entry_id,
+                "question": entry.get("question", ""),
+                "category": cat,
+                "event_title": entry.get("event_title", ""),
+                "baseline": baseline_val,
+                "baseline_ts": baseline_ts,
+                "end_date": entry.get("end_date", ""),
+                "settled": bool(entry.get("settled") or entry.get("archive_reason") == "settled"),
+            })
+        _json_print({"status": "OK", "total": len(result_entries), "entries": result_entries})
+        return 0
 
     if args.archived:
         archived = wl.get("archived", [])
@@ -2466,7 +2603,7 @@ def cmd_digest(args: argparse.Namespace) -> int:
         return 0
 
     if args.output == "openclaw":
-        primary_channel = str(config.get("delivery", {}).get("primary", {}).get("channel", "openclaw") or "openclaw")
+        primary_channel = str(config.get("delivery", {}).get("primary", {}).get("channel", "webhook") or "webhook")
         if primary_channel == "openclaw" and delivery.get("sent"):
             print(report.get("human_text", ""))
         else:
@@ -2573,7 +2710,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     wl = load_watchlist(_watchlist_path())
     entries = wl.get("entries", [])
     config = _load_config(args.config)
-    primary_channel = str(config.get("delivery", {}).get("primary", {}).get("channel", "openclaw") or "openclaw")
+    primary_channel = str(config.get("delivery", {}).get("primary", {}).get("channel", "webhook") or "webhook")
     platform_announce_mode = args.output == "openclaw"
     lang = _resolve_language(config)
 
@@ -3202,6 +3339,29 @@ def _onboard_finalize(args: argparse.Namespace) -> int:
             "then background delivery will activate automatically."
         )
 
+    # Webhook setup guidance
+    primary_target = str(config.get("delivery", {}).get("primary", {}).get("target", "") or "").strip()
+    webhook_configured = (
+        primary_ch == "webhook"
+        and (primary_target.startswith("http://") or primary_target.startswith("https://"))
+    )
+    webhook_setup: dict[str, Any] = {"needed": not webhook_configured}
+    if not webhook_configured:
+        webhook_setup["current_channel"] = primary_ch
+        webhook_setup["guide"] = (
+            "To receive background alerts, configure a webhook URL. "
+            "This works on any platform (OpenClaw, Claude Code, standalone) with zero LLM cost."
+        )
+        webhook_setup["commands"] = [
+            "signalradar.py config delivery.primary.channel webhook",
+            "signalradar.py config delivery.primary.target <YOUR_WEBHOOK_URL>",
+        ]
+        webhook_setup["examples"] = {
+            "telegram": "https://api.telegram.org/bot<TOKEN>/sendMessage?chat_id=<CHAT_ID>",
+            "slack": "https://hooks.slack.com/services/YOUR/WEBHOOK/URL",
+            "discord": "https://discord.com/api/webhooks/YOUR/WEBHOOK/URL",
+        }
+
     # Clean up state
     _onboard_state_path().unlink(missing_ok=True)
 
@@ -3215,13 +3375,14 @@ def _onboard_finalize(args: argparse.Namespace) -> int:
         "skipped": len(skipped),
         "schedule": schedule_info,
         "route_ready": route_ready,
+        "webhook_setup": webhook_setup,
         "warnings": warnings,
         "message": f"Done! {len(added)} markets added, baselines recorded."
                    + (f" Auto-monitoring enabled (every {schedule_info.get('interval_minutes', 10)} min)." if schedule_info.get("auto_enabled") else "")
                    + (f" {len(skipped)} already in watchlist, skipped." if skipped else ""),
         "education": {
             "baseline_example": "baseline 7% -> probability rises to 15% -> alert sent -> baseline updates to 15%. Next alert requires another 5pp change from 15%.",
-            "next_steps": "Use 'list' to see your monitors, 'remove N' to drop one, 'schedule' to change frequency.",
+            "next_steps": "Use 'list' to see your monitors, 'remove N' to drop one, 'schedule' to change frequency, 'config delivery webhook <URL>' to set up push notifications.",
         },
     })
     return 0
@@ -3459,7 +3620,7 @@ def _emit_startup_notices(args: argparse.Namespace) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="SignalRadar v0.9.0 — Polymarket probability monitor"
+        description="SignalRadar v0.9.931 — Polymarket probability monitor"
     )
 
     sub = parser.add_subparsers(dest="command", required=True)
@@ -3481,6 +3642,7 @@ def main() -> int:
     p_list = sub.add_parser("list", help="List watchlist entries")
     p_list.add_argument("--category", default="", help="Filter by category")
     p_list.add_argument("--archived", action="store_true", help="Show archived entries")
+    p_list.add_argument("--output", choices=["json", "text"], default="text", help="Output format")
 
     # show
     p_show = sub.add_parser("show", help="Show current probability for one monitored market")

@@ -198,7 +198,7 @@ All optional. Works out of the box with defaults.
 |----------------|-------------------|---------------------|
 | `threshold.abs_pp` | 5.0 | Alert threshold in percentage points / 警报阈值（百分点） |
 | `threshold.per_category_abs_pp` | `{}` | Per-category override / 按分类覆盖阈值 |
-| `delivery.primary.channel` | `openclaw` | Supported: `openclaw`, `file`, `webhook` / 支持的推送通道 |
+| `delivery.primary.channel` | `webhook` | Supported: `webhook` (recommended), `openclaw`, `file` / 支持的推送通道 |
 | `digest.frequency` | `weekly` | `off`, `daily`, `weekly`, `biweekly` / 定期报告频率 |
 | `digest.day_of_week` | `monday` | Weekly digest weekday / 定期报告星期 |
 | `digest.time_local` | `09:00` | Local send time for digest / 定期报告本地发送时间 |

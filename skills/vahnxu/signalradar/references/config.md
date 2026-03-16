@@ -58,8 +58,8 @@ signalradar.py config profile.timezone Asia/Shanghai
   },
   "delivery": {
     "primary": {
-      "channel": "openclaw",
-      "target": "direct"
+      "channel": "webhook",
+      "target": ""
     }
   },
   "digest": {
@@ -163,7 +163,7 @@ A HIT is triggered when `|current - baseline| >= applicable_threshold`.
 |---------|--------|-------------|-------------|
 | `webhook` (recommended) | `https://...` | All platforms | HTTP POST to any webhook endpoint (Slack, Telegram Bot API, Discord, etc.). Zero platform dependency. |
 | `file` | `/path/to/alerts.jsonl` | All platforms | Appends alerts to local JSONL file. |
-| `openclaw` | `direct` | OpenClaw only | OpenClaw platform messaging. Not portable to other platforms. |
+| `openclaw` | `direct` | OpenClaw only | OpenClaw platform messaging. Not portable to other platforms. Background push requires reply route capture. |
 
 Unsupported channels (for example `telegram`) are rejected by `config` validation and reported by `doctor`.
 不支持的通道（例如 `telegram`）会在 `config` 写入时被拒绝，并在 `doctor` 中报告。

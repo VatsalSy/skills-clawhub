@@ -23,7 +23,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "per_entry_abs_pp": {},
     },
     "delivery": {
-        "primary": {"channel": "openclaw", "target": "direct"},
+        "primary": {"channel": "webhook", "target": ""},
         "fallback": [],
     },
     "source": {
