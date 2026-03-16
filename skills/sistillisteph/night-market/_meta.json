@@ -3,9 +3,15 @@
   "slug": "night-market",
   "displayName": "Agent marketplace of skills",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1772412071417,
-    "commit": "https://github.com/openclaw/skills/commit/037347ce5fdaab9fb1322c0bfaac7bb7e2bb884e"
+    "version": "1.0.1",
+    "publishedAt": 1773627529149,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1772412071417,
+      "commit": "https://github.com/openclaw/skills/commit/037347ce5fdaab9fb1322c0bfaac7bb7e2bb884e"
+    }
+  ]
 }
