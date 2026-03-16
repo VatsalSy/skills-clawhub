@@ -3,11 +3,16 @@
   "slug": "customer-service-reply",
   "displayName": "Customer Service Reply",
   "latest": {
-    "version": "2.2.0",
-    "publishedAt": 1773421152514,
-    "commit": "https://github.com/openclaw/skills/commit/4929bb83ec687f153474b1cfe564a6dc382baf91"
+    "version": "2.3.4",
+    "publishedAt": 1773665619139,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.2.0",
+      "publishedAt": 1773421152514,
+      "commit": "https://github.com/openclaw/skills/commit/4929bb83ec687f153474b1cfe564a6dc382baf91"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1773360466372,

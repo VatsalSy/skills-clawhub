@@ -1,7 +1,9 @@
 ---
+version: "2.0.0"
 name: Customer Service Reply
-description: >-
+description: "客服话术和回复模板生成器。售前咨询、售后问题、差评回复、退换货、升级处理、行业FAQ、满意度挽回。. Use when you need customer service reply capabilities. Triggers on: customer service reply."
   客服回复模板。售前咨询、售后处理、退换货、投诉回复、好评引导、升级处理、行业FAQ、满意度挽回。Customer service reply templates for pre-sale, after-sale, returns, complaints, escalation, FAQ generation, satisfaction recovery. 客服话术、电商客服、售后模板、投诉处理、满意度管理。Use when responding to customer inquiries.
+author: BytesAgain
 ---
 
 # customer-service-reply
@@ -48,8 +50,6 @@ bash scripts/cs.sh satisfaction "2" "产品有质量问题"
 bash scripts/cs.sh satisfaction "5" "非常满意"
 ```
 
-## Tips
-
 查看 `tips.md` 获取电商客服实战技巧（响应速度、投诉处理、满意度管理等）。
 
 ## Notes
@@ -57,3 +57,6 @@ bash scripts/cs.sh satisfaction "5" "非常满意"
 - 纯本地生成，不依赖外部API
 - Python 3.6+ 兼容
 - 话术风格：专业、诚恳、有温度
+---
+💬 Feedback & Feature Requests: https://bytesagain.com/feedback
+Powered by BytesAgain | bytesagain.com
