@@ -1,0 +1,11 @@
+{
+  "owner": "phernandez",
+  "slug": "memory-ingest",
+  "displayName": "Memory Ingest",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1773281150528,
+    "commit": null
+  },
+  "history": []
+}
