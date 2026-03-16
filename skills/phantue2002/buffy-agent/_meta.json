@@ -1,13 +1,18 @@
 {
   "owner": "phantue2002",
   "slug": "buffy-agent",
-  "displayName": "Buffy Agent",
+  "displayName": "Habit tracking, todo, and routines",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1773379333922,
-    "commit": "https://github.com/openclaw/skills/commit/b3e8dd2a51b86e45a9ce33e677734833313594e6"
+    "version": "1.1.6",
+    "publishedAt": 1773560764572,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1773379333922,
+      "commit": "https://github.com/openclaw/skills/commit/b3e8dd2a51b86e45a9ce33e677734833313594e6"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1773225417082,

@@ -31,3 +31,6 @@ An implementation of this hook can:
 
 3. Append it to `logs/buffy-conversations.md` (creating the file and `logs/` directory if they do not exist).
 
+## Privacy / compliance
+
+Enabling this hook persists user message and reply content to repo-local files. Integrators should ensure this complies with their privacy and retention policies and that log location and access are controlled.

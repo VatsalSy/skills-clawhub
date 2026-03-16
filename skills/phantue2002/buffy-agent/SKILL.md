@@ -1,28 +1,45 @@
 ---
 name: buffy-agent
-description: Multi-channel personal behavior agent for habits, tasks, and routines that tracks activities, schedules reminders, and sends daily briefings across ChatGPT, Telegram, Slack, and internal tools, all powered by a single unified behavior engine. Use when the user wants to create or adjust habits/routines, get progress summaries or daily briefings, or personalize reminder timing and channels based on their preferences and history.
+description: Habit tracking, todo, and routines — create and track habits, tasks, and todo lists; schedule reminders and daily briefings across ChatGPT, Telegram, Slack, and OpenClaw. Use when the user wants to manage habits, todo/tasks, or routines, get progress summaries, or set reminder timing.
+primaryEnv: BUFFY_API_KEY
+requires:
+  env:
+    - BUFFY_API_KEY
+metadata: {"openclaw":{"primaryEnv":"BUFFY_API_KEY","requires":{"env":["BUFFY_API_KEY"]},"keywords":["habit","todo","tasks","routines","reminders","daily briefing"],"summary":"Habit & todo in chat — track habits, manage todo lists, and run routines with reminders."}}
 ---
+
+**Habit & todo in chat.** Track habits, manage todo lists, and run routines with reminders and daily briefings. Ask in plain language; Buffy creates and tracks for you.
+
+## What you can do (habit, todo, routines)
+
+| Search for… | You can say… |
+|-------------|--------------|
+| **Habit** | "Create a habit to drink water every 2 hours." / "What habits did I complete today?" |
+| **Todo** | "Add to my todo: buy groceries." / "What's on my todo?" / "Mark 'call mom' done." |
+| **Routines** | "Start my morning routine." / "Remind me at 8am to plan my day." |
+
+Buffy understands natural language — no forms or menus. One message creates or updates habits, todo items, and routines.
 
 ## Overview
 
-Buffy is a multi-channel personal behavior agent for habits, tasks, and routines.
-It tracks activities, schedules reminders, and sends daily briefings across multiple channels,
-all powered by a single unified behavior engine.
+Buffy is a personal behavior agent for **habits**, **todo/tasks**, and **routines**. It tracks activities, schedules reminders, and sends daily briefings across multiple channels (ChatGPT, Telegram, Slack, OpenClaw), all powered by a single unified behavior engine.
+
+**This skill** is only the HTTP client for the Buffy API and **requires only `BUFFY_API_KEY`**. Buffy runs as an external HTTP API; all behavior logic lives in the Buffy backend.
 
 Buffy also exposes a hook-based observability system:
 
 - Backend hooks in the Go service emit events like `message:received`, `message:replied`, and
   `reminder:sent` so logs, metrics, and long-term memory can be updated without changing core
   behavior logic. See `backend/internal/hooks/` for details.
-- OpenClaw hooks can be installed alongside this skill (see the `hooks/` docs in this repo) to
+- OpenClaw hooks can be installed **alongside** this skill (see the `hooks/` docs in this repo) to
   log Buffy conversations to markdown logs, record Buffy-related errors for observability, and
-  track Buffy behavior over time.
+  track Buffy behavior over time. These hooks are **optional and separately installed** by the
+  integrator; they are **not** part of this skill’s declared requirements. If the integrator installs
+  them, they may write user content to disk or call other APIs and have their own credential and
+  privacy implications.
 
 For low-level HTTP details and the full API surface, treat the repository `README.md` and `openapi-buffy.yaml`
 as canonical. This `SKILL.md` file is the canonical guide for how agents and tools should invoke Buffy.
-
-Buffy runs as an external HTTP API. This skill is a thin wrapper; all behavior logic
-lives in the Buffy backend.
 
 ## Base URL and authentication
 
@@ -37,7 +54,7 @@ in prompts, logs, or user-visible text.
 
 For registries and gateways:
 
-- Treat `BUFFY_API_KEY` as the **primary credential** for this skill.
+- Treat `BUFFY_API_KEY` as the **primary credential** for this skill (declared in this file’s frontmatter and in the root [skill.md](skill.md) for registry compatibility).
 - Do not enable the skill unless `BUFFY_API_KEY` has been configured (for example, via `requires.env` metadata).
 
 ## Core endpoint: POST /v1/message
@@ -70,6 +87,8 @@ natural language instructions and orchestrates activities, reminders, and daily 
 }
 ```
 
+For users who have a clan (any user gets one on first use), the backend may append clan context to the reply (e.g. clan name, shared energy, and active boss progress). The skill does not need to change how it calls the API; just surface the full `reply` to the user.
+
 ### Usage notes for the agent
 
 When calling `POST /v1/message`:
@@ -81,16 +100,38 @@ When calling `POST /v1/message`:
 - Put the user’s natural-language request in `"message"` in a clear, concise form.
 - Reuse the same `user_id` across the conversation so Buffy can maintain context.
 
-Examples of when to call Buffy:
+Examples of when to call Buffy (habit, todo, routines):
 
-- “Create a habit to stretch every hour during workdays.”
-- “Pause my evening exercise routine this week.”
-- “What habits have I completed today?”
-- “Set a reminder tomorrow at 8am to plan my day.”
+- **Habit:** "Create a habit to stretch every hour during workdays." / "What habits have I completed today?"
+- **Todo:** "Add to my todo: review the report." / "What's on my todo?" / "Mark 'send email' as done."
+- **Routines:** "Pause my evening exercise routine this week." / "Set a reminder tomorrow at 8am to plan my day."
+
+## Use via Buffy CLI
+
+You can call the same Buffy API from the **terminal or scripts** using the official **Buffy CLI**. The same `BUFFY_API_KEY` used by this skill works for the CLI.
+
+- **Install**: Download a binary from [Releases](https://github.com/phantue2002/buffy-cli/releases) for your OS/arch, or run `go install github.com/phantue2002/buffy-cli@latest` (Go 1.21+).
+- **Authenticate**: Set `export BUFFY_API_KEY=your_key` or pass `--api-key KEY` (or `--api-base URL` for a different endpoint).
+- **Send a message** (creates habits, tasks, routines, reminders in natural language):
+  - `buffy message --text "remind me to drink water every day"`
+- **Manage settings and keys**: `buffy user-settings get`, `buffy user-settings set`, `buffy api-key list`, `buffy api-key create`, `buffy api-key revoke`.
+
+Repo: [github.com/phantue2002/buffy-cli](https://github.com/phantue2002/buffy-cli). Use the CLI when the user prefers the command line or wants to automate Buffy from scripts; use this skill (HTTP) when invoking Buffy from an agent or chat surface.
 
 ## Supporting endpoints
 
 You **usually do not need** these, but they are available for more advanced flows.
+
+### Clan / team
+
+Any user can use clans (shared energy, boss fights). A personal clan is created on first use; no team plan required. The **reply from `POST /v1/message`** already includes clan name, energy, and active boss progress when the user has a clan; you do not need to call these unless building a custom flow.
+
+- **GET /v1/clans/me** — Current user's clan (creates team and clan on first access if needed; 404 only if user not found).
+- **GET /v1/clans/{clan_id}/energy** — Clan energy (members only).
+- **POST /v1/clans/{clan_id}/bosses** — Create a boss (owner/admin).
+- **GET /v1/clans/{clan_id}/bosses** — List bosses; **GET /v1/clans/{clan_id}/bosses/{boss_id}** — Boss detail.
+
+All require the same `Authorization: Bearer <BUFFY_API_KEY>` and (for system keys) `X-Buffy-User-ID` when acting on behalf of a user. Prefer `POST /v1/message` for normal chat; use these only for dedicated clan/team UI or automation.
 
 ### User settings
 
@@ -138,7 +179,7 @@ user explicitly wants to manage Buffy API keys or set up additional integrations
 
 When deciding whether and how to call Buffy:
 
-- Use Buffy when the request clearly relates to **habits, tasks, routines, reminders, or daily briefings**.
+- Use Buffy when the request clearly relates to **habits, tasks, routines, reminders, daily briefings, or clan/team status** (e.g. "What's our clan energy?" — reply includes clan name, energy, and active boss when the user has a clan).
 - Default to `POST /v1/message` rather than manually composing lower-level operations.
 - Preserve a consistent `user_id` so Buffy’s behavior core and memory can work effectively.
 - Keep `message` short, clear, and close to what the user asked for, but you may add clarifying
@@ -148,6 +189,17 @@ Avoid:
 
 - Creating or exposing raw internal IDs to the user when not necessary.
 - Making redundant calls to Buffy if you already have the needed information from a recent response.
+- Using Buffy for requests that are **not** about habits, todo, routines, reminders, or clan/team (e.g. "how do I do X", "find a skill for X", testing, deployment, design). For those, use or suggest the **find-skills** workflow (e.g. `npx skills find [query]`) so the user can discover and install the right skill.
+
+### Extending capabilities (find-skills)
+
+When the user asks for help that is **outside** Buffy’s scope (e.g. "how do I test my API?", "find a skill for React", "is there a skill that can review PRs?"):
+
+1. **Do not** call Buffy for those requests.
+2. If the **find-skills** skill is available, use it: run `npx skills find [query]` with a relevant query, then present install commands and links (e.g. `npx skills add <owner/repo@skill> -g -y`).
+3. If find-skills is not available, suggest the user run `npx skills find <topic>` or browse https://skills.sh/ to discover and install a skill for that capability.
+
+This keeps Buffy focused on habit/todo/routines and lets the agent hand off capability discovery to find-skills for best performance.
 
 ## Security, privacy, and sandboxing
 
@@ -179,6 +231,8 @@ Avoid:
 - **Reminder dispatch and channel credentials**:
   - Reminder delivery to channels like Telegram or Clawbot is implemented via **separate hooks/tools**
     (for example, the `buffy-reminder-dispatch` hook), not by this core Buffy skill.
+  - This skill’s metadata does **not** declare those channel credentials, because they are not required
+    for the core Buffy API client.
   - Those hooks will typically require their own channel credentials (Telegram bot tokens, Clawbot
     API keys, etc.); they should be configured **only** for the dispatch implementation you control.
   - Do not reuse `BUFFY_API_KEY` as a channel credential, and do not expose channel tokens to the
