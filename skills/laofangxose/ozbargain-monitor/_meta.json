@@ -3,9 +3,15 @@
   "slug": "ozbargain-monitor",
   "displayName": "OzBargain Monitor",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1773189229507,
-    "commit": "https://github.com/openclaw/skills/commit/4d793a1b8564092dbe729143a8d1cf097b989e19"
+    "version": "1.0.3",
+    "publishedAt": 1773278893440,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1773189229507,
+      "commit": "https://github.com/openclaw/skills/commit/4d793a1b8564092dbe729143a8d1cf097b989e19"
+    }
+  ]
 }

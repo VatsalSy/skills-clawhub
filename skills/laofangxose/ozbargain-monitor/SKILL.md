@@ -31,8 +31,14 @@ Keep these rules in the cron `--message` prompt unless the user overrides them:
 1. Keep only high-value deals
 2. Keep output concise and structured
 3. Include per item: title, price/benefit, why worth it, direct link
-4. If nothing strong appears, explicitly output a “no high-value deals today” line
-5. Avoid ad noise/low-value posts
+4. Read deal comments and include important comment-derived signals:
+   - expiry / sold-out / dead-deal reports
+   - better stacking paths (cashback + card offer + code)
+   - hidden constraints (new-customer only, in-store only, min-spend, exclusions)
+5. Add a short “comment insights” note when comments provide material extra value
+6. If comments indicate likely expiry, label the deal as “可能过期（以楼主/最新评论为准）”
+7. If nothing strong appears, explicitly output a “no high-value deals today” line
+8. Avoid ad noise/low-value posts
 
 ## Dedupe state (required)
 
