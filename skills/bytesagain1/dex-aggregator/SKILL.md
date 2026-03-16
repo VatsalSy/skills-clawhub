@@ -1,14 +1,13 @@
 ---
+version: "2.0.0"
 name: DEX Aggregator
-version: 1.0.0
-description: Compare token prices across decentralized exchanges — find best rates, lowest slippage, and optimal swap routes using DexScreener and 1inch APIs.
+description: "Compare token prices across decentralized exchanges — find best rates, lowest slippage, and optimal swap routes using DexScreener and 1inch APIs. Use when you need dex aggregator capabilities. Triggers on: dex aggregator."
+author: BytesAgain
 ---
 
 # DEX Aggregator
 
 Find the best swap rates across all DEXes.
-
-## How It Works
 
 1. Query multiple DEX APIs simultaneously
 2. Compare prices including gas and slippage
@@ -33,5 +32,8 @@ bash scripts/dex.sh gas [chain]
 - **Arbitrum**: Camelot, SushiSwap
 - **Base**: Aerodrome, BaseSwap
 - **Solana**: Jupiter, Raydium, Orca
+---
+💬 Feedback & Feature Requests: https://bytesagain.com/feedback
+Powered by BytesAgain | bytesagain.com
 
-Powered by BytesAgain | bytesagain.com | hello@bytesagain.com
+- Run `dex-aggregator help` for all commands
