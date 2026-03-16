@@ -1,7 +1,9 @@
 ---
+version: "2.0.0"
 name: official-doc
-description: >-
+description: "📄 公文生成器（标准格式）. Use when you need official doc capabilities. Triggers on: official doc."
   公文写作助手。通知、报告、请示、批复、会议纪要、工作总结、格式检查、语气检查、模板库。Official document writer for notices, reports, requests, meeting minutes with format check, tone check, template library. 公文模板、行政公文、政府文件。Use when writing official documents.
+author: BytesAgain
 ---
 
 # 公文生成器
@@ -48,3 +50,6 @@ bash scripts/official.sh template "请示"
 
 - Python 3.6+
 - No external dependencies
+---
+💬 Feedback & Feature Requests: https://bytesagain.com/feedback
+Powered by BytesAgain | bytesagain.com
