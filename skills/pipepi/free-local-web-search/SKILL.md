@@ -3,7 +3,7 @@ name: free-local-web-search
 description: 100% FREE local web search for OpenClaw. Secure localhost-only SearXNG deployment. Supports hidden --dev flag.
 license: MIT
 metadata:
-  version: 1.0.2
+  version: 1.0.3
   keywords:
     - free web search
     - local web search

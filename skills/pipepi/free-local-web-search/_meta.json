@@ -1,11 +1,17 @@
 {
   "owner": "pipepi",
   "slug": "free-local-web-search",
-  "displayName": "Free Local Web Search",
+  "displayName": "free-local-web-search",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1773473066089,
-    "commit": "https://github.com/openclaw/skills/commit/7bb53f2987d8c0fa828fa0a5948d869d0d916a05"
+    "version": "1.0.3",
+    "publishedAt": 1773653129249,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1773473066089,
+      "commit": "https://github.com/openclaw/skills/commit/7bb53f2987d8c0fa828fa0a5948d869d0d916a05"
+    }
+  ]
 }
