@@ -1,6 +1,8 @@
 ---
+version: "2.0.0"
 name: stripe-manager
 description: "Error: --action required. Use when you need stripe manager capabilities. Triggers on: stripe manager, key, customer-id, amount, currency, desc."
+author: BytesAgain
 ---
 
 # Stripe Manager
