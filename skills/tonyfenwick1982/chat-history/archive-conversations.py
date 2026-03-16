@@ -9,8 +9,10 @@ import os
 import json
 from datetime import datetime
 
-# 配置
-ARCHIVE_DIR = "/Users/tanghao/.openclaw/workspace/conversation-archives"
+# 配置（自动检测路径）
+OPENCLAW_DIR = os.path.expanduser(os.environ.get("OPENCLAW_DIR", "~/.openclaw"))
+WORKSPACE_DIR = os.path.expanduser(os.environ.get("OPENCLAW_WORKSPACE", os.path.join(OPENCLAW_DIR, "workspace")))
+ARCHIVE_DIR = os.path.join(WORKSPACE_DIR, "conversation-archives")
 CHANNEL_DIR = os.path.join(ARCHIVE_DIR, "channel-side")
 WEBUI_DIR = os.path.join(ARCHIVE_DIR, "webui-side")
 SEARCH_INDEX = os.path.join(ARCHIVE_DIR, "search-index.json")

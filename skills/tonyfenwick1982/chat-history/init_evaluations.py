@@ -7,7 +7,11 @@ Chat History - 初始化评估记录
 import json
 import os
 
-EVALUATIONS_FILE = "/Users/tanghao/.openclaw/workspace/conversation-archives/evaluations-index.json"
+# 配置（自动检测路径）
+OPENCLAW_DIR = os.path.expanduser(os.environ.get("OPENCLAW_DIR", "~/.openclaw"))
+WORKSPACE_DIR = os.path.expanduser(os.environ.get("OPENCLAW_WORKSPACE", os.path.join(OPENCLAW_DIR, "workspace")))
+ARCHIVE_DIR = os.path.join(WORKSPACE_DIR, "conversation-archives")
+EVALUATIONS_FILE = os.path.join(ARCHIVE_DIR, "evaluations-index.json")
 
 def initialize_evaluations():
     """初始化评估索引"""
