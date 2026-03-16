@@ -3,11 +3,16 @@
   "slug": "baoyu-url-to-markdown",
   "displayName": "Baoyu Url To Markdown",
   "latest": {
-    "version": "1.63.0",
-    "publishedAt": 1773379502608,
-    "commit": "https://github.com/openclaw/skills/commit/5bbb0c0102f297447aa843461fc89d4e0f342fc1"
+    "version": "1.69.1",
+    "publishedAt": 1773684129141,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.63.0",
+      "publishedAt": 1773379502608,
+      "commit": "https://github.com/openclaw/skills/commit/5bbb0c0102f297447aa843461fc89d4e0f342fc1"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1773076812404,
