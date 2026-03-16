@@ -2,15 +2,32 @@
 
 ## 中文
 
+> **路径注意事项（重要）**
+>
+> OpenClaw 的沙箱安全机制要求：skill 文件必须位于 agent 工作区（插件根目录）**内部**，
+> 否则会触发 "escapes plugin root" 保护，SKILL.md 内容无法注入给 agent，脚本也无法被调用。
+>
+> - `clawhub install` 会把 skill 装到**执行命令时所在目录**的 `skills/` 子目录。
+> - 因此，请务必先 `cd` 进入 agent 工作区目录，再运行安装命令。
+> - 或者直接用 `git clone` 指定完整目标路径（见方式 2），最不容易出错。
+
 ### 方式 1：通过 ClawdHub 安装（推荐）
 
-这是最简单的安装方式：
+**必须先进入 agent 工作区目录再安装：**
 
 ```bash
-clawdhub install mediwise-health-suite
+# 先进入你的 OpenClaw agent 工作区（路径以实际配置为准）
+cd ~/.openclaw/workspace-health
+
+# 安装命令会将 skill 放到 ./skills/mediwise-health-suite/
+clawdhub install JuneYaooo/mediwise-health-suite
 ```
 
-安装完成后，OpenClaw 会自动加载所有 skills。
+安装完成后，运行路径检测脚本确认位置正确：
+
+```bash
+bash ~/.openclaw/workspace-health/skills/mediwise-health-suite/install-check.sh
+```
 
 ### 方式 2：手动安装
 
@@ -18,11 +35,11 @@ clawdhub install mediwise-health-suite
 
 ```bash
 # 克隆到 OpenClaw skills 目录
-git clone https://github.com/your-username/mediwise-health-suite.git \
+git clone https://github.com/JuneYaooo/mediwise-health-suite.git \
   ~/.openclaw/skills/mediwise-health-suite
 
 # 或克隆到自定义位置
-git clone https://github.com/your-username/mediwise-health-suite.git \
+git clone https://github.com/JuneYaooo/mediwise-health-suite.git \
   ~/my-skills/mediwise-health-suite
 ```
 
@@ -35,7 +52,54 @@ cd ~/.openclaw/skills/mediwise-health-suite
 pip install -r requirements.txt
 ```
 
-#### 步骤 3：验证安装
+#### 步骤 3：配置多模态视觉模型（图片识别必填）
+
+**图片/PDF 识别（化验单、体检报告等）需要配置外部视觉模型**，否则图片类功能无法使用。
+
+**推荐方式：通过环境变量配置（支持 .env 文件）**
+
+复制模板文件并填入你的 API Key：
+
+```bash
+cd ~/.openclaw/skills/mediwise-health-suite
+cp .env.example .env
+# 编辑 .env，填入 MEDIWISE_VISION_API_KEY 等变量
+```
+
+**方案 A（国内推荐）：硅基流动 Qwen2.5-VL**
+
+```bash
+# 免费注册（含邀请奖励）：https://cloud.siliconflow.cn/i/MOlLXTYM
+export MEDIWISE_VISION_PROVIDER=siliconflow
+export MEDIWISE_VISION_MODEL=Qwen/Qwen2.5-VL-72B-Instruct
+export MEDIWISE_VISION_API_KEY=sk-xxx
+export MEDIWISE_VISION_BASE_URL=https://api.siliconflow.cn/v1
+```
+
+**方案 B（海外推荐）：Google Gemini**
+
+```bash
+export MEDIWISE_VISION_PROVIDER=openai
+export MEDIWISE_VISION_MODEL=gemini-3.1-pro-preview
+export MEDIWISE_VISION_API_KEY=AIzaxxx
+export MEDIWISE_VISION_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
+```
+
+**方案 C：通过 setup.py 配置（保存到 config.json）**
+
+```bash
+cd ~/.openclaw/skills/mediwise-health-suite/mediwise-health-tracker/scripts
+python3 setup.py set-vision \
+  --provider siliconflow \
+  --model Qwen/Qwen2.5-VL-72B-Instruct \
+  --api-key sk-xxx \
+  --base-url https://api.siliconflow.cn/v1
+python3 setup.py test-vision
+```
+
+> 不配置视觉模型时，文本录入和基础健康记录功能仍可正常使用，只有图片/PDF 识别功能不可用。
+
+#### 步骤 4：验证安装
 
 重启 OpenClaw，然后测试：
 
@@ -49,7 +113,7 @@ pip install -r requirements.txt
 
 ```bash
 # 克隆仓库
-git clone https://github.com/your-username/mediwise-health-suite.git
+git clone https://github.com/JuneYaooo/mediwise-health-suite.git
 cd mediwise-health-suite
 
 # 创建符号链接到 OpenClaw skills 目录
@@ -79,17 +143,26 @@ pip install -r requirements.txt
 
 ### 数据库初始化
 
-首次使用时，系统会自动创建数据库：
+首次使用时，系统会自动创建数据库（默认拆分为医疗与生活方式两库）：
 
 ```
-~/.openclaw/skills/mediwise-health-suite/data/health.db
+~/.openclaw/skills/mediwise-health-suite/data/medical.db
+~/.openclaw/skills/mediwise-health-suite/data/lifestyle.db
 ```
 
 如果需要手动初始化：
 
 ```bash
 cd ~/.openclaw/skills/mediwise-health-suite/mediwise-health-tracker/scripts
-python3 init_db.py
+python3 setup.py init
+```
+
+如果从旧版本升级（单库 `health.db`），可执行迁移命令：
+
+```bash
+cd ~/.openclaw/skills/mediwise-health-suite/mediwise-health-tracker/scripts
+python3 setup.py migrate-split-db
+python3 setup.py migration-status
 ```
 
 ### 故障排查
@@ -129,15 +202,32 @@ chmod 755 ~/.openclaw/skills/mediwise-health-suite/data
 
 ## English
 
+> **Important: Install Path**
+>
+> OpenClaw's sandbox requires skill files to be located **inside** the agent workspace
+> (plugin root directory). Installing outside triggers an "escapes plugin root" error,
+> which silently prevents SKILL.md from being injected and scripts from being called.
+>
+> - `clawhub install` places the skill in the `skills/` subdirectory of your **current working directory**.
+> - Always `cd` into your agent workspace first, or use `git clone` with the full target path (Method 2).
+
 ### Method 1: Install via ClawdHub (Recommended)
 
-This is the easiest way:
+**You must `cd` into the agent workspace before installing:**
 
 ```bash
-clawdhub install mediwise-health-suite
+# Navigate to your OpenClaw agent workspace first
+cd ~/.openclaw/workspace-health
+
+# This installs to ./skills/mediwise-health-suite/
+clawdhub install JuneYaooo/mediwise-health-suite
 ```
 
-After installation, OpenClaw will automatically load all skills.
+After installation, verify the path is correct:
+
+```bash
+bash ~/.openclaw/workspace-health/skills/mediwise-health-suite/install-check.sh
+```
 
 ### Method 2: Manual Installation
 
@@ -145,11 +235,11 @@ After installation, OpenClaw will automatically load all skills.
 
 ```bash
 # Clone to OpenClaw skills directory
-git clone https://github.com/your-username/mediwise-health-suite.git \
+git clone https://github.com/JuneYaooo/mediwise-health-suite.git \
   ~/.openclaw/skills/mediwise-health-suite
 
 # Or clone to custom location
-git clone https://github.com/your-username/mediwise-health-suite.git \
+git clone https://github.com/JuneYaooo/mediwise-health-suite.git \
   ~/my-skills/mediwise-health-suite
 ```
 
@@ -162,7 +252,52 @@ cd ~/.openclaw/skills/mediwise-health-suite
 pip install -r requirements.txt
 ```
 
-#### Step 3: Verify Installation
+#### Step 3: Configure Multimodal Vision Model (Required for Image Recognition)
+
+**Image/PDF recognition (lab reports, checkup reports, etc.) requires configuring an external vision model.** Without this, image-based features will not work.
+
+**Recommended: Configure via environment variables (supports .env file)**
+
+```bash
+cd ~/.openclaw/skills/mediwise-health-suite
+cp .env.example .env
+# Edit .env and fill in MEDIWISE_VISION_API_KEY and related variables
+```
+
+**Option A (Recommended for China): SiliconFlow Qwen2.5-VL**
+
+```bash
+# Register free (with referral bonus): https://cloud.siliconflow.cn/i/MOlLXTYM
+export MEDIWISE_VISION_PROVIDER=siliconflow
+export MEDIWISE_VISION_MODEL=Qwen/Qwen2.5-VL-72B-Instruct
+export MEDIWISE_VISION_API_KEY=sk-xxx
+export MEDIWISE_VISION_BASE_URL=https://api.siliconflow.cn/v1
+```
+
+**Option B (Recommended internationally): Google Gemini**
+
+```bash
+export MEDIWISE_VISION_PROVIDER=openai
+export MEDIWISE_VISION_MODEL=gemini-3.1-pro-preview
+export MEDIWISE_VISION_API_KEY=AIzaxxx
+export MEDIWISE_VISION_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
+```
+
+**Option C: Configure via setup.py (saved to config.json)**
+
+```bash
+cd ~/.openclaw/skills/mediwise-health-suite/mediwise-health-tracker/scripts
+python3 setup.py set-vision \
+  --provider siliconflow \
+  --model Qwen/Qwen2.5-VL-72B-Instruct \
+  --api-key sk-xxx \
+  --base-url https://api.siliconflow.cn/v1
+python3 setup.py test-vision
+```
+
+> Without a vision model, text-based entry and basic health recording still work. Only image/PDF recognition is unavailable.
+
+#### Step 4: Verify Installation
 
 Restart OpenClaw, then test:
 
@@ -176,7 +311,7 @@ If OpenClaw responds and asks for member information, installation is successful
 
 ```bash
 # Clone repository
-git clone https://github.com/your-username/mediwise-health-suite.git
+git clone https://github.com/JuneYaooo/mediwise-health-suite.git
 cd mediwise-health-suite
 
 # Create symbolic link to OpenClaw skills directory
@@ -206,17 +341,26 @@ Add to OpenClaw configuration file:
 
 ### Database Initialization
 
-On first use, the system will automatically create the database:
+On first use, the system will automatically create databases (split into medical and lifestyle by default):
 
 ```
-~/.openclaw/skills/mediwise-health-suite/data/health.db
+~/.openclaw/skills/mediwise-health-suite/data/medical.db
+~/.openclaw/skills/mediwise-health-suite/data/lifestyle.db
 ```
 
 To manually initialize:
 
 ```bash
 cd ~/.openclaw/skills/mediwise-health-suite/mediwise-health-tracker/scripts
-python3 init_db.py
+python3 setup.py init
+```
+
+If upgrading from the legacy single database (`health.db`), run the migration:
+
+```bash
+cd ~/.openclaw/skills/mediwise-health-suite/mediwise-health-tracker/scripts
+python3 setup.py migrate-split-db
+python3 setup.py migration-status
 ```
 
 ### Troubleshooting

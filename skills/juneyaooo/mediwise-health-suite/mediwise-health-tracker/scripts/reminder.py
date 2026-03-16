@@ -5,7 +5,12 @@ and custom reminders with flexible scheduling (once, daily, weekly, monthly, cyc
 """
 from __future__ import annotations
 
+import logging
+
+_logger = logging.getLogger(__name__)
+
 import sys
+import os
 import json
 import calendar
 from datetime import datetime, timedelta
@@ -47,11 +52,21 @@ def compute_next_trigger(schedule_type: str, schedule_value: str, from_time: dat
             tz = ZoneInfo(timezone)
             if from_time is None:
                 now = datetime.now(tz)
-        except (KeyError, Exception):
-            pass  # Invalid timezone, fall back to local time
+        except KeyError:
+            _logger.warning("Invalid timezone: %s, falling back to local time", timezone)
+        except Exception:
+            _logger.warning("Failed to apply timezone: %s, falling back to local time", timezone)
 
     if schedule_type == "once":
-        target = datetime.strptime(schedule_value, "%Y-%m-%d %H:%M")
+        # Accept both "YYYY-MM-DD" (defaults to 09:00) and "YYYY-MM-DD HH:MM"
+        sv = schedule_value.strip()
+        try:
+            if len(sv) == 10:
+                target = datetime.strptime(sv, "%Y-%m-%d").replace(hour=9, minute=0)
+            else:
+                target = datetime.strptime(sv, "%Y-%m-%d %H:%M")
+        except ValueError:
+            return None
         return target.strftime("%Y-%m-%d %H:%M:%S") if target > now else None
 
     if schedule_type == "daily":
@@ -172,17 +187,20 @@ def update_reminder(reminder_id: str, **kwargs) -> dict:
         try:
             if not _verify_reminder_access(conn, reminder_id, owner_id):
                 return {"error": f"无权访问提醒: {reminder_id}"}
-            row = conn.execute("SELECT schedule_type, schedule_value FROM reminders WHERE id=? AND is_deleted=0",
+            row = conn.execute("SELECT r.schedule_type, r.schedule_value, m.timezone "
+                               "FROM reminders r LEFT JOIN members m ON r.member_id=m.id "
+                               "WHERE r.id=? AND r.is_deleted=0",
                                (reminder_id,)).fetchone()
             if not row:
                 return {"error": f"未找到提醒: {reminder_id}"}
             st = updates.get("schedule_type", row["schedule_type"])
             sv = updates.get("schedule_value", row["schedule_value"])
-            updates["next_trigger_at"] = compute_next_trigger(st, sv)
+            updates["next_trigger_at"] = compute_next_trigger(st, sv, timezone=row["timezone"])
         finally:
             conn.close()
 
     updates["updated_at"] = health_db.now_iso()
+    # Keys in `updates` are pre-filtered through `allowed` (a frozenset above); values via ?.
     set_clause = ", ".join(f"{k}=?" for k in updates)
     values = list(updates.values()) + [reminder_id]
 
@@ -268,10 +286,14 @@ def mark_triggered(reminder_id: str, channel: str = "session",
             (log_id, reminder_id, now, channel, status, now)
         )
         # Get current schedule to compute next trigger
-        row = conn.execute("SELECT schedule_type, schedule_value FROM reminders WHERE id=?",
-                           (reminder_id,)).fetchone()
+        row = conn.execute(
+            "SELECT r.schedule_type, r.schedule_value, m.timezone "
+            "FROM reminders r LEFT JOIN members m ON r.member_id=m.id WHERE r.id=?",
+            (reminder_id,)
+        ).fetchone()
         if row:
-            next_trigger = compute_next_trigger(row["schedule_type"], row["schedule_value"])
+            next_trigger = compute_next_trigger(row["schedule_type"], row["schedule_value"],
+                                                timezone=row["timezone"])
             if next_trigger is None:
                 # One-time reminder exhausted, deactivate
                 conn.execute("UPDATE reminders SET is_active=0, last_triggered_at=?, updated_at=? WHERE id=?",
@@ -295,7 +317,7 @@ def auto_create_medication_reminders(member_id: str) -> dict:
     conn = health_db.get_connection()
     try:
         meds = health_db.rows_to_list(conn.execute(
-            "SELECT * FROM medications WHERE member_id=? AND is_deleted=0 AND end_date IS NULL",
+            "SELECT * FROM medications WHERE member_id=? AND is_deleted=0 AND is_active=1",
             (member_id,)
         ).fetchall())
     finally:
@@ -393,7 +415,7 @@ def main():
         import argparse
         p = argparse.ArgumentParser()
         p.add_argument("--member-id", required=True)
-        p.add_argument("--owner-id", default=None)
+        p.add_argument("--owner-id", default=os.environ.get("MEDIWISE_OWNER_ID"))
         p.add_argument("--type", required=True, choices=["medication", "metric", "checkup", "custom", "cycle"])
         p.add_argument("--title", required=True)
         p.add_argument("--schedule-type", required=True, choices=["once", "daily", "weekly", "monthly", "cycle"])
@@ -414,7 +436,7 @@ def main():
         import argparse
         p = argparse.ArgumentParser()
         p.add_argument("--member-id")
-        p.add_argument("--owner-id", default=None)
+        p.add_argument("--owner-id", default=os.environ.get("MEDIWISE_OWNER_ID"))
         p.add_argument("--all", action="store_true", help="Include inactive reminders")
         args = p.parse_args(sys.argv[2:])
         result = list_reminders(args.member_id, active_only=not args.all, owner_id=args.owner_id)
@@ -430,7 +452,7 @@ def main():
         p.add_argument("--schedule-value")
         p.add_argument("--is-active", type=int, choices=[0, 1])
         p.add_argument("--priority", choices=["low", "normal", "high", "urgent"])
-        p.add_argument("--owner-id", default=None)
+        p.add_argument("--owner-id", default=os.environ.get("MEDIWISE_OWNER_ID"))
         args = p.parse_args(sys.argv[2:])
         kwargs = {k.replace("-", "_"): v for k, v in vars(args).items()
                   if k != "reminder_id" and v is not None}
@@ -441,7 +463,7 @@ def main():
         import argparse
         p = argparse.ArgumentParser()
         p.add_argument("--reminder-id", required=True)
-        p.add_argument("--owner-id", default=None)
+        p.add_argument("--owner-id", default=os.environ.get("MEDIWISE_OWNER_ID"))
         args = p.parse_args(sys.argv[2:])
         result = delete_reminder(args.reminder_id, args.owner_id)
         health_db.output_json(result)
@@ -464,7 +486,7 @@ def main():
         import argparse
         p = argparse.ArgumentParser()
         p.add_argument("--member-id", required=True)
-        p.add_argument("--owner-id", default=None)
+        p.add_argument("--owner-id", default=os.environ.get("MEDIWISE_OWNER_ID"))
         args = p.parse_args(sys.argv[2:])
         conn = health_db.get_connection()
         try:
@@ -480,7 +502,7 @@ def main():
         import argparse
         p = argparse.ArgumentParser()
         p.add_argument("--member-id", required=True)
-        p.add_argument("--owner-id", default=None)
+        p.add_argument("--owner-id", default=os.environ.get("MEDIWISE_OWNER_ID"))
         p.add_argument("--cycle-type", default="menstrual", choices=["menstrual", "migraine", "allergy", "custom"])
         args = p.parse_args(sys.argv[2:])
         conn = health_db.get_connection()

@@ -12,7 +12,7 @@ Thank you for considering contributing to MediWise Health Suite!
 
 If you find a bug or have a feature suggestion:
 
-1. 检查 [Issues](https://github.com/your-username/mediwise-health-suite/issues) 是否已有相关问题
+1. 检查 [Issues](https://github.com/JuneYaooo/mediwise-health-suite/issues) 是否已有相关问题
 2. 如果没有，创建新 Issue，提供详细信息：
    - 问题描述
    - 复现步骤
@@ -24,7 +24,7 @@ If you find a bug or have a feature suggestion:
 
 1. **Fork 仓库**
    ```bash
-   git clone https://github.com/your-username/mediwise-health-suite.git
+   git clone https://github.com/JuneYaooo/mediwise-health-suite.git
    cd mediwise-health-suite
    ```
 
@@ -81,7 +81,7 @@ If you find a bug or have a feature suggestion:
 
 ### 隐私和安全 / Privacy and Security
 
-⚠️ **重要提醒**：
+⚠ **重要提醒**：
 - 不要提交包含真实用户数据的文件
 - 不要提交 API keys、密码等敏感信息
 - 不要提交 `.db` 或 `.sqlite` 文件
@@ -110,8 +110,7 @@ By submitting code, you agree to license your contribution under the MIT License
 ## 问题？/ Questions?
 
 如有疑问，请：
-- 创建 Issue
-- 发送邮件至 your-email@example.com
+- 创建 [Issue](https://github.com/JuneYaooo/mediwise-health-suite/issues)
 
 感谢您的贡献！🎉
 

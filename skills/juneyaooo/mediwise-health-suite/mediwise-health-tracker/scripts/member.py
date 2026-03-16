@@ -8,9 +8,17 @@ import sys
 import os
 
 sys.path.insert(0, os.path.dirname(__file__))
-from health_db import ensure_db, get_connection, generate_id, now_iso, row_to_dict, rows_to_list, output_json, is_api_mode, transaction, verify_member_ownership
+from health_db import ensure_db, get_medical_connection, generate_id, now_iso, row_to_dict, rows_to_list, output_json, is_api_mode, transaction, verify_member_ownership
 from validators import validate_date_optional
 import api_client
+
+# Whitelist of column names allowed in UPDATE statements for the members table.
+# Values are always bound via ? placeholders; this set guards the column names.
+_MEMBER_UPDATE_FIELDS = frozenset([
+    "name", "relation", "gender", "birth_date", "blood_type",
+    "allergies", "medical_history", "phone", "emergency_contact", "emergency_phone",
+    "custom_metric_ranges", "timezone",
+])
 
 
 def add_member(args):
@@ -29,7 +37,7 @@ def add_member(args):
             output_json({"status": "error", "message": str(e)})
         return
     ensure_db()
-    with transaction() as conn:
+    with transaction(domain="medical") as conn:
         try:
             args.birth_date = validate_date_optional(getattr(args, 'birth_date', None), "出生日期")
         except ValueError as e:
@@ -65,7 +73,7 @@ def list_members(args):
             output_json({"status": "error", "message": str(e)})
         return
     ensure_db()
-    conn = get_connection()
+    conn = get_medical_connection()
     try:
         owner_id = getattr(args, 'owner_id', None)
         if owner_id:
@@ -87,7 +95,7 @@ def get_member(args):
             output_json({"status": "error", "message": str(e)})
         return
     ensure_db()
-    conn = get_connection()
+    conn = get_medical_connection()
     try:
         row = conn.execute("SELECT * FROM members WHERE id=? AND is_deleted=0", (args.id,)).fetchone()
         if not row:
@@ -121,7 +129,7 @@ def update_member(args):
             output_json({"status": "error", "message": str(e)})
         return
     ensure_db()
-    with transaction() as conn:
+    with transaction(domain="medical") as conn:
         row = conn.execute("SELECT * FROM members WHERE id=? AND is_deleted=0", (args.id,)).fetchone()
         if not row:
             output_json({"status": "error", "message": f"未找到成员: {args.id}"})
@@ -141,9 +149,7 @@ def update_member(args):
 
         fields = []
         values = []
-        for field in ["name", "relation", "gender", "birth_date", "blood_type",
-                       "allergies", "medical_history", "phone", "emergency_contact", "emergency_phone",
-                       "custom_metric_ranges", "timezone"]:
+        for field in _MEMBER_UPDATE_FIELDS:
             val = getattr(args, field.replace("-", "_"), None)
             if val is not None:
                 fields.append(f"{field}=?")
@@ -157,6 +163,7 @@ def update_member(args):
         values.append(now_iso())
         values.append(args.id)
 
+        # Column names are from _MEMBER_UPDATE_FIELDS (hardcoded whitelist); values via ?.
         conn.execute(f"UPDATE members SET {', '.join(fields)} WHERE id=?", values)
         conn.commit()
         member = row_to_dict(conn.execute("SELECT * FROM members WHERE id=?", (args.id,)).fetchone())
@@ -172,7 +179,7 @@ def delete_member(args):
             output_json({"status": "error", "message": str(e)})
         return
     ensure_db()
-    with transaction() as conn:
+    with transaction(domain="medical") as conn:
         row = conn.execute("SELECT * FROM members WHERE id=? AND is_deleted=0", (args.id,)).fetchone()
         if not row:
             output_json({"status": "error", "message": f"未找到成员: {args.id}"})
@@ -204,16 +211,16 @@ def main():
     p_add.add_argument("--emergency-phone", default=None)
     p_add.add_argument("--custom-metric-ranges", default=None)
     p_add.add_argument("--timezone", default=None)
-    p_add.add_argument("--owner-id", default=None)
+    p_add.add_argument("--owner-id", default=os.environ.get("MEDIWISE_OWNER_ID"))
 
     # list
     p_list = sub.add_parser("list")
-    p_list.add_argument("--owner-id", default=None)
+    p_list.add_argument("--owner-id", default=os.environ.get("MEDIWISE_OWNER_ID"))
 
     # get
     p_get = sub.add_parser("get")
     p_get.add_argument("--id", required=True)
-    p_get.add_argument("--owner-id", default=None)
+    p_get.add_argument("--owner-id", default=os.environ.get("MEDIWISE_OWNER_ID"))
 
     # update
     p_upd = sub.add_parser("update")
@@ -230,12 +237,12 @@ def main():
     p_upd.add_argument("--emergency-phone", default=None)
     p_upd.add_argument("--custom-metric-ranges", default=None)
     p_upd.add_argument("--timezone", default=None)
-    p_upd.add_argument("--owner-id", default=None)
+    p_upd.add_argument("--owner-id", default=os.environ.get("MEDIWISE_OWNER_ID"))
 
     # delete
     p_del = sub.add_parser("delete")
     p_del.add_argument("--id", required=True)
-    p_del.add_argument("--owner-id", default=None)
+    p_del.add_argument("--owner-id", default=os.environ.get("MEDIWISE_OWNER_ID"))
 
     args = parser.parse_args()
     commands = {"add": add_member, "list": list_members, "get": get_member,

@@ -3,11 +3,16 @@
   "slug": "mediwise-health-suite",
   "displayName": "Mediwise Health Suite",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1772983252227,
-    "commit": "https://github.com/openclaw/skills/commit/115f51a2ecc3f91d5b304bcc70bbf70e9986560b"
+    "version": "1.0.14",
+    "publishedAt": 1773557477292,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1772983252227,
+      "commit": "https://github.com/openclaw/skills/commit/115f51a2ecc3f91d5b304bcc70bbf70e9986560b"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1772981659631,

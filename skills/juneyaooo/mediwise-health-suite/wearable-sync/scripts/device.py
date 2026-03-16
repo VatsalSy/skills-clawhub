@@ -21,12 +21,14 @@ from providers.gadgetbridge import GadgetbridgeProvider
 from providers.huawei import HuaweiProvider
 from providers.zepp import ZeppProvider
 from providers.openwearables import OpenWearablesProvider
+from providers.apple_health import AppleHealthProvider
 
 PROVIDERS = {
     "gadgetbridge": GadgetbridgeProvider,
     "huawei": HuaweiProvider,
     "zepp": ZeppProvider,
     "openwearables": OpenWearablesProvider,
+    "apple_health": AppleHealthProvider,
 }
 
 
@@ -50,17 +52,17 @@ def add_device(args):
 
     provider = _get_provider(args.provider)
 
-    with health_db.transaction() as conn:
+    with health_db.transaction(domain="medical") as conn:
         # Verify member exists
         m = conn.execute("SELECT name FROM members WHERE id=? AND is_deleted=0", (args.member_id,)).fetchone()
         if not m:
             health_db.output_json({"status": "error", "message": f"未找到成员: {args.member_id}"})
             return
 
+    with health_db.transaction(domain="lifestyle") as conn:
         device_id = health_db.generate_id()
         now = health_db.now_iso()
         supported = json.dumps(provider.get_supported_metrics())
-
         conn.execute(
             """INSERT INTO wearable_devices
                (id, member_id, provider, device_name, config, supported_metrics, created_at, updated_at)
@@ -82,7 +84,7 @@ def add_device(args):
 def list_devices(args):
     """List registered wearable devices for a member."""
     health_db.ensure_db()
-    conn = health_db.get_connection()
+    conn = health_db.get_lifestyle_connection()
     try:
         rows = conn.execute(
             """SELECT * FROM wearable_devices
@@ -114,7 +116,7 @@ def list_devices(args):
 def remove_device(args):
     """Soft-delete a wearable device."""
     health_db.ensure_db()
-    with health_db.transaction() as conn:
+    with health_db.transaction(domain="lifestyle") as conn:
         row = conn.execute(
             "SELECT * FROM wearable_devices WHERE id=? AND is_deleted=0",
             (args.device_id,)
@@ -137,7 +139,7 @@ def auth_device(args):
     For OAuth providers: --client-id, --client-secret, --redirect-uri
     """
     health_db.ensure_db()
-    conn = health_db.get_connection()
+    conn = health_db.get_lifestyle_connection()
     try:
         row = conn.execute(
             "SELECT * FROM wearable_devices WHERE id=? AND is_deleted=0",
@@ -173,6 +175,14 @@ def auth_device(args):
             })
             return
         existing_config["export_path"] = export_path
+    elif provider_name == "apple_health":
+        if not args.export_path:
+            health_db.output_json({
+                "status": "error",
+                "message": "Apple Health 需指定 --export-path (.xml 或 .zip)"
+            })
+            return
+        existing_config["export_path"] = os.path.abspath(args.export_path)
     else:
         # OAuth-based providers
         if args.client_id:
@@ -198,7 +208,7 @@ def auth_device(args):
         return
 
     # Save config
-    with health_db.transaction() as conn:
+    with health_db.transaction(domain="lifestyle") as conn:
         conn.execute(
             "UPDATE wearable_devices SET config=?, updated_at=? WHERE id=?",
             (json.dumps(existing_config, ensure_ascii=False), health_db.now_iso(), args.device_id)
@@ -215,7 +225,7 @@ def auth_device(args):
 def auth_callback(args):
     """Handle OAuth callback for providers that use authorization codes."""
     health_db.ensure_db()
-    conn = health_db.get_connection()
+    conn = health_db.get_lifestyle_connection()
     try:
         row = conn.execute(
             "SELECT * FROM wearable_devices WHERE id=? AND is_deleted=0",
@@ -243,7 +253,7 @@ def auth_callback(args):
 def test_device(args):
     """Test connection for a registered device."""
     health_db.ensure_db()
-    conn = health_db.get_connection()
+    conn = health_db.get_lifestyle_connection()
     try:
         row = conn.execute(
             "SELECT * FROM wearable_devices WHERE id=? AND is_deleted=0",

@@ -101,7 +101,7 @@ const ROUTES = {
     args: ['list', '--member-id', inputs.member_id],
   }),
   'update-reminder': (inputs) => {
-    const args = ['update', '--reminder-id', inputs.params?.reminder_id ?? inputs.member_id];
+    const args = ['update', '--reminder-id', inputs.params?.reminder_id ?? ''];
     const p = inputs.params ?? {};
     if (p.title) args.push('--title', p.title);
     if (p.schedule_value) args.push('--schedule-value', p.schedule_value);
@@ -111,7 +111,7 @@ const ROUTES = {
   },
   'delete-reminder': (inputs) => ({
     script: 'reminder.py',
-    args: ['delete', '--reminder-id', inputs.params?.reminder_id ?? inputs.member_id],
+    args: ['delete', '--reminder-id', inputs.params?.reminder_id ?? ''],
   }),
   'health-advice': (inputs) => {
     const args = ['briefing'];
@@ -125,7 +125,7 @@ const ROUTES = {
     args: ['tips', '--member-id', inputs.member_id],
   }),
   'generate-report': (inputs) => {
-    const args = ['generate'];
+    const args = ['screenshot'];
     if (inputs.member_id) {
       args.push('--member-id', inputs.member_id);
     }
@@ -269,16 +269,179 @@ const ROUTES = {
     if (inputs.params?.port) args.push('--port', String(inputs.params.port));
     return { script: 'attachment.py', args };
   },
+
+  // Direct write routes for medical records and metrics
+  'add-visit': (inputs) => {
+    const args = ['add-visit', '--member-id', inputs.member_id,
+                  '--visit-type', inputs.params?.visit_type ?? '门诊',
+                  '--visit-date', inputs.params?.visit_date ?? ''];
+    const p = inputs.params ?? {};
+    if (p.end_date) args.push('--end-date', p.end_date);
+    if (p.hospital) args.push('--hospital', p.hospital);
+    if (p.department) args.push('--department', p.department);
+    if (p.chief_complaint) args.push('--chief-complaint', p.chief_complaint);
+    if (p.diagnosis) args.push('--diagnosis', p.diagnosis);
+    if (p.summary) args.push('--summary', p.summary);
+    return { script: 'medical_record.py', args };
+  },
+  'add-symptom': (inputs) => {
+    const args = ['add-symptom', '--member-id', inputs.member_id,
+                  '--symptom', inputs.params?.symptom ?? ''];
+    const p = inputs.params ?? {};
+    if (p.visit_id) args.push('--visit-id', p.visit_id);
+    if (p.severity) args.push('--severity', p.severity);
+    if (p.onset_date) args.push('--onset-date', p.onset_date);
+    if (p.end_date) args.push('--end-date', p.end_date);
+    if (p.description) args.push('--description', p.description);
+    return { script: 'medical_record.py', args };
+  },
+  'add-medication': (inputs) => {
+    const args = ['add-medication', '--member-id', inputs.member_id,
+                  '--name', inputs.params?.name ?? ''];
+    const p = inputs.params ?? {};
+    if (p.visit_id) args.push('--visit-id', p.visit_id);
+    if (p.dosage) args.push('--dosage', p.dosage);
+    if (p.frequency) args.push('--frequency', p.frequency);
+    if (p.start_date) args.push('--start-date', p.start_date);
+    if (p.end_date) args.push('--end-date', p.end_date);
+    if (p.purpose) args.push('--purpose', p.purpose);
+    return { script: 'medical_record.py', args };
+  },
+  'add-metric': (inputs) => {
+    const args = ['add', '--member-id', inputs.member_id,
+                  '--type', inputs.params?.type ?? '',
+                  '--value', String(inputs.params?.value ?? '')];
+    const p = inputs.params ?? {};
+    if (p.measured_at) args.push('--measured-at', p.measured_at);
+    if (p.note) args.push('--note', p.note);
+    if (p.source) args.push('--source', p.source);
+    if (p.context) args.push('--context', p.context);
+    if (p.related_visit_id) args.push('--related-visit-id', p.related_visit_id);
+    return { script: 'health_metric.py', args };
+  },
+
+  // Visit lifecycle management
+  'plan-visit': (inputs) => {
+    const args = ['plan', '--member-id', inputs.member_id, '--visit-date', inputs.params?.visit_date ?? ''];
+    if (inputs.params?.hospital) args.push('--hospital', inputs.params.hospital);
+    if (inputs.params?.department) args.push('--department', inputs.params.department);
+    if (inputs.params?.chief_complaint) args.push('--chief-complaint', inputs.params.chief_complaint);
+    if (inputs.params?.visit_type) args.push('--visit-type', inputs.params.visit_type);
+    return { script: 'visit_lifecycle.py', args };
+  },
+  'visit-prep': (inputs) => {
+    const args = ['prep', '--member-id', inputs.member_id];
+    if (inputs.params?.visit_id) args.push('--visit-id', inputs.params.visit_id);
+    if (inputs.params?.days) args.push('--days', String(inputs.params.days));
+    return { script: 'visit_lifecycle.py', args };
+  },
+  'record-visit-outcome': (inputs) => {
+    const args = ['outcome', '--visit-id', inputs.params?.visit_id ?? '',
+                  '--diagnosis', inputs.params?.diagnosis ?? ''];
+    if (inputs.params?.summary) args.push('--summary', inputs.params.summary);
+    if (inputs.params?.follow_up_date) args.push('--follow-up-date', inputs.params.follow_up_date);
+    if (inputs.params?.follow_up_notes) args.push('--follow-up-notes', inputs.params.follow_up_notes);
+    if (inputs.params?.medications) args.push('--medications', JSON.stringify(inputs.params.medications));
+    if (inputs.params?.lab_orders) args.push('--lab-orders', JSON.stringify(inputs.params.lab_orders));
+    return { script: 'visit_lifecycle.py', args };
+  },
+  'pending-visits': (inputs) => ({
+    script: 'visit_lifecycle.py',
+    args: ['pending', '--member-id', inputs.member_id],
+  }),
+
+  // Health memory tracking
+  'log-health-note': (inputs) => {
+    const args = ['log', '--member-id', inputs.member_id, '--content', inputs.params?.content ?? ''];
+    if (inputs.params?.category) args.push('--category', inputs.params.category);
+    if (inputs.params?.follow_up_days) args.push('--follow-up-days', String(inputs.params.follow_up_days));
+    return { script: 'health_memory.py', args };
+  },
+  'check-health-notes': (inputs) => {
+    const args = ['list', '--member-id', inputs.member_id];
+    if (inputs.params?.include_resolved) args.push('--include-resolved');
+    return { script: 'health_memory.py', args };
+  },
+  'resolve-health-note': (inputs) => {
+    const args = ['resolve', '--note-id', inputs.params?.note_id ?? ''];
+    if (inputs.params?.resolution_note) args.push('--resolution-note', inputs.params.resolution_note);
+    return { script: 'health_memory.py', args };
+  },
+
+  // Medication intake check-in
+  'log-medication-taken': (inputs) => {
+    const args = ['log-taken', '--member-id', inputs.member_id,
+                  '--medication-name', inputs.params?.medication_name ?? ''];
+    if (inputs.params?.taken_at) args.push('--taken-at', inputs.params.taken_at);
+    if (inputs.params?.dose_taken) args.push('--dose-taken', inputs.params.dose_taken);
+    if (inputs.params?.note) args.push('--note', inputs.params.note);
+    return { script: 'medication_log.py', args };
+  },
+  'list-medication-logs': (inputs) => {
+    const args = ['list', '--member-id', inputs.member_id];
+    if (inputs.params?.medication_name) args.push('--medication-name', inputs.params.medication_name);
+    if (inputs.params?.days) args.push('--days', String(inputs.params.days));
+    if (inputs.params?.limit) args.push('--limit', String(inputs.params.limit));
+    return { script: 'medication_log.py', args };
+  },
+
+  // Chronic disease management
+  'setup-chronic-profile': (inputs) => {
+    const args = ['setup-profile', '--member-id', inputs.member_id,
+                  '--disease-type', inputs.params?.disease_type ?? ''];
+    if (inputs.params?.targets) args.push('--targets', JSON.stringify(inputs.params.targets));
+    if (inputs.params?.diagnosed_date) args.push('--diagnosed-date', inputs.params.diagnosed_date);
+    if (inputs.params?.notes) args.push('--notes', inputs.params.notes);
+    return { script: 'chronic_disease.py', args };
+  },
+  'view-chronic-profile': (inputs) => {
+    const args = ['view-profile', '--member-id', inputs.member_id,
+                  '--disease-type', inputs.params?.disease_type ?? ''];
+    return { script: 'chronic_disease.py', args };
+  },
+  'analyze-diabetes': (inputs) => {
+    const args = ['analyze-diabetes', '--member-id', inputs.member_id];
+    if (inputs.params?.days) args.push('--days', String(inputs.params.days));
+    return { script: 'chronic_disease.py', args };
+  },
+  'analyze-hypertension': (inputs) => {
+    const args = ['analyze-hypertension', '--member-id', inputs.member_id];
+    if (inputs.params?.days) args.push('--days', String(inputs.params.days));
+    return { script: 'chronic_disease.py', args };
+  },
+  'chronic-disease-summary': (inputs) => {
+    const args = ['disease-summary', '--member-id', inputs.member_id];
+    if (inputs.params?.disease_type) args.push('--disease-type', inputs.params.disease_type);
+    return { script: 'chronic_disease.py', args };
+  },
+
+  // Checkup report interpretation
+  'interpret-checkup': (inputs) => {
+    const args = ['interpret', '--member-id', inputs.member_id];
+    if (inputs.params?.text) args.push('--text', inputs.params.text);
+    if (inputs.params?.pdf) args.push('--pdf', inputs.params.pdf);
+    if (inputs.params?.report_date) args.push('--report-date', inputs.params.report_date);
+    if (inputs.params?.save) args.push('--save');
+    if (inputs.params?.gender) args.push('--gender', inputs.params.gender);
+    return { script: 'checkup_report.py', args };
+  },
+  'compare-checkups': (inputs) => {
+    const args = ['compare', '--member-id', inputs.member_id];
+    if (inputs.params?.date1) args.push('--date1', inputs.params.date1);
+    if (inputs.params?.date2) args.push('--date2', inputs.params.date2);
+    return { script: 'checkup_report.py', args };
+  },
 };
 
 /**
  * Run a Python script and return parsed JSON output.
+ * Accepts an optional env object to inject into the subprocess environment.
  */
-async function runScript(script, args) {
+async function runScript(script, args, env = {}) {
   const scriptPath = resolve(SCRIPTS_DIR, script);
   const { stdout } = await execFileAsync('python3', [scriptPath, ...args], {
     timeout: 30_000,
-    env: { ...process.env, PYTHONPATH: SCRIPTS_DIR },
+    env: { ...process.env, PYTHONPATH: SCRIPTS_DIR, ...env },
   });
   return JSON.parse(stdout.trim());
 }
@@ -304,29 +467,17 @@ export async function execute(inputs, context) {
   try {
     const { script, args } = routeFn(inputs);
 
-    // Inject --owner-id for multi-tenant isolation when provided
+    // Build subprocess environment: inject MEDIWISE_OWNER_ID for all scripts
+    // so isolation is enforced automatically regardless of which script is called.
     const ownerId = inputs.owner_id;
-    const OWNER_ID_SCRIPTS = [
-      'member.py',
-      'query.py',
-      'health_metric.py',
-      'export.py',
-      'reminder.py',
-      'attachment.py',
-      'health_advisor.py',
-      'briefing_report.py',
-      'doctor_visit_report.py',
-      'cycle_tracker.py',
-      'quick_entry.py',
-      'smart_intake.py',
-    ];
-    if (ownerId && OWNER_ID_SCRIPTS.includes(script)) {
-      args.push('--owner-id', ownerId);
+    const subEnv = {};
+    if (ownerId) {
+      subEnv.MEDIWISE_OWNER_ID = ownerId;
     }
 
-    log(`[mediwise-health-tracker] script=${script} args=${args.join(' ')}`);
+    log(`[mediwise-health-tracker] script=${script} owner=${ownerId ?? 'none'} args=${args.join(' ')}`);
 
-    const result = await runScript(script, args);
+    const result = await runScript(script, args, subEnv);
     return { status: 'ok', result };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

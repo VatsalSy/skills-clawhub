@@ -39,20 +39,6 @@ git clone https://github.com/JuneYaooo/mediwise-health-suite.git \
 助手：根据最近的记录，您的血压...
 ```
 
-#### 症状咨询
-```
-用户："我最近老是头晕"
-助手：我来帮您分析一下。请问头晕是什么时候开始的？
-```
-
-#### 急救指导
-```
-用户："有人晕倒了怎么办"
-助手：🚨 意识丧失急救步骤：
-1️⃣ 立即拨打 120
-2️⃣ 检查呼吸和脉搏...
-```
-
 #### 饮食记录
 ```
 用户："帮我记录今天早餐：牛奶一杯、面包两片、鸡蛋一个"
@@ -71,25 +57,53 @@ git clone https://github.com/JuneYaooo/mediwise-health-suite.git \
 助手：好的，我先为您生成一份就医前摘要...
 ```
 
-### 3. 高级功能
+### 3. 家庭群组使用
+
+在 QQ 群或飞书群中，一家人可以共同使用健康助手，数据自动按发送者隔离：
+
+```
+张三: @健康 帮我添加家庭成员"妈妈"，68岁
+助手: 已为您添加家庭成员"妈妈"
+
+李四: @健康 帮我记录血压 125/80
+助手: 已为您记录血压...
+
+张三: @健康 帮我看看全家的健康情况
+助手: [只显示张三的数据，看不到李四的记录]
+```
+
+每个用户还可以为家人代管健康档案：
+
+```
+张三: @健康 帮妈妈记录今天血糖 6.8
+助手: 已为"妈妈"记录空腹血糖 6.8 mmol/L
+```
+
+### 4. 高级功能
 
 #### 图片识别
+
+> **前提条件**：需先配置多模态视觉模型，否则图片识别功能不可用。
+> 快速配置方法（以硅基流动为例）：
+> ```bash
+> export MEDIWISE_VISION_PROVIDER=siliconflow
+> export MEDIWISE_VISION_MODEL=Qwen/Qwen2.5-VL-72B-Instruct
+> export MEDIWISE_VISION_API_KEY=sk-xxx
+> export MEDIWISE_VISION_BASE_URL=https://api.siliconflow.cn/v1
+> ```
+> 详细配置见 `.env.example` 或 [INSTALLATION.md](docs/INSTALLATION.md)。
+
 ```
 用户：[发送化验单图片]
 用户："帮我识别这张化验单"
 助手：我来帮您识别化验单内容...
 ```
 
-#### 药物安全查询
-```
-用户："氨氯地平和阿司匹林能一起吃吗？"
-助手：让我查询一下这两种药物的相互作用...
-```
+#### 体检报告解读
 
-#### 健康科普
 ```
-用户："高血压是怎么回事？"
-助手：让我为您找一些权威的科普内容...
+用户："帮我解读这张体检报告"
+助手：为您解读体检报告，空腹血糖 5.8 mmol/L（正常），甘油三酯 2.1 mmol/L（偏高）...
 ```
 
 #### 可穿戴设备同步
@@ -98,20 +112,31 @@ git clone https://github.com/JuneYaooo/mediwise-health-suite.git \
 助手：好的，我来同步您的手环数据...
 ```
 
-### 4. 常用命令
+### 5. 常用命令
 
 | 功能 | 示例对话 |
 |------|---------|
 | 添加成员 | "添加家庭成员" |
 | 记录指标 | "记录血压 130/85" |
 | 查看摘要 | "最近健康情况" |
-| 症状咨询 | "我头晕" |
-| 急救指导 | "烫伤怎么办" |
 | 饮食记录 | "记录早餐" |
 | 体重管理 | "设定减重目标" |
 | 就医准备 | "整理就医摘要" |
 
-### 5. 配置（可选）
+### 6. 配置（可选）
+
+**视觉模型配置**（图片/PDF 识别必填）：
+
+复制并编辑环境变量文件：
+
+```bash
+cp .env.example .env
+# 填入 MEDIWISE_VISION_API_KEY 等变量
+```
+
+详细配置方案见 [INSTALLATION.md](docs/INSTALLATION.md) 或 `.env.example`。
+
+**OpenClaw 插件配置**（可选）：
 
 编辑 `~/.openclaw/config.json`：
 
@@ -167,20 +192,6 @@ User: "Show me my recent health status"
 Assistant: Based on recent records, your blood pressure...
 ```
 
-#### Symptom Consultation
-```
-User: "I've been feeling dizzy lately"
-Assistant: Let me help you analyze this. When did the dizziness start?
-```
-
-#### First Aid Guidance
-```
-User: "Someone fainted, what should I do?"
-Assistant: 🚨 Loss of consciousness first aid steps:
-1️⃣ Call 911 immediately
-2️⃣ Check breathing and pulse...
-```
-
 #### Diet Tracking
 ```
 User: "Record today's breakfast: a glass of milk, two slices of bread, one egg"
@@ -199,25 +210,53 @@ User: "I'm preparing to see a doctor, help me organize my recent condition"
 Assistant: Okay, let me generate a doctor visit summary for you...
 ```
 
-### 3. Advanced Features
+### 3. Family Group Usage
+
+In a QQ group or Feishu group, family members can share the same health assistant. Data is automatically isolated by sender identity:
+
+```
+Alice: @Health Add a family member "Mom", 68 years old
+Assistant: Added family member "Mom" for you.
+
+Bob: @Health Record my blood pressure 125/80
+Assistant: Recorded blood pressure for you...
+
+Alice: @Health Show me my family's health overview
+Assistant: [Only shows Alice's data, cannot see Bob's records]
+```
+
+Each user can also manage health records for their family members:
+
+```
+Alice: @Health Record Mom's blood sugar today: 6.8
+Assistant: Recorded fasting blood sugar 6.8 mmol/L for "Mom"
+```
+
+### 4. Advanced Features
 
 #### Image Recognition
+
+> **Prerequisite**: A multimodal vision model must be configured first. Without it, image recognition is unavailable.
+> Quick setup example (SiliconFlow):
+> ```bash
+> export MEDIWISE_VISION_PROVIDER=siliconflow
+> export MEDIWISE_VISION_MODEL=Qwen/Qwen2.5-VL-72B-Instruct
+> export MEDIWISE_VISION_API_KEY=sk-xxx
+> export MEDIWISE_VISION_BASE_URL=https://api.siliconflow.cn/v1
+> ```
+> See `.env.example` or [INSTALLATION.md](docs/INSTALLATION.md) for all options.
+
 ```
 User: [Send lab report image]
 User: "Help me recognize this lab report"
 Assistant: Let me help you recognize the lab report content...
 ```
 
-#### Drug Safety Query
-```
-User: "Can I take Amlodipine and Aspirin together?"
-Assistant: Let me check the interaction between these two medications...
-```
+#### Checkup Report Interpretation
 
-#### Health Education
 ```
-User: "What is hypertension?"
-Assistant: Let me find some authoritative educational content for you...
+User: "Help me interpret this health checkup report"
+Assistant: Interpreting your checkup report: fasting glucose 5.8 mmol/L (normal), triglycerides 2.1 mmol/L (elevated)...
 ```
 
 #### Wearable Device Sync
@@ -226,20 +265,31 @@ User: "Sync my Xiaomi Band data"
 Assistant: Okay, let me sync your band data...
 ```
 
-### 4. Common Commands
+### 5. Common Commands
 
 | Feature | Example Dialogue |
 |---------|-----------------|
 | Add Member | "Add family member" |
 | Record Metrics | "Record blood pressure 130/85" |
 | View Summary | "Recent health status" |
-| Symptom Consultation | "I feel dizzy" |
-| First Aid | "What to do for burns" |
 | Diet Tracking | "Record breakfast" |
 | Weight Management | "Set weight loss goal" |
 | Doctor Visit Prep | "Organize medical summary" |
 
-### 5. Configuration (Optional)
+### 6. Configuration (Optional)
+
+**Vision model configuration** (required for image/PDF recognition):
+
+Copy and edit the environment variables file:
+
+```bash
+cp .env.example .env
+# Fill in MEDIWISE_VISION_API_KEY and related variables
+```
+
+See [INSTALLATION.md](docs/INSTALLATION.md) or `.env.example` for all configuration options.
+
+**OpenClaw plugin configuration** (optional):
 
 Edit `~/.openclaw/config.json`:
 

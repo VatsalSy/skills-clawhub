@@ -1,11 +1,6 @@
 ---
 name: weight-manager
-description: >-
-  体重管理、减脂增重目标、运动记录与身体指标分析。用于设定体重目标、追踪进度、
-  计算 BMI/BMR/TDEE、分析热量收支，并结合 `diet-tracker` 与 `mediwise-health-tracker`
-  形成饮食、运动、体重和围度的管理闭环。
-  Use when setting weight goals, tracking progress, logging exercise, or analyzing
-  calorie balance and body composition.
+description: "Weight management: set goals, track progress, log exercise, calculate BMI/BMR/TDEE, analyze calorie balance and body composition. Integrates with diet-tracker and mediwise-health-tracker."
 ---
 
 # weight-manager
@@ -130,7 +125,7 @@ description: >-
 ## 使用流程
 
 1. 确认成员身份
-2. 记录身高体重（health_metric add --type weight / --type height）
+2. 记录身高体重（通过 `mediwise-health-tracker` 的 `add-metric` 动作，type 填 weight / height）
 3. 使用 `calculate-bmi` 计算 BMI
 4. 使用 `calculate-bmr-tdee` 计算基础代谢和每日总消耗
 5. 使用 `set-goal` 设定体重管理目标（自动推算热量目标）
@@ -145,6 +140,7 @@ description: >-
 
 ## 注意事项
 
+- **每次调用脚本必须携带 `--owner-id`（强制）**：从会话上下文获取发送者 ID（格式 `<channel>:<user_id>`，如 `feishu:ou_xxx` 或 `qqbot:12345`），作为所有脚本的 `--owner-id` 参数，不得省略。
 - goal_type 支持: lose（减重）、gain（增重）、maintain（维持）
 - 每个成员同时只能有一个 active 状态的目标
 - 体重数据通过 health_metrics 表记录，本 skill 只读取不写入体重数据
