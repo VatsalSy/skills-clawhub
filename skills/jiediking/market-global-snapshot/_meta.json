@@ -1,13 +1,18 @@
 {
   "owner": "jiediking",
   "slug": "market-global-snapshot",
-  "displayName": "Market Global Snapshot",
+  "displayName": "Global Market Snapshot",
   "latest": {
-    "version": "0.1.4",
-    "publishedAt": 1773393275164,
-    "commit": "https://github.com/openclaw/skills/commit/ef93e49a1cac46c34c803cb323a2fd93170e73c8"
+    "version": "0.1.5",
+    "publishedAt": 1773583583608,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.1.4",
+      "publishedAt": 1773393275164,
+      "commit": "https://github.com/openclaw/skills/commit/ef93e49a1cac46c34c803cb323a2fd93170e73c8"
+    },
     {
       "version": "0.1.1",
       "publishedAt": 1772949596822,
