@@ -1,13 +1,18 @@
 {
   "owner": "89kpjddmtb-ui",
   "slug": "stylebuddy",
-  "displayName": "StyleBuddy",
+  "displayName": "StyleBuddy - AI穿搭闺蜜",
   "latest": {
-    "version": "0.3.3",
-    "publishedAt": 1773508212306,
-    "commit": "https://github.com/openclaw/skills/commit/490b61314c8ab82e4ea890bb0423c52aeed2c911"
+    "version": "0.4.2",
+    "publishedAt": 1773656734870,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.3.3",
+      "publishedAt": 1773508212306,
+      "commit": "https://github.com/openclaw/skills/commit/490b61314c8ab82e4ea890bb0423c52aeed2c911"
+    },
     {
       "version": "0.3.2",
       "publishedAt": 1773466982138,
