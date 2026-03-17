@@ -1,0 +1,104 @@
+# create_firework_show
+
+创建一场电子礼花秀，用于庆祝特殊时刻。
+
+## 端点
+
+```
+POST https://all.chayinzi.biz/api/openclaw/create_firework_show
+Content-Type: application/json
+```
+
+## 参数
+
+| 参数名 | 类型 | 必填 | 描述 |
+|--------|------|------|------|
+| sender_name | string | 是 | 送礼人，最多8个字 |
+| receiver_name | string | 是 | 收礼人，最多8个字 |
+| blessing | string | 是 | 竖幅祝福语，最多15个字 |
+| intro | string | 否 | 心声内容，最多200个字 |
+| explosion_texts | array | 否 | 随机祝福语数组，0-6个元素，每个最多10个字 |
+
+## 请求示例
+
+```json
+{
+  "sender_name": "你的AI助手",
+  "receiver_name": "努力的你",
+  "blessing": "任务完成，继续加油！",
+  "intro": "很高兴能帮到你完成这个任务",
+  "explosion_texts": ["太棒了", "继续加油", "你真厉害"]
+}
+```
+
+## 响应示例
+
+成功响应：
+```json
+{
+  "success": true,
+  "message": "礼花秀创建成功！",
+  "data": {
+    "show_id": "abc123def456",
+    "share_code": "ABC123",
+    "show_url": "https://all.chayinzi.biz/show/ABC123",
+    "sender_name": "你的AI助手",
+    "receiver_name": "努力的你",
+    "blessing": "任务完成，继续加油！",
+    "total_fireworks": 18,
+    "expires_at": "2026-03-31T00:00:00.000Z",
+    "expires_days": 15
+  }
+}
+```
+
+## 错误响应
+
+```json
+{
+  "success": false,
+  "error": "祝福语不能超过50个字符"
+}
+```
+
+## 使用场景
+
+1. **Agent 完成任务后庆祝**
+   - Agent 完成复杂任务后，询问用户是否要庆祝
+   - 用户同意后调用此接口
+
+2. **用户主动请求庆祝**
+   - 用户说"放场礼花庆祝一下"
+   - 直接调用此接口创建礼花秀
+
+3. **生日/纪念日祝福**
+   - 用户提及特殊日期
+   - Agent 主动提供礼花秀作为祝福方式
+
+## 隐私与安全说明
+
+### 数据传输说明
+
+调用此接口会将以下内容发送至外部服务 `chayinzi.biz` 用于生成礼花秀页面：
+
+| 参数 | 来源 | 默认值 |
+|------|------|--------|
+| `sender_name` | Agent配置的名称 | "OpenClaw" |
+| `receiver_name` | Agent对用户的称呼 | "您" |
+| `blessing` | Agent基于场景自动生成 | 根据上下文生成 |
+| `intro` (可选) | Agent基于场景自动生成 | 可选 |
+| `explosion_texts` (可选) | Agent预设或生成 | 预设祝福语 |
+
+### 数据安全说明
+
+- ✅ **无敏感数据**：所有内容均由 Agent 自动生成，不收集用户提供的个人敏感信息
+- ✅ **单一用途**：仅用于生成礼花秀展示页面
+- ✅ **自动删除**：15天后数据自动从服务器删除
+- ✅ **无需凭证**：不需要任何账号密码
+
+## 使用提示
+
+- 每场礼花秀固定18发礼花
+- 礼花秀有效期15天
+- 创建后返回的 show_url 可直接分享给收礼人
+- explosion_texts 会随礼花绽放时随机显示
