@@ -17,3 +17,11 @@ This skill equips your OpenClaw agent with the ability to generate high-quality 
 ## Usage
 
 Simply ask your agent to draw or generate an image! The agent will run the script, wait for the generation to finish, and return the image link.
+
+### Supported Models
+You can check all the officially supported models at: [https://www.weryai.com/api/discovery](https://www.weryai.com/api/discovery)
+
+To test it from CLI:
+```bash
+node weryai-generate.js models
+```

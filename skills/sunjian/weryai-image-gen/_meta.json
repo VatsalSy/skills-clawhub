@@ -1,11 +1,17 @@
 {
   "owner": "sunjian",
   "slug": "weryai-image-gen",
-  "displayName": "WeryAI Image Gen",
+  "displayName": "Weryai Image Gen",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1773453583884,
-    "commit": "https://github.com/openclaw/skills/commit/b41e1ed6d9bd09aac3f33ee6464f9fc9cb0e500a"
+    "version": "1.0.11",
+    "publishedAt": 1773717756959,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1773453583884,
+      "commit": "https://github.com/openclaw/skills/commit/b41e1ed6d9bd09aac3f33ee6464f9fc9cb0e500a"
+    }
+  ]
 }

@@ -2,43 +2,48 @@
 
 const https = require('https');
 
+
+
+
+const args = process.argv.slice(2);
+if (args[0] === 'models') {
+  console.log("Check supported models here: https://www.weryai.com/api/discovery");
+  process.exit(0);
+}
+
 // Fallback to env variable if config file isn't set up yet
 let API_KEY = process.env.WERYAI_API_KEY || '';
 
 // Try reading from openclaw.json config if API_KEY is empty
-if (!API_KEY) {
-  try {
-    const configPath = path.join(os.homedir(), '.openclaw', 'openclaw.json');
-    if (fs.existsSync(configPath)) {
-      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-      if (config.weryai && config.weryai.apiKey) {
-        API_KEY = config.weryai.apiKey;
-      }
-    }
-  } catch (e) {
-    // Ignore read errors
-  }
-}
+
 
 if (!API_KEY) {
   console.error("Error: WERYAI_API_KEY is not set. Please set it in your environment or openclaw.json.");
   process.exit(1);
 }
 
-// Ensure the prompt is provided
-const prompt = process.argv.slice(2).join(' ');
+let MODEL = "WERYAI_IMAGE_2_0";
+let promptArgs = [];
+for (let i = 0; i < args.length; i++) {
+  if (args[i] === '--model' && i + 1 < args.length) {
+    MODEL = args[i + 1];
+    i++;
+  } else {
+    promptArgs.push(args[i]);
+  }
+}
+const prompt = promptArgs.join(' ');
+
 if (!prompt) {
-  console.error("Please provide a prompt. Usage: node weryai-generate.js <prompt>");
+  console.error("Please provide a prompt. Usage: node weryai-generate.js [--model <model>] <prompt>");
   process.exit(1);
 }
-
-const MODEL = "WERYAI_IMAGE_2_0";
 
 async function request(url, options, body = null, retries = 3) {
   for (let i = 0; i < retries; i++) {
     try {
       return await new Promise((resolve, reject) => {
-        const req = require('https').request(url, options, (res) => {
+        const req = https.request(url, options, (res) => {
           let data = '';
           res.on('data', chunk => data += chunk);
           res.on('end', () => {
@@ -58,7 +63,7 @@ async function request(url, options, body = null, retries = 3) {
 }
 
 async function generateImage() {
-  console.log(`Submitting task for prompt: "${prompt}"...`);
+  console.log(`Submitting task for prompt: "${prompt}" using model: ${MODEL}...`);
   
   const submitRes = await request('https://api.weryai.com/growthai/v1/generation/text-to-image', {
     method: 'POST',
@@ -72,12 +77,12 @@ async function generateImage() {
     aspect_ratio: '1:1'
   });
 
-  if (!submitRes.success) {
+  if (!submitRes.success && !submitRes.data) {
     console.error("Task submission failed:", submitRes);
     process.exit(1);
   }
 
-  const taskId = submitRes.data.task_id;
+  const taskId = submitRes.data ? submitRes.data.task_id : submitRes.task_id;
   console.log(`Task submitted successfully. Task ID: ${taskId}`);
 
   while (true) {
@@ -91,18 +96,18 @@ async function generateImage() {
       }
     });
 
-    if (!statusRes.success) {
-      console.error("Task status check failed:", statusRes);
-      process.exit(1);
-    }
-
-    const status = statusRes.data.task_status;
+    const status = statusRes.data ? statusRes.data.task_status : statusRes.task_status;
     if (status === 'succeed') {
       console.log(`\nSuccess! Image URL:`);
-      console.log(statusRes.data.images[0]);
+      const imgs = statusRes.data ? statusRes.data.images : statusRes.images;
+      if (imgs && imgs.length > 0) {
+        console.log(imgs[0]);
+      } else {
+        console.log("No image URL found in response:", JSON.stringify(statusRes));
+      }
       break;
     } else if (status === 'fail' || status === 'failed') {
-      console.error("\nTask failed.");
+      console.error("\nTask failed:", JSON.stringify(statusRes));
       process.exit(1);
     } else {
       process.stdout.write(".");
