@@ -3,11 +3,16 @@
   "slug": "funnel-analyzer",
   "displayName": "Funnel Analyzer",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1773611184573,
-    "commit": "https://github.com/openclaw/skills/commit/78191cdd1b9af248e742285114ee80d29b8ff251"
+    "version": "1.0.6",
+    "publishedAt": 1773666087478,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1773611184573,
+      "commit": "https://github.com/openclaw/skills/commit/78191cdd1b9af248e742285114ee80d29b8ff251"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1773538911991,
