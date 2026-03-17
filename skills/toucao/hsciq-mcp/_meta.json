@@ -1,0 +1,11 @@
+{
+  "owner": "toucao",
+  "slug": "hsciq-mcp",
+  "displayName": "HSCIQ MCP - 海关编码查询",
+  "latest": {
+    "version": "1.3.0",
+    "publishedAt": 1773739674570,
+    "commit": null
+  },
+  "history": []
+}
