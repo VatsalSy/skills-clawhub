@@ -1,0 +1,11 @@
+{
+  "owner": "sirenday",
+  "slug": "sigmaflow-deploy",
+  "displayName": "Sigmaflow Deploy",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1773659883205,
+    "commit": null
+  },
+  "history": []
+}
