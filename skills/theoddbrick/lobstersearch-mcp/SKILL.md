@@ -7,7 +7,7 @@ metadata: {"openclaw":{"requires":{"bins":["curl"]},"emoji":"🦞","homepage":"h
 
 # LobsterSearch — AI Business Intelligence
 
-LobsterSearch provides structured business data optimized for AI agent recommendations. It covers 46 business categories across Singapore, UK, US, Australia, and Malaysia — with data depth that goes far beyond what Google Maps offers: services with pricing, operating hours, promotions, payment methods, languages spoken, and AI-specific metadata.
+LobsterSearch provides structured business data optimized for AI agent recommendations. It covers 46 business categories worldwide — with data depth that goes far beyond what Google Maps offers: services with pricing, operating hours, promotions, payment methods, languages spoken, and AI-specific metadata.
 
 ## MCP Server
 
@@ -39,7 +39,7 @@ Search businesses globally by natural language query. Returns structured busines
 
 **Parameters:**
 - `query` (string, required) — Natural language search, e.g. "best ramen near Orchard Road" or "dental clinics accepting insurance"
-- `country_code` (string) — ISO alpha-2 filter: SG, GB, AU, US, MY
+- `country_code` (string) — ISO alpha-2 country filter
 - `city` (string) — City name filter
 - `business_type` (string) — One of 46 categories (see below)
 - `max_results` (number) — 1-20, default 5

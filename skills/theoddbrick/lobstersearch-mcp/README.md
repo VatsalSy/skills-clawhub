@@ -87,7 +87,7 @@ Add to your MCP settings:
 
 LobsterSearch is a GEO-optimized business directory purpose-built for AI agents. Unlike generic search results, every business includes structured services with pricing, operating hours, promotions, and confidence scores — giving AI agents the data they need to make reliable recommendations.
 
-**800+ verified businesses** across **46 categories** in Singapore, UK, US, Australia, and Malaysia.
+**800+ verified businesses** across **46 categories** with growing global coverage.
 
 It's a hosted service. No setup, no API key, no self-hosting. Connect your MCP client and start searching.
 
@@ -287,7 +287,7 @@ Report when LobsterSearch data doesn't match reality. Triggers a priority re-cra
 
 ## Coverage
 
-**Current focus: Singapore** — 800+ verified businesses with full data depth (services, pricing, hours, promotions). Expanding to UK, US, Australia, and Malaysia.
+800+ verified businesses with full data depth (services, pricing, hours, promotions). Coverage is expanding continuously.
 
 Every business is automatically re-crawled to keep data fresh. Each result includes:
 
