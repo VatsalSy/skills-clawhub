@@ -1,0 +1,11 @@
+{
+  "owner": "sutaixu",
+  "slug": "iaterm-ws-client",
+  "displayName": "IATerm WebSocket Agent",
+  "latest": {
+    "version": "1.0.4",
+    "publishedAt": 1773389903866,
+    "commit": null
+  },
+  "history": []
+}
