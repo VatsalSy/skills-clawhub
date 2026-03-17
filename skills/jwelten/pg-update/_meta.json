@@ -1,0 +1,11 @@
+{
+  "owner": "jwelten",
+  "slug": "pg-update",
+  "displayName": "ProxyGate Update",
+  "latest": {
+    "version": "1.0.1",
+    "publishedAt": 1773687457856,
+    "commit": null
+  },
+  "history": []
+}
