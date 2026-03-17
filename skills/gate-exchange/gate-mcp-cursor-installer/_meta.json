@@ -1,0 +1,11 @@
+{
+  "owner": "gate-exchange",
+  "slug": "gate-mcp-cursor-installer",
+  "displayName": "Gate MCP Cursor Installer",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1773364653971,
+    "commit": null
+  },
+  "history": []
+}
