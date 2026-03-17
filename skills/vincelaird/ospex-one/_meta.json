@@ -3,9 +3,15 @@
   "slug": "ospex-one",
   "displayName": "ospex-one",
   "latest": {
-    "version": "1.7.0",
-    "publishedAt": 1773462695801,
-    "commit": "https://github.com/openclaw/skills/commit/052844c8144e7a29e083320a34454d74a273773f"
+    "version": "1.7.1",
+    "publishedAt": 1773566321257,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.7.0",
+      "publishedAt": 1773462695801,
+      "commit": "https://github.com/openclaw/skills/commit/052844c8144e7a29e083320a34454d74a273773f"
+    }
+  ]
 }
