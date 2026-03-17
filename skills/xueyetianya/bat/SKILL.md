@@ -1,6 +1,8 @@
 ---
+version: "2.0.0"
 name: Bat
 description: "A cat(1) clone with wings. bat, rust, cli, command-line, git, hacktoberfest, rust. Use when you need bat capabilities. Triggers on: bat."
+author: BytesAgain
 ---
 
 # Bat
