@@ -1,6 +1,14 @@
 ---
 name: zhipu-image-gen
 description: AI text-to-image generation using Zhipu AI's GLM-Image model. Use when the user requests image generation, creating images from text descriptions, or mentions "文生图", "生成图片", "画图". Supports various image sizes and Chinese/English prompts.
+metadata:
+  openclaw:
+    requires:
+      env:
+        - ZHIPU_API_KEY
+      bins:
+        - curl
+        - jq
 ---
 
 # Zhipu Image Generator
@@ -13,21 +21,30 @@ description: AI text-to-image generation using Zhipu AI's GLM-Image model. Use w
 ~/.openclaw/workspace/skills/zhipu-image-gen/scripts/generate_image.sh -p "你的提示词"
 ```
 
-## 配置
+## 文件结构
 
-### 方式一：.env 文件（推荐）
-
-```bash
-# 创建配置文件
-cat > ~/.openclaw/workspace/skills/zhipu-image-gen/.env << 'EOF'
-ZHIPU_API_KEY=your_api_key_here
-EOF
+```
+~/.openclaw/workspace/skills/zhipu-image-gen/
+├── SKILL.md              # 本文档
+├── .env.example          # 配置模板
+└── scripts/
+    └── generate_image.sh # 图片生成脚本
 ```
 
-### 方式二：环境变量
+## 配置
+
+### 方式一：环境变量（推荐）
 
 ```bash
 export ZHIPU_API_KEY="your_api_key_here"
+```
+
+### 方式二：.env 文件
+
+```bash
+# 复制模板并填入 API Key
+cp ~/.openclaw/workspace/skills/zhipu-image-gen/.env.example ~/.openclaw/workspace/skills/zhipu-image-gen/.env
+# 编辑 .env 文件，填入你的 API Key
 ```
 
 ### 获取 API Key

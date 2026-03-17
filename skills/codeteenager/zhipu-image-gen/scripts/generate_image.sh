@@ -14,11 +14,14 @@ API_URL="https://open.bigmodel.cn/api/paas/v4/images/generations"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SKILL_DIR="$(dirname "$SCRIPT_DIR")"
 
-# Load .env file if exists (priority: skill dir .env > env var)
+# Load ZHIPU_API_KEY from .env file if exists (secure: only read the specific variable)
 ENV_FILE="$SKILL_DIR/.env"
 if [ -f "$ENV_FILE" ]; then
-    echo "Loading config from: $ENV_FILE"
-    source "$ENV_FILE"
+    # Secure read: only extract ZHIPU_API_KEY, ignore other content
+    API_KEY_FROM_ENV=$(grep -E '^ZHIPU_API_KEY=' "$ENV_FILE" 2>/dev/null | head -1 | cut -d'=' -f2- | tr -d '"' | tr -d "'")
+    if [ -n "$API_KEY_FROM_ENV" ]; then
+        export ZHIPU_API_KEY="$API_KEY_FROM_ENV"
+    fi
 fi
 
 # Check for API key

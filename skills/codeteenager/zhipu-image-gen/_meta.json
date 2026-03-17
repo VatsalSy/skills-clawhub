@@ -3,11 +3,16 @@
   "slug": "zhipu-image-gen",
   "displayName": "Zhipu Image Generator",
   "latest": {
-    "version": "1.1.0",
-    "publishedAt": 1773736063608,
-    "commit": "https://github.com/openclaw/skills/commit/d2aefad2d28fff22173ba5926e0d1b9984cfa87a"
+    "version": "1.1.1",
+    "publishedAt": 1773737572739,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.1.0",
+      "publishedAt": 1773736063608,
+      "commit": "https://github.com/openclaw/skills/commit/d2aefad2d28fff22173ba5926e0d1b9984cfa87a"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1773673258870,
