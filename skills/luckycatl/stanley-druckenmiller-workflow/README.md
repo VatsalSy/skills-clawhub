@@ -8,6 +8,13 @@ This skill is designed for Druckenmiller-inspired macro/equity thinking with a l
 - D1/D2 (first derivative / second derivative) regime logic
 - Evidence anchors and safety disclaimers
 
+Current product framing:
+- Goal: hand most repetitive monitoring work to the machine and leave the highest-value judgment to the human.
+- V1 scope: US-led macro engine + China / A-share transmission layer.
+- Honest limitation: the skill can help with first-layer macro judgment, not fully replace second-layer execution judgment.
+- Core panels and source reference: `references/core-panels-and-sources.md`
+- A-share tape design reference: `references/a-share-tape-v1_1.md`
+
 ## What This Skill Produces
 
 Depending on trigger, it can generate:
@@ -26,9 +33,95 @@ All outputs are narrative and decision-oriented (not raw JSON dumps).
 stanley-druckenmiller-workflow/
   SKILL.md
   README.md
+  references/
+    core-panels-and-sources.md
+    a-share-tape-v1_1.md
   scripts/
     market_panels.py
 ```
+
+## Data Source Fallback (updated)
+
+`market_panels.py` now has two layers:
+
+### Global / cross-asset layer
+Per symbol, default order is:
+1. finshare（默认 `first`）
+2. Yahoo chart API
+3. Stooq CSV
+4. FRED proxy mapping
+5. Local cache
+
+### A-share structure layer
+A-share internal structure now uses **AkShare** when available, mainly for:
+- 北向资金
+- Shibor / 中国国债收益率
+- 融资融券
+- 地产链 / 运输链 / 消费分层 / 信用风险代理篮子
+
+### Runtime cache scope (security fix)
+By default, `market_panels.py` now writes cache files only inside the skill directory:
+- `stanley-druckenmiller-workflow/.runtime/market-snapshots/`
+
+It no longer writes to a workspace-level `memory/` directory by default.
+
+If you explicitly want a different runtime/cache directory, set:
+
+```bash
+export STANLEY_RUNTIME_DIR=/your/explicit/runtime/path
+```
+
+If unset, the script stays confined to the skill-local runtime folder.
+
+### finshare 最小可用接入（可选）
+
+默认模式是 `first`：
+- 先走 finshare
+- finshare 失败再回退到 Yahoo / Stooq / FRED / Cache
+- 仍可用 `auto` 改回“Yahoo 优先、finshare 兜底”
+
+#### 1) 安装依赖（可选）
+
+```bash
+pip install finshare akshare
+```
+
+#### 2) 启用/关闭方式
+
+- CLI 参数（单次运行）
+
+```bash
+python3 scripts/market_panels.py --finshare-mode first
+python3 scripts/market_panels.py --finshare-mode auto
+python3 scripts/market_panels.py --finshare-mode off
+```
+
+- 环境变量（默认全局行为）
+
+```bash
+export FINSHARE_MODE=first  # 默认，优先走 finshare
+export FINSHARE_MODE=auto   # Yahoo 优先，finshare 兜底
+export FINSHARE_MODE=off    # 完全禁用 finshare
+```
+
+- FRED API Key（可选，增强宏观序列稳定性）
+
+```bash
+export FRED_API_KEY="<your_fred_api_key>"
+```
+
+> 当同时提供参数和环境变量时，以 `--finshare-mode` 为准。
+
+#### 3) 回滚方式
+
+出现兼容问题时，可直接回滚到“无 finshare”行为：
+
+```bash
+export FINSHARE_MODE=off
+python3 scripts/market_panels.py --output /tmp/stanley-panels.json
+```
+
+这会恢复为：Yahoo → Stooq → FRED → Cache，不依赖 finshare。
 
 ## Core Design Principles
 
@@ -141,6 +234,15 @@ clawhub publish ./skills/stanley-druckenmiller-workflow \
 - Start: `1.0.0`
 - Behavior changes in output contract: bump minor (`1.1.0`)
 - Trigger or schema breaking changes: bump major (`2.0.0`)
+
+## Global Macro Expansion (v2 in progress)
+
+The skill now includes global proxy panels in `scripts/market_panels.py`:
+- Global equities: FEZ, EWJ, FXI, EWH, EEM, VGK
+- Global FX: EURUSD=X, USDJPY=X, USDCNH=X
+- Global rates proxies: BNDX, BWX, EMB
+
+Mode A output contract is updated to include a Regional Scoreboard (US / Europe / Asia) and explicit cross-region coverage checks.
 
 ## Notes
 

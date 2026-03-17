@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Build dashboard-style market panels with source fallback and cache.
 
-Primary source:
-- Yahoo chart API
+Primary source (default mode):
+- finshare (controlled by --finshare-mode / FINSHARE_MODE)
 
 Fallback sources:
+- Yahoo chart API
 - Stooq daily CSV (where available)
 - FRED proxy series for selected macro symbols
+- AkShare for A-share structure / liquidity / northbound / margin panels
 - Local cache from previous successful runs
 """
 
@@ -16,24 +18,58 @@ import argparse
 import csv
 import io
 import json
+import os
 import random
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
 from copy import deepcopy
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+try:
+    import akshare as ak  # type: ignore
+except Exception:  # noqa: BLE001
+    ak = None
 
 USER_AGENT = "Mozilla/5.0 (OpenClaw stanley-druckenmiller-workflow/1.1)"
 
 SYMBOLS = {
     "rates": ["^IRX", "^FVX", "^TNX", "^TYX"],
-    "fx": ["DX-Y.NYB", "AUDJPY=X"],
-    "equities": ["^GSPC", "^IXIC", "^RUT", "^VIX", "SPY", "IWM"],
+    "fx": ["DX-Y.NYB", "AUDJPY=X", "EURUSD=X", "USDJPY=X", "USDCNH=X", "USDCNY=X"],
+    "equities": ["^GSPC", "^IXIC", "^RUT", "^VIX", "SPY", "IWM", "RSP", "SPHB", "SPLV", "UUP"],
     "credit": ["HYG", "LQD"],
     "internals": ["XHB", "ITB", "IYT", "XRT", "SMH", "KRE", "XLY", "XLP"],
     "commodities": ["CL=F", "GC=F", "HG=F"],
+    "global_equities": ["FEZ", "EWJ", "FXI", "EWH", "EEM", "VGK", "KWEB", "ASHR"],
+    "global_rates_proxy": ["BNDX", "BWX", "EMB"],
+}
+
+A_SHARE_INDEX_CODES = {
+    "sh000001": {"name": "上证指数", "yahoo": "000001.SS"},
+    "sh000300": {"name": "沪深300", "yahoo": "000300.SS"},
+    "sz399001": {"name": "深证成指", "yahoo": "399001.SZ"},
+    "sz399006": {"name": "创业板指", "yahoo": "399006.SZ"},
+    "sh000852": {"name": "中证1000", "yahoo": None},
+}
+
+HK_INDEX_SYMBOLS = {
+    "HSI": "恒生指数",
+    "HSCEI": "国企指数",
+}
+
+A_SHARE_LEADER_BASKETS = {
+    "property": ["600048", "000002", "001979"],
+    "banks_joint_stock": ["600036", "601166"],
+    "banks_big4": ["601398", "601288"],
+    "brokers": ["300059", "600030"],
+    "machinery": ["600031", "000425"],
+    "transport": ["601598", "600018", "601006"],
+    "heavy_truck": ["000338", "600166", "601633"],
+    "consumer_premium": ["600519", "000858"],
+    "consumer_mass": ["600887", "603288", "000651"],
+    "credit_sensitive": ["600048", "000002", "300059", "600030"],
 }
 
 FRED_SERIES = [
@@ -46,6 +82,19 @@ FRED_SERIES = [
     "DGS10",
     "T10Y2Y",
     "BAMLH0A0HYM2",
+    "MORTGAGE30US",
+    "HOUST",
+    "PERMIT",
+    "RSAFS",
+    "TOTALSA",
+    "PCEC96",
+    "TSIFRGHT",
+    "INDPRO",
+    "TCU",
+    "DGORDER",
+    "CP",
+    "ULCNFB",
+    "OPHNFB",
 ]
 
 # Proxy map used when Yahoo/Stooq are unavailable.
@@ -94,8 +143,11 @@ BREADTH_PROXY_UNIVERSE = [
     "LQD",
 ]
 
-WORKSPACE_ROOT = Path(__file__).resolve().parents[3]
-CACHE_PATH = WORKSPACE_ROOT / "memory" / "market-snapshots" / "market-panels-cache.json"
+SKILL_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_RUNTIME_DIR = SKILL_ROOT / ".runtime"
+RUNTIME_DIR = Path(os.getenv("STANLEY_RUNTIME_DIR", str(DEFAULT_RUNTIME_DIR))).expanduser().resolve()
+CACHE_PATH = RUNTIME_DIR / "market-snapshots" / "market-panels-cache.json"
+CN_FLOW_HISTORY_PATH = RUNTIME_DIR / "market-snapshots" / "a-share-flow-history.json"
 CACHE_FRESH_HOURS = 96
 CACHE_STALE_HOURS = 336
 
@@ -175,6 +227,88 @@ def yahoo_series(symbol: str, range_: str = "1y", interval: str = "1d") -> dict:
         return {"ok": False, "symbol": symbol, "url": url, "error": str(exc)}
 
 
+def finshare_series(symbol: str) -> dict:
+    """Fetch series from finshare when available.
+
+    finshare is optional. This function fails closed with structured errors when
+    package/API is unavailable for the target symbol.
+    """
+    try:
+        import finshare as fs  # type: ignore
+    except Exception as exc:  # noqa: BLE001
+        return {"ok": False, "symbol": symbol, "error": f"finshare unavailable: {exc}"}
+
+    candidates = [symbol]
+    if symbol.startswith("^"):
+        candidates.append(symbol[1:])
+    if symbol.endswith("=X"):
+        candidates.append(symbol.replace("=X", ""))
+    if symbol.endswith(".NYB"):
+        candidates.append(symbol.split(".")[0])
+
+    end_dt = datetime.now(timezone.utc).date()
+    start_dt = end_dt - timedelta(days=420)
+
+    last_err: str | None = None
+    for code in dict.fromkeys(candidates):
+        try:
+            df = fs.get_historical_data(code, start=start_dt.isoformat(), end=end_dt.isoformat())
+            if df is None or len(df) < 2:
+                last_err = f"insufficient data for {code}"
+                continue
+
+            close_col = None
+            for c in ("close_price", "close", "Close", "收盘"):
+                if c in df.columns:
+                    close_col = c
+                    break
+            if close_col is None:
+                last_err = f"close column missing for {code}"
+                continue
+
+            series = [float(v) for v in df[close_col].tolist() if v is not None]
+            if len(series) < 2:
+                last_err = f"insufficient close series for {code}"
+                continue
+
+            date_col = None
+            for c in ("trade_date", "date", "Date", "datetime", "time"):
+                if c in df.columns:
+                    date_col = c
+                    break
+
+            latest_ts = int(datetime.now(timezone.utc).timestamp())
+            if date_col is not None:
+                raw_date = str(df[date_col].iloc[-1])
+                try:
+                    parsed = datetime.fromisoformat(raw_date.replace("Z", "+00:00"))
+                    if parsed.tzinfo is None:
+                        parsed = parsed.replace(tzinfo=timezone.utc)
+                    latest_ts = int(parsed.timestamp())
+                except Exception:
+                    pass
+
+            chg_1d, chg_5d, chg_20d = compute_changes(list(enumerate(series, start=1)))
+            return {
+                "ok": True,
+                "symbol": symbol,
+                "url": "finshare://get_historical_data",
+                "source": "finshare",
+                "asof_utc": datetime.fromtimestamp(latest_ts, tz=timezone.utc).isoformat(),
+                "latest": series[-1],
+                "chg_1d_pct": chg_1d,
+                "chg_5d_pct": chg_5d,
+                "chg_20d_pct": chg_20d,
+                "series_close": series,
+                "finshare_code": code,
+            }
+        except Exception as exc:  # noqa: BLE001
+            last_err = str(exc)
+            continue
+
+    return {"ok": False, "symbol": symbol, "error": last_err or "finshare failed"}
+
+
 def stooq_series(symbol: str) -> dict:
     stooq_symbol = STOOQ_MAP.get(symbol)
     if not stooq_symbol:
@@ -220,6 +354,44 @@ def stooq_series(symbol: str) -> dict:
 
 
 def fred_points(series_id: str) -> list[tuple[int, float]]:
+    """Fetch FRED series points.
+
+    Preference order:
+    1) FRED JSON API (when FRED_API_KEY is present)
+    2) Public fredgraph CSV fallback (no key)
+    """
+    api_key = os.getenv("FRED_API_KEY", "").strip()
+    if api_key:
+        try:
+            params = urllib.parse.urlencode(
+                {
+                    "series_id": series_id,
+                    "api_key": api_key,
+                    "file_type": "json",
+                    "sort_order": "asc",
+                }
+            )
+            url = f"https://api.stlouisfed.org/fred/series/observations?{params}"
+            payload = json.loads(http_get(url))
+            observations = payload.get("observations", [])
+            out: list[tuple[int, float]] = []
+            for row in observations:
+                raw_date = str(row.get("date", "")).strip()
+                raw_val = str(row.get("value", "")).strip()
+                if not raw_date or not raw_val or raw_val == ".":
+                    continue
+                try:
+                    dt = datetime.fromisoformat(raw_date).replace(tzinfo=timezone.utc)
+                    val = float(raw_val)
+                except ValueError:
+                    continue
+                out.append((int(dt.timestamp()), val))
+            if out:
+                return out
+        except Exception:
+            # fall through to public CSV path
+            pass
+
     url = f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}"
     text = http_get(url)
     reader = csv.DictReader(io.StringIO(text))
@@ -372,13 +544,37 @@ def save_cache(flat: dict[str, dict]) -> None:
     CACHE_PATH.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
 
 
-def fetch_symbol_with_fallback(symbol: str, cache: dict[str, dict]) -> dict:
+def resolve_finshare_mode(finshare_mode: str | None) -> str:
+    mode = (finshare_mode or os.getenv("FINSHARE_MODE") or "first").strip().lower()
+    if mode not in {"first", "auto", "off"}:
+        return "first"
+    return mode
+
+
+def fetch_symbol_with_fallback(symbol: str, cache: dict[str, dict], finshare_mode: str = "first") -> dict:
     attempts: list[str] = []
+
+    if finshare_mode == "first":
+        alt_finshare = finshare_series(symbol)
+        if alt_finshare.get("ok"):
+            alt_finshare["fallback_chain"] = attempts
+            return alt_finshare
+        attempts.append(f"finshare:{alt_finshare.get('error', 'unknown')}" )
 
     primary = yahoo_series(symbol)
     if primary.get("ok"):
+        primary["fallback_chain"] = attempts
         return primary
     attempts.append(f"yahoo:{primary.get('error', 'unknown')}" )
+
+    if finshare_mode == "auto":
+        alt_finshare = finshare_series(symbol)
+        if alt_finshare.get("ok"):
+            alt_finshare["fallback_chain"] = attempts
+            return alt_finshare
+        attempts.append(f"finshare:{alt_finshare.get('error', 'unknown')}" )
+    elif finshare_mode == "off":
+        attempts.append("finshare:disabled")
 
     alt_stooq = stooq_series(symbol)
     if alt_stooq.get("ok"):
@@ -490,18 +686,219 @@ def calc_breadth_proxy(flat: dict[str, dict]) -> dict:
     }
 
 
-def build_snapshot(pause_s: float = 0.25) -> dict:
+def _to_iso_date(value) -> str:
+    try:
+        if hasattr(value, "isoformat"):
+            return value.isoformat()
+    except Exception:
+        pass
+    return str(value)
+
+
+def _to_float(value) -> float | None:
+    try:
+        if value is None or value == "":
+            return None
+        return float(value)
+    except Exception:
+        return None
+
+
+def akshare_stock_hist_snapshot(symbol: str, days: int = 40) -> dict:
+    if ak is None:
+        return {"ok": False, "symbol": symbol, "error": "akshare unavailable"}
+    end_date = datetime.now().strftime("%Y%m%d")
+    start_date = (datetime.now() - timedelta(days=days * 3)).strftime("%Y%m%d")
+    try:
+        df = ak.stock_zh_a_hist(symbol=symbol, period="daily", start_date=start_date, end_date=end_date, adjust="qfq")
+        if df is None or len(df) < 2:
+            return {"ok": False, "symbol": symbol, "error": "insufficient akshare history"}
+        points: list[tuple[int, float]] = []
+        turnover = None
+        for _, row in df.iterrows():
+            raw_date = row.get("日期")
+            close_val = _to_float(row.get("收盘"))
+            if close_val is None:
+                continue
+            try:
+                dt = datetime.fromisoformat(str(raw_date)).replace(tzinfo=timezone.utc)
+            except Exception:
+                continue
+            points.append((int(dt.timestamp()), close_val))
+            turnover = _to_float(row.get("换手率"))
+        if len(points) < 2:
+            return {"ok": False, "symbol": symbol, "error": "insufficient akshare close points"}
+        latest_ts, latest = points[-1]
+        chg_1d, chg_5d, chg_20d = compute_changes(points)
+        return {
+            "ok": True,
+            "symbol": symbol,
+            "source": "akshare",
+            "asof_utc": datetime.fromtimestamp(latest_ts, tz=timezone.utc).isoformat(),
+            "latest": latest,
+            "chg_1d_pct": chg_1d,
+            "chg_5d_pct": chg_5d,
+            "chg_20d_pct": chg_20d,
+            "turnover_pct": turnover,
+            "series_close": [v for _, v in points],
+        }
+    except Exception as exc:  # noqa: BLE001
+        return {"ok": False, "symbol": symbol, "error": str(exc)}
+
+
+def akshare_basket_snapshot(name: str, symbols: list[str]) -> dict:
+    members = []
+    for symbol in symbols:
+        snap = akshare_stock_hist_snapshot(symbol)
+        if snap.get("ok"):
+            members.append(snap)
+    if not members:
+        return {"ok": False, "name": name, "symbols": symbols, "error": "no basket members available"}
+
+    def avg(field: str) -> float | None:
+        vals = [m.get(field) for m in members if m.get(field) is not None]
+        if not vals:
+            return None
+        return sum(vals) / len(vals)
+
+    return {
+        "ok": True,
+        "name": name,
+        "symbols": symbols,
+        "available": [m["symbol"] for m in members],
+        "sample_size": len(members),
+        "chg_1d_pct": avg("chg_1d_pct"),
+        "chg_5d_pct": avg("chg_5d_pct"),
+        "chg_20d_pct": avg("chg_20d_pct"),
+        "avg_turnover_pct": avg("turnover_pct"),
+        "asof_utc": members[-1].get("asof_utc"),
+    }
+
+
+def akshare_northbound_snapshot() -> dict:
+    if ak is None:
+        return {"ok": False, "error": "akshare unavailable"}
+    try:
+        df = ak.stock_hsgt_fund_flow_summary_em()
+        if df is None or df.empty:
+            return {"ok": False, "error": "empty northbound frame"}
+        north = df[df["资金方向"] == "北向"].copy()
+        if north.empty:
+            return {"ok": False, "error": "no northbound rows"}
+        latest_date = north["交易日"].max()
+        latest = north[north["交易日"] == latest_date]
+        return {
+            "ok": True,
+            "date": _to_iso_date(latest_date),
+            "成交净买额": float(latest["成交净买额"].fillna(0).sum()),
+            "资金净流入": float(latest["资金净流入"].fillna(0).sum()),
+            "上涨数": int(latest["上涨数"].fillna(0).sum()),
+            "下跌数": int(latest["下跌数"].fillna(0).sum()),
+            "rows": latest[["板块", "相关指数", "指数涨跌幅", "成交净买额", "资金净流入"]].to_dict(orient="records"),
+            "source": "akshare",
+        }
+    except Exception as exc:  # noqa: BLE001
+        return {"ok": False, "error": str(exc)}
+
+
+def akshare_liquidity_snapshot() -> dict:
+    if ak is None:
+        return {"ok": False, "error": "akshare unavailable"}
+    out: dict = {"ok": True, "source": "akshare"}
+    try:
+        shibor = ak.macro_china_shibor_all()
+        if shibor is not None and not shibor.empty:
+            row = shibor.iloc[-1]
+            out["shibor"] = {
+                "date": _to_iso_date(row.get("日期")),
+                "1W": _to_float(row.get("1W-定价")),
+                "1W_change_bp": _to_float(row.get("1W-涨跌幅")),
+                "O/N": _to_float(row.get("O/N-定价")),
+            }
+    except Exception as exc:  # noqa: BLE001
+        out["shibor_error"] = str(exc)
+    try:
+        rates = ak.bond_zh_us_rate()
+        if rates is not None and not rates.empty:
+            row = rates.iloc[-1]
+            out["rates"] = {
+                "date": _to_iso_date(row.get("日期")),
+                "cn_2y": _to_float(row.get("中国国债收益率2年")),
+                "cn_10y": _to_float(row.get("中国国债收益率10年")),
+                "cn_30y": _to_float(row.get("中国国债收益率30年")),
+                "cn_10y_2y": _to_float(row.get("中国国债收益率10年-2年")),
+            }
+    except Exception as exc:  # noqa: BLE001
+        out["rates_error"] = str(exc)
+    return out
+
+
+def akshare_margin_snapshot() -> dict:
+    if ak is None:
+        return {"ok": False, "error": "akshare unavailable"}
+
+    def _latest_with_delta(df):
+        if df is None or len(df) < 1:
+            return None
+        latest = df.iloc[-1]
+        prev = df.iloc[-2] if len(df) >= 2 else None
+        latest_balance = _to_float(latest.get("融资余额"))
+        prev_balance = _to_float(prev.get("融资余额")) if prev is not None else None
+        return {
+            "date": _to_iso_date(latest.get("日期")),
+            "融资买入额": _to_float(latest.get("融资买入额")),
+            "融资余额": latest_balance,
+            "融资融券余额": _to_float(latest.get("融资融券余额")),
+            "融资余额变化": (latest_balance - prev_balance) if latest_balance is not None and prev_balance is not None else None,
+        }
+
+    out: dict = {"ok": True, "source": "akshare"}
+    try:
+        out["sh"] = _latest_with_delta(ak.macro_china_market_margin_sh())
+    except Exception as exc:  # noqa: BLE001
+        out["sh_error"] = str(exc)
+    try:
+        out["sz"] = _latest_with_delta(ak.macro_china_market_margin_sz())
+    except Exception as exc:  # noqa: BLE001
+        out["sz_error"] = str(exc)
+    return out
+
+
+def akshare_a_share_structure_snapshot() -> dict:
+    if ak is None:
+        return {"ok": False, "error": "akshare unavailable"}
+    baskets = {name: akshare_basket_snapshot(name, symbols) for name, symbols in A_SHARE_LEADER_BASKETS.items()}
+    premium = baskets.get("consumer_premium", {})
+    mass = baskets.get("consumer_mass", {})
+    premium_minus_mass = None
+    if premium.get("ok") and mass.get("ok") and premium.get("chg_1d_pct") is not None and mass.get("chg_1d_pct") is not None:
+        premium_minus_mass = premium["chg_1d_pct"] - mass["chg_1d_pct"]
+    return {
+        "ok": any(v.get("ok") for v in baskets.values()),
+        "source": "akshare",
+        "baskets": baskets,
+        "derived": {
+            "premium_minus_mass_1d_pct": premium_minus_mass,
+        },
+    }
+
+
+def build_snapshot(pause_s: float = 0.25, finshare_mode: str = "first") -> dict:
+    finshare_mode = resolve_finshare_mode(finshare_mode)
     out: dict = {
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "source": {
-            "primary": "yahoo_chart_api_public",
-            "fallbacks": ["stooq_csv_public", "fred_proxy_public", "local_cache"],
+            "primary": "finshare" if finshare_mode == "first" else "yahoo_chart_api_public",
+            "fallbacks": ["yahoo_chart_api_public", "finshare(optional)", "stooq_csv_public", "fred_proxy_public", "local_cache"],
+            "finshare_mode": finshare_mode,
             "fred": "fredgraph_csv_public",
+            "akshare": "enabled" if ak is not None else "unavailable",
             "cache_path": str(CACHE_PATH),
         },
         "panels": {},
         "ratios": {},
         "fred": {},
+        "a_share": {},
         "derived": {},
     }
 
@@ -511,7 +908,7 @@ def build_snapshot(pause_s: float = 0.25) -> dict:
     for panel, symbols in SYMBOLS.items():
         bucket = {}
         for sym in symbols:
-            bucket[sym] = fetch_symbol_with_fallback(sym, cache)
+            bucket[sym] = fetch_symbol_with_fallback(sym, cache, finshare_mode=finshare_mode)
             flat[sym] = bucket[sym]
             time.sleep(pause_s)
         out["panels"][panel] = bucket
@@ -523,6 +920,10 @@ def build_snapshot(pause_s: float = 0.25) -> dict:
         ("SMH_SPY", "SMH", "SPY"),
         ("KRE_SPY", "KRE", "SPY"),
         ("COPPER_GOLD", "HG=F", "GC=F"),
+        ("EEM_SPY", "EEM", "SPY"),
+        ("FEZ_SPY", "FEZ", "SPY"),
+        ("EWJ_SPY", "EWJ", "SPY"),
+        ("FXI_SPY", "FXI", "SPY"),
     ]
 
     for name, a, b in ratio_defs:
@@ -534,6 +935,13 @@ def build_snapshot(pause_s: float = 0.25) -> dict:
             out["ratios"][name] = {"ok": True, "a": a, "b": b, "value": va / vb}
 
     out["panels"]["breadth_proxy"] = calc_breadth_proxy(flat)
+
+    out["a_share"] = {
+        "internal_structure": akshare_a_share_structure_snapshot(),
+        "northbound": akshare_northbound_snapshot(),
+        "liquidity": akshare_liquidity_snapshot(),
+        "margin": akshare_margin_snapshot(),
+    }
 
     # Persist successful series for future fallback before stripping output payload.
     save_cache(flat)
@@ -567,9 +975,15 @@ def main() -> int:
     parser.add_argument("--pretty", action="store_true", help="Pretty-print JSON")
     parser.add_argument("--output", help="Write output JSON to file path")
     parser.add_argument("--pause", type=float, default=0.25, help="Pause seconds between symbol calls")
+    parser.add_argument(
+        "--finshare-mode",
+        choices=["first", "auto", "off"],
+        default=None,
+        help="finshare adapter mode: first (prefer finshare), auto (fallback after Yahoo), or off",
+    )
     args = parser.parse_args()
 
-    data = build_snapshot(pause_s=args.pause)
+    data = build_snapshot(pause_s=args.pause, finshare_mode=args.finshare_mode)
     text = json.dumps(data, ensure_ascii=False, indent=2 if args.pretty else None)
 
     if args.output:
