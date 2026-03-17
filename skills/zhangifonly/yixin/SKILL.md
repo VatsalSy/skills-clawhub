@@ -1,34 +1,26 @@
 ---
-name: "Yixin"
-version: "0.1.0"
-description: "易信 AI 助手 - 智能化你的工作流"
-tags: ["general", "app", "integration"]
+name: "易信"
+version: "1.0.0"
+description: "易信（已停运）- 网易电信合作社交应用历史存档"
+tags: ["social", "archived", "netease"]
 author: "ClawSkills Team"
-status: "coming_soon"
-category: "general"
+category: "social"
+status: "archived"
 ---
 
-# Yixin Skill
+# 易信（已停运）
 
-🚧 **开发中 / Coming Soon**
+易信已停止运营或已边缘化，本技能作为历史存档保留。
 
-Yixin 是一个专注于应用集成的平台。本 Skill 将为 OpenClaw 用户提供智能化的集成体验。
+## 产品简介
 
-## 计划功能
+易信曾是中国互联网生态中的一款产品，现已停止服务。
 
-- 机器学习增强
-- 智能决策支持
-- 自动化操作流程
+## 替代方案
 
-## 应用场景
-
-适用于需要应用集成自动化和智能化的场景。
-
-## 开发状态
-
-当前版本为占位版本，完整功能正在开发中。
+如果你需要类似功能，可以考虑当前主流的同类产品。
 
 ---
 
-**最后更新**: 2026-03-08
-**分类**: 应用集成
+**最后更新**: 2026-03-16
+**状态**: 已存档
