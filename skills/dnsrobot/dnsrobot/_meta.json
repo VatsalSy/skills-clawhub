@@ -1,0 +1,11 @@
+{
+  "owner": "dnsrobot",
+  "slug": "dnsrobot",
+  "displayName": "DNS Robot",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1773566414127,
+    "commit": null
+  },
+  "history": []
+}
