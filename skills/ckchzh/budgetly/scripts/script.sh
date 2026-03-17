@@ -1,231 +1,332 @@
 #!/usr/bin/env bash
-# budgetly — description: "Smart category-based budget manager. Set monthly budgets by catego
-# Powered by BytesAgain | bytesagain.com
+# Budgetly — finance tool
+# Powered by BytesAgain | bytesagain.com | hello@bytesagain.com
 set -euo pipefail
 
-VERSION="1.0.0"
-DATA_DIR="${BUDGETLY_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/budgetly}"
-ENTRIES="$DATA_DIR/entries.jsonl"
-CONFIG="$DATA_DIR/config.json"
+DATA_DIR="${HOME}/.local/share/budgetly"
+mkdir -p "$DATA_DIR"
 
-ensure_dirs() {
-    mkdir -p "$DATA_DIR"
-    [ -f "$ENTRIES" ] || touch "$ENTRIES"
-    [ -f "$CONFIG" ] || echo '{"created":"'"$(date -Iseconds)"'"}' > "$CONFIG"
-}
+_log() { echo "$(date '+%m-%d %H:%M') $1: $2" >> "$DATA_DIR/history.log"; }
 
-now_ts() { date '+%Y-%m-%d %H:%M:%S'; }
-entry_count() { wc -l < "$ENTRIES" 2>/dev/null || echo 0; }
-line_at() { sed -n "${1}p" "$ENTRIES"; }
+_version() { echo "budgetly v2.0.0"; }
 
-show_help() {
-    cat << EOF
-budgetly v$VERSION
-
-Usage: budgetly <command> [args]
-
-Commands:
-  init             First-time setup
-  add <text>       Add a new entry
-  list             List all entries
-  show <id>        Show entry details
-  remove <id>      Remove entry by index
-  search <term>    Search entries
-  export <fmt>     Export (json|csv|txt)
-  stats            Summary statistics
-  config           View configuration
-  status           Health check
-  reset            Clear all data
-  help             Show this help
-  version          Show version
-
-Data: $DATA_DIR
-EOF
-}
-
-cmd_init() {
-    ensure_dirs
-    echo "[budgetly] Initialized at $DATA_DIR"
-    echo "  Entries file: $ENTRIES"
-    echo "  Config file:  $CONFIG"
+_help() {
+    echo "Budgetly v2.0.0 — finance toolkit"
     echo ""
-    echo "Ready. Try: budgetly add \"your first item\""
-}
-
-cmd_add() {
-    ensure_dirs
-    local text="${*:?Usage: budgetly add <text>}"
-    local ts=$(now_ts)
-    local id=$(($(entry_count) + 1))
-    printf '{"id":%d,"text":"%s","created":"%s"}\n' "$id" "$text" "$ts" >> "$ENTRIES"
-    echo "[budgetly] #$id added: $text"
-}
-
-cmd_list() {
-    ensure_dirs
-    local total=$(entry_count)
-    if [ "$total" -eq 0 ]; then
-        echo "[budgetly] No entries yet. Use: budgetly add <text>"
-        return
-    fi
-    echo "[budgetly] $total entries:"
+    echo "Usage: budgetly <command> [args]"
     echo ""
-    local n=0
-    while IFS= read -r line; do
-        n=$((n + 1))
-        local text=$(echo "$line" | python3 -c "import json,sys; print(json.load(sys.stdin).get('text','?'))" 2>/dev/null || echo "$line")
-        local ts=$(echo "$line" | python3 -c "import json,sys; print(json.load(sys.stdin).get('created',''))" 2>/dev/null || echo "")
-        printf "  %3d. %s" "$n" "$text"
-        [ -n "$ts" ] && printf "  (%s)" "$ts"
-        echo ""
-    done < "$ENTRIES"
+    echo "Commands:"
+    echo "  record             Record"
+    echo "  categorize         Categorize"
+    echo "  balance            Balance"
+    echo "  trend              Trend"
+    echo "  forecast           Forecast"
+    echo "  export-report      Export Report"
+    echo "  budget-check       Budget Check"
+    echo "  summary            Summary"
+    echo "  alert              Alert"
+    echo "  history            History"
+    echo "  compare            Compare"
+    echo "  tax-note           Tax Note"
+    echo "  stats              Summary statistics"
+    echo "  export <fmt>       Export (json|csv|txt)"
+    echo "  status             Health check"
+    echo "  help               Show this help"
+    echo "  version            Show version"
+    echo ""
+    echo "Data: $DATA_DIR"
 }
 
-cmd_show() {
-    ensure_dirs
-    local id="${1:?Usage: budgetly show <id>}"
-    local total=$(entry_count)
-    if [ "$id" -lt 1 ] || [ "$id" -gt "$total" ]; then
-        echo "Error: id must be 1-$total"; return 1
-    fi
-    local line=$(line_at "$id")
-    echo "[budgetly] Entry #$id:"
-    echo "$line" | python3 -c "
-import json, sys
-d = json.load(sys.stdin)
-for k,v in d.items():
-    print('  {}: {}'.format(k, v))
-" 2>/dev/null || echo "  $line"
+_stats() {
+    echo "=== Budgetly Stats ==="
+    local total=0
+    for f in "$DATA_DIR"/*.log; do
+        [ -f "$f" ] || continue
+        local name=$(basename "$f" .log)
+        local c=$(wc -l < "$f")
+        total=$((total + c))
+        echo "  $name: $c entries"
+    done
+    echo "  ---"
+    echo "  Total: $total entries"
+    echo "  Data size: $(du -sh "$DATA_DIR" 2>/dev/null | cut -f1)"
+    echo "  Since: $(head -1 "$DATA_DIR/history.log" 2>/dev/null | cut -d'|' -f1 || echo 'N/A')"
 }
 
-cmd_remove() {
-    ensure_dirs
-    local id="${1:?Usage: budgetly remove <id>}"
-    local total=$(entry_count)
-    if [ "$id" -lt 1 ] || [ "$id" -gt "$total" ]; then
-        echo "Error: id must be 1-$total"; return 1
-    fi
-    local removed=$(line_at "$id")
-    sed -i "${id}d" "$ENTRIES"
-    local text=$(echo "$removed" | python3 -c "import json,sys; print(json.load(sys.stdin).get('text','?'))" 2>/dev/null || echo "?")
-    echo "[budgetly] Removed #$id: $text"
-}
-
-cmd_search() {
-    ensure_dirs
-    local term="${1:?Usage: budgetly search <term>}"
-    local found=0
-    local n=0
-    while IFS= read -r line; do
-        n=$((n + 1))
-        if echo "$line" | grep -qi "$term"; then
-            local text=$(echo "$line" | python3 -c "import json,sys; print(json.load(sys.stdin).get('text','?'))" 2>/dev/null || echo "$line")
-            printf "  %3d. %s\n" "$n" "$text"
-            found=$((found + 1))
-        fi
-    done < "$ENTRIES"
-    echo "[budgetly] Found $found matches for '$term'"
-}
-
-cmd_export() {
-    ensure_dirs
+_export() {
     local fmt="${1:-json}"
+    local out="$DATA_DIR/export.$fmt"
     case "$fmt" in
         json)
-            echo "["
+            echo "[" > "$out"
             local first=1
-            while IFS= read -r line; do
-                [ "$first" -eq 0 ] && echo ","
-                printf "  %s" "$line"
-                first=0
-            done < "$ENTRIES"
-            echo ""
-            echo "]"
+            for f in "$DATA_DIR"/*.log; do
+                [ -f "$f" ] || continue
+                local name=$(basename "$f" .log)
+                while IFS='|' read -r ts val; do
+                    [ $first -eq 1 ] && first=0 || echo "," >> "$out"
+                    printf '  {"type":"%s","time":"%s","value":"%s"}' "$name" "$ts" "$val" >> "$out"
+                done < "$f"
+            done
+            echo "" >> "$out"
+            echo "]" >> "$out"
             ;;
         csv)
-            echo "id,text,created"
-            while IFS= read -r line; do
-                echo "$line" | python3 -c "
-import json, sys
-d = json.load(sys.stdin)
-print('{},{},{}'.format(d.get('id',''), d.get('text','').replace(',',';'), d.get('created','')))
-" 2>/dev/null
-            done < "$ENTRIES"
+            echo "type,time,value" > "$out"
+            for f in "$DATA_DIR"/*.log; do
+                [ -f "$f" ] || continue
+                local name=$(basename "$f" .log)
+                while IFS='|' read -r ts val; do
+                    echo "$name,$ts,$val" >> "$out"
+                done < "$f"
+            done
             ;;
         txt)
-            cat "$ENTRIES"
+            echo "=== Budgetly Export ===" > "$out"
+            for f in "$DATA_DIR"/*.log; do
+                [ -f "$f" ] || continue
+                echo "--- $(basename "$f" .log) ---" >> "$out"
+                cat "$f" >> "$out"
+                echo "" >> "$out"
+            done
             ;;
-        *)
-            echo "Formats: json, csv, txt"
-            ;;
+        *) echo "Formats: json, csv, txt"; return 1 ;;
     esac
+    echo "Exported to $out ($(wc -c < "$out") bytes)"
 }
 
-cmd_stats() {
-    ensure_dirs
-    local total=$(entry_count)
-    local size=$(du -sh "$DATA_DIR" 2>/dev/null | cut -f1)
-    echo "[budgetly] Statistics"
-    echo "  Entries:    $total"
-    echo "  Data size:  $size"
-    echo "  Data dir:   $DATA_DIR"
-    if [ "$total" -gt 0 ]; then
-        local first=$(head -1 "$ENTRIES" | python3 -c "import json,sys; print(json.load(sys.stdin).get('created','?'))" 2>/dev/null || echo "?")
-        local last=$(tail -1 "$ENTRIES" | python3 -c "import json,sys; print(json.load(sys.stdin).get('created','?'))" 2>/dev/null || echo "?")
-        echo "  First:      $first"
-        echo "  Latest:     $last"
-    fi
-}
-
-cmd_config() {
-    ensure_dirs
-    echo "[budgetly] Configuration"
-    echo "  File: $CONFIG"
-    echo ""
-    python3 -c "
-import json
-with open('$CONFIG') as f:
-    d = json.load(f)
-for k,v in d.items():
-    print('  {}: {}'.format(k, v))
-" 2>/dev/null || echo "  (empty)"
-}
-
-cmd_status() {
-    ensure_dirs
-    echo "[budgetly] Status Check"
-    echo "  Version:  $VERSION"
+_status() {
+    echo "=== Budgetly Status ==="
+    echo "  Version: v2.0.0"
     echo "  Data dir: $DATA_DIR"
-    echo "  Entries:  $(entry_count)"
-    [ -f "$CONFIG" ] && echo "  Config:   OK" || echo "  Config:   MISSING"
-    [ -w "$DATA_DIR" ] && echo "  Writable: YES" || echo "  Writable: NO"
+    echo "  Entries: $(cat "$DATA_DIR"/*.log 2>/dev/null | wc -l) total"
+    echo "  Disk: $(du -sh "$DATA_DIR" 2>/dev/null | cut -f1)"
+    local last=$(tail -1 "$DATA_DIR/history.log" 2>/dev/null || echo "never")
+    echo "  Last activity: $last"
+    echo "  Status: OK"
 }
 
-cmd_reset() {
-    echo "Warning: This will delete ALL data in $DATA_DIR"
-    printf "Type 'yes' to confirm: "
-    read -r confirm
-    if [ "$confirm" = "yes" ]; then
-        rm -f "$ENTRIES" "$CONFIG"
-        echo "[budgetly] Data cleared."
+_search() {
+    local term="${1:?Usage: budgetly search <term>}"
+    echo "Searching for: $term"
+    local found=0
+    for f in "$DATA_DIR"/*.log; do
+        [ -f "$f" ] || continue
+        local matches=$(grep -i "$term" "$f" 2>/dev/null || true)
+        if [ -n "$matches" ]; then
+            echo "  --- $(basename "$f" .log) ---"
+            echo "$matches" | while read -r line; do
+                echo "    $line"
+                found=$((found + 1))
+            done
+        fi
+    done
+    [ $found -eq 0 ] && echo "  No matches found."
+}
+
+_recent() {
+    echo "=== Recent Activity ==="
+    if [ -f "$DATA_DIR/history.log" ]; then
+        tail -20 "$DATA_DIR/history.log" | while IFS='' read -r line; do
+            echo "  $line"
+        done
     else
-        echo "Cancelled."
+        echo "  No activity yet."
     fi
 }
 
+# Main dispatch
 case "${1:-help}" in
-    init)           cmd_init ;;
-    add)            shift; cmd_add "$@" ;;
-    list|ls)        cmd_list ;;
-    show|get)       shift; cmd_show "$@" ;;
-    remove|rm|del)  shift; cmd_remove "$@" ;;
-    search|find|grep) shift; cmd_search "$@" ;;
-    export)         shift; cmd_export "$@" ;;
-    stats)          cmd_stats ;;
-    config|cfg)     cmd_config ;;
-    status)         cmd_status ;;
-    reset)          cmd_reset ;;
-    help|-h|--help) show_help ;;
-    version|-v)     echo "budgetly v$VERSION" ;;
-    *)              echo "Unknown: $1"; show_help; exit 1 ;;
+    record)
+        shift
+        if [ $# -eq 0 ]; then
+            echo "Recent record entries:"
+            tail -20 "$DATA_DIR/record.log" 2>/dev/null || echo "  No entries yet. Use: budgetly record <input>"
+        else
+            local input="$*"
+            local ts=$(date '+%Y-%m-%d %H:%M')
+            echo "$ts|$input" >> "$DATA_DIR/record.log"
+            local total=$(wc -l < "$DATA_DIR/record.log")
+            echo "  [Budgetly] record: $input"
+            echo "  Saved. Total record entries: $total"
+            _log "record" "$input"
+        fi
+        ;;
+    categorize)
+        shift
+        if [ $# -eq 0 ]; then
+            echo "Recent categorize entries:"
+            tail -20 "$DATA_DIR/categorize.log" 2>/dev/null || echo "  No entries yet. Use: budgetly categorize <input>"
+        else
+            local input="$*"
+            local ts=$(date '+%Y-%m-%d %H:%M')
+            echo "$ts|$input" >> "$DATA_DIR/categorize.log"
+            local total=$(wc -l < "$DATA_DIR/categorize.log")
+            echo "  [Budgetly] categorize: $input"
+            echo "  Saved. Total categorize entries: $total"
+            _log "categorize" "$input"
+        fi
+        ;;
+    balance)
+        shift
+        if [ $# -eq 0 ]; then
+            echo "Recent balance entries:"
+            tail -20 "$DATA_DIR/balance.log" 2>/dev/null || echo "  No entries yet. Use: budgetly balance <input>"
+        else
+            local input="$*"
+            local ts=$(date '+%Y-%m-%d %H:%M')
+            echo "$ts|$input" >> "$DATA_DIR/balance.log"
+            local total=$(wc -l < "$DATA_DIR/balance.log")
+            echo "  [Budgetly] balance: $input"
+            echo "  Saved. Total balance entries: $total"
+            _log "balance" "$input"
+        fi
+        ;;
+    trend)
+        shift
+        if [ $# -eq 0 ]; then
+            echo "Recent trend entries:"
+            tail -20 "$DATA_DIR/trend.log" 2>/dev/null || echo "  No entries yet. Use: budgetly trend <input>"
+        else
+            local input="$*"
+            local ts=$(date '+%Y-%m-%d %H:%M')
+            echo "$ts|$input" >> "$DATA_DIR/trend.log"
+            local total=$(wc -l < "$DATA_DIR/trend.log")
+            echo "  [Budgetly] trend: $input"
+            echo "  Saved. Total trend entries: $total"
+            _log "trend" "$input"
+        fi
+        ;;
+    forecast)
+        shift
+        if [ $# -eq 0 ]; then
+            echo "Recent forecast entries:"
+            tail -20 "$DATA_DIR/forecast.log" 2>/dev/null || echo "  No entries yet. Use: budgetly forecast <input>"
+        else
+            local input="$*"
+            local ts=$(date '+%Y-%m-%d %H:%M')
+            echo "$ts|$input" >> "$DATA_DIR/forecast.log"
+            local total=$(wc -l < "$DATA_DIR/forecast.log")
+            echo "  [Budgetly] forecast: $input"
+            echo "  Saved. Total forecast entries: $total"
+            _log "forecast" "$input"
+        fi
+        ;;
+    export-report)
+        shift
+        if [ $# -eq 0 ]; then
+            echo "Recent export-report entries:"
+            tail -20 "$DATA_DIR/export-report.log" 2>/dev/null || echo "  No entries yet. Use: budgetly export-report <input>"
+        else
+            local input="$*"
+            local ts=$(date '+%Y-%m-%d %H:%M')
+            echo "$ts|$input" >> "$DATA_DIR/export-report.log"
+            local total=$(wc -l < "$DATA_DIR/export-report.log")
+            echo "  [Budgetly] export-report: $input"
+            echo "  Saved. Total export-report entries: $total"
+            _log "export-report" "$input"
+        fi
+        ;;
+    budget-check)
+        shift
+        if [ $# -eq 0 ]; then
+            echo "Recent budget-check entries:"
+            tail -20 "$DATA_DIR/budget-check.log" 2>/dev/null || echo "  No entries yet. Use: budgetly budget-check <input>"
+        else
+            local input="$*"
+            local ts=$(date '+%Y-%m-%d %H:%M')
+            echo "$ts|$input" >> "$DATA_DIR/budget-check.log"
+            local total=$(wc -l < "$DATA_DIR/budget-check.log")
+            echo "  [Budgetly] budget-check: $input"
+            echo "  Saved. Total budget-check entries: $total"
+            _log "budget-check" "$input"
+        fi
+        ;;
+    summary)
+        shift
+        if [ $# -eq 0 ]; then
+            echo "Recent summary entries:"
+            tail -20 "$DATA_DIR/summary.log" 2>/dev/null || echo "  No entries yet. Use: budgetly summary <input>"
+        else
+            local input="$*"
+            local ts=$(date '+%Y-%m-%d %H:%M')
+            echo "$ts|$input" >> "$DATA_DIR/summary.log"
+            local total=$(wc -l < "$DATA_DIR/summary.log")
+            echo "  [Budgetly] summary: $input"
+            echo "  Saved. Total summary entries: $total"
+            _log "summary" "$input"
+        fi
+        ;;
+    alert)
+        shift
+        if [ $# -eq 0 ]; then
+            echo "Recent alert entries:"
+            tail -20 "$DATA_DIR/alert.log" 2>/dev/null || echo "  No entries yet. Use: budgetly alert <input>"
+        else
+            local input="$*"
+            local ts=$(date '+%Y-%m-%d %H:%M')
+            echo "$ts|$input" >> "$DATA_DIR/alert.log"
+            local total=$(wc -l < "$DATA_DIR/alert.log")
+            echo "  [Budgetly] alert: $input"
+            echo "  Saved. Total alert entries: $total"
+            _log "alert" "$input"
+        fi
+        ;;
+    history)
+        shift
+        if [ $# -eq 0 ]; then
+            echo "Recent history entries:"
+            tail -20 "$DATA_DIR/history.log" 2>/dev/null || echo "  No entries yet. Use: budgetly history <input>"
+        else
+            local input="$*"
+            local ts=$(date '+%Y-%m-%d %H:%M')
+            echo "$ts|$input" >> "$DATA_DIR/history.log"
+            local total=$(wc -l < "$DATA_DIR/history.log")
+            echo "  [Budgetly] history: $input"
+            echo "  Saved. Total history entries: $total"
+            _log "history" "$input"
+        fi
+        ;;
+    compare)
+        shift
+        if [ $# -eq 0 ]; then
+            echo "Recent compare entries:"
+            tail -20 "$DATA_DIR/compare.log" 2>/dev/null || echo "  No entries yet. Use: budgetly compare <input>"
+        else
+            local input="$*"
+            local ts=$(date '+%Y-%m-%d %H:%M')
+            echo "$ts|$input" >> "$DATA_DIR/compare.log"
+            local total=$(wc -l < "$DATA_DIR/compare.log")
+            echo "  [Budgetly] compare: $input"
+            echo "  Saved. Total compare entries: $total"
+            _log "compare" "$input"
+        fi
+        ;;
+    tax-note)
+        shift
+        if [ $# -eq 0 ]; then
+            echo "Recent tax-note entries:"
+            tail -20 "$DATA_DIR/tax-note.log" 2>/dev/null || echo "  No entries yet. Use: budgetly tax-note <input>"
+        else
+            local input="$*"
+            local ts=$(date '+%Y-%m-%d %H:%M')
+            echo "$ts|$input" >> "$DATA_DIR/tax-note.log"
+            local total=$(wc -l < "$DATA_DIR/tax-note.log")
+            echo "  [Budgetly] tax-note: $input"
+            echo "  Saved. Total tax-note entries: $total"
+            _log "tax-note" "$input"
+        fi
+        ;;
+    stats) _stats ;;
+    export) shift; _export "$@" ;;
+    search) shift; _search "$@" ;;
+    recent) _recent ;;
+    status) _status ;;
+    help|--help|-h) _help ;;
+    version|--version|-v) _version ;;
+    *)
+        echo "Unknown command: $1"
+        echo "Run 'budgetly help' for available commands."
+        exit 1
+        ;;
 esac

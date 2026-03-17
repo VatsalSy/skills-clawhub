@@ -1,7 +1,7 @@
 ---
 name: BudgetLy
 description: "Smart category-based budget manager. Set monthly budgets by category (food, transport, entertainment, etc.), log spending against each category, see visual progress bars showing budget vs actual, get overspend warnings, and generate monthly spending reports with percentage breakdowns. Perfect for personal budgeting without spreadsheets."
-version: "1.0.0"
+version: "2.0.0"
 author: "BytesAgain"
 tags: ["budget","finance","money","spending","savings","personal-finance","categories"]
 categories: ["Finance", "Personal Management", "Productivity"]
