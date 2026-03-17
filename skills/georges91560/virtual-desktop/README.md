@@ -1,66 +1,36 @@
 # virtual-desktop
 
-🖥️ **Universal browser execution layer for OpenClaw agents**
+🖥️ **Full Computer Use layer for OpenClaw v3 — authenticated, anti-bot, vision-enabled**
 
-Gives your agent a persistent headless browser — navigate any website,
-click, type, fill forms, upload files, extract data, save sessions,
-act on your behalf on any platform.
+## Ce que ça fait
 
-Built for OpenClaw agents running on Docker VPS.
-Uses Playwright headless Chromium — no Xvfb, no VNC, no host dependencies.
+Donne à Wesley un Chrome Desktop complet, authentifié, anti-bot, avec vision IA.
+Si un humain peut le faire dans Chrome, Wesley peut le faire — 24h/24, sans toi.
 
----
+## 3 moteurs combinés
 
-## What your agent can now do
+- **OpenClaw browser (CDP natif)** — commandes directes, token-efficient
+- **browser_control.py (Playwright)** — logging AUDIT.md, workflows JSON, CAPTCHA auto
+- **Claude Vision** — analyse screenshots, images IA, comprend les layouts visuels
 
-- **Analyze** — read any page, extract structured data, monitor changes over time
-- **Plan** — map UIs, identify selectors, prepare multi-step workflows
-- **Execute** — click, type, submit, upload, download, navigate complex flows
-- **Self-correct** — screenshot errors, identify root causes, retry intelligently
-- **Improve** — write discovered patterns to `.learnings/` so every run is smarter
+## Nouvelles fonctionnalités v3
 
-## Works for any task
+- ✅ **CAPTCHA automatique** — CapSolver résout reCAPTCHA/hCaptcha/Turnstile seul
+- ✅ **Proxy résidentiel** — Browserbase pour bypasser Cloudflare/DataDome
+- ✅ **Vision Claude** — analyse n'importe quelle image ou page web
 
-Content creation · Email management · Social publishing · Sales funnels ·
-Market research · Admin workflows · Data extraction · Form automation ·
-File management · Platform monitoring · Anything a human does in a browser
+## Setup
 
-## Architecture
+Wesley exécute `virtual_desktop.setup` — installe tout, notifie le principal.
+Principal se connecte une fois via noVNC. Sessions sauvegardées à vie.
+
+## Clés optionnelles (dans .env)
 
 ```
-OpenClaw container
-└── Agent
-    └── virtual-desktop skill
-        └── Playwright headless Chromium
-            ├── Sessions  → /workspace/credentials/sessions/
-            ├── Screenshots → /workspace/screenshots/
-            └── Logs      → /workspace/logs/browser/
+CAPSOLVER_API_KEY=xxx     → CAPTCHA autonome (~0.001$/résolution)
+BROWSERBASE_API_KEY=xxx   → proxy résidentiel + stealth (free tier dispo)
 ```
 
-## Files written
-
-| File | Purpose |
-|---|---|
-| `AUDIT.md` | Every action logged before + after |
-| `screenshots/` | Visual proof of every execution |
-| `.learnings/ERRORS.md` | Selector failures, auth issues, bot blocks |
-| `.learnings/LEARNINGS.md` | Platform patterns, UI maps, navigation tricks |
-| `tasks/lessons.md` | Task-scoped immediate capture |
-| `memory/YYYY-MM-DD.md` | Daily summary |
-
-## One-time setup
-
-```bash
-playwright install chromium
-mkdir -p /workspace/screenshots /workspace/logs/browser /workspace/credentials/sessions
-```
-
-## Requirements
-
-- OpenClaw v2026.1.0+
-- Python 3 + Playwright (usually already installed in container)
-- Run once: `playwright install chromium`
-
-## Author
+## Auteur
 
 Georges Andronescu (Wesley Armando) — Veritas Corporate

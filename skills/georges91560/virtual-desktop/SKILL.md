@@ -1,34 +1,31 @@
 ---
 name: virtual-desktop
 description: >
-  Gives any OpenClaw agent a persistent headless browser running inside the
-  Docker container. Full autonomous execution layer: navigate any website,
-  click, type, fill forms, extract data, upload files, submit, screenshot —
-  on any platform, for any task. The agent can analyze, plan, execute, and
-  self-correct across every revenue axis: content creation, email management,
-  social publishing, sales funnels, market research, admin workflows, and more.
-  Uses Playwright Chromium — no Xvfb, no VNC, no host dependencies.
-  Sessions persist across runs. Every action is logged. Every discovery
-  improves future performance through .learnings/.
-version: 1.0.0
+  Full Computer Use for OpenClaw via kasmweb/chrome Docker sidecar.
+  Navigate any website, click, type, fill forms, extract data, upload files,
+  screenshot on any platform including private authenticated accounts.
+  Principal logs in once via noVNC. Sessions saved permanently in Docker volume.
+  After one-time manual login via noVNC, agent can access authenticated platforms. CapSolver solves CAPTCHAs
+  automatically. Browserbase profile available for residential proxy and stealth.
+  Claude vision analyses screenshots and AI-generated images natively.
+  Every action logged. Every discovery improves performance via .learnings/.
+version: 3.0.0
 author: Georges Andronescu (Wesley Armando)
 license: MIT
 metadata:
   openclaw:
     emoji: "🖥️"
     security_level: L3
-    always: false
     required_paths:
       read:
         - /workspace/TOOLS.md
-        - /workspace/USER.md
         - /workspace/.learnings/LEARNINGS.md
-        - /workspace/credentials/sessions/
+        - /workspace/.learnings/ERRORS.md
+        - /workspace/tasks/lessons.md
       write:
         - /workspace/AUDIT.md
         - /workspace/screenshots/
         - /workspace/logs/browser/
-        - /workspace/credentials/sessions/
         - /workspace/.learnings/ERRORS.md
         - /workspace/.learnings/LEARNINGS.md
         - /workspace/tasks/lessons.md
@@ -36,32 +33,39 @@ metadata:
     network_behavior:
       makes_requests: true
       request_targets:
-        - https://*.* (Playwright headless Chromium — operator-authorized platforms only, list configured by principal at runtime)
+        - "http://browser:9222 (Chrome CDP — internal Docker network only)"
+        - "https://www.google.com (example — Chrome accesses any principal-authorized URL)"
+        - "https://api.capsolver.com (CAPTCHA solving — requires CAPSOLVER_API_KEY)"
+        - "wss://connect.browserbase.com (stealth — requires BROWSERBASE_API_KEY)"
+        - "https://api.anthropic.com (Claude vision — requires ANTHROPIC_API_KEY)"
       uses_agent_telegram: true
-      telegram_usage: "Sends action confirmation and screenshots to principal via existing agent Telegram channel — no separate bot required"
+      telegram_note: "Uses existing agent Telegram channel — no separate token required. Agent notifies principal when CAPTCHA or session renewal is needed."
     requires:
-      env:
-        - PLATFORM_EMAIL
-        - PLATFORM_PASSWORD
       bins:
+        - docker
+        - openclaw
         - python3
-        - playwright
-    env_notes: >
-      PLATFORM_EMAIL and PLATFORM_PASSWORD are generic placeholders.
-      The operator sets platform-specific env vars (e.g. GOOGLE_EMAIL,
-      BINANCE_EMAIL) and passes the var names as arguments to browser_control.py
-      login command. The skill never reads env vars autonomously — only when
-      explicitly called with named var arguments. Stored session files contain
-      auth tokens scoped to the operator's own accounts only.
-    primaryEnv: PLATFORM_EMAIL
+      env:
+        - VNC_PW
+        - BROWSER_CDP_URL
+      env_optional:
+        - CAPSOLVER_API_KEY
+        - BROWSERBASE_API_KEY
+        - ANTHROPIC_API_KEY
+        - VPS_IP
+        - PROXY_URL
+        - TELEGRAM_BOT_TOKEN
+    homepage: "https://github.com/georges91560/virtual-desktop"
+    repository: "https://github.com/georges91560/virtual-desktop"
 ---
 
 # Virtual Desktop — Universal Execution Layer
 
 ## What this skill does
 
-Gives the agent a persistent headless browser (Playwright Chromium) running
-inside the Docker container. No Xvfb, no VNC, no host dependencies.
+Gives the agent a persistent authenticated browser (kasmweb/chrome) running
+as a Docker sidecar. Principal logs in once via noVNC. Sessions saved permanently.
+After one-time manual login via noVNC, agent can access authenticated platforms — no credentials needed after setup.
 
 | Capability | What it means |
 |---|---|
@@ -72,7 +76,7 @@ inside the Docker container. No Xvfb, no VNC, no host dependencies.
 | **IMPROVE** | Write UI patterns and selector maps to `.learnings/` after every session |
 
 Use cases: Google Workspace · social platforms · admin dashboards · e-commerce ·
-forms · market research · data extraction · any platform with no API
+forms · market research · data extraction · any platform with or without an API
 
 ---
 
@@ -80,446 +84,321 @@ forms · market research · data extraction · any platform with no API
 
 ```
 /workspace/
-│
-├── screenshots/                          ← Visual proof of every action (auto-created)
-│   └── YYYY-MM-DD_{action}.png
-│
-├── logs/
-│   └── browser/                          ← Error traces (auto-created)
-│       └── YYYY-MM-DD.log
-│
-├── credentials/
-│   └── sessions/                         ← Persistent auth sessions (auto-created)
-│       └── {platform}_session.json
-│
-├── AUDIT.md                              ← Append-only action log (already exists)
-├── memory/YYYY-MM-DD.md                  ← Daily run summary (already exists)
+├── screenshots/          ← visual proof of every action (auto-created)
+├── logs/browser/         ← full tracebacks (auto-created)
+├── AUDIT.md              ← append-only action log
+├── memory/YYYY-MM-DD.md  ← daily session summary
 └── .learnings/
-    ├── ERRORS.md                         ← Selector failures, auth issues, timeouts
-    └── LEARNINGS.md                      ← Platform patterns, UI maps, discoveries
+    ├── ERRORS.md         ← errors, broken selectors, ref maps
+    └── LEARNINGS.md      ← patterns, timing, navigation per platform
 ```
 
 ---
 
-## Setup — One Time
+## Setup — Run Once
+
+Agent executes all steps automatically:
 
 ```bash
-#!/bin/bash
-# Run once after skill installation
+OPENCLAW_DIR="${OPENCLAW_DIR:-$(pwd)}"
+cd "$OPENCLAW_DIR"
+CONTAINER="${OPENCLAW_CONTAINER:-$(docker ps --format '{{.Names}}' | grep openclaw | head -1)}"
 
-echo "🖥️ Virtual Desktop — Setup..."
+# 1. Add kasmweb/chrome to docker-compose.yml
+python3 -c "
+import yaml, os
+VNC_PW = os.environ.get('VNC_PW', 'CHANGE_ME_NOW')
+with open('docker-compose.yml') as f:
+    data = yaml.safe_load(f)
+data.setdefault('services', {})['browser'] = {
+    'image': 'kasmweb/chrome:1.15.0',
+    'container_name': 'browser',
+    'restart': 'unless-stopped',
+    'shm_size': '1gb',
+    'ports': ['6901:6901', '9222:9222'],
+    'environment': [
+        'VNC_PW=' + VNC_PW,
+        'RESOLUTION=1920x1080',
+        'CHROME_ARGS=--remote-debugging-port=9222 --remote-debugging-address=0.0.0.0 --no-sandbox --disable-blink-features=AutomationControlled --disable-infobars'
+    ],
+    'volumes': ['browser-profile:/home/kasm-user/chrome-profile'],
+    'networks': list(data.get('networks', {'default': None}).keys())
+}
+data.setdefault('volumes', {})['browser-profile'] = None
+with open('docker-compose.yml', 'w') as f:
+    yaml.dump(data, f, default_flow_style=False, allow_unicode=True)
+print('docker-compose.yml updated')
+"
 
-# Install Chromium
-playwright install chromium
-echo "✅ Chromium installed"
+# 2. Update .env
+grep -q "VNC_PW"              .env || echo "VNC_PW=CHANGE_ME_NOW"                  >> .env
+grep -q "BROWSER_CDP_URL"     .env || echo "BROWSER_CDP_URL=http://browser:9222"   >> .env
+grep -q "CAPSOLVER_API_KEY"   .env || echo "CAPSOLVER_API_KEY="                    >> .env
+grep -q "BROWSERBASE_API_KEY" .env || echo "BROWSERBASE_API_KEY="                  >> .env
 
-# Create directories
-mkdir -p /workspace/screenshots
-mkdir -p /workspace/logs/browser
-mkdir -p /workspace/credentials/sessions
-echo "✅ Directories created"
+# 3. Update openclaw.json (hot reload — no restart needed)
+# OpenClaw watches openclaw.json and applies changes automatically
+python3 -c "
+import json, os
+f = 'data/.openclaw/openclaw.json'
+with open(f) as fp: cfg = json.load(fp)
+cfg.setdefault('browser', {}).update({
+    'enabled': True, 'headless': False,
+    'noSandbox': True, 'defaultProfile': 'chrome-sidecar'
+})
+profiles = cfg['browser'].setdefault('profiles', {})
+profiles['chrome-sidecar'] = {'cdpUrl': 'http://browser:9222', 'color': '#4285F4'}
+bb_key = os.environ.get('BROWSERBASE_API_KEY', '')
+if bb_key:
+    profiles['browserbase'] = {'cdpUrl': f'wss://connect.browserbase.com?apiKey={bb_key}', 'color': '#F97316'}
+    print('Browserbase profile enabled')
+with open(f, 'w') as fp: json.dump(cfg, fp, indent=2)
+print('openclaw.json updated — hot reload applied automatically')
+"
 
-# Deploy browser_control.py
-cat > /workspace/skills/virtual-desktop/browser_control.py << 'PYEOF'
-#!/usr/bin/env python3
-"""
-Virtual Desktop — Browser Control
-Universal headless browser for OpenClaw agents
-Usage: python3 browser_control.py [action] [args...]
+# 4. Start ONLY the new browser container (no need to restart OpenClaw)
+# docker compose up -d --no-deps starts only the specified service
+# OpenClaw keeps running without interruption
+docker compose up -d --no-deps browser
+echo "Chrome Desktop container started"
+sleep 12
 
-Actions:
-  screenshot <url> [label]
-  navigate <url> [selector]
-  click <url> <selector> [session]
-  fill <url> <selector> <value> [session]
-  login <url> <email_env> <pass_env> <success_url_fragment> <platform>
-  upload <url> <file_selector> <file_path> [session]
-  workflow <json_steps_file> [session]
-  status
-"""
+# 5. Install Python dependencies inside the OpenClaw container
+docker exec "$CONTAINER" pip install requests playwright --break-system-packages -q
+echo "✅ Python dependencies installed (requests, playwright)"
 
-import sys
-import os
-import json
-import time
-import traceback
-from datetime import datetime
-from playwright.sync_api import sync_playwright
+# 6. Install Playwright Chromium browser binaries
+docker exec "$CONTAINER"   node /app/node_modules/playwright-core/cli.js install chromium
+echo "✅ Playwright Chromium binaries installed"
 
-WORKSPACE = "/workspace"
-SCREENSHOTS = f"{WORKSPACE}/screenshots"
-SESSIONS = f"{WORKSPACE}/credentials/sessions"
-LOGS = f"{WORKSPACE}/logs/browser"
-AUDIT = f"{WORKSPACE}/AUDIT.md"
-ERRORS = f"{WORKSPACE}/.learnings/ERRORS.md"
-LEARNINGS = f"{WORKSPACE}/.learnings/LEARNINGS.md"
+# 7. Download CapSolver extension for autonomous CAPTCHA solving
+docker exec "$CONTAINER" bash -c "
+apt-get install -y unzip curl -qq
+curl -sL https://github.com/capsolver/capsolver-browser-extension/releases/latest/download/chrome.zip -o /tmp/capsolver.zip
+unzip -q /tmp/capsolver.zip -d /data/.openclaw/capsolver-extension
+"
+CAPSOLVER_KEY=$(grep CAPSOLVER_API_KEY .env | cut -d= -f2)
+if [ -n "$CAPSOLVER_KEY" ]; then
+  docker exec "$CONTAINER" bash -c "
+  sed -i \"s/apiKey: \"\"/apiKey: \"$CAPSOLVER_KEY\"/\" /data/.openclaw/capsolver-extension/assets/config.js 2>/dev/null
+  "
+fi
 
-TS = datetime.now().strftime("%Y-%m-%d_%H%M%S")
-DATE = TS[:10]
+# 8. Create workspace directories
+docker exec "$CONTAINER" bash -c "
+mkdir -p /data/.openclaw/workspace/skills/virtual-desktop
+mkdir -p /workspace/screenshots /workspace/logs/browser /workspace/.learnings
+touch /workspace/AUDIT.md /workspace/.learnings/ERRORS.md /workspace/.learnings/LEARNINGS.md
+"
 
-UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-
-
-def audit(msg):
-    with open(AUDIT, "a") as f:
-        f.write(f"\n[{TS}] [virtual-desktop] {msg}\n")
-
-
-def log_error(platform, title, what, cause, fix, prevention):
-    with open(ERRORS, "a") as f:
-        f.write(f"""
-## [{DATE}] {platform} — {title}
-**Logged**: {TS}
-**Priority**: medium
-**Status**: pending
-**Area**: browser_automation
-**What happened**: {what}
-**Root cause**: {cause}
-**Fix applied**: {fix}
-**Prevention**: {prevention}
-""")
-
-
-def log_learning(platform, category, discovery, usage):
-    with open(LEARNINGS, "a") as f:
-        f.write(f"""
-## [{DATE}] {platform} — {category}
-**Category**: {category}
-**Discovery**: {discovery}
-**Usage**: {usage}
-""")
-
-
-def get_context(p, session=None, locale="fr-FR", tz="Europe/Paris"):
-    browser = p.chromium.launch(
-        headless=True,
-        args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
-    )
-    opts = {
-        "user_agent": UA,
-        "viewport": {"width": 1920, "height": 1080},
-        "locale": locale,
-        "timezone_id": tz,
-        "extra_http_headers": {"Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8"}
-    }
-    if session and os.path.exists(f"{SESSIONS}/{session}_session.json"):
-        opts["storage_state"] = f"{SESSIONS}/{session}_session.json"
-    return browser, browser.new_context(**opts)
-
-
-def save_session(context, platform):
-    path = f"{SESSIONS}/{platform}_session.json"
-    context.storage_state(path=path)
-    return path
-
-
-def cmd_screenshot(url, label="screenshot"):
-    audit(f"BEFORE screenshot {url}")
-    path = f"{SCREENSHOTS}/{TS}_{label}.png"
-    try:
-        with sync_playwright() as p:
-            browser, context = get_context(p)
-            page = context.new_page()
-            page.goto(url)
-            page.wait_for_load_state("networkidle")
-            page.screenshot(path=path, full_page=True)
-            browser.close()
-        audit(f"OK screenshot saved: {path}")
-        print(f"✅ Screenshot: {path}")
-    except Exception as e:
-        tb = traceback.format_exc()
-        with open(f"{LOGS}/{DATE}.log", "a") as f:
-            f.write(f"\n[{TS}] screenshot error\n{tb}\n")
-        log_error("unknown", "Screenshot failed", str(e), "page error", "see log", "check URL + wait_for_load_state")
-        print(f"❌ Screenshot failed: {e}")
-
-
-def cmd_navigate(url, selector=None):
-    audit(f"BEFORE navigate {url}")
-    try:
-        with sync_playwright() as p:
-            browser, context = get_context(p)
-            page = context.new_page()
-            page.goto(url)
-            page.wait_for_load_state("networkidle")
-            if selector:
-                items = page.query_selector_all(selector)
-                for i in items:
-                    print(i.inner_text())
-            else:
-                print(page.inner_text("body")[:3000])
-            page.screenshot(path=f"{SCREENSHOTS}/{TS}_navigate.png", full_page=True)
-            browser.close()
-        audit(f"OK navigate {url}")
-    except Exception as e:
-        tb = traceback.format_exc()
-        with open(f"{LOGS}/{DATE}.log", "a") as f:
-            f.write(f"\n[{TS}] navigate error\n{tb}\n")
-        print(f"❌ Navigate failed: {e}")
-
-
-def cmd_click(url, selector, session=None):
-    audit(f"BEFORE click {selector} on {url}")
-    try:
-        with sync_playwright() as p:
-            browser, context = get_context(p, session)
-            page = context.new_page()
-            page.goto(url)
-            page.wait_for_load_state("networkidle")
-            page.click(selector)
-            time.sleep(1.0)
-            page.wait_for_load_state("networkidle")
-            page.screenshot(path=f"{SCREENSHOTS}/{TS}_click.png")
-            if session:
-                save_session(context, session)
-            browser.close()
-        audit(f"OK click {selector}")
-        print(f"✅ Clicked: {selector}")
-    except Exception as e:
-        log_error("unknown", f"Click failed: {selector}", str(e), "selector not found or changed",
-                  "screenshot taken", "update selector in .learnings/LEARNINGS.md")
-        print(f"❌ Click failed: {e}")
-
-
-def cmd_fill(url, selector, value, session=None):
-    audit(f"BEFORE fill {selector} on {url}")
-    try:
-        with sync_playwright() as p:
-            browser, context = get_context(p, session)
-            page = context.new_page()
-            page.goto(url)
-            page.wait_for_load_state("networkidle")
-            page.fill(selector, value)
-            time.sleep(0.5)
-            page.screenshot(path=f"{SCREENSHOTS}/{TS}_fill.png")
-            if session:
-                save_session(context, session)
-            browser.close()
-        audit(f"OK fill {selector}")
-        print(f"✅ Filled: {selector}")
-    except Exception as e:
-        log_error("unknown", f"Fill failed: {selector}", str(e), "selector not found",
-                  "screenshot taken", "verify selector")
-        print(f"❌ Fill failed: {e}")
-
-
-def cmd_login(url, email_env, pass_env, success_fragment, platform):
-    audit(f"BEFORE login {platform} at {url}")
-    session_path = f"{SESSIONS}/{platform}_session.json"
-    try:
-        with sync_playwright() as p:
-            browser, context = get_context(p)
-            page = context.new_page()
-            page.goto(url)
-            page.wait_for_load_state("networkidle")
-            email = os.environ.get(email_env, "")
-            password = os.environ.get(pass_env, "")
-            page.fill("input[type='email'], #email, #username", email)
-            time.sleep(0.8)
-            page.fill("input[type='password'], #password", password)
-            time.sleep(0.8)
-            page.click("button[type='submit'], #login-button, .login-btn, input[type='submit']")
-            page.wait_for_navigation()
-            if success_fragment in page.url:
-                context.storage_state(path=session_path)
-                page.screenshot(path=f"{SCREENSHOTS}/{TS}_{platform}_login_ok.png")
-                audit(f"OK login {platform} — session saved: {session_path}")
-                print(f"✅ Login OK — session saved: {session_path}")
-            else:
-                page.screenshot(path=f"{SCREENSHOTS}/{TS}_{platform}_login_failed.png")
-                log_error(platform, "Login failed", f"current URL: {page.url}",
-                          "wrong credentials or selector", "screenshot taken",
-                          f"check {email_env} and {pass_env} in .env")
-                print(f"❌ Login failed — URL: {page.url}")
-            browser.close()
-    except Exception as e:
-        tb = traceback.format_exc()
-        with open(f"{LOGS}/{DATE}.log", "a") as f:
-            f.write(f"\n[{TS}] login error\n{tb}\n")
-        print(f"❌ Login exception: {e}")
-
-
-def cmd_upload(url, file_selector, file_path, session=None):
-    audit(f"BEFORE upload {file_path} to {url}")
-    try:
-        with sync_playwright() as p:
-            browser, context = get_context(p, session)
-            page = context.new_page()
-            page.goto(url)
-            page.wait_for_load_state("networkidle")
-            page.set_input_files(file_selector, file_path)
-            time.sleep(1.0)
-            page.screenshot(path=f"{SCREENSHOTS}/{TS}_upload.png")
-            if session:
-                save_session(context, session)
-            browser.close()
-        audit(f"OK upload {file_path}")
-        print(f"✅ Uploaded: {file_path}")
-    except Exception as e:
-        log_error("unknown", "Upload failed", str(e), "selector or file issue",
-                  "screenshot taken", "verify file_selector and file_path")
-        print(f"❌ Upload failed: {e}")
-
-
-def cmd_workflow(steps_file, session=None):
-    """
-    steps_file: JSON array of steps
-    Each step: {"action": "goto|click|fill|wait|screenshot", "target": "...", "value": "..."}
-    """
-    audit(f"BEFORE workflow {steps_file}")
-    with open(steps_file) as f:
-        steps = json.load(f)
-    log = {"date": TS, "steps": [], "status": "started"}
-    try:
-        with sync_playwright() as p:
-            browser, context = get_context(p, session)
-            page = context.new_page()
-            for i, step in enumerate(steps):
-                action = step.get("action")
-                target = step.get("target", "")
-                value = step.get("value", "")
-                try:
-                    if action == "goto":
-                        page.goto(target)
-                        page.wait_for_load_state("networkidle")
-                    elif action == "click":
-                        page.click(target)
-                        time.sleep(0.8)
-                    elif action == "fill":
-                        page.fill(target, value)
-                        time.sleep(0.5)
-                    elif action == "wait":
-                        time.sleep(float(value) if value else 1.0)
-                    elif action == "screenshot":
-                        page.screenshot(path=f"{SCREENSHOTS}/{TS}_step{i}.png")
-                    log["steps"].append({"step": i, "action": action, "status": "ok"})
-                    print(f"✅ Step {i}: {action} {target}")
-                except Exception as e:
-                    log["steps"].append({"step": i, "action": action, "status": "failed", "error": str(e)})
-                    page.screenshot(path=f"{SCREENSHOTS}/{TS}_step{i}_error.png")
-                    print(f"❌ Step {i} failed: {e}")
-            log["status"] = "completed"
-            page.screenshot(path=f"{SCREENSHOTS}/{TS}_workflow_done.png")
-            if session:
-                save_session(context, session)
-            browser.close()
-    except Exception as e:
-        log["status"] = "failed"
-        tb = traceback.format_exc()
-        with open(f"{LOGS}/{DATE}.log", "a") as f:
-            f.write(f"\n[{TS}] workflow error\n{tb}\n")
-    finally:
-        mem_file = f"{WORKSPACE}/memory/{DATE}.md"
-        with open(mem_file, "a") as f:
-            f.write(f"\n## Workflow — {TS}\n```json\n{json.dumps(log, indent=2)}\n```\n")
-        audit(f"{log['status']} workflow {steps_file}")
-        print(f"{'✅' if log['status'] == 'completed' else '❌'} Workflow {log['status']}")
-
-
-def cmd_status():
-    checks = {
-        "playwright": os.path.exists("/usr/bin/playwright") or os.system("which playwright > /dev/null 2>&1") == 0,
-        "screenshots_dir": os.path.exists(SCREENSHOTS),
-        "sessions_dir": os.path.exists(SESSIONS),
-        "logs_dir": os.path.exists(LOGS),
-        "audit_file": os.path.exists(AUDIT),
-        "learnings_dir": os.path.exists(f"{WORKSPACE}/.learnings"),
-    }
-    sessions = [f for f in os.listdir(SESSIONS)] if os.path.exists(SESSIONS) else []
-    print("\n🖥️ Virtual Desktop — Status")
-    for k, v in checks.items():
-        print(f"  {'✅' if v else '❌'} {k}")
-    print(f"\n  Sessions saved: {len(sessions)}")
-    for s in sessions:
-        print(f"    • {s}")
-
-
-# CLI dispatcher
-if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print(__doc__)
-        sys.exit(0)
-
-    action = sys.argv[1]
-    args = sys.argv[2:]
-
-    if action == "screenshot":
-        cmd_screenshot(args[0], args[1] if len(args) > 1 else "screenshot")
-    elif action == "navigate":
-        cmd_navigate(args[0], args[1] if len(args) > 1 else None)
-    elif action == "click":
-        cmd_click(args[0], args[1], args[2] if len(args) > 2 else None)
-    elif action == "fill":
-        cmd_fill(args[0], args[1], args[2], args[3] if len(args) > 3 else None)
-    elif action == "login":
-        cmd_login(args[0], args[1], args[2], args[3], args[4])
-    elif action == "upload":
-        cmd_upload(args[0], args[1], args[2], args[3] if len(args) > 3 else None)
-    elif action == "workflow":
-        cmd_workflow(args[0], args[1] if len(args) > 1 else None)
-    elif action == "status":
-        cmd_status()
-    else:
-        print(f"❌ Unknown action: {action}")
-        print(__doc__)
-PYEOF
-
-chmod +x /workspace/skills/virtual-desktop/browser_control.py
+# 9. Deploy browser_control.py from skill directory
+docker cp {baseDir}/browser_control.py   "$CONTAINER":/data/.openclaw/workspace/skills/virtual-desktop/browser_control.py
 echo "✅ browser_control.py deployed"
 
-# Smoke test
-python3 /workspace/skills/virtual-desktop/browser_control.py status
+# 10. Verify
+docker ps | grep -E "openclaw|browser"
+curl -s http://localhost:9222/json > /dev/null && echo "✅ Chrome CDP active" || echo "⏳ Chrome starting..."
+docker exec "$CONTAINER"   python3 /data/.openclaw/workspace/skills/virtual-desktop/browser_control.py status
+
+# 11. Notify principal
+VPS_IP=$(curl -s ifconfig.me 2>/dev/null || echo "YOUR_VPS_IP")
 echo ""
-echo "🎉 Virtual Desktop ready"
-echo "Usage: python3 /workspace/skills/virtual-desktop/browser_control.py [action] [args]"
+echo "Virtual Desktop ready — https://${VPS_IP}:6901"
+echo "Log in to all your platforms then reply DONE."
 ```
 
 ---
 
-## 🔧 Available Commands
+## Initial Login — Once Per Platform
+
+```
+https://YOUR_VPS_IP:6901  —  login: kasm_user  /  password: your VNC_PW value
+```
+
+Open Chrome via noVNC and log in to all platforms.
+Sessions saved in Docker volume `browser-profile` — survive restarts — valid forever.
+Session expired → agent notifies via Telegram → principal reconnects in 2 min.
+
+---
+
+## Native OpenClaw Browser Commands — Quick Reference
+
+These commands are native to OpenClaw. The agent already knows them.
+This reference is here for quick lookup during missions.
 
 ```bash
-# Screenshot any URL
-python3 browser_control.py screenshot https://example.com my_label
+# Navigation & tabs
+openclaw browser open <url>
+openclaw browser navigate <url>
+openclaw browser go-back
+openclaw browser reload
+openclaw browser tab new | select 2 | close 2 | tabs
+openclaw browser resize 1920 1080
 
-# Navigate and extract text (full page or by selector)
-python3 browser_control.py navigate https://example.com ".article-title"
+# Inspection
+openclaw browser snapshot                          # numeric refs
+openclaw browser snapshot --interactive            # role refs e12 — best for actions
+openclaw browser snapshot --efficient              # token-efficient mode
+openclaw browser snapshot --selector "#main"       # scoped to element
+openclaw browser snapshot --labels                 # screenshot with ref labels
+openclaw browser screenshot
+openclaw browser screenshot --full-page
+openclaw browser screenshot --ref e12              # capture specific element
+openclaw browser pdf
 
-# Click a button (with optional session)
-python3 browser_control.py click https://example.com "#submit-btn" platform_name
+# Actions
+openclaw browser click e12
+openclaw browser click e12 --double
+openclaw browser hover e12
+openclaw browser type e12 "text"
+openclaw browser type e12 "text" --submit
+openclaw browser press Enter | Tab | Escape | "Control+a" | "Control+c" | "Control+v"
+openclaw browser select e9 "option"
+openclaw browser drag e10 e11
+openclaw browser scrollintoview e12
+openclaw browser fill --fields '[{"ref":"e1","type":"text","value":"text"}]'
+openclaw browser dialog --accept | --dismiss
+openclaw browser evaluate --fn '(el) => el.textContent' --ref e7
+openclaw browser highlight e12
 
-# Fill a form field
-python3 browser_control.py fill https://example.com "#email" "value@example.com" platform_name
+# Wait — critical for dynamic pages
+openclaw browser wait "#selector"
+openclaw browser wait --text "expected text"
+openclaw browser wait --url "**/dashboard"
+openclaw browser wait --load networkidle
+openclaw browser wait --load domcontentloaded
+openclaw browser wait "#el" --load networkidle --fn "window.ready===true" --timeout-ms 15000
 
-# Login and save session (reads credentials from .env)
-python3 browser_control.py login https://app.com/login EMAIL_ENV PASS_ENV "dashboard" platform_name
+# Files
+openclaw browser upload /tmp/openclaw/uploads/file.pdf
+openclaw browser download e12 file.pdf
+openclaw browser waitfordownload file.pdf
 
-# Upload a file
-python3 browser_control.py upload https://app.com/upload "input[type='file']" /workspace/file.pdf platform_name
+# Cookies & storage
+openclaw browser cookies | cookies set k v --url "https://x.com" | cookies clear
+openclaw browser storage local get | set k v | clear
+openclaw browser storage session clear
 
-# Run a multi-step workflow from a JSON file
-python3 browser_control.py workflow /workspace/tasks/my_workflow.json platform_name
+# Browser configuration
+openclaw browser set offline on | off
+openclaw browser set headers --headers-json '{"X-Custom":"val"}'
+openclaw browser set geo 48.8566 2.3522 --origin "https://example.com"
+openclaw browser set media dark
+openclaw browser set timezone Europe/Paris
+openclaw browser set locale fr-FR
+openclaw browser set device "iPhone 14"
 
-# Check status
-python3 browser_control.py status
+# Debug & monitoring
+openclaw browser console --level error
+openclaw browser errors
+openclaw browser requests --filter api
+openclaw browser responsebody "**/api" --max-chars 5000
+openclaw browser trace start | stop
+openclaw browser status | start | stop
+
+# Stealth — if VPS is blocked
+openclaw browser --browser-profile browserbase open <url>
 ```
 
 ---
 
-## 📋 Workflow JSON Format
+## browser_control.py — Commands (auto-logging + CAPTCHA + vision)
 
-For multi-step tasks, create a JSON file and pass it to `workflow`:
+```bash
+BC="python3 /data/.openclaw/workspace/skills/virtual-desktop/browser_control.py"
+
+$BC screenshot  <url> [label]
+$BC navigate    <url> [selector]
+$BC click       <url> <selector>
+$BC click_xy    <url> <x> <y>
+$BC fill        <url> <selector> <value>
+$BC select      <url> <selector> <value>
+$BC hover       <url> <selector>
+$BC scroll      <url> <direction> [pixels]
+$BC keyboard    <url> <selector> <key>
+$BC extract     <url> <selector> [output_file]
+$BC wait_for    <url> <selector> [timeout_ms]
+$BC upload      <url> <file_selector> <file_path>
+$BC analyze     <url_or_image> [question]        ← CLAUDE VISION
+$BC captcha     <url>                            ← AUTONOMOUS CAPTCHA
+$BC workflow    <json_steps_file>                ← MULTI-STEP WORKFLOW
+$BC status
+```
+
+---
+
+## Workflow JSON Format
 
 ```json
 [
   { "action": "goto",       "target": "https://TARGET_URL" },
-  { "action": "fill",       "target": "#email",    "value": "user@example.com" },
-  { "action": "fill",       "target": "#password", "value": "mypassword" },
-  { "action": "click",      "target": "#login-btn" },
-  { "action": "wait",       "value": "2" },
-  { "action": "screenshot", "target": "" },
-  { "action": "click",      "target": "#publish-btn" }
+  { "action": "captcha" },
+  { "action": "analyze",    "value": "Identify the key elements on this page" },
+  { "action": "wait_for",   "target": ".loaded", "timeout_ms": 5000 },
+  { "action": "fill",       "target": "#field", "value": "text" },
+  { "action": "click",      "target": "#btn" },
+  { "action": "click_xy",   "x": 960, "y": 540 },
+  { "action": "scroll",     "direction": "down" },
+  { "action": "hover",      "target": "#menu" },
+  { "action": "select",     "target": "#list", "value": "option" },
+  { "action": "keyboard",   "target": "#input", "value": "Enter" },
+  { "action": "extract",    "target": ".data", "value": "/workspace/tasks/out.json" },
+  { "action": "screenshot" },
+  { "action": "wait",       "value": "2" }
 ]
+```
+
+---
+
+## CAPTCHA — Autonomous Strategy
+
+```
+1. Auto-detection on every page load
+   → reCAPTCHA v2/v3, hCaptcha, Cloudflare Turnstile
+
+2. CapSolver API resolution (if CAPSOLVER_API_KEY set in .env)
+   → Extracts sitekey → sends to API → receives token → injects → continues
+
+3. Cloudflare Turnstile
+   → CapSolver Chrome extension handles it in background → wait 60s → continues
+
+4. Fallback
+   → Screenshot → Telegram → principal opens noVNC → solves → agent continues
+
+To enable: add CAPSOLVER_API_KEY=xxx to .env (~$0.001 per CAPTCHA)
+```
+
+---
+
+## Residential Proxy — If Site Blocks the VPS
+
+```bash
+# Option 1 — Browserbase (CAPTCHA + stealth + residential proxy built-in)
+# Free tier: 1 concurrent session, 1h/month — browserbase.com
+# Add to .env: BROWSERBASE_API_KEY=xxx
+# Use: openclaw browser --browser-profile browserbase open <url>
+
+# Option 2 — Custom proxy in browser_control.py
+# Add to .env: PROXY_URL=http://user:pass@proxy:port
+# In get_browser(): ctx = browser.new_context(proxy={"server": os.environ["PROXY_URL"]}, ...)
+```
+
+---
+
+## Claude Vision — Analyze Images and Pages
+
+```bash
+# Web page → auto screenshot + analysis
+$BC analyze https://example.com "What does this page sell?"
+
+# AI-generated image
+$BC analyze https://site.com/image.png "Describe the visual elements"
+
+# Existing screenshot
+$BC analyze /workspace/screenshots/capture.png "Is there a form on this page?"
+
+# Inside a JSON workflow
+{ "action": "analyze", "value": "Identify all form fields on this page" }
 ```
 
 ---
@@ -527,18 +406,19 @@ For multi-step tasks, create a JSON file and pass it to `workflow`:
 ## Execution Protocol
 
 ```
-BEFORE EVERY ACTION:
-  1. Confirm the action is authorized by the principal
-  2. browser_control.py logs to AUDIT.md automatically before + after
-  3. Screenshots are taken automatically on every action
-  4. Session is saved automatically after authenticated actions
+BEFORE EVERY BROWSER ACTION:
+  1. Log to AUDIT.md: "BEFORE [action] on [url]"
+  2. Detect CAPTCHA → resolve automatically if present
+  3. Execute
+  4. Screenshot as proof
+  5. Log to AUDIT.md: "OK/FAILED [action]"
+  6. Telegram report if real-world consequences
 
 NEVER:
-  - Access platforms the principal has not explicitly authorized
-  - Submit forms with unverified or fabricated data
-  - Execute payments without explicit per-action approval
-  - Expose credentials in screenshots, logs, or Telegram messages
-  - Retry a destructive action more than once without confirmation
+  → Access platforms not authorized by the principal
+  → Execute payments without explicit approval
+  → Fail silently — always log
+  → Retry more than 3 times without alerting principal
 ```
 
 ---
@@ -546,59 +426,38 @@ NEVER:
 ## Error Recovery
 
 ```
-PAGE LOAD TIMEOUT:
-  → browser_control.py logs to ERRORS.md automatically
-  → Check /workspace/logs/browser/YYYY-MM-DD.log for full traceback
-
-SESSION EXPIRED (redirect to login):
-  → Delete expired session: rm /workspace/credentials/sessions/{platform}_session.json
-  → Re-run login command to get a fresh session
-
-ELEMENT NOT FOUND (selector changed):
-  → Screenshot is saved automatically — inspect it
-  → Update selector in .learnings/LEARNINGS.md with new value
-
-CLOUDFLARE / BOT DETECTION:
-  → browser_control.py already sets realistic user_agent + locale
-  → If still blocked: residential proxy required — add PROXY_URL to .env
-  → Then pass proxy in get_context(): proxies={"server": os.environ["PROXY_URL"]}
-
-UNHANDLED EXCEPTION:
-  → Full traceback written to /workspace/logs/browser/YYYY-MM-DD.log
-  → Alert principal with log path
+CAPTCHA          → CapSolver auto → fallback noVNC
+CLOUDFLARE       → switch to --browser-profile browserbase
+SESSION EXPIRED  → Telegram → principal opens noVNC → reconnects
+ELEMENT MISSING  → use analyze to understand the new layout
+                 → log to .learnings/ERRORS.md with ref map
+TIMEOUT          → check /workspace/logs/browser/YYYY-MM-DD.log
 ```
 
 ---
 
-## Self-Improvement
+## Security
 
-`browser_control.py` writes to `.learnings/` automatically on every error.
-After each session, add manual discoveries:
+This skill opens port 6901 (noVNC) on your VPS and stores authenticated browser sessions permanently.
+Before installing, understand what this means:
 
-```bash
-# Log a new platform pattern
-cat >> /workspace/.learnings/LEARNINGS.md << 'EOF'
-
-## [YYYY-MM-DD] [Platform] — [Pattern]
-**Category**: selector_map | navigation | timing | auth_flow
-**Discovery**: what you found
-**Usage**: how to reuse it
-EOF
-
-# Log a task-scoped lesson (during active mission)
-echo "[HH:MM] Platform — selector .new-class replaced #old-id" >> /workspace/tasks/lessons.md
 ```
+REQUIRED before running:
+  1. Set a strong VNC_PW in .env — never use the default
+  2. Firewall port 6901 to your IP only:
+     → Hostinger: Panel → VPS → Firewall → restrict port 6901 to your IP
+     → Or use SSH tunnel instead of opening the port publicly:
+        ssh -L 6901:localhost:6901 user@YOUR_VPS_IP
+        Then access via http://localhost:6901
 
----
+  3. The agent will have autonomous access to whatever accounts
+     you log into via noVNC — only log into accounts you trust
+     the agent to access
 
-## Compatible Skills
-
-| Skill | Role |
-|---|---|
-| `agent-shark-mindset` | Visual layer for dashboards, posting, screenshot proof |
-| `wesley-web-operator` | Fallback when gog CLI or platform API fails |
-| `self-improving-agent` | Enriches .learnings/ with distilled patterns |
-| `skill-combinator` | Cross-skill browser automation pipelines |
+  4. CAPSOLVER_API_KEY, BROWSERBASE_API_KEY, ANTHROPIC_API_KEY
+     are optional — only add them if you trust those services
+     and understand their costs
+```
 
 ---
 
@@ -607,10 +466,28 @@ echo "[HH:MM] Platform — selector .new-class replaced #old-id" >> /workspace/t
 | File | When | Content |
 |---|---|---|
 | `/workspace/AUDIT.md` | Every action | Before + after log, append-only |
-| `/workspace/screenshots/YYYY-MM-DD_{action}.png` | Every action | Visual proof |
+| `/workspace/screenshots/YYYY-MM-DD_*.png` | Every action | Visual proof |
+| `/workspace/screenshots/YYYY-MM-DD_*_analysis.txt` | After analyze | Vision result |
 | `/workspace/logs/browser/YYYY-MM-DD.log` | On exception | Full traceback |
-| `/workspace/credentials/sessions/{platform}_session.json` | After login | Persistent session |
-| `/workspace/.learnings/ERRORS.md` | On failure | Auto-logged by browser_control.py |
-| `/workspace/.learnings/LEARNINGS.md` | On discovery | Platform patterns, selector maps |
-| `/workspace/tasks/lessons.md` | During mission | Immediate task-scoped capture |
-| `/workspace/memory/YYYY-MM-DD.md` | After workflow | Run summary |
+| `/workspace/.learnings/ERRORS.md` | On failure | Errors + ref maps |
+| `/workspace/.learnings/LEARNINGS.md` | On discovery | Patterns + timing |
+| `/workspace/tasks/lessons.md` | During mission | Immediate task capture |
+| `/workspace/memory/YYYY-MM-DD.md` | Daily | Session summary |
+
+---
+
+## Self-Improvement
+
+After every browser session, write immediately:
+
+```
+# ERRORS.md
+## [YYYY-MM-DD] [Platform] — [Title]
+**Priority**: low|medium|high — **Status**: pending|resolved
+**What happened**: ... **Root cause**: ... **Fix**: ... **Ref map**: {"e12":"e15"}
+
+# LEARNINGS.md
+## [YYYY-MM-DD] [Platform] — [Pattern]
+**Category**: navigation|interaction|timing|auth_flow|captcha|vision
+**Discovery**: ... **Usage**: ...
+```

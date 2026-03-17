@@ -1,73 +1,107 @@
-# Virtual Desktop — Configuration Guide
+# Virtual Desktop — Configuration
 
-## Why Playwright and not Xvfb + noVNC
+## noVNC Access
 
-The common approach (Xvfb + XFCE + noVNC + systemd) installs services
-on the **VPS host** — but your agent lives inside a Docker container
-and cannot access host systemd services. It also opens port 6080
-to the internet (security risk) and requires root host modifications.
-
-Playwright runs **inside the container** where your agent already lives:
+After setup, open Chrome Desktop from your browser:
 
 ```
-VPS Host
-└── Docker container (your openclaw container)
-    └── Agent
-        └── virtual-desktop skill
-            └── Playwright headless Chromium
+URL      : https://YOUR_VPS_IP:6901
+Login    : kasm_user
+Password : your VNC_PW (set in .env)
 ```
 
-No extra ports. No host changes. Screenshots replace the visual feed.
-
----
-
-## Session Management
-
-Sessions are saved per platform as JSON files containing cookies and
-localStorage. Once saved, the agent reuses them without re-authenticating.
-
-| Platform | Session file |
-|---|---|
-| Google / Gmail / Drive | `/workspace/credentials/sessions/google_session.json` |
-| Any platform | `/workspace/credentials/sessions/{platform}_session.json` |
-
-**Sessions contain authentication tokens — never expose or transmit them.**
-
-To reset a session (if expired):
+To find your VPS IP:
 ```bash
-rm /workspace/credentials/sessions/{platform}_session.json
+curl -s ifconfig.me
 ```
 
----
+## Required .env Variables
 
-## Troubleshooting
+Add these to your OpenClaw `.env` file before running setup:
 
-**`playwright install` fails**
 ```bash
-pip install playwright --break-system-packages
-playwright install chromium --with-deps
+VNC_PW=YourSecurePassword        # noVNC access password
+BROWSER_CDP_URL=http://browser:9222
+CAPSOLVER_API_KEY=               # optional — enables autonomous CAPTCHA solving
+BROWSERBASE_API_KEY=             # optional — enables residential proxy + stealth
 ```
 
-**Screenshot is black or blank**
-→ Page not fully loaded. Add before screenshot:
-```python
-page.wait_for_load_state("networkidle")
-```
+## Initial Login — Once Per Platform
 
-**Cloudflare blocks the request**
-→ Add realistic user agent + locale to browser context (see Anti-Bot section in SKILL.md)
-→ If still blocked: residential proxy required
+Open Chrome via noVNC and log in to all platforms you want the agent to access.
+Sessions are saved automatically in the Docker volume `browser-profile`.
+They survive container restarts and remain valid indefinitely.
 
-**Session expired — redirect to login page**
-→ Delete the session file and re-authenticate:
+## Session Expired
+
+The agent will notify you via Telegram with the noVNC link.
+Reconnect, log in again, reply DONE. The agent resumes immediately.
+
+## Enable CapSolver (Autonomous CAPTCHA)
+
 ```bash
-rm /workspace/credentials/sessions/{platform}_session.json
+# 1. Create account at https://capsolver.com
+# 2. Add to .env:
+CAPSOLVER_API_KEY=your_key_here
+# ~$0.001 per CAPTCHA solved
 ```
 
-**Element not found**
-→ Site updated their HTML. Screenshot the page, find the new selector,
-update `.learnings/LEARNINGS.md` with the new selector map.
+Supported: reCAPTCHA v2/v3, hCaptcha, Cloudflare Turnstile, AWS WAF
 
-**Container has no display**
-→ Normal — Playwright runs headless, no display needed.
-→ If you see `DISPLAY` errors: ensure `headless=True` in `launch()`.
+## Enable Browserbase (Residential Proxy + Stealth)
+
+```bash
+# 1. Create account at https://browserbase.com
+# 2. Free tier: 1 concurrent session, 1h/month
+# 3. Add to .env:
+BROWSERBASE_API_KEY=your_key_here
+```
+
+Use when a site blocks your VPS:
+```bash
+openclaw browser --browser-profile browserbase open https://blocked-site.com
+```
+
+## Reset Sessions
+
+```bash
+CONTAINER=$(docker ps --format '{{.Names}}' | grep openclaw | head -1)
+docker volume rm browser-profile
+# Restart only the browser container
+docker compose up -d --no-deps browser
+# Log in again via noVNC
+```
+
+## Change noVNC Password
+
+```bash
+# In your .env file:
+VNC_PW=NewSecurePassword
+# Restart only the browser container — OpenClaw keeps running
+docker compose up -d --no-deps browser
+```
+
+## Verify Everything is Running
+
+```bash
+CONTAINER=$(docker ps --format '{{.Names}}' | grep openclaw | head -1)
+docker ps | grep -E "openclaw|browser"
+curl -s http://localhost:9222/json | head -3
+docker exec "$CONTAINER" \
+  python3 /data/.openclaw/workspace/skills/virtual-desktop/browser_control.py status
+```
+
+Expected output:
+```
+✅ playwright
+✅ chrome_cdp
+✅ screenshots_dir
+✅ audit_file
+✅ capsolver       (if key configured)
+✅ browserbase     (if key configured)
+✅ claude_vision   (if ANTHROPIC_API_KEY present)
+```
+
+## Open Port 6901
+
+If noVNC is not accessible, open port 6901 (TCP) in your VPS firewall/security group.
