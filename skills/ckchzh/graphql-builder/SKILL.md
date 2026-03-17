@@ -1,6 +1,8 @@
 ---
+version: "2.0.0"
 name: graphql-builder
 description: "Error: --type required. Use when you need graphql builder capabilities. Triggers on: graphql builder, type, entity, fields, relations, lang."
+author: BytesAgain
 ---
 
 # graphql-builder

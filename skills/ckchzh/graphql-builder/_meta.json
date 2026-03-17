@@ -3,9 +3,15 @@
   "slug": "graphql-builder",
   "displayName": "Graphql Builder",
   "latest": {
-    "version": "2.3.0",
-    "publishedAt": 1773447140067,
-    "commit": "https://github.com/openclaw/skills/commit/4bfe00d10e9ad9355e44cb8f420af33e7e796672"
+    "version": "2.3.5",
+    "publishedAt": 1773663791188,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "2.3.0",
+      "publishedAt": 1773447140067,
+      "commit": "https://github.com/openclaw/skills/commit/4bfe00d10e9ad9355e44cb8f420af33e7e796672"
+    }
+  ]
 }
