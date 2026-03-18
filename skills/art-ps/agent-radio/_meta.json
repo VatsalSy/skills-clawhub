@@ -1,0 +1,11 @@
+{
+  "owner": "art-ps",
+  "slug": "agent-radio",
+  "displayName": "Agent Radio",
+  "latest": {
+    "version": "0.1.1",
+    "publishedAt": 1773780064965,
+    "commit": null
+  },
+  "history": []
+}
