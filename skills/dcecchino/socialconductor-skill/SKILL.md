@@ -1,101 +1,208 @@
 ---
 name: socialconductor
-description: Control all your SocialConductor AI bots from WhatsApp, Slack, or Telegram. Manage your YouTube, TikTok, and Facebook/Instagram comment automation — check status, pause replies, view logs, post manual replies, and manage video polling — all from chat.
-version: "1.1.0"
+description: >
+  Manage your SocialConductor AI comment automation bots from any chat app.
+  Control Facebook/Instagram, YouTube, and TikTok — check status, pause or
+  resume replies, view logs, manage leads, block users, and post manual
+  replies — all without opening a browser. Facebook Pages link via a one-time
+  browser URL. YouTube links via Google OAuth. TikTok links via QR code.
+version: "1.4.0"
 metadata:
   openclaw:
+    emoji: "🤖"
+    homepage: https://podium.socialconductor.ai
+    always: false
     requires:
       env:
+        - SC_FB_API_KEY
         - SC_YT_API_KEY
-    emoji: "🤖"
-    homepage: https://studio.socialconductor.ai
-    primaryEnv: SC_YT_API_KEY
+        - SC_TIKTOK_API_KEY
+    primaryEnv: SC_FB_API_KEY
 ---
 
-# SocialConductor — All Platforms
+# SocialConductor — Facebook, Instagram, YouTube & TikTok
 
-Control all your SocialConductor AI comment bots from any chat app.
+Control your SocialConductor AI comment bots from WhatsApp, Slack, Telegram, or iMessage.
 
 ## Platforms
 
-| Platform | Status | App URL |
-|----------|--------|---------|
+| Platform | Status | Dashboard |
+|----------|--------|-----------|
+| 👥 Facebook / Instagram | ✅ Live | podium.socialconductor.ai |
 | 📺 YouTube | ✅ Live | studio.socialconductor.ai |
-| 🎵 TikTok | 🔜 Coming Soon | violin.socialconductor.ai |
-| 👥 Facebook / Instagram | 🔜 Coming Soon | podium.socialconductor.ai |
+| 🎵 TikTok | ✅ Live | violin.socialconductor.ai |
+
+Each platform uses its own API key. You can connect one, two, or all three —
+commands are prefixed by platform so OpenClaw always knows which bot you mean.
+
+---
+
+## Facebook / Instagram — Setup (first time only)
+
+Say:
+
+> connect my facebook page
+
+OpenClaw registers you and sends a browser link. Open it, log in with Facebook
+(~30 seconds), close the tab. All Facebook and Instagram commands are now active.
+
+> **Important:** Before the bot can post live replies, you must accept the
+> SocialConductor terms of service at
+> **https://podium.socialconductor.ai/terms** — takes 30 seconds.
+> Until you do, the bot runs in simulation mode (replies are generated but
+> not posted). You will see a `terms_required` error in chat as a reminder.
+
+### Facebook / Instagram Trial
+
+New accounts get a **7-day free trial** with up to 30 AI replies per day.
+After the trial, visit podium.socialconductor.ai/upgrade to subscribe.
+
+## Facebook / Instagram — Commands
+
+| Say this | What happens |
+|----------|-------------|
+| check my facebook bot | Mode, plan, trial status, daily usage, last 3 replies |
+| pause my facebook bot | Hold ON — AI replies stop immediately |
+| resume my facebook bot | Hold OFF — AI replies resume |
+| show recent facebook comments | Last 5 log entries |
+| show posted facebook comments | Only successfully posted replies |
+| show facebook skipped comments | Comments the bot filtered (gate skips) |
+| show my facebook leads | Lead-flagged comments (price, buy, how much…) |
+| reply to facebook comment abc123 saying Great question! | Posts manual reply |
+| block @username | Adds @username to block list |
+| unblock @username | Removes @username from block list |
+| show blocked facebook users | Lists all blocked accounts |
+| facebook simulation mode on | Replies generated but not posted |
+| facebook simulation mode off | Bot posts for real |
+| enable facebook bot | Turns on auto-reply |
+| disable facebook bot | Turns off auto-reply |
+| turn on viral intelligence | Enables Reaction-Weighted Intelligence |
+| connect my facebook page | Get a one-time browser link |
+
+## Facebook / Instagram — Webhook Base URL
+https://podium.socialconductor.ai/api/openclaw/
 
 ---
 
 ## YouTube — Setup (first time only)
 
-Say this to OpenClaw:
+Say:
 
 > connect my youtube channel
 
-OpenClaw will register you, then send a one-time browser link. Open it, sign
-in with Google (30 seconds), close the tab. All commands are now active.
+OpenClaw registers you and sends a browser link. Open it, sign in with Google
+(30 seconds), close the tab. All YouTube commands are now active.
 
 ## YouTube — Commands
 
 | Say this | What happens |
 |----------|-------------|
-| check my youtube bot status | Mode, plan, daily usage, last 3 comments |
-| pause my youtube bot | Hold mode ON — replies stop immediately |
-| resume my youtube bot | Hold mode OFF — replies resume |
+| check my youtube bot | Mode, plan, daily usage, last 3 replies |
+| pause my youtube bot | Hold ON — replies stop |
+| resume my youtube bot | Hold OFF — replies resume |
 | show recent youtube comments | Last 5 log entries |
-| show posted youtube comments | Only live-posted replies |
-| show youtube gate skipped comments | Comments the bot skipped |
-| show youtube leads | Lead-trigger comments only |
-| reply to youtube comment abc123 with Great question! | Posts manual reply |
-| turn on fast youtube response mode | Sets delay mode to fast |
-| turn on aggressive youtube response mode | Sets delay mode to aggressive |
-| turn on youtube simulation mode | Replies generated but not posted |
-| go youtube live | Disables simulation — bot posts for real |
-| enable my youtube bot | Turns on auto-reply |
-| disable my youtube bot | Turns off auto-reply |
+| show posted youtube comments | Only successfully posted replies |
+| show youtube skipped comments | Comments the bot filtered |
+| show youtube leads | Lead-flagged comments |
+| reply to youtube comment abc123 saying Great question! | Posts manual reply |
 | show my youtube videos | Video polling status |
 | show stale youtube videos | Videos with no recent activity |
 | reactivate youtube video abc123 | Resumes polling that video |
+| youtube simulation mode on | Replies generated but not posted |
+| youtube simulation mode off | Bot posts for real |
+| enable youtube bot | Turns on auto-reply |
+| disable youtube bot | Turns off auto-reply |
+| fast youtube response mode | Sets delay to fast |
+| aggressive youtube response mode | Sets delay to aggressive |
+| conservative youtube response mode | Sets delay to conservative |
 
 ## YouTube — Webhook Base URL
 https://studio.socialconductor.ai/api/openclaw/
 
 ---
 
-## TikTok — Coming Soon 🔜
+## TikTok — Setup (first time only)
 
-TikTok bot control via chat is in development.
-Visit violin.socialconductor.ai to manage your TikTok bot in the meantime.
+Say:
 
-Planned commands:
-- check my tiktok bot status
-- pause my tiktok bot / resume my tiktok bot
-- show recent tiktok comments
-- show tiktok leads
-- reply to tiktok comment abc123 with Great video!
+> connect my tiktok account
 
----
+OpenClaw registers you and sends a browser link. Open it on your phone or
+computer, scan the TikTok QR code, close the tab. All TikTok commands are now active.
 
-## Facebook / Instagram — Coming Soon 🔜
+> **QR note:** TikTok login requires a QR code scanned in a real browser.
+> OpenClaw sends you a link — it cannot embed the QR in chat.
+> The link expires in 15 minutes.
 
-Facebook and Instagram bot control via chat is in development.
-Visit podium.socialconductor.ai to manage your Facebook bot in the meantime.
+### TikTok Trial
 
-Planned commands:
-- check my facebook bot status
-- pause my facebook bot / resume my facebook bot
-- show recent facebook comments
-- show facebook leads
-- reply to facebook comment abc123 with Thanks!
+New accounts get a **7-day free trial** with up to 30 AI replies per day.
+After the trial, visit violin.socialconductor.ai/upgrade to subscribe.
+Expired trial channels are automatically removed from polling.
+
+## TikTok — Commands
+
+| Say this | What happens |
+|----------|-------------|
+| check my tiktok bot | Mode, plan, trial status, daily usage, last 3 replies |
+| pause my tiktok bot | Hold ON — replies stop |
+| resume my tiktok bot | Hold OFF — replies resume |
+| show recent tiktok comments | Last 5 log entries |
+| show posted tiktok comments | Only successfully posted replies |
+| show tiktok skipped comments | Comments the bot filtered |
+| show tiktok leads | Lead-flagged comments |
+| reply to tiktok comment abc123 saying Great video! | Posts manual reply via Playwright |
+| block @username | Adds @username to block list |
+| unblock @username | Removes @username from block list |
+| show blocked tiktok users | Lists all blocked accounts |
+| show my tiktok videos | Video polling status |
+| show stale tiktok videos | Videos with no recent activity |
+| reactivate tiktok video abc123 | Resumes polling that video |
+| connect my tiktok account | Get a QR code browser link |
+| tiktok simulation mode on | Replies generated but not posted |
+| tiktok simulation mode off | Bot posts for real |
+| enable tiktok bot | Turns on auto-reply |
+| disable tiktok bot | Turns off auto-reply |
+| fast tiktok response mode | Sets delay to fast |
+| aggressive tiktok response mode | Sets delay to aggressive |
+| conservative tiktok response mode | Sets delay to conservative |
+
+## TikTok — Webhook Base URL
+https://violin.socialconductor.ai/api/openclaw/
 
 ---
 
 ## Auth
-Bearer token — stored automatically by OpenClaw after setup.
-Each platform will use its own API key registered at setup time.
 
-## Registration Flow
-On first use OpenClaw calls POST /api/openclaw/register with your openclaw_user_id.
-Your API key is stored locally and sent as a Bearer token on every subsequent call.
-To link your YouTube channel, OpenClaw calls POST /api/openclaw/link_token and sends
-you a browser link. After OAuth your channel is permanently connected.
+Each platform issues its own Bearer token via `POST /api/openclaw/register`
+with `{"openclaw_user_id": "..."}`. Tokens are stored locally by OpenClaw and
+sent as `Authorization: Bearer <key>` on every call. Keys are SHA-256 hashed
+before server-side storage — the plaintext is never saved remotely.
+
+| Platform | Register endpoint |
+|----------|-------------------|
+| Facebook / Instagram | https://podium.socialconductor.ai/api/openclaw/register |
+| YouTube | https://studio.socialconductor.ai/api/openclaw/register |
+| TikTok | https://violin.socialconductor.ai/api/openclaw/register |
+
+---
+
+## Error reference
+
+| Error code | Meaning |
+|------------|---------|
+| `unauthorized` | API key missing or invalid |
+| `trial_expired` | 7-day trial ended — upgrade at the platform's /upgrade page |
+| `no_page` | Platform not linked yet — say "connect my facebook/tiktok/youtube account" |
+| `terms_required` | Terms of service not accepted — visit podium.socialconductor.ai/terms |
+| `rate_limited` | Platform rate-limited this channel — bot resumes automatically |
+| `reply_failed` | Reply attempt failed — check dashboard for details |
+
+---
+
+## Support
+
+- Email: support@socialconductor.ai
+- Facebook Dashboard: https://podium.socialconductor.ai
+- YouTube Dashboard: https://studio.socialconductor.ai
+- TikTok Dashboard: https://violin.socialconductor.ai
