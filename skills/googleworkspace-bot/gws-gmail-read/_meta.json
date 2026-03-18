@@ -1,0 +1,11 @@
+{
+  "owner": "googleworkspace-bot",
+  "slug": "gws-gmail-read",
+  "displayName": "Gws Gmail Read",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1773789056260,
+    "commit": null
+  },
+  "history": []
+}
