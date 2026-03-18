@@ -1,0 +1,11 @@
+{
+  "owner": "marvae",
+  "slug": "douban-cli",
+  "displayName": "Douban CLI",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1773753679975,
+    "commit": null
+  },
+  "history": []
+}
