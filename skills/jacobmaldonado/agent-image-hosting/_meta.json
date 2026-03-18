@@ -1,0 +1,11 @@
+{
+  "owner": "jacobmaldonado",
+  "slug": "agent-image-hosting",
+  "displayName": "Image Hosting for agents",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1773818875314,
+    "commit": null
+  },
+  "history": []
+}
