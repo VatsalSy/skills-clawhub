@@ -3,9 +3,15 @@
   "slug": "memory-evolver",
   "displayName": "Memory Evolver",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1773806169317,
-    "commit": "https://github.com/openclaw/skills/commit/a66f46b6ebca3f69c47e8433a9e4eae9f9838f5c"
+    "version": "1.0.2",
+    "publishedAt": 1773807971134,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1773806169317,
+      "commit": "https://github.com/openclaw/skills/commit/a66f46b6ebca3f69c47e8433a9e4eae9f9838f5c"
+    }
+  ]
 }
