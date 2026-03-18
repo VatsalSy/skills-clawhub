@@ -1,14 +1,62 @@
 const path = require('path');
 const fs = require('fs');
 const { execSync } = require('child_process');
+const { createLogger } = require('../../src/utils/logger.cjs');
+
+// 创建模块级 logger
+const logger = createLogger('cognitive-recall');
 
 // Cognitive Brain config
 const HOME = process.env.HOME || '/root';
 const SKILL_DIR = path.join(HOME, '.openclaw/workspace/skills/cognitive-brain');
 const CONFIG_PATH = path.join(SKILL_DIR, 'config.json');
-const MEMORY_PATH = path.join(HOME, '.openclaw/workspace/MEMORY.md');
-const KEYWORDS_PATH = path.join(SKILL_DIR, '.dynamic-keywords.json');
-const USER_MODEL_PATH = path.join(SKILL_DIR, '.user-model.json');
+
+// v5.0 新架构导入
+let CognitiveBrain = null;
+let brainInstance = null;
+
+function getBrain() {
+  if (!brainInstance) {
+    if (!CognitiveBrain) {
+      try {
+        ({ CognitiveBrain } = require(path.join(SKILL_DIR, 'src/index.js')));
+      } catch (e) {
+        logger.error('[cognitive-recall] Failed to load v5.0 CognitiveBrain:', e.message);
+        return null;
+      }
+    }
+    try {
+      brainInstance = new CognitiveBrain();
+      logger.info('[cognitive-recall] v5.0 CognitiveBrain initialized');
+    } catch (e) {
+      logger.error('[cognitive-recall] Failed to initialize brain:', e.message);
+      return null;
+    }
+  }
+  return brainInstance;
+}
+
+// 兼容：旧版数据库连接（降级用）
+let dbPool = null;
+function getDbPool() {
+  if (!dbPool) {
+    const { getPool } = require(path.join(SKILL_DIR, 'scripts/core/db.cjs'));
+    dbPool = getPool();
+  }
+  return dbPool;
+}
+
+// 配置缓存
+let cachedConfig = null;
+function getConfig() {
+  if (!cachedConfig) {
+    if (!fs.existsSync(CONFIG_PATH)) {
+      return null;
+    }
+    cachedConfig = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
+  }
+  return cachedConfig;
+}
 
 let sharedMemory = null;
 let sharedMemoryReady = false;
@@ -17,13 +65,13 @@ async function initSharedMemory() {
   if (sharedMemoryReady) return true;
   
   try {
-    const { getSharedMemory } = require(path.join(SKILL_DIR, 'scripts/shared_memory.cjs'));
+    const { getSharedMemory } = require(path.join(SKILL_DIR, 'scripts/core/shared_memory.cjs'));
     sharedMemory = await getSharedMemory();
     sharedMemoryReady = true;
-    console.log('[cognitive-recall] Shared memory initialized');
+    logger.info('[cognitive-recall] Shared memory initialized');
     return true;
   } catch (e) {
-    console.log('[cognitive-recall] Shared memory not available, using fallback');
+    logger.info('[cognitive-recall] Shared memory not available, using fallback');
     return false;
   }
 }
@@ -32,7 +80,7 @@ async function getLessonsFromSharedMemory() {
   if (!sharedMemoryReady) {
     await initSharedMemory();
   }
-  
+
   if (sharedMemory) {
     try {
       const lessons = await sharedMemory.getLessons();
@@ -43,19 +91,28 @@ async function getLessonsFromSharedMemory() {
         source: 'shared_memory'
       }));
     } catch (e) {
-      console.log('[cognitive-recall] Shared memory query failed, using file fallback');
+      logger.info('[cognitive-recall] Shared memory query failed, no fallback enabled');
     }
   }
-  
-  // Fallback to MEMORY.md
-  return getLessonsFromMemory();
+
+  // Fallback disabled - database only mode
+  return [];
+}
+
+// ============================================================================
+// 从 MEMORY.md 读取教训（已禁用 - 数据库优先模式）
+// ============================================================================
+
+function getLessonsFromMemory() {
+  // Fallback disabled - database only mode
+  return [];
 }
 
 async function getUserProfileFromSharedMemory() {
   if (!sharedMemoryReady) {
     await initSharedMemory();
   }
-  
+
   if (sharedMemory) {
     try {
       const profile = await sharedMemory.getUserProfile();
@@ -63,12 +120,34 @@ async function getUserProfileFromSharedMemory() {
         return JSON.parse(profile[0].content);
       }
     } catch (e) {
-      console.log('[cognitive-recall] Shared memory profile failed, using file fallback');
+      logger.info('[cognitive-recall] Shared memory profile failed, no fallback enabled');
     }
   }
+
+  // Fallback disabled - database only mode
+  return null;
+}
+
+// ============================================================================
+// 从文件读取用户模型（Fallback 模式）
+// ============================================================================
+
+function getUserModelFromFile() {
+  try {
+    if (fs.existsSync(USER_MODEL_PATH)) {
+      const data = JSON.parse(fs.readFileSync(USER_MODEL_PATH, 'utf8'));
+      return data;
+    }
+  } catch (err) {
+    logger.warn('[cognitive-recall] Failed to load user model:', err.message);
+  }
   
-  // Fallback to file-based user model
-  return getUserModelFromFile();
+  // 默认用户模型
+  return {
+    name: 'master',
+    preferences: {},
+    interactions: { count: 0, lastActive: null }
+  };
 }
 
 // ============================================================================
@@ -95,7 +174,7 @@ const perfLog = {
 
     // Warn if slow
     if (durationMs > this.warnThreshold) {
-      console.warn(`[cognitive-recall] ⚠️ Slow query: ${operation} took ${durationMs}ms`);
+      logger.warn(`[cognitive-recall] ⚠️ Slow query: ${operation} took ${durationMs}ms`);
     }
   },
 
@@ -192,12 +271,12 @@ const healthState = {
       await pool.query('SELECT 1');
       this.pgHealthy = true;
       this.fallbackMode = false;
-      console.log('[cognitive-recall] ✅ PostgreSQL healthy');
+      logger.info('[cognitive-recall] ✅ PostgreSQL healthy');
       return true;
     } catch (err) {
       this.pgHealthy = false;
       this.fallbackMode = true;
-      console.warn('[cognitive-recall] ⚠️ PostgreSQL unavailable, falling back to MEMORY.md');
+      logger.warn('[cognitive-recall] ⚠️ PostgreSQL unavailable, no fallback enabled');
       return false;
     } finally {
       if (pool) await pool.end().catch(() => {});
@@ -205,42 +284,9 @@ const healthState = {
   },
 
   async fallback(keywords, limit) {
-    // Read from MEMORY.md
-    try {
-      if (!fs.existsSync(MEMORY_PATH)) {
-        return [];
-      }
-
-      const content = fs.readFileSync(MEMORY_PATH, 'utf8');
-      const lines = content.split('\n').filter(l => l.trim());
-
-      // Simple keyword matching
-      const matches = [];
-      for (const line of lines) {
-        if (line.startsWith('#') || line.startsWith('---')) continue;
-
-        const matchCount = keywords.filter(kw =>
-          line.toLowerCase().includes(kw.toLowerCase())
-        ).length;
-
-        if (matchCount > 0) {
-          matches.push({
-            summary: line.replace(/^[-*]\s*/, '').substring(0, 100),
-            content: line,
-            type: 'fallback',
-            importance: matchCount / keywords.length,
-            source: 'MEMORY.md'
-          });
-        }
-      }
-
-      return matches
-        .sort((a, b) => b.importance - a.importance)
-        .slice(0, limit);
-    } catch (err) {
-      console.error('[cognitive-recall] Fallback read error:', err.message);
-      return [];
-    }
+    // Fallback disabled - database only mode
+    logger.info('[cognitive-recall] Fallback disabled, returning empty results');
+    return [];
   }
 };
 
@@ -263,7 +309,7 @@ const keywordState = {
         }
       }
     } catch (err) {
-      console.warn('[cognitive-recall] Failed to load keywords:', err.message);
+      logger.warn('[cognitive-recall] Failed to load keywords:', err.message);
     }
   },
 
@@ -328,12 +374,12 @@ const keywordState = {
           lastUpdate: this.lastUpdate
         }, null, 2));
 
-        console.log('[cognitive-recall] 📝 Updated keywords:', this.keywords.join(', '));
+        logger.info('[cognitive-recall] 📝 Updated keywords:', this.keywords.join(', '));
       }
 
       return this.keywords;
     } catch (err) {
-      console.warn('[cognitive-recall] Failed to update keywords:', err.message);
+      logger.warn('[cognitive-recall] Failed to update keywords:', err.message);
       return this.keywords;
     } finally {
       if (pool) await pool.end().catch(() => {});
@@ -395,17 +441,17 @@ function ensurePgDependency() {
     return pgModule;
   } catch (e) {
     if (isInstalling) {
-      console.log('[cognitive-recall] npm install already in progress');
+      logger.info('[cognitive-recall] npm install already in progress');
       return null;
     }
 
     // Check retry limit
     if (!retryState.shouldRetry()) {
-      console.warn('[cognitive-recall] ⚠️ Max install attempts reached, waiting for cooldown');
+      logger.warn('[cognitive-recall] ⚠️ Max install attempts reached, waiting for cooldown');
       return null;
     }
 
-    console.log('[cognitive-recall] pg not found, auto-installing...');
+    logger.info('[cognitive-recall] pg not found, auto-installing...');
     isInstalling = true;
     retryState.recordAttempt();
 
@@ -420,7 +466,7 @@ function ensurePgDependency() {
 
       const duration = Date.now() - startTime;
       perfLog.record('npm-install', duration);
-      console.log(`[cognitive-recall] ✅ npm install completed in ${duration}ms`);
+      logger.info(`[cognitive-recall] ✅ npm install completed in ${duration}ms`);
 
       // Reset retry state on success
       retryState.installAttempts = 0;
@@ -430,7 +476,7 @@ function ensurePgDependency() {
       pgLoaded = true;
       return pgModule;
     } catch (installErr) {
-      console.error('[cognitive-recall] ❌ Auto-install failed:', installErr.message);
+      logger.error('[cognitive-recall] ❌ Auto-install failed:', installErr.message);
       perfLog.record('npm-install', 0, false);
       return null;
     } finally {
@@ -440,7 +486,7 @@ function ensurePgDependency() {
 }
 
 // ============================================================================
-// 主查询逻辑
+// 主查询逻辑 - v5.0 架构
 // ============================================================================
 
 async function recallFromDB(queries, limit = 3) {
@@ -454,49 +500,57 @@ async function recallFromDB(queries, limit = 3) {
     return cached;
   }
 
-  // Load pg (with auto-install)
-  const pg = ensurePgDependency();
-  if (!pg) {
-    console.error('[cognitive-recall] pg module unavailable');
-    return healthState.fallback(queries, limit);
+  // Try v5.0 brain first
+  const brain = getBrain();
+  if (brain) {
+    try {
+      const query = queries.join(' ');
+      const memories = await brain.recall(query, { limit });
+      
+      // Convert v5.0 Memory objects to old format for compatibility
+      const formatted = memories.map(m => ({
+        id: m.id,
+        summary: m.summary,
+        content: m.content,
+        type: m.type,
+        importance: m.importance,
+        timestamp: m.updatedAt || m.createdAt
+      }));
+
+      // Cache result
+      if (formatted.length > 0) {
+        const maxImportance = Math.max(...formatted.map(m => m.importance || 0.5));
+        setCacheEntry(cacheKey, formatted, maxImportance);
+      }
+
+      perfLog.record('brain-recall', Date.now() - startTime);
+      return formatted;
+    } catch (e) {
+      logger.warn('[cognitive-recall] v5.0 brain recall failed, falling back:', e.message);
+      // Continue to legacy mode
+    }
   }
 
-  // Check config
-  if (!fs.existsSync(CONFIG_PATH)) {
-    console.log('[cognitive-recall] Config not found');
+  // Legacy fallback (direct SQL)
+  const pg = ensurePgDependency();
+  if (!pg) {
+    logger.error('[cognitive-recall] pg module unavailable');
     return [];
   }
 
-  const config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
-  const dbConfig = config.storage.primary;
-
-  // Health check
-  const isHealthy = await healthState.check(pg, dbConfig);
-
-  if (!isHealthy) {
-    // Fallback to MEMORY.md
-    const result = await healthState.fallback(queries, limit);
-    perfLog.record('fallback-query', Date.now() - startTime);
-    return result;
+  const config = getConfig();
+  if (!config) {
+    logger.info('[cognitive-recall] Config not found');
+    return [];
   }
 
-  // Update dynamic keywords (async, don't wait)
-  keywordState.update(pg, dbConfig).catch(() => {});
-
-  let pool = null;
   try {
-    const { Pool } = pg;
-    pool = new Pool({
-      host: dbConfig.host,
-      port: dbConfig.port,
-      database: dbConfig.database,
-      user: dbConfig.user,
-      password: dbConfig.password,
-      connectionTimeoutMillis: 3000,
-      query_timeout: 5000
-    });
+    const pool = getDbPool();
+    if (!pool) {
+      logger.error('[cognitive-recall] Database pool unavailable');
+      return [];
+    }
 
-    // Build OR conditions for multiple keywords
     const conditions = queries.map((q, i) => `(summary ILIKE $${i + 1} OR content ILIKE $${i + 1})`).join(' OR ');
     const params = queries.map(q => `%${q}%`);
     params.push(limit.toString());
@@ -511,7 +565,6 @@ async function recallFromDB(queries, limit = 3) {
 
     const memories = result.rows;
 
-    // Cache result with importance-based TTL
     if (memories.length > 0) {
       const maxImportance = Math.max(...memories.map(m => m.importance || 0.5));
       setCacheEntry(cacheKey, memories, maxImportance);
@@ -520,92 +573,165 @@ async function recallFromDB(queries, limit = 3) {
     perfLog.record('db-query', Date.now() - startTime);
     return memories;
   } catch (err) {
-    console.error('[cognitive-recall] DB error:', err.message || String(err));
+    logger.error('[cognitive-recall] DB error:', err.message);
     perfLog.record('db-query', Date.now() - startTime, false);
-
-    // Fallback on error
-    return healthState.fallback(queries, limit);
-  } finally {
-    if (pool) {
-      await pool.end().catch(() => {});
-    }
+    return [];
   }
 }
 
 // ============================================================================
-// 自动编码 - 记录对话到 brain
+// 查询高重要性记忆（数据库优先策略）
+// ============================================================================
+
+async function recallCriticalMemories() {
+  const startTime = Date.now();
+  
+  // Check cache
+  const cacheKey = 'critical-memories';
+  const cached = getCacheEntry(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  // Load pg
+  const pg = ensurePgDependency();
+  if (!pg) {
+    logger.info('[cognitive-recall] pg unavailable for critical memories');
+    return [];
+  }
+
+  // Check config
+  const config = getConfig();
+  if (!config) {
+    return [];
+  }
+  const dbConfig = config.storage.primary;
+
+  // Health check
+  const isHealthy = await healthState.check(pg, dbConfig);
+  if (!isHealthy) {
+    return [];
+  }
+
+  try {
+    // Use singleton pool instead of creating new one
+    const pool = getDbPool();
+    if (!pool) {
+      logger.error('[cognitive-recall] Database pool unavailable');
+      return [];
+    }
+
+    // Query high-importance memories: reflection, lesson types with importance >= 0.8
+    const result = await pool.query(`
+      SELECT id, summary, content, type, importance, timestamp
+      FROM episodes
+      WHERE importance >= 0.8
+        AND type IN ('reflection', 'lesson', 'milestone')
+      ORDER BY importance DESC, timestamp DESC
+      LIMIT 5
+    `);
+
+    const memories = result.rows;
+
+    // Cache with high TTL (critical memories don't change often)
+    if (memories.length > 0) {
+      setCacheEntry(cacheKey, memories, 0.95); // High importance = long cache
+    }
+
+    logger.info('[cognitive-recall] Retrieved', memories.length, 'critical memories from DB');
+    return memories;
+  } catch (err) {
+    logger.error('[cognitive-recall] Critical memories query error:', err.message);
+    return [];
+  }
+}
+
+// ============================================================================
+// 自动编码 - 记录对话到 brain (v5.0 架构)
 // ============================================================================
 
 const encodeMemory = async (content, metadata = {}) => {
   const startTime = Date.now();
-  
+
   // Skip short messages
   if (!content || content.length < 10) return null;
-  
+
   // Skip system messages
   if (content.includes('[🧠 Memory Context]')) return null;
-  
+
   // Skip duplicate encoding (check recent cache)
   const cacheKey = `encode:${content.slice(0, 50)}`;
   if (recallCache.has(cacheKey)) return null;
-  
+
+  // Try v5.0 brain first
+  const brain = getBrain();
+  if (brain) {
+    try {
+      const entities = extractEntities(content);
+      const memory = await brain.encode(content, {
+        type: metadata.type || 'conversation',
+        importance: calculateImportance(content, metadata),
+        sourceChannel: metadata.channel || 'unknown',
+        role: metadata.role || 'user',
+        entities: entities
+      });
+
+      // Mark as encoded
+      recallCache.set(cacheKey, true);
+
+      perfLog.record('brain-encode', Date.now() - startTime);
+      logger.info(`[encodeMemory] v5.0 encoded: ${memory.id}`);
+      return memory.id;
+    } catch (e) {
+      logger.warn('[encodeMemory] v5.0 brain encode failed, falling back:', e.message);
+      // Continue to legacy mode
+    }
+  }
+
+  // Legacy fallback (direct SQL)
   let pg;
   try {
-    pg = require('pg');
+    pg = require('/root/.openclaw/workspace/skills/cognitive-brain/node_modules/pg');
   } catch (e) {
-    return null;
+    try {
+      pg = require('pg');
+    } catch (e2) {
+      return null;
+    }
   }
-  
+
   if (!fs.existsSync(CONFIG_PATH)) return null;
-  
-  const config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
-  const dbConfig = config.storage.primary;
-  
-  let pool = null;
+
   try {
-    const { Pool } = pg;
-    pool = new Pool({
-      host: dbConfig.host,
-      port: dbConfig.port,
-      database: dbConfig.database,
-      user: dbConfig.user,
-      password: dbConfig.password,
-      connectionTimeoutMillis: 2000,
-      query_timeout: 3000
-    });
-    
-    // Extract entities (simple keyword extraction)
+    const pool = getDbPool();
+    if (!pool) {
+      logger.error('[cognitive-recall] Database pool unavailable');
+      return null;
+    }
+
     const entities = extractEntities(content);
-    
-    // Calculate importance
     const importance = calculateImportance(content, metadata);
-    
-    // Insert into episodes
+
     const result = await pool.query(`
-      INSERT INTO episodes (summary, content, type, importance, entities, metadata, timestamp)
-      VALUES ($1, $2, $3, $4, $5, $6, NOW())
+      INSERT INTO episodes (summary, content, type, source_channel, importance, entities, timestamp, role)
+      VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7)
       RETURNING id
     `, [
       content.slice(0, 200),
       content,
       metadata.type || 'conversation',
+      metadata.channel || 'unknown',
       importance,
       JSON.stringify(entities),
-      JSON.stringify(metadata)
+      metadata.role || 'user'
     ]);
-    
-    // Mark as encoded
+
     recallCache.set(cacheKey, true);
-    
     perfLog.record('encode', Date.now() - startTime);
     return result.rows[0].id;
   } catch (err) {
-    console.error('[cognitive-recall] Encode error:', err.message || String(err));
+    logger.error('[cognitive-recall] Encode error:', err.message);
     return null;
-  } finally {
-    if (pool) {
-      await pool.end().catch(() => {});
-    }
   }
 };
 
@@ -741,13 +867,27 @@ const updateUserModel = (message, metadata) => {
     };
     
     if (fs.existsSync(USER_MODEL_PATH)) {
-      userModel = JSON.parse(fs.readFileSync(USER_MODEL_PATH, 'utf8'));
+      try {
+        const loaded = JSON.parse(fs.readFileSync(USER_MODEL_PATH, 'utf8'));
+        // Merge with defaults to ensure all fields exist
+        userModel = {
+          ...userModel,
+          ...loaded,
+          basic: { ...userModel.basic, ...loaded.basic },
+          preferences: { ...userModel.preferences, ...loaded.preferences },
+          patterns: { ...userModel.patterns, ...loaded.patterns },
+          knowledge: { ...userModel.knowledge, ...loaded.knowledge },
+          stats: { ...userModel.stats, ...loaded.stats }
+        };
+      } catch (e) {
+        logger.warn('[cognitive-recall] Failed to parse user model, using defaults');
+      }
     }
-    
+
     // 更新交互统计
     userModel.stats.totalInteractions++;
     userModel.stats.lastInteraction = Date.now();
-    
+
     // 记录活跃时段
     const hour = new Date().getHours();
     if (!userModel.patterns.activeHours.includes(hour)) {
@@ -757,28 +897,30 @@ const updateUserModel = (message, metadata) => {
     
     // 提取并更新话题兴趣
     const topics = extractTopics(message);
-    for (const topic of topics) {
-      if (!userModel.preferences.topics[topic]) {
-        userModel.preferences.topics[topic] = 0;
+    if (userModel.preferences && userModel.preferences.topics) {
+      for (const topic of topics) {
+        if (!userModel.preferences.topics[topic]) {
+          userModel.preferences.topics[topic] = 0;
+        }
+        userModel.preferences.topics[topic] = Math.min(1, userModel.preferences.topics[topic] + 0.1);
       }
-      userModel.preferences.topics[topic] = Math.min(1, userModel.preferences.topics[topic] + 0.1);
     }
-    
+
     // 推断沟通风格
     const style = inferCommunicationStyle(message);
-    if (style !== 'balanced') {
+    if (style !== 'balanced' && userModel.basic) {
       userModel.basic.communicationStyle = style;
     }
-    
+
     // 提取用户名（如果消息中包含自我介绍）
     const nameMatch = message.match(/我叫(\S+)|我是(\S+)|名字[是为](\S+)/);
-    if (nameMatch) {
+    if (nameMatch && userModel.basic) {
       userModel.basic.name = nameMatch[1] || nameMatch[2] || nameMatch[3];
     }
-    
+
     // 提取偏好关键词
     const prefs = message.match(/(喜欢|偏好|想要|希望)(\S+)/g);
-    if (prefs) {
+    if (prefs && userModel.knowledge && userModel.knowledge.knownConcepts) {
       for (const p of prefs) {
         const pref = p.replace(/喜欢|偏好|想要|希望/g, '');
         if (pref && pref.length < 10 && !userModel.knowledge.knownConcepts.includes(pref)) {
@@ -791,7 +933,7 @@ const updateUserModel = (message, metadata) => {
     fs.writeFileSync(USER_MODEL_PATH, JSON.stringify(userModel, null, 2));
     return userModel;
   } catch (e) {
-    console.error('[cognitive-recall] User model update error:', e.message);
+    logger.error('[cognitive-recall] User model update error:', e.message);
     return null;
   }
 };
@@ -800,33 +942,37 @@ const updateUserModel = (message, metadata) => {
 // 预测和预加载模块
 // ============================================================================
 
-const { predictAndPreload } = require(path.join(SKILL_DIR, 'scripts/prediction_client.cjs'));
+const { predictAndPreload } = require(path.join(SKILL_DIR, 'scripts/core/prediction_client.cjs'));
 
 // ============================================================================
 // Hook handler
 // ============================================================================
 
 const handler = async (event) => {
-  // Only handle preprocessed messages
-  if (event.type !== 'message' || event.action !== 'preprocessed') {
-    return;
+  // Handle preprocessed - recall memory for user message
+  if (event.type === 'message' && event.action === 'preprocessed') {
+    return handlePreprocessed(event);
   }
+  
+  // Note: completed event not supported by OpenClaw, removed
+};
 
+// Handle preprocessed event - recall memory
+const handlePreprocessed = async (event) => {
+  // Debug: log all events for debugging
+  const channel = event.context?.channel || 'unknown';
+  logger.info('[cognitive-recall] handlePreprocessed called, channel:', channel);
+  logger.info('[cognitive-recall] Debug - event.context keys:', Object.keys(event.context || {}));
+  
   // Skip if no context
-  if (!event.context) {
-    return;
-  }
-
+  if (!event.context) return;
+  
   // Only recall for direct messages (not groups)
-  if (event.context.isGroup || event.context.groupId) {
-    return;
-  }
-
+  if (event.context.isGroup || event.context.groupId) return;
+  
   // Skip if bodyForAgent is empty
-  if (!event.context.bodyForAgent) {
-    return;
-  }
-
+  if (!event.context.bodyForAgent) return;
+  
   // Get dynamic keywords
   const keywords = keywordState.getKeywords();
   
@@ -834,23 +980,40 @@ const handler = async (event) => {
   const lessonKeywords = ['教训', '规则', '记住', '必须', '不要'];
   
   const sender = event.context.senderId || event.sender_id || 'unknown';
+  
+  // 保存原始消息（用于编码，在注入上下文之前）
+  const originalMessage = event.context.bodyForAgent;
 
   try {
     // 初始化共享工作区
     await initSharedMemory();
     
-    // 并行执行：检索记忆 + 教训 + 预测
-    const [memoriesResult, lessonsResult, predictionResult] = await Promise.all([
+    // 获取共享 pool 用于预测
+    const pool = getDbPool();
+
+    // 并行执行：检索记忆 + 教训 + 预测 + 高重要性记忆
+    const [memoriesResult, lessonsResult, predictionResult, criticalMemoriesResult] = await Promise.all([
       recallFromDB(keywords, 5),
       getLessonsFromSharedMemory(),
-      predictAndPreload(sender, [event.context.bodyForAgent])
+      predictAndPreload(sender, [event.context.bodyForAgent], pool),
+      recallCriticalMemories() // 新增：查询高重要性记忆
     ]);
     
     const memories = memoriesResult;
     const lessons = lessonsResult;
     const { predictions, memories: predictedMemories } = predictionResult;
+    const criticalMemories = criticalMemoriesResult;
 
     const contextParts = [];
+    
+    // 注入高重要性记忆（数据库优先）
+    if (criticalMemories && criticalMemories.length > 0) {
+      const criticalLines = criticalMemories.map(m => {
+        const typeEmoji = m.type === 'reflection' ? '💡' : m.type === 'lesson' ? '⚠️' : '📝';
+        return `  ${typeEmoji} ${m.summary || m.content.substring(0, 80)}`;
+      });
+      contextParts.push(`[🧠 重要记忆]\n${criticalLines.join('\n')}\n[/重要记忆]`);
+    }
     
     // 注入预测信息
     if (predictions && predictions.length > 0) {
@@ -887,7 +1050,7 @@ const handler = async (event) => {
     if (contextParts.length > 0) {
       const fullContext = '\n\n' + contextParts.join('\n\n') + '\n\n';
       event.context.bodyForAgent = fullContext + event.context.bodyForAgent;
-      console.log('[cognitive-recall] Injected', 
+      logger.info('[cognitive-recall] Injected', 
         memories?.length || 0, 'memories +', 
         lessons?.length || 0, 'lessons +',
         predictions?.length || 0, 'predictions +',
@@ -895,34 +1058,117 @@ const handler = async (event) => {
     }
     
     // 自动编码用户消息（异步，不阻塞）
-    const userMessage = event.context.bodyForAgent;
-    
-    encodeMemory(userMessage, {
+    encodeMemory(originalMessage, {
       role: 'user',
       sender,
       channel: event.context.channel || 'unknown',
       type: 'conversation'
     }).then(id => {
       if (id) {
-        console.log('[cognitive-recall] Auto-encoded user message:', id);
+        logger.info('[cognitive-recall] Auto-encoded user message:', id);
       }
     }).catch(() => {});
     
+    // 延迟捕获 AI 回复（5秒后）
+    const sessionId = event.context?.sessionId || event.session_id;
+    const messageId = event.context?.messageId || event.message_id;
+    logger.info('[cognitive-recall] Debug - sessionId:', sessionId, 'messageId:', messageId?.substring(0, 20));
+    if (sessionId && messageId) {
+      logger.info('[cognitive-recall] Scheduling assistant capture in 5s...');
+      setTimeout(() => {
+        captureAssistantReply(sessionId, messageId, sender, channel);
+      }, 5000);
+    } else {
+      logger.info('[cognitive-recall] Missing sessionId or messageId, skip capture');
+    }
+    
     // 自动学习用户偏好（异步）
-    const userModel = updateUserModel(userMessage, { sender });
+    const userModel = updateUserModel(originalMessage, { sender });
     if (userModel && userModel.preferences.topics) {
       const topTopics = Object.entries(userModel.preferences.topics)
         .sort((a, b) => b[1] - a[1])
         .slice(0, 3)
         .map(([t]) => t);
       if (topTopics.length > 0) {
-        console.log('[cognitive-recall] 用户兴趣:', topTopics.join(', '));
+        logger.info('[cognitive-recall] 用户兴趣:', topTopics.join(', '));
       }
     }
     
   } catch (err) {
-    console.error('[cognitive-recall] Error:', err.message || String(err));
+    logger.error('[cognitive-recall] Error:', err.message || String(err));
+  } finally {
+    // Clean up shared memory connection
+    if (sharedMemory && sharedMemoryReady) {
+      try {
+        await sharedMemory.close();
+        sharedMemoryReady = false;
+        sharedMemory = null;
+      } catch (e) {
+        // Ignore close errors
+      }
+    }
+  }
+};
+
+// 延迟捕获 AI 回复
+const captureAssistantReply = async (sessionId, userMessageId, sender, channel) => {
+  try {
+    // 构建会话文件路径
+    const sessionFile = path.join('/root/.openclaw/agents/main/sessions', `${sessionId}.jsonl`);
+    if (!fs.existsSync(sessionFile)) return;
+    
+    // 读取会话文件
+    const content = fs.readFileSync(sessionFile, 'utf8');
+    const lines = content.split('\n').filter(l => l.trim());
+    
+    // 找到用户消息的位置
+    let userIndex = -1;
+    for (let i = lines.length - 1; i >= 0; i--) {
+      try {
+        const msg = JSON.parse(lines[i]);
+        if (msg.role === 'user' && msg.content?.includes?.(userMessageId)) {
+          userIndex = i;
+          break;
+        }
+      } catch (e) {
+        // JSON parse error, skip this line
+      }
+    }
+    
+    if (userIndex === -1) return;
+    
+    // 查找后续的 assistant 回复
+    for (let i = userIndex + 1; i < lines.length; i++) {
+      try {
+        const msg = JSON.parse(lines[i]);
+        if (msg.role === 'assistant' && msg.content) {
+          const text = typeof msg.content === 'string' 
+            ? msg.content 
+            : msg.content.map(c => c.text || '').join('');
+          
+          if (text && text.length > 10) {
+            // 编码 AI 回复
+            const id = await encodeMemory(text, {
+              role: 'assistant',
+              sender: 'assistant',
+              channel,
+              type: 'conversation',
+              replyTo: userMessageId
+            });
+            if (id) {
+              logger.info('[cognitive-recall] Auto-encoded assistant reply:', id);
+            }
+            return;
+          }
+        }
+      } catch (e) {
+        logger.warn('[cognitive-recall] Failed to encode assistant reply:', e.message);
+      }
+    }
+  } catch (err) {
+    logger.error('[cognitive-recall] Capture assistant reply failed:', err.message);
   }
 };
 
 module.exports = handler;
+

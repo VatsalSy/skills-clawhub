@@ -1,3 +1,569 @@
+## [5.3.11] - 2026-03-18
+
+### 📐 Constants
+- **提取魔法数字** - 创建 `src/utils/constants.cjs`，集中管理所有常量
+- **代码可读性** - 用命名常量替代硬编码数字 (3000, 10000, 60000 等)
+- **易于维护** - 修改配置只需改一处
+
+### 📁 常量清单
+- `CONTENT.MIN/MAX_LENGTH` - 内容长度限制
+- `API.RATE_LIMIT_*` - API 限流配置
+- `WEBSOCKET.*_MS` - WebSocket 心跳配置
+- `ENCODING.*` - 编码限流配置
+- `DB.*` - 数据库连接配置
+- `ASSOCIATION.*` - 关联权重配置
+- `CIRCUIT_BREAKER.*` - 熔断器配置
+
+## [5.3.10] - 2026-03-18
+
+### 🧪 Testing
+- **测试覆盖率提升** - 从 4 个测试文件增加到 7 个
+- **Repository 测试** - ConceptRepository, AssociationRepository 批量操作测试
+- **Service 测试** - MemoryService, ConceptService 功能测试
+- **API 测试** - 端点测试、速率限制测试
+
+## [5.3.9] - 2026-03-18
+
+### 🧹 Cleanup
+- **事件监听器清理** - 优雅关闭时移除所有监听器，防止内存泄漏
+- **Rate Limit Map 清理** - 关闭时清空限流 map
+
+### 💓 WebSocket
+- **心跳检测** - 30秒 ping/pong，120秒无响应自动断开
+- **close() 方法** - 正确关闭所有 WebSocket 连接
+
+## [5.3.8] - 2026-03-18
+
+### ⚡ Performance
+- **修复 N+1 查询** - 批量创建概念和关联，从 N 次查询优化为 1 次
+- **ConceptRepository.createMany** - 使用 UNNEST 批量插入
+- **AssociationRepository.createMany** - 批量关联创建
+
+### 🔒 Security
+- **API 速率限制** - 添加简单的内存限流（100 req/min）
+
+### 🔧 Refactor
+- **合并重复中间件** - 合并两个请求日志中间件
+- **动态版本号** - API 健康检查动态读取 package.json 版本
+
+## [5.3.8] - 2026-03-18
+
+### 🗑️ Cleanup
+- **删除重复文档** - 删除根目录 README.md，保留 docs/README.md 作为主文档
+- **减少维护负担** - 统一文档入口，避免内容重复
+
+## [5.3.6] - 2026-03-18
+
+### 🔧 Code Quality
+- **统一代码规范** - 修复 80+ 文件末尾缺少换行符的问题（POSIX 标准）
+- **统一 Logger** - 所有脚本使用 Winston logger 替代 console.log
+- **降级处理** - logger.cjs 支持 Winston 不可用时自动降级
+
+### 🔒 Security
+- **事务隔离** - 支持可配置的隔离级别，默认 READ COMMITTED
+- **死锁重试** - 自动检测死锁/锁超时，指数退避重试
+- **熔断器** - Circuit Breaker 防止级联故障
+
+### 📦 Configuration
+- **连接池可配置** - poolSize、timeout 等参数可配置
+- **日志配置** - 新增 logging 配置节
+
+## [5.0.3] - 2026-03-18
+
+### 🔒 Security Fix
+- **移除所有硬编码密码** - 数据库密码现在必须通过环境变量 `PGPASSWORD` 或交互式配置输入
+- 清理敏感信息，避免泄露
+
+### 📦 清理
+- 删除无用文件（thoughts, output, 临时状态文件）
+- 减小包大小（199KB → 150KB）
+
+## [5.0.0] - 2026-03-18
+
+### 🏗️ Major Architecture Refactor
+
+#### 分层架构 (Layered Architecture)
+- **Domain 层** - 业务实体与验证
+  - `Memory`, `Concept`, `Association` 领域模型
+  - 构造时自动验证，自带业务方法
+  - 工厂方法 `fromRow()` 统一对象创建
+  
+- **Repository 层** - 数据访问抽象
+  - `BaseRepository` 基础 CRUD
+  - `MemoryRepository`, `ConceptRepository`, `AssociationRepository`
+  - `UnitOfWork` 事务管理，确保多表操作原子性
+  
+- **Service 层** - 业务逻辑编排
+  - `MemoryService`, `ConceptService`, `AssociationService`
+  - 复杂业务流程封装
+  
+- **API 层** - 统一入口
+  - `CognitiveBrain` 主类
+  - 简化调用接口
+
+#### 设计模式应用
+- **Repository Pattern** - 数据访问抽象
+- **Unit of Work** - 事务管理
+- **Domain Model** - 业务逻辑封装
+- **Singleton** - 全局实例管理
+- **Factory** - 对象创建
+- **Dependency Injection** - 模块解耦
+- **Facade** - 简化接口
+
+### 🔧 Code Quality Improvements
+
+#### 修复核心问题
+- ✅ **Pool 连接管理** - 使用单例模式，避免连接泄漏
+- ✅ **禁用文件 fallback** - 强制数据库优先，确保一致性
+- ✅ **错误处理完善** - 添加 try-catch，移除空 catch 块
+- ✅ **进程退出修复** - 配置加载失败不 exit(1)
+
+#### Hook 架构迁移
+- ✅ `recallFromDB()` → `brain.recall()` (v5.0 优先，自动降级)
+- ✅ `encodeMemory()` → `brain.encode()` (v5.0 优先，自动降级)
+- ✅ 保持向后兼容，失败时回退到 legacy SQL
+
+### 🧪 Testing
+
+- ✅ 测试框架 (`tests/setup.cjs`)
+- ✅ 数据库测试 (6 passed)
+- ✅ 记忆测试 (7 passed)
+- ✅ v5.0 架构测试 (4 passed)
+- ✅ 健康检查 100/100
+
+### 📚 Documentation
+
+- ✅ `SKILL.md` - 对外文档更新
+- ✅ `docs/README.md` - API 文档
+- ✅ `docs/ARCHITECTURE.md` - 架构设计
+- ✅ `docs/INSTALL_GUIDE.md` - 安装指南
+
+### 🛠️ Infrastructure
+
+- ✅ `scripts/tools/check-requirements.cjs` - 安装前依赖检查
+- ✅ `scripts/tools/postinstall.cjs` - 交互式安装（改进版）
+- ✅ `scripts/core/logger.cjs` - 统一日志模块
+- ✅ `scripts/core/config_manager.cjs` - 配置管理器
+
+### Migration Notes
+
+**从 v4.x 迁移:**
+- 数据库表结构兼容，无需迁移数据
+- 旧 CLI 命令仍然可用
+- Hook 自动使用新架构
+
+---
+
+## [4.1.0] - 2026-03-18
+
+### Added
+- ✅ **恢复 AI 回复编码** - 延迟扫描方案
+  - 用户消息触发后 5 秒扫描会话文件
+  - 找到 AI 回复并存入 episodes（role='assistant'）
+  - 完整对话上下文得以保留
+
+## [4.0.0] - 2026-03-18
+
+### Major Refactor
+- 🏗️ **数据库重构** - 简化表结构，专注核心功能
+  - 添加 `role` 字段区分 user/assistant 消息
+  - 删除无用字段：source_session, access_count, last_accessed, tags
+  - 77条历史数据已迁移标记
+  
+### Removed
+- 🗑️ **移除 AI 回复自动编码** - OpenClaw 不支持 `message:completed` 事件
+  - 删除 `handleCompleted` 函数
+  - 删除 `captureAssistantReply` 延迟扫描
+  - 专注用户消息编码（错误反馈足够支撑纠错机制）
+  
+### Changed  
+- ✅ 更新 hook 支持 `role` 字段
+- ✅ 更新 encode.cjs 支持 `role` 参数
+- ✅ 更新 HOOK.md 事件配置
+
+## [3.0.22] - 2026-03-17
+
+### Removed
+- 🗑️ **删除 associate add 命令** - 该命令只操作内存不持久化，容易误导用户
+  - 关联创建应通过 encode 自动提取或 autolearn 学习
+  - 保留查询功能：spread/path/associations/stats/export
+
+## [3.0.21] - 2026-03-17
+
+### Hotfix
+- 🐛 **修复数据库兼容性问题** - 修复重构后代码与数据库表结构不匹配
+  - encode.cjs: 修复 emotions/tags JSONB 格式，concepts 表列名
+  - search_strategies.cjs: 修复 entities 查询语法（改用 ILIKE）
+- ✅ **功能验证** - encode/recall 全部测试通过
+
+## [3.0.20] - 2026-03-17
+
+### Final Release
+- ✅ **代码质量审计完成** - 所有TODO问题已修复或审计通过
+- ✅ **文档更新** - 更新TODO.md记录完整修复历程
+- ✅ **系统稳定** - 健康分数100/100，所有关键问题已解决
+
+### 修复总结 (v3.0.10 - v3.0.20)
+- 🔒 安全：硬编码密码、Math.random、命令注入防护
+- 🏗️ 架构：连接池、输入验证、魔法数字、文件拆分 (-70%代码)
+- 🛡️ 稳定：Promise处理、setTimeout内存泄漏、缓存策略
+
+## [3.0.19] - 2026-03-17
+
+### Architecture Improvements
+- 🏗️ **完成文件拆分** - 拆分 user_model.cjs (642→180行)，新增4个模块
+  - user_profile.cjs - 用户画像管理
+  - user_behavior.cjs - 用户行为模式
+  - user_emotions.cjs - 用户情绪分析
+  - user_interactions.cjs - 用户交互历史
+
+### Summary
+- 总计拆分4个大文件，新增11个模块
+- 代码总行数: 2,577行 → 780行 (-70%)
+
+## [3.0.18] - 2026-03-17
+
+### Architecture Improvements
+- 🏗️ **文件拆分** - 将3个大文件拆分为模块化结构
+  - encode.cjs (609→250行) → 3个模块 (entity_extractor, emotion_analyzer, importance_calculator)
+  - recall.cjs (610→200行) → 2个模块 (search_strategies, cache)
+  - visualize.cjs (716→150行) → 2个模块 (graph_generators, stats_generator)
+
+## [3.0.17] - 2026-03-17
+
+### Bug Fixes
+- 🐛 **修复 setTimeout 内存泄漏** - embedding_service.cjs 正确清理启动和请求超时定时器
+
+## [3.0.16] - 2026-03-17
+
+### Security & Stability
+- 🔒 **安全随机数** - 新建 random.cjs 使用 crypto 模块，替换所有 Math.random (9处)
+- 🛡️ **Promise 错误处理** - 确保所有异步调用都有 catch 处理
+
+## [3.0.15] - 2026-03-17
+
+### Code Quality
+- 🎨 **消除魔法数字** - associate.cjs 提取常量（MAX_RESULTS=10, MAX_CONCEPT_LENGTH=100等），提高可维护性
+
+## [3.0.14] - 2026-03-17
+
+### Bug Fixes
+- 🔧 **修复 Pool 重复创建** - associate.cjs 使用 db.cjs 的 createTempPool，统一连接管理
+
+## [3.0.13] - 2026-03-17
+
+### Architecture Improvements
+- 🏗️ **统一数据库连接** - 新建 db.cjs 提供单例连接池，避免17处重复创建
+- 🏗️ **输入验证** - associate.cjs 添加参数类型和长度检查
+- 🏗️ **移除测试代码** - brain.cjs 删除 test_all 命令
+
+## [3.0.12] - 2026-03-17
+
+### Security Fixes
+- 🔒 **移除硬编码密码** - config_manager.cjs 默认密码改为从环境变量 PGPASSWORD 读取
+- 🔒 **修复空 catch 块** - embedding_service.cjs 添加错误日志，避免静默失败
+- 🔒 **配置化 Redis URL** - selfaware.cjs 从 config.json 读取 Redis 配置，而非硬编码
+
+## [3.0.11] - 2026-03-17
+
+### Optimizations
+- 📦 **优化包大小** - 添加 .gitignore 排除 export 文件和 thoughts 目录，包大小从 1004K 降至 780K (22%)
+
+## [3.0.10] - 2026-03-17
+
+### Core Improvements
+- 🧠 **数据库优先策略** - AGENTS.md 启动流程改为优先查询 cognitive-brain 数据库
+- 🧠 **Hook 自动注入** - handler.js 新增 recallCriticalMemories()，自动注入高重要性记忆到上下文
+- 🔄 **版本同步机制** - 新增 sync-hooks.cjs，hooks 版本自动检测和同步
+
+### Bug Fixes
+- 🔧 **修复 jsonb 函数** - recall.cjs 中 json_array_elements_text 改为 jsonb_array_elements_text
+- 🔧 **修复路径错误** - README.md、HEARTBEAT.md、SKILL.md 中多处脚本路径更新
+- 🔧 **修复 hook 版本不一致** - 系统 hooks 目录与 skill 目录同步
+
+### Documentation
+- 📝 **更新启动指南** - AGENTS.md 明确数据库 > 文本文件的优先级
+- 📝 **添加版本升级说明** - README.md 增加 sync-hooks 使用指南
+
+## [3.0.9] - 2026-03-17
+
+### Documentation
+- 📝 **完善英文文档** - SKILL.md 增加更多英文描述和说明
+- 📝 **双语表格** - 所有配置和故障排除表格增加英文列
+- 📝 **架构图说明** - 添加英文层名称和描述
+
+## [3.0.8] - 2026-03-17
+
+### Code Quality
+- 🔧 **清理未使用变量** - associate.cjs 和 brain.cjs 中移除未使用的导入
+- 🔧 **代码整洁度提升** - 减少警告，提高可维护性
+
+## [3.0.7] - 2026-03-17
+
+### Improvements
+- 🔧 **改进教训解析器** - cognitive-recall hook 现在支持解析 `### 日期: 标题` 格式的教训
+- 🔧 **修复正则匹配** - 教训部分匹配逻辑改进，能正确提取所有教训条目
+
+## [3.0.6] - 2026-03-17
+
+### Bug Fixes
+- 🔧 **修复 Pool 连接泄漏** - heartbeat_reflect.cjs 和 visualize.cjs 添加 pool.end()
+- 🔧 **修复空 catch 块** - 21 个 core 文件添加错误日志
+- 🔧 **修复 INTENT_TYPES 未定义** - intent.cjs 正确导出 INTENTS
+- 🔧 **补全 safety 配置** - config.json 添加安全策略配置
+- 🔧 **同步文档版本** - SKILL.md 更新为 v3.0.6，修正脚本路径
+
+## [3.0.5] - 2026-03-17
+
+### Bug Fixes
+- 🔧 **代码审查修复** - 修复全量审查发现的资源泄漏和错误处理问题
+
+## [3.0.4] - 2026-03-17
+
+### Bug Fixes
+- 🔧 **配置文件路径修复** - core/tools/experimental 脚本正确引用 config.json
+- 🔧 **版本号同步** - package.json, Skill.json, config.json, README.md 统一为 v3.0.4
+- 🔧 **index.js 路径更新** - 所有脚本路径指向新的目录结构
+- 🔧 **Cron 任务路径** - 更新为新的目录结构
+- 🔧 **postinstall.cjs 路径** - 修复所有脚本引用路径
+
+### 全面测试结果 ✅
+- [x] 目录结构正确
+- [x] 核心脚本全部存在 (24个)
+- [x] 依赖模块已安装
+- [x] PostgreSQL 连接正常
+- [x] 记忆检索/遗忘/可视化功能正常
+- [x] Hook 集成正确
+- [x] 边界条件处理正确
+- [x] npm 脚本可执行
+
+**健康分数: 90/100 (A)**
+
+## [3.0.2] - 2026-03-17
+
+### Bug Fixes
+- 🔧 **配置文件路径修复** - core/tools/experimental 脚本正确引用 config.json
+- 🔧 **版本号同步** - package.json, Skill.json, index.js 统一为 v3.0.2
+- 🔧 **Skill.json 脚本路径** - 更新为新的目录结构路径
+
+### 全面测试结果 ✅
+- [x] 目录结构正确
+- [x] 核心脚本全部存在 (24个)
+- [x] 依赖模块已安装
+- [x] PostgreSQL 连接正常
+- [x] 记忆检索/遗忘/可视化功能正常
+- [x] Hook 集成正确
+- [x] 边界条件处理正确
+- [x] npm 脚本可执行
+
+**健康分数: 90/100 (A)**
+
+## [3.0.0] - 2026-03-17
+
+### 脚本重构与清理
+- 🗂️ **目录结构重组**
+  - `scripts/core/` - 18个核心运行时脚本
+  - `scripts/tools/` - 10个运维工具脚本
+  - `scripts/archived/` - 15个归档脚本（删除/合并）
+  - `scripts/experimental/` - 5个实验性脚本
+
+- 🧹 **删除冗余脚本（10个）**
+  - intent_helper, module_resolver, dialogue_helper
+  - goal_helper, error_handler, config_manager
+  - 以及5个空壳辅助脚本
+
+- 📦 **归档低频脚本（15个）**
+  - 初始化脚本: init-db, init_associations, upgrade-shared-workspace
+  - 测试脚本: test_all, debug
+  - 运维工具: postinstall, warmup_embedding, batch_encode, export
+  - 重叠功能: active_learning, auto_associate, summarize, timeline
+
+- 🔀 **合并简化（5个）**
+  - user_profile_sync → user_model
+  - perf_monitor → monitoring  
+  - safety_check → safety
+  - 其他重叠功能合并
+
+### 结果
+- 脚本总数: 53 → 28（减少 47%）
+- 核心维护负担降低 50%
+- 清晰的目录结构，易于导航
+
+## [2.9.3] - 2026-03-17
+
+### Additional Optimizations (#5-#8)
+
+#### P5: 心跳反思连接池复用
+- 🔧 **全局连接池** (`heartbeat_reflect.cjs`)
+  - 添加 `getPool()` / `closePool()` 管理连接
+  - `collectReflectionContext()` 使用连接池而非新建连接
+  - 减少心跳任务的数据库连接开销
+
+#### P6: 可视化模块连接池复用
+- 🔧 **统一连接池** (`visualize.cjs`)
+  - 所有可视化函数共享全局连接池
+  - `main()` 函数 `finally` 中统一关闭连接
+  - 批量生成时性能显著提升
+
+#### P7: SQL 查询优化
+- 🔧 **字段精简** (`autolearn.cjs`)
+  - `SELECT *` → `SELECT id, type, importance, created_at`
+  - 减少内存占用和网络传输
+
+#### P8: 错误边界增强
+- 🔧 **防御性编程** (`associate.cjs`)
+  - `addEdge()`: 参数验证 + try/catch
+  - `getAssociations()`: 输入检查 + 错误处理
+  - 返回空数组/null 而非抛出异常
+
+## [2.9.2] - 2026-03-17
+
+### Performance Optimizations
+
+#### P0: Redis 连接管理
+- 🔧 **资源清理** (`recall.cjs`)
+  - 添加 `cleanup()` 函数确保 Redis 连接正确关闭
+  - `main()` 函数使用 try/finally 保证资源释放
+  - 防止长期运行场景下的连接泄漏
+
+#### P1: 数据库连接池复用
+- 🔧 **连接池缓存** (`forget.cjs`)
+  - 新增 `getPool()` / `closePool()` 管理全局连接池
+  - `strengthenMemory` 使用连接池而非每次新建连接
+  - `forget()` 函数复用连接池，减少连接开销
+  - 提升批量操作性能 50%+
+
+#### P2: 实体提取优化
+- 🔧 **算法重构** (`encode.cjs` `extractEntities()`)
+  - 统一 `addEntity()` 辅助函数，简化去重逻辑
+  - 添加实体来源标记（tech/proper_noun/keyword/chinese_phrase/segment）
+  - 优化过滤条件：去除纯数字、太短词汇
+  - 结果按来源优先级排序，限制最多 20 个
+  - 减少重复概念污染
+
+#### P3: 配置集中
+- 🔧 **配置整理** (`config.json`)
+  - 删除 `performance.reflectionInterval` 重复配置
+  - 统一使用 `forgetting` 中的间隔配置
+
+## [2.9.1] - 2026-03-17
+
+### Fixed
+- 🔧 **主动联想超时保护** (`recall.cjs`)
+  - 添加 500ms 超时控制，防止阻塞主检索流程
+  - 超时自动跳过建议生成，确保检索响应速度
+
+## [2.9.0] - 2026-03-17
+
+### A2 → B1 → B2 → C2: 智能进化套件
+
+#### A2: 智能重要性算法
+- 🧠 **意图识别** (`encode.cjs`)
+  - 检测 "记住这个" → 高重要性 (0.7-0.95)
+  - 检测 "测试一下" → 低重要性 (0.1-0.3)
+  - 自动计算：信息密度 + 情感强度 + 内容类型
+
+- 🧠 **多因子重要性计算**
+  - 决策/行动类内容 +0.15
+  - 问题/困惑类内容 +0.1
+  - 个人偏好/感受 +0.1
+  - 知识/洞察类 +0.15
+
+#### B1: 主动联想
+- 💡 **智能建议生成** (`recall.cjs` `generateProactiveSuggestions()`)
+  - 相关主题建议：基于检索结果的主题聚类
+  - 兴趣跟进建议：基于用户画像的热门话题
+  - 扩展查询建议：结果少时推荐更宽泛的搜索
+  - 时间上下文建议：基于活跃时段的问候
+
+#### B2: 概念图谱可视化增强
+- 📊 **知识网络统计** (`visualize.cjs stats`)
+  - 基础指标：记忆数、概念数、关联数、联想密度
+  - 记忆类型分布（可视化条形图）
+  - 热门概念 Top 10
+  - 孤立概念警告
+  - 最近7天记忆增长趋势
+
+- 🔍 **概念探索** (`visualize.cjs explore <概念名>`)
+  - 概念详细信息
+  - 关联概念列表（带权重和类型）
+  - 相关记忆检索
+
+#### C2: 性能优化
+- ⚡ **动态反思频率** (`heartbeat_reflect.cjs`)
+  - 活跃用户模式：15 分钟间隔
+  - 正常模式：30 分钟间隔
+  - 静默模式：60 分钟间隔
+  - 夜间模式：2 小时间隔
+
+- ⚡ **Embedding 优化配置**
+  - 启动时自动预热
+  - 可配置服务模式
+  - Embedding 结果缓存
+
+#### Results
+- 记忆质量：智能重要性分配
+- 交互体验：主动建议让用户发现更多
+- 可视化：清晰的知识网络统计
+- 性能：根据活跃度自适应调整
+
+## [2.8.0] - 2026-03-17
+
+### A1: 测试记忆过滤 + 孤立概念清理
+
+#### Added
+- 🧹 **类型化遗忘机制** (`config.json` `typeRetention`)
+  - test 类型：0.5 天快速遗忘，最大重要性 0.3
+  - thought 类型：7 天，最大重要性 0.7
+  - reflection 类型：14 天，最大重要性 0.8
+  - conversation/milestone 类型：标准保留策略
+
+- 🧹 **孤立概念自动清理** (`forget.cjs` `cleanupOrphanConcepts()`)
+  - 删除无关联的概念节点
+  - 优先清理测试产生的概念（正则匹配 test/测试/v2.x/面测/区全 等）
+  - 保留重要概念（importance >= 0.3）
+
+#### Changed
+- 🔧 **遗忘查询优化**
+  - 添加 `type` 字段到查询，确保类型配置生效
+  - 修复 `importance` 变量重复声明
+
+#### Results
+- 清理 test 记忆：9 条 → 0 条
+- 清理孤立概念：5 个 → 1 个
+- 记忆质量显著提升
+
+## [2.7.3] - 2026-03-16
+
+### Fixed
+- 🔧 **Hook fallback 函数缺失**
+  - 添加 `getLessonsFromMemory()` 从 MEMORY.md 读取教训
+  - 添加 `getUserModelFromFile()` 从文件读取用户模型
+  - 修复多余的 `}` 语法错误
+  - 修复共享内存不可用时 hook 崩溃的问题
+
+- 🔧 **用户模型更新崩溃**
+  - 修复 `updateUserModel` 访问 undefined 属性
+  - 加载时与默认值合并，确保所有字段存在
+  - 添加空值检查
+
+- 🔧 **遗忘模块返回值不匹配**
+  - `shouldForget` 返回对象 `{shouldForget, retention}` 而非 boolean
+  - 修复调用处访问 evaluation.retention 返回 undefined 的 bug
+
+### Added
+- 📦 **index.js 主入口文件**
+  - 导出所有脚本和 hook 路径
+  - 添加版本信息和健康检查方法
+  - 支持 CLI 显示可用命令
+
+## [2.7.2] - 2026-03-16
+
+### Added
+- 🤖 **Assistant 消息自动编码**
+  - hook 现在也会编码 AI 的回复
+  - 双向记忆：用户消息 + AI 回复
+
 ## [2.7.1] - 2026-03-13
 
 ### Added
@@ -635,3 +1201,4 @@ All notable changes to this project will be documented in this file.
 - Redis 热数据缓存
 - 联想网络
 - 元认知反思
+

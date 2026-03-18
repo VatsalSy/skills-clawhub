@@ -1,6 +1,6 @@
 {
   "name": "cognitive-brain",
-  "version": "1.2.3",
+  "version": "5.3.11",
   "description": "类脑认知系统 - 四层记忆架构 + 联想网络 + 元认知反思 + 自我意识 + 自主学习 + 跨会话记忆注入",
   "author": "AI Self-Design",
   "license": "MIT",
@@ -57,11 +57,12 @@
     "better-sqlite3": "^9.0.0"
   },
   "scripts": {
-    "init": "node scripts/init-db.cjs",
-    "encode": "node scripts/encode.cjs",
-    "recall": "node scripts/recall.cjs",
-    "reflect": "node scripts/reflect.cjs",
-    "autolearn": "node scripts/autolearn.cjs",
-    "selfaware": "node scripts/selfaware.cjs"
+    "init": "node scripts/tools/init-db.cjs",
+    "encode": "node scripts/core/encode.cjs",
+    "recall": "node scripts/core/recall.cjs",
+    "reflect": "node scripts/experimental/reflect.cjs",
+    "autolearn": "node scripts/core/autolearn.cjs",
+    "sync-hooks": "node scripts/tools/sync-hooks.cjs",
+    "postinstall": "node scripts/tools/postinstall.cjs"
   }
 }

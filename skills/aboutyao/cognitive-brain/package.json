@@ -1,18 +1,23 @@
 {
   "name": "cognitive-brain",
-  "version": "2.7.2",
-  "description": "类脑认知系统 - 四层记忆架构 + 联想网络 + 元认知反思 + 自我意识 + 自主学习 + 自由思考 + 跨会话记忆注入",
-  "main": "index.js",
+  "version": "5.3.11",
+  "description": "类脑认知系统 v5.0 - 分层架构 + 事务安全 + 完整测试",
+  "main": "src/index.js",
   "type": "commonjs",
   "scripts": {
-    "postinstall": "node scripts/postinstall.cjs",
-    "init": "node scripts/init-db.cjs",
-    "encode": "node scripts/encode.cjs",
-    "recall": "node scripts/recall.cjs",
-    "reflect": "node scripts/reflect.cjs",
-    "autolearn": "node scripts/autolearn.cjs",
-    "selfaware": "node scripts/selfaware.cjs",
-    "test": "echo \"No tests yet\" && exit 0"
+    "check": "node scripts/tools/check-requirements.cjs",
+    "install": "node scripts/tools/postinstall.cjs",
+    "test": "./tests/run.sh",
+    "test:v5": "node tests/v5.test.cjs",
+    "health": "node scripts/tools/health_check.cjs",
+    "encode": "node scripts/core/encode.cjs",
+    "recall": "node scripts/core/recall.cjs",
+    "forget": "node scripts/core/forget.cjs",
+    "visualize": "node scripts/core/visualize.cjs",
+    "sync-hooks": "node scripts/tools/sync-hooks.cjs",
+    "postinstall": "node scripts/tools/postinstall.cjs",
+    "api": "node src/api/server.js",
+    "indexes": "node scripts/tools/create_indexes.cjs"
   },
   "keywords": [
     "memory",
@@ -20,18 +25,23 @@
     "learning",
     "reflection",
     "brain",
-    "self-awareness",
-    "autolearn",
+    "architecture",
+    "repository-pattern",
+    "transaction",
     "ai",
-    "agent",
-    "cross-session"
+    "agent"
   ],
   "author": "AI Self-Design",
   "license": "MIT",
   "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "helmet": "^7.0.0",
     "pg": "^8.11.0",
     "redis": "^4.7.1",
-    "uuid": "^9.0.0"
+    "uuid": "^9.0.0",
+    "winston": "^3.10.0",
+    "ws": "^8.14.0"
   },
   "engines": {
     "node": ">=18.0.0"

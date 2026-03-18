@@ -1,5 +1,20 @@
 {
-  "version": "1.0.0",
+  "version": "5.3.11",
+  "logging": {
+    "level": "${LOG_LEVEL:-info}",
+    "dir": "logs",
+    "maxSize": "10MB",
+    "maxFiles": 5,
+    "console": {
+      "enabled": true,
+      "colorize": true
+    },
+    "file": {
+      "enabled": true,
+      "errorLog": "error.log",
+      "combinedLog": "combined.log"
+    }
+  },
   "storage": {
     "primary": {
       "type": "postgresql",
@@ -7,7 +22,10 @@
       "port": 5432,
       "database": "cognitive_brain",
       "user": "postgres",
-      "password": "cognitive123",
+      "password": "${PGPASSWORD}",
+      "poolSize": 10,
+      "connectionTimeoutMillis": 5000,
+      "queryTimeout": 10000,
       "extensions": ["pgvector", "pg_trgm"]
     },
     "cache": {
@@ -53,11 +71,41 @@
     "maxDepth": 3,
     "cacheEnabled": true
   },
+  "importance": {
+    "enabled": true,
+    "algorithm": "smart",
+    "explicitIntent": {
+      "highPatterns": ["记住", "重要", "保存", "记下来", "别忘了", "提醒我"],
+      "lowPatterns": ["测试", "试试", "debug", "随便", "好奇", "问问"]
+    },
+    "factors": {
+      "informationDensity": 0.25,
+      "emotionIntensity": 0.20,
+      "contentType": 0.25,
+      "userIntent": 0.30
+    },
+    "default": 0.5
+  },
   "forgetting": {
     "enabled": true,
     "schedule": "0 3 * * *",
     "minAge": 604800000,
-    "importanceThreshold": 0.2
+    "importanceThreshold": 0.2,
+    "typeRetention": {
+      "test": { "days": 0.5, "maxImportance": 0.3, "autoDecay": true },
+      "thought": { "days": 7, "maxImportance": 0.7 },
+      "reflection": { "days": 14, "maxImportance": 0.8 },
+      "conversation": { "days": 30, "maxImportance": 1.0 },
+      "milestone": { "days": 365, "maxImportance": 1.0 }
+    },
+    "cleanupOrphans": true,
+    "minAssociationCount": 1
+  },
+  "proactive": {
+    "enabled": true,
+    "maxSuggestions": 2,
+    "confidenceThreshold": 0.5,
+    "suggestionTypes": ["related_topic", "interest_followup", "expand_query"]
   },
   "autolearn": {
     "enabled": true,
@@ -86,7 +134,13 @@
   "performance": {
     "cacheWarmupSize": 100,
     "maxRecallResults": 20,
-    "indexOptimizationInterval": 86400000
+    "indexOptimizationInterval": 86400000,
+    "embedding": {
+      "warmupOnStart": true,
+      "warmupTimeout": 60000,
+      "serveMode": false,
+      "cacheEmbeddings": true
+    }
   },
   "sharedWorkspace": {
     "enabled": true,
@@ -97,5 +151,13 @@
     },
     "syncInterval": 30000,
     "conflictResolution": "newest-wins"
+  },
+  "safety": {
+    "enabled": true,
+    "strictMode": false,
+    "blockedOperations": ["rm -rf", "format", "fdisk", "mkfs"],
+    "requireConfirmation": ["delete_file", "send_email", "post_public"],
+    "logPath": ".safety-log.json",
+    "maxLogSize": 500
   }
 }

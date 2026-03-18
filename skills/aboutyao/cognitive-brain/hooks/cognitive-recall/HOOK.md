@@ -6,7 +6,7 @@ metadata:
     "openclaw":
       {
         "emoji": "🧠",
-        "events": ["message:preprocessed"],
+        "events": ["message:preprocessed", "message:completed"],
         "requires": { "bins": ["node"] }
       }
   }
@@ -33,7 +33,7 @@ Automatically recalls user context from Cognitive Brain's PostgreSQL memory stor
 The hook reads Cognitive Brain's config from:
 `~/.openclaw/workspace/skills/cognitive-brain/config.json`
 
-Default connection:
-- PostgreSQL: localhost:5432/cognitive_brain
-- User: postgres
-- Password: cognitive123
+Default connection (configure via environment variables):
+- PostgreSQL: ${PGHOST}:${PGPORT}/${PGDATABASE}
+- User: ${PGUSER}
+- Password: ${PGPASSWORD}
