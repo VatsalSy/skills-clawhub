@@ -1,0 +1,11 @@
+{
+  "owner": "roojenkins",
+  "slug": "uplo-customer-360",
+  "displayName": "Uplo Customer 360",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1773810010486,
+    "commit": null
+  },
+  "history": []
+}
