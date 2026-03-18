@@ -3,11 +3,16 @@
   "slug": "whatsmolt",
   "displayName": "WhatsMolt",
   "latest": {
-    "version": "2.1.0",
-    "publishedAt": 1773767521565,
-    "commit": "https://github.com/openclaw/skills/commit/2b6d8b635a2909cc35a38136a557ddf255ebae42"
+    "version": "2.3.2",
+    "publishedAt": 1773770280853,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.1.0",
+      "publishedAt": 1773767521565,
+      "commit": "https://github.com/openclaw/skills/commit/2b6d8b635a2909cc35a38136a557ddf255ebae42"
+    },
     {
       "version": "2.0.2",
       "publishedAt": 1770012810661,
