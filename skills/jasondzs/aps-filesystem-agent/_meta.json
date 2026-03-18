@@ -1,0 +1,11 @@
+{
+  "owner": "jasondzs",
+  "slug": "aps-filesystem-agent",
+  "displayName": "Aps Filesystem Agent",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1773827073307,
+    "commit": null
+  },
+  "history": []
+}
