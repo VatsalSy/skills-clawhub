@@ -1,11 +1,17 @@
 {
   "owner": "whbzju",
   "slug": "aurashot-character-skill",
-  "displayName": "AuraShot Character Skill",
+  "displayName": "Skill",
   "latest": {
-    "version": "0.0.5",
-    "publishedAt": 1773751162381,
-    "commit": "https://github.com/openclaw/skills/commit/a39a1171ebf77dee1c075e835e41dc68c96b5360"
+    "version": "0.0.6",
+    "publishedAt": 1773886143005,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.0.5",
+      "publishedAt": 1773751162381,
+      "commit": "https://github.com/openclaw/skills/commit/a39a1171ebf77dee1c075e835e41dc68c96b5360"
+    }
+  ]
 }

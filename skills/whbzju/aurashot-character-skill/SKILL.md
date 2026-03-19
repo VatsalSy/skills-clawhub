@@ -212,7 +212,7 @@ avatars/
 ### 关键原则
 
 - **始终加 `--output` 和 `--wait`**：每次调用任何子命令时，**必须**加上 `--output avatars/{角色名}/gallery --wait`（id-photo 用 `--output avatars/{角色名}/profile --wait`）。不加这两个参数，图片不会下载到本地。
-- **始终传入面部参考图**：每次调用 `character-generate` 或 `edit` 时，从角色目录读取 `profile/face-reference.png` 或 `profile/id-photo.png` 作为面部参考，确保身份一致性。
+- **始终传入面部参考图（优先使用证件照）**：每次调用 `character-generate` 或 `edit` 时，**优先使用生成的证件照** `profile/id-photo.png` 作为 `--face-image` 参数。证件照经过标准化处理，身份一致性远优于原始照片。仅在证件照不存在时才回退到 `profile/face-reference.png`。
 - **只展示最终结果**：AuraShot 内部可能有多步处理，但用户只关心最终图片。不要展示中间结果、降级结果或调试信息。
 - **用 localPath 展示图片**：脚本下载完成后，从 JSON 输出的 `downloaded[].localPath` 获取本地路径，重命名为描述性文件名（如 `海边白裙-夕阳.png`），然后用这个本地路径展示给用户。
 - **记住上下文**：如果用户刚生成了一张图，接着说"换个姿势"，你应该用刚才的结果图作为 `--target-image` 来编辑，而不是从头生成。
