@@ -8,7 +8,7 @@ Create smart suggestions at these moments:
 
 ### Wrap Up (Sunday)
 After reviewing the week, check:
-- Bucket consistently at 0% completion → suggest making time for it
+- Pillar consistently at 0% completion → suggest making time for it
 - Same activity carried over 3+ weeks → suggest dropping, delegating, or restructuring
 - Energy pattern: draining activities scheduled at peak hours → suggest rescheduling
 - Recurring blocker mentioned again → suggest a structural change
@@ -17,15 +17,15 @@ After reviewing the week, check:
 ### Fresh Start (Monday)
 When planning the new week, check:
 - Overcommitting again (planned > available) → suggest lighter load
-- Same bucket neglected again → suggest scheduling it first
-- Carryovers from same bucket again → suggest different approach
+- Same pillar neglected again → suggest scheduling it first
+- Carryovers from same pillar again → suggest different approach
 - No variety in activities → suggest mixing it up
 
-### Life Audit
+### Life Scan
 During comprehensive review:
 - Delegation candidates from energy-skill matrix → suggest offloading
 - Happiness correlations not being acted on → suggest making time for happiness drivers
-- Long-term bucket imbalance → suggest rebalancing
+- Long-term pillar imbalance → suggest rebalancing
 - Frequency targets consistently missed → suggest adjusting targets or scheduling
 
 ### Analytics / Any Conversation
@@ -36,8 +36,8 @@ When patterns emerge organically:
 
 ### Checking Pending Suggestions
 At the start of wrap-up and fresh-start, also check for pending/snoozed suggestions:
-```
-wayve_manage_smart_suggestions(action: "list", status_filter: "pending")
+```bash
+wayve suggestions list --status pending --json
 ```
 If snoozed suggestions have passed their `snoozed_until` date, they're relevant again.
 
@@ -46,11 +46,11 @@ If snoozed suggestions have passed their `snoozed_until` date, they're relevant 
 When creating a suggestion, the `proposal` field describes what could be done. Here's what's within your reach:
 
 - **Cron job**: schedule a recurring check-in or reminder (always requires explicit user approval before creation)
-- **Direct action**: make the change right now (reschedule, create activity, update settings) — only using `wayve_*` tools
+- **Direct action**: make the change right now (reschedule, create activity, update settings) — only using `wayve` CLI commands
 - **Simple suggestion**: just tell the user what you noticed and let them decide
 - **Nothing**: sometimes the observation is enough — awareness without action
 
-The `proposal` is free text — describe what you'd do. All actions are limited to Wayve tools (`wayve_*`) and cron jobs for notifications.
+The `proposal` is free text — describe what you'd do. All actions are limited to `wayve` CLI commands and cron jobs for notifications.
 
 ## C. Presentation
 

@@ -1,6 +1,6 @@
 # Knowledge & Learning System — How Wayve Remembers
 
-Wayve's knowledge base (`wayve_manage_knowledge`) is the AI's persistent memory about the user. Unlike OpenClaw's built-in memory (which stores general preferences), Wayve's knowledge base stores **life planning insights** — patterns, preferences, energy data, recurring themes, and coaching observations that make every conversation smarter than the last.
+Wayve's knowledge base (`wayve knowledge` CLI commands) is the AI's persistent memory about the user. Wayve's knowledge base stores **life planning insights** — patterns, preferences, energy data, recurring themes, and coaching observations that make every conversation smarter than the last.
 
 This is what turns Wayve from a tool into a partner.
 
@@ -10,14 +10,14 @@ This is what turns Wayve from a tool into a partner.
 User interacts → AI observes patterns → Saves to Wayve knowledge base → Next session retrieves → AI gives personalized advice
 ```
 
-The knowledge base is stored server-side via the Wayve API, so it persists across devices, sessions, and even different AI clients. It's not tied to OpenClaw's local memory — it travels with the user's Wayve account.
+The knowledge base is stored server-side via the Wayve API, so it persists across devices, sessions, and even different AI clients. It travels with the user's Wayve account.
 
 ## Mandatory: Always Retrieve Before Advising
 
 **At the start of EVERY planning interaction**, before giving any advice:
 
-1. Call `wayve_manage_knowledge` (action: `summary`) to see what's stored
-2. If relevant categories exist, call `wayve_manage_knowledge` (action: `list`, category: `relevant_category`) to get specifics
+1. Run `wayve knowledge summary --json` to see what's stored
+2. If relevant categories exist, run `wayve knowledge list --category relevant_category --json` to get specifics
 3. Reference stored insights naturally in your conversation — don't list them mechanically
 
 Example: If you know the user prefers morning workouts and has low energy on Wednesdays, don't just dump that info. Weave it in: "I know Wednesdays tend to be lower-energy for you — want to keep it light with a walk instead of the gym?"
@@ -36,6 +36,14 @@ Save when the user shares personal information that affects planning.
 | `health_conditions` | `Bad knees — no running, prefers swimming` | When mentioned |
 | `preferred_name` | `Tom` | First interaction |
 | `life_stage` | `Just changed jobs, adjusting to new routine` | When mentioned |
+| `business_goals` | `Get to 10 clients by June, launch online course` | During onboarding or when discussed |
+| `business_capacity` | `Can handle max 6 clients simultaneously` | During onboarding or when discussed |
+| `revenue_monthly` | `~€5000/month, varies` | When user shares during monthly check-in |
+| `revenue_monthly_2026_03` | `€4800` | Monthly snapshot during first Wrap Up of month |
+| `revenue_target` | `€8000/month by December` | During onboarding or strategy conversation |
+| `client_count_current` | `5 active clients` | When user shares |
+| `pricing` | `€100/hour consulting, €2500/project design` | When user shares |
+| `crisis_event_2026_03` | `Lost biggest client, stressed` | When crisis detected |
 
 ### `energy_patterns` — When they're at their best/worst
 Save after observing patterns across multiple interactions or from time audit data.
@@ -62,16 +70,18 @@ Save when the user corrects your scheduling suggestions or states preferences.
 | `focus_mode_preference` | `Usually picks Balanced, occasionally Project Push` | After 3+ Fresh Starts |
 | `reminder_preference` | `15 min before activities, no evening reminders` | During automation setup |
 
-### `bucket_balance` — Life area patterns
-Save after Wrap Ups, Life Audits, or when patterns emerge over weeks.
+### `pillar_balance` — Life area patterns
+**Note:** Category names like `pillar_balance` are technical keys — when talking to the user, say 'pillar balance' in conversation.
+
+Save after Wrap Ups, Life Scans, or when patterns emerge over weeks.
 
 | Key | Example Value | When to Save |
 |-----|---------------|--------------|
-| `consistently_neglected` | `Relationships bucket — usually 1/3 target. Work eats into evening time.` | After 3+ weeks of pattern |
-| `strongest_bucket` | `Health — consistently hits 100% since January` | After noticing multi-week streak |
+| `consistently_neglected` | `Relationships pillar — usually 1/3 target. Work eats into evening time.` | After 3+ weeks of pattern |
+| `strongest_pillar` | `Health — consistently hits 100% since January` | After noticing multi-week streak |
 | `seasonal_pattern` | `Finance gets more attention end of quarter` | After observing over months |
-| `bucket_satisfaction` | `Happiest when Adventure bucket gets at least 2h/week` | From happiness insights |
-| `focus_bucket_history` | `Last 4 weeks: Growth, Health, Growth, Relationships` | After each Wrap Up |
+| `pillar_satisfaction` | `Happiest when Adventure pillar gets at least 2h/week` | From happiness insights |
+| `focus_pillar_history` | `Last 4 weeks: Growth, Health, Growth, Relationships` | After each Wrap Up |
 
 ### `weekly_patterns` — What happens week to week
 Save after Wrap Ups by comparing with previous weeks.
@@ -80,12 +90,16 @@ Save after Wrap Ups by comparing with previous weeks.
 |-----|---------------|--------------|
 | `overcommit_tendency` | `Plans 12h but only has 8h available — happens most weeks` | After 2-3 weeks of pattern |
 | `completion_trend` | `Improving: 55% → 68% → 74% over last 3 weeks` | After each Wrap Up |
+| `hustle_collapse_cycle` | `3-4 weeks high (85%+) then 2-3 weeks low (45%). Last crash: week 8` | After detecting repeating pattern |
+| `pillar_oscillation` | `Health and Relationships oscillate every 2-3 weeks` | After detecting for 6+ weeks |
+| `growth_plateau` | `Stable at 55-65% for 5 weeks, no improvement` | After 4+ weeks of flat score |
+| `seasonal_pattern` | `Q4 always busy (Mission 80%+), January slower` | After 3+ months of data |
 | `common_blockers` | `Work meetings running over, kid activities rescheduling` | After hearing same blocker 2+ times |
 | `what_always_works` | `Morning Health activities always get done. Evening ones don't.` | After noticing pattern |
 | `carryover_pattern` | `Finance activities carry over most — probably overestimating time` | After 3+ Fresh Starts |
 
 ### `delegation_candidates` — Things to offload
-Save after Time Audits and Life Audits.
+Save after Time Audits and Life Scans.
 
 | Key | Example Value | When to Save |
 |-----|---------------|--------------|
@@ -94,12 +108,29 @@ Save after Time Audits and Life Audits.
 | `eliminate` | `Weekly status report — nobody reads it, ask manager to cancel` | After discussion |
 | `batch` | `Email — check 2x/day instead of continuously` | After energy pattern analysis |
 
-### `smart_suggestions` — AI-observed patterns with proposals
-Managed via `wayve_manage_smart_suggestions` (not directly via knowledge base). Stores JSON values with pattern, proposal, status, source_data.
+### `commitments` — Specific promises the user makes
+Save when the user makes a concrete commitment during planning or conversation.
 
 | Key | Example Value | When to Save |
 |-----|---------------|--------------|
-| _(auto-generated from pattern)_ | `{"pattern": "Health bucket at 0% for 3 weeks", "proposal": "Schedule a 15-min walk Mon/Wed/Fri", "status": "pending", "created_from": "wrap_up"}` | During wrap-up, fresh-start, life audit, or weekly scan |
+| `commitment_2026-03-16_call_mom` | `Call mom on Sunday afternoon` | During Fresh Start or conversation |
+| `commitment_2026-03-20_proposal` | `Finish client proposal by Thursday` | When user commits to a deadline |
+| `commitment_2026-03-18_no_work_evening` | `No work after 8pm Monday-Wednesday` | When user sets a boundary |
+
+**Rules:**
+- Always include the target date in the key (format: `commitment_YYYY-MM-DD_short_desc`)
+- At the start of each session, check if any commitment dates have passed
+- During Wrap Up, review all commitments from the week: completed or not?
+- After review: delete fulfilled commitments, carry over or delete unfulfilled ones
+- If the same commitment is missed 2+ times → create a smart suggestion about the underlying pattern
+- Don't create too many — max 3-5 active commitments at a time
+
+### `smart_suggestions` — AI-observed patterns with proposals
+Managed via `wayve suggestions` commands (not directly via knowledge base). Stores JSON values with pattern, proposal, status, source_data.
+
+| Key | Example Value | When to Save |
+|-----|---------------|--------------|
+| _(auto-generated from pattern)_ | `{"pattern": "Health pillar at 0% for 3 weeks", "proposal": "Schedule a 15-min walk Mon/Wed/Fri", "status": "pending", "created_from": "wrap_up"}` | During wrap-up, fresh-start, life scan, or weekly scan |
 
 See `references/smart-suggestions.md` for full details on when and how to create suggestions.
 
@@ -112,7 +143,7 @@ Save when the same theme comes up across multiple sessions.
 | `work_life_boundary` | `Struggles to stop working at 6 PM. Has acknowledged this 3 times.` | After recurring discussion |
 | `social_anxiety` | `Avoids scheduling social activities but feels happier when they happen` | From happiness insights + observations |
 | `motivation_style` | `Responds well to data (producer score). Doesn't like emotional nudges.` | After observing reactions |
-| `growth_mindset` | `Loves learning new skills — gets excited about Growth bucket ideas` | After noticing pattern |
+| `growth_mindset` | `Loves learning new skills — gets excited about Growth pillar ideas` | After noticing pattern |
 
 ### `preferences` — How they interact with Wayve
 Save when user expresses preferences about the tool/AI interaction.
@@ -141,17 +172,17 @@ Don't just "save when meaningful." Save at these **specific moments**:
 - [ ] Automation preferences → `preferences`
 
 ### After Every Wrap Up
-- [ ] Focus bucket chosen → `bucket_balance` (update `focus_bucket_history`)
+- [ ] Focus pillar chosen → `pillar_balance` (update `focus_pillar_history`)
 - [ ] What worked / what to change → `weekly_patterns` (look for recurring themes)
 - [ ] Mood/energy/fulfillment ratings → `energy_patterns` (track trends)
-- [ ] If a bucket was at 0% → `bucket_balance` (update `consistently_neglected` if 3+ weeks)
+- [ ] If a pillar was at 0% → `pillar_balance` (update `consistently_neglected` if 3+ weeks)
 - [ ] If completion rate improved/declined → `weekly_patterns` (update `completion_trend`)
 - [ ] Any recurring blocker mentioned → `weekly_patterns` (update `common_blockers`)
 - [ ] Any coaching insight → `coaching_themes`
 
 ### After Every Fresh Start
 - [ ] Focus mode chosen → `scheduling_preferences` (update `focus_mode_preference` after 3+)
-- [ ] Carryover patterns → `weekly_patterns` (which buckets always carry over?)
+- [ ] Carryover patterns → `weekly_patterns` (which pillars always carry over?)
 - [ ] Overcommitment detected → `weekly_patterns` (update `overcommit_tendency`)
 - [ ] Scheduling corrections → `scheduling_preferences` (user moved activities = preference)
 
@@ -159,11 +190,11 @@ Don't just "save when meaningful." Save at these **specific moments**:
 - [ ] Peak/low energy times → `energy_patterns`
 - [ ] Energizing vs. draining activities → `energy_patterns`
 - [ ] Delegation candidates → `delegation_candidates`
-- [ ] Time allocation vs. intention mismatch → `bucket_balance`
+- [ ] Time allocation vs. intention mismatch → `pillar_balance`
 
-### After Life Audit
+### After Life Scan
 - [ ] Major patterns discovered → `coaching_themes`
-- [ ] Happiness correlations → `bucket_balance` (what makes them happy)
+- [ ] Happiness correlations → `pillar_balance` (what makes them happy)
 - [ ] Long-term trends → `weekly_patterns`
 - [ ] Action items decided → `delegation_candidates` or `coaching_themes`
 
@@ -179,23 +210,17 @@ Don't just "save when meaningful." Save at these **specific moments**:
 ## How to Save — Practical Patterns
 
 ### Single insight
-```
-wayve_manage_knowledge(
-  action: "save_insight",
-  category: "energy_patterns",
-  key: "peak_energy_time",
-  value: "7-10 AM — best for deep work and exercise. Confirmed across 3 weeks of morning activity completions.",
-  confidence: 0.9
-)
+```bash
+wayve knowledge save --category "energy_patterns" --key "peak_energy_time" --value "7-10 AM — best for deep work and exercise. Confirmed across 3 weeks of morning activity completions." --confidence 0.9 --json
 ```
 
 ### Updating an existing insight
 First check if it exists, then update:
-```
-wayve_manage_knowledge(action: "list", category: "energy_patterns")
-→ find the entry with key "peak_energy_time"
-→ if found, use action: "update" with the entry's id
-→ if not found, use action: "save_insight" to create
+```bash
+wayve knowledge list --category energy_patterns --json
+# → find the entry with key "peak_energy_time"
+# → if found: wayve knowledge update ID --value "..." --json
+# → if not found: wayve knowledge save --category "energy_patterns" --key "peak_energy_time" --value "..." --json
 ```
 
 ### Confidence levels
@@ -206,7 +231,7 @@ wayve_manage_knowledge(action: "list", category: "energy_patterns")
 ### When to update vs. create new
 - **Update** when new data refines an existing insight (e.g., adding a 4th week of data to a trend)
 - **Create new** when it's a genuinely different insight in the same category
-- **Delete** when an insight is proven wrong (e.g., user changed their schedule)
+- **Delete** — When you believe an insight is outdated or wrong, ask the user: 'This insight seems outdated — want me to update or remove it?' Only delete without asking when the user explicitly requests it ('forget that', 'delete that').
 
 ---
 
@@ -222,7 +247,7 @@ Knowledge: peak_energy_time = "7-10 AM", energizing_activities = "Running, guita
 ```
 Knowledge: low_energy_days = "Wednesdays", batch_preference = true
 → Schedule lighter activities on Wednesday
-→ Group similar bucket activities on the same day
+→ Group similar pillar activities on the same day
 ```
 
 ### Wrap Up (reflection)
@@ -257,8 +282,8 @@ If user mentions work-life boundary for the 3rd time:
 ## Knowledge Hygiene
 
 ### Review periodically
-During Life Audits or monthly check-ins:
-1. Call `wayve_manage_knowledge` (action: `list`) to see all entries
+During Life Scans or monthly check-ins:
+1. Run `wayve knowledge list --json` to see all entries
 2. Check if any insights are outdated (user changed jobs, moved, etc.)
 3. Update or delete stale entries
 4. Look for gaps — are there categories with no entries?
@@ -269,7 +294,7 @@ During Life Audits or monthly check-ins:
 - Don't duplicate what's already in the week review data — knowledge is for cross-week patterns
 
 ### Privacy & transparency
-- If the user asks "what do you know about me?" → call `wayve_manage_knowledge` (action: `summary`) and share openly
+- If the user asks "what do you know about me?" → run `wayve knowledge summary --json` and share openly
 - If the user says "forget that" or "don't track that" → delete the relevant entries immediately
 - Never save sensitive medical, financial, or relationship details beyond what's needed for planning
 - Frame it as: "I save planning patterns to give you better advice over time. You can see and delete anything anytime at https://gowayve.com/knowledge-base"
@@ -278,10 +303,10 @@ During Life Audits or monthly check-ins:
 
 ## Making It Automatic — The Learning Loop
 
-The key to making this feel natural (not forced) is embedding knowledge saves into the existing conversation flow. Don't announce "I'm saving an insight now!" — just do it quietly after the conversation reaches a natural conclusion.
+The key to making this feel natural (not forced) is embedding knowledge saves into the existing conversation flow. Save insights at natural points in the conversation. For significant data (personal info, financial data, coaching observations), briefly mention it. For routine pattern saves, a simple note is fine.
 
 ### End-of-conversation checklist
-Before ending any meaningful planning session, silently run through:
+Before ending any meaningful planning session, run through:
 
 1. **Did I learn something new about the user?** → Save to `personal_context`
 2. **Did I notice a pattern across weeks?** → Save to appropriate category
@@ -292,7 +317,7 @@ Before ending any meaningful planning session, silently run through:
 ### Retrieval checklist
 At the start of any planning session:
 
-1. **Always** call `wayve_manage_knowledge` (action: `summary`) — takes 1 second, gives you the full picture
+1. **Always** run `wayve knowledge summary --json` — takes 1 second, gives you the full picture
 2. **If relevant categories exist**, pull specific entries for the current phase
 3. **Reference at least 1 stored insight** in your first substantive response — this shows the user you remember them
 4. **If no knowledge exists yet**, that's fine — you're building it. Note what you learn during this session.

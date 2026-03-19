@@ -1,11 +1,17 @@
-# Wayve MCP — Setup Guide
+# Wayve CLI — Setup Guide
 
-## 1. Install the Skill
+## 1. Install the CLI
 
-Find Wayve on [ClawHub.ai](https://clawhub.ai) and click **Install**, or run:
+Install the Wayve CLI globally:
 
 ```bash
-clawhub install wayve
+npm install -g @gowayve/wayve-cli
+```
+
+Or use without installing:
+
+```bash
+npx @gowayve/wayve-cli
 ```
 
 ## 2. Create a Wayve Account
@@ -15,49 +21,40 @@ clawhub install wayve
 3. Go to [gowayve.com/account](https://gowayve.com/account) → **API Keys** section
 4. Generate a new key and copy it — it starts with `wk_live_`
 
-## 3. Add Your API Key (recommended: SecretRefs)
+## 3. Add Your API Key
 
-Use OpenClaw's secrets workflow instead of storing plaintext keys in `openclaw.json`.
-
-1. Run:
+Set your API key as an environment variable:
 
 ```bash
-openclaw secrets configure
-openclaw secrets audit --check
-openclaw secrets reload
+export WAYVE_API_KEY=wk_live_your_key_here
 ```
 
-2. Store `WAYVE_API_KEY` in your configured secret provider (for example file-backed secrets), and map the Wayve skill `apiKey` to that SecretRef.
+To persist it, add the export line to your shell profile (`~/.bashrc`, `~/.zshrc`, etc.).
 
-3. Keep your OpenClaw config referencing the secret (not the raw key), for example:
+Alternatively, use interactive login:
 
-```json
-{
-  "skills": {
-    "entries": {
-      "wayve": {
-        "enabled": true,
-        "apiKey": { "source": "file", "provider": "filemain", "id": "/WAYVE_API_KEY" }
-      }
-    }
-  }
-}
+```bash
+wayve auth login --email you@example.com
 ```
-
-This keeps credentials out of plaintext config and supports safe reload/rotation via `openclaw secrets reload`.
 
 ## 4. Verify
 
-Type `/wayve help` to see all available commands. If the assistant responds with a list of commands and calls `wayve_get_planning_context`, you're all set.
+Run:
+
+```bash
+wayve auth status
+```
+
+Then type `/wayve help` to see available commands.
 
 ## 5. Get Started
 
-- `/wayve setup` — first-time onboarding (create life buckets, set preferences)
+- `/wayve setup` — first-time onboarding (create life pillars, set preferences)
 - `/wayve plan` — plan your week
 - `/wayve brief` — today's schedule
 - `/wayve wrapup` — end-of-week reflection
 - `/wayve time audit` — track where your time goes
-- `/wayve life audit` — deep life review
+- `/wayve life scan` — deep life review
 
 ## 6. Automations (Optional)
 
@@ -74,12 +71,8 @@ Say "set up automations" and Wayve will walk you through choosing a delivery cha
 
 ## Troubleshooting
 
-**No wayve tools showing up:** Make sure Node.js 18+ is installed (`node --version`) and restart your client. If the MCP server still doesn't connect, you can add it manually in Claude Code:
-
-```
-/mcp add wayve -- npx -y @gowayve/wayve@^1.2.5
-```
+**"wayve: command not found":** Install the CLI globally with `npm install -g @gowayve/wayve-cli`, or use `npx @gowayve/wayve-cli` to run without installing. Make sure Node.js 18+ is installed (`node --version`).
 
 **"Invalid API key":** Keys must start with `wk_live_`. Generate a new one at [gowayve.com/account](https://gowayve.com/account).
 
-**Key not being picked up:** Make sure `WAYVE_API_KEY` is stored in your secret provider and that `~/.openclaw/openclaw.json` has the SecretRef under `skills.entries.wayve.apiKey`. Run `openclaw secrets audit --check` to verify, then `openclaw secrets reload`.
+**Key not being picked up:** Check that your environment variable is set by running `echo $WAYVE_API_KEY`, or run `wayve auth status` to see if the CLI can find valid credentials. If using a shell profile, make sure you've reloaded it (`source ~/.bashrc` or `source ~/.zshrc`).

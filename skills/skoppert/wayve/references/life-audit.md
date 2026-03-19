@@ -1,9 +1,9 @@
-# Phase 6: Life Audit — Comprehensive Coaching Session
+# Phase 6: Life Scan — Comprehensive Coaching Session
 
-**Command:** `/wayve life audit`
+**Command:** `/wayve life scan`
 
 ## When This Applies
-User says "life audit", "big picture review", "how am I doing overall", or wants a comprehensive look at their patterns across multiple weeks.
+User says "life scan", "big picture review", "how am I doing overall", or wants a comprehensive look at their patterns across multiple weeks.
 
 ## Your Approach
 Warm but honest life coach. Use data to tell a story, not just list numbers. Frame everything through Wayve's philosophy: intention over perfection.
@@ -11,21 +11,45 @@ Warm but honest life coach. Use data to tell a story, not just list numbers. Fra
 ## Flow
 
 ### 1. Gather All Data
-Fetch everything in parallel where possible:
-- `wayve_get_planning_context` — current week context
-- `wayve_get_analytics` (action: `producer_score`) — completion rates + 12-week trend
-- `wayve_get_analytics` (action: `energy_skill_matrix`) — energy patterns + delegation candidates
-- `wayve_get_analytics` (action: `task_patterns`) — recurring patterns, bucket distribution
-- `wayve_get_happiness_insights` — mood correlations
-- `wayve_get_frequency_progress` — frequency targets vs. actuals
-- `wayve_manage_knowledge` (action: `summary`) — stored insights
+Gather context by running the following CLI commands in parallel where possible:
+```bash
+wayve context --json
+wayve score --json
+wayve energy-matrix --json
+wayve patterns --json
+wayve happiness --json
+wayve frequencies progress --json
+wayve knowledge summary --json
+```
 
-### 2. The Big Picture
+### 2. The Big Picture — Tell the Story
+
+Don't just report numbers — connect data points into a narrative. This is what makes a life scan feel like coaching, not a spreadsheet.
+
 Start with the Producer Score and trend:
 ```
 Your 12-week trend:
 W4: 82% → W5: 75% → W6: 68% → W7: 71% → W8: 85%
 ```
+
+**Connect the trend to context:**
+1. Show the raw trend line
+2. For any significant jump or dip, check knowledge base for context:
+   - Was that the week they were sick? → "That dip in week 6 was your flu week — ignore it"
+   - Was that when they started time-locking mornings? → "Week 3 is when you started protecting your mornings — your score jumped 15% and hasn't dropped since"
+   - Was that a vacation week? → "Week 5 was your break — smart. The bounce-back to 85% shows the system works"
+3. Identify milestones:
+   - First time above 70%? → "You crossed 70% for the first time in week 7. That's not luck — that's momentum"
+   - Longest streak of consistent completion? → Highlight the habit that enabled it
+   - Biggest single-week improvement? → What changed that week?
+
+**Tell the pillar story:**
+- Compare month 1 vs. now: "When you started, Health got 1 hour/week. Last month it averaged 4.5. That's not a number — that's a lifestyle change."
+- If a pillar has been improving steadily → name it as a win
+- If a pillar has been declining → frame as opportunity: "Relationships has been sliding — but you're happiest when you invest there (we know that from your data). Let's fix it."
+
+**Save milestone observations** to knowledge: `wayve knowledge save --category "weekly_patterns" --key "milestone_[description]" --value "e.g., first_70_percent_week: Week 7, March 2026" --json`
+
 - Are they improving? Celebrate it.
 - Plateauing? Explore what's maintaining vs. holding back.
 - Declining? No judgment — "Let's understand why and adjust."
@@ -45,8 +69,8 @@ Review the Energy-Skill Matrix. Present it as quadrants:
 - **Timing insight**: are high-energy activities scheduled at optimal times?
 
 ### 4. Happiness Check
-Share correlations from `wayve_get_happiness_insights`:
-- "You're happiest when..." — connect to specific activities/buckets
+Share correlations from `wayve happiness --json`:
+- "You're happiest when..." — connect to specific activities/pillars
 - "Mood tends to dip when..." — not to guilt, but to inform choices
 - "Are you making time for what makes you happy?"
 
@@ -58,7 +82,7 @@ Compare frequency progress against targets:
 ≈ Growth: 2/3x — close
 ```
 
-If a Perfect Week template exists, compare ideal vs. actual hours per bucket:
+If a Perfect Week template exists, compare ideal vs. actual hours per pillar:
 ```
 Health:        Ideal 5h → Actual 4h (↓)
 Relationships: Ideal 4h → Actual 1.5h (↓↓)
@@ -66,43 +90,43 @@ Growth:        Ideal 6h → Actual 5.5h (≈)
 ```
 
 ### 6. Pattern Analysis
-Surface patterns from `task_patterns`:
+Surface patterns from `wayve patterns --json`:
 - Activities frequently not completed — why? Too ambitious? Wrong timing?
 - Energy patterns by time of day — when are they most effective?
-- Bucket time distribution over last 4 weeks — where does time actually go?
+- Pillar time distribution over last 4 weeks — where does time actually go?
 
 ### 6.5. Smart Suggestions
 
 Based on the comprehensive analysis, create smart suggestions for major patterns discovered. See `references/smart-suggestions.md` for full details.
 
-Also check for existing pending suggestions — a life audit is a good moment to resurface them:
-```
-wayve_manage_smart_suggestions(action: "list", status_filter: "pending")
+Also check for existing pending suggestions — a life scan is a good moment to resurface them:
+```bash
+wayve suggestions list --status pending --json
 ```
 
 Create new suggestions for the most impactful findings:
-```
-wayve_manage_smart_suggestions(action: "create", pattern: "...", proposal: "...", created_from: "life_audit", source_data: { ... })
+```bash
+wayve suggestions create --pattern "..." --proposal "..." --json
 ```
 
-Include relevant analytics data in `source_data` (e.g., delegation candidates, happiness correlations, bucket imbalance stats). Present max 2 to the user — pick the most impactful.
+Include relevant analytics data in `source_data` (e.g., delegation candidates, happiness correlations, pillar imbalance stats). Present max 2 to the user — pick the most impactful.
 
 ### 7. Action Plan (Audit-Transfer-Fill)
 
 **Audit** — Highlight the top 3 insights from everything above:
-1. "Your Health bucket is on fire — keep doing what you're doing"
+1. "Your Health pillar is on fire — keep doing what you're doing"
 2. "Relationships is consistently underserved — you're happiest when you invest there"
 3. "Admin activities drain you and don't require high skill — prime delegation targets"
 
 **Transfer** — For each delegation candidate, suggest a specific action:
 - What to delegate, to whom, or how to automate/eliminate
 
-**Fill** — Reclaimed time → which underserved buckets? Create specific activities:
-- Use `wayve_create_activity` to schedule concrete next steps
-- Use `wayve_manage_recurrence` to set up recurring healthy habits
+**Fill** — Reclaimed time → which underserved pillars? Create specific activities:
+- Use `wayve activities create "Title" --pillar ID --json` to schedule concrete next steps
+- Use `wayve recurrence set --activity ID --frequency FREQ --json` to set up recurring healthy habits
 
 ### 8. Save Findings
-Save key insights via `wayve_manage_knowledge` (action: `save_insight`):
+Save key insights via `wayve knowledge save --json`:
 - Major patterns discovered
 - Delegation candidates identified
 - Happiness correlations noted

@@ -1,11 +1,24 @@
-# Proactive Automations — Server-Side Push Notifications
+# Automations — Agent Routines & Push Notifications
 
-Wayve automations are server-side scheduled notifications that run independently of any client. They work on every platform: OpenClaw, Claude Code with Dobby, or Claude Code standalone.
+Wayve automations come in two flavors:
+
+1. **Agent Routines** (`agent_routine`) — Playbooks your AI agent can follow. Stored in Wayve, executed by copying to your agent. NOT executed server-side.
+2. **Push Notifications** — Server-executed scheduled notifications delivered via Telegram, Discord, Slack, email, or pull.
 
 ## How It Works
 
+### Agent Routines
 ```
-User configures automation via wayve_manage_automations
+User creates agent routine via wayve automations create or Wayve app
+    → Stored in wayve.automations (DB) with automation_type = 'agent_routine'
+    → Visible in Automation Registry under "Agent Routines" tab
+    → User copies instructions to their AI agent (or exports as JSON)
+    → NOT executed by the server timer
+```
+
+### Push Notifications
+```
+User configures push notification via wayve automations create
     → Stored in wayve.automations (DB)
     → Azure timer function checks every 5 minutes
     → Builds message from template + live data
@@ -23,7 +36,7 @@ Always include the relevant link when directing the user to take action in the W
 | Dashboard | https://gowayve.com/dashboard |
 | Weekly Planning | https://gowayve.com/week |
 | Calendar | https://gowayve.com/calendar |
-| Life Buckets | https://gowayve.com/buckets |
+| Life Pillars | https://gowayve.com/buckets |
 | Projects | https://gowayve.com/projects |
 | Time Locks | https://gowayve.com/time-locks |
 | Review Hub | https://gowayve.com/review |
@@ -33,6 +46,14 @@ Always include the relevant link when directing the user to take action in the W
 
 ## Available Types
 
+### Agent Routine Type
+
+| Type | Default Schedule | Purpose |
+|------|-----------------|---------|
+| `agent_routine` | `0 9 * * 1-5` | AI agent playbook — stores instructions, skills, and schedule. Not executed server-side. |
+
+### Push Notification Types
+
 | Type | Default Schedule | What it sends |
 |------|-----------------|---------------|
 | `morning_brief` | `30 7 * * *` | Today's activity count + dashboard link |
@@ -41,7 +62,7 @@ Always include the relevant link when directing the user to take action in the W
 | `fresh_start_reminder` | `30 8 * * 1` | Monday planning nudge with carryover count |
 | `mid_week_pulse` | `30 12 * * 3` | Mid-week progress summary |
 | `friday_check` | `0 15 * * 5` | Uncompleted activities count |
-| `frequency_tracker` | `0 20 * * *` | Bucket frequency alert (silent when on track) |
+| `frequency_tracker` | `0 20 * * *` | Pillar frequency alert (silent when on track) |
 | `monthly_audit` | `0 11 1 * *` | Monthly review prompt |
 | `time_audit_checkin` | `0 */2 * * *` | Time audit check-in (per audit config) |
 
@@ -63,23 +84,34 @@ Always include the relevant link when directing the user to take action in the W
 1. Create a bot via @BotFather, get the bot token
 2. Start a chat with your bot, send a message
 3. Get your chat_id via `https://api.telegram.org/bot<TOKEN>/getUpdates`
-4. delivery_config: `{"bot_token": "...", "chat_id": "..."}`
+4. Pass via CLI:
+```bash
+wayve automations create morning_brief --cron "30 7 * * *" --timezone Europe/Amsterdam --channel telegram --delivery-config '{"bot_token":"YOUR_TOKEN","chat_id":"YOUR_CHAT_ID"}' --json
+```
 
 **Discord:**
 1. In your Discord server: Server Settings > Integrations > Webhooks > New Webhook
 2. Copy the webhook URL
-3. delivery_config: `{"webhook_url": "https://discord.com/api/webhooks/..."}`
+3. Pass via CLI:
+```bash
+wayve automations create morning_brief --cron "30 7 * * *" --timezone Europe/Amsterdam --channel discord --delivery-config '{"webhook_url":"https://discord.com/api/webhooks/..."}' --json
+```
 
 **Slack:**
 1. Create an Incoming Webhook at api.slack.com/apps
 2. Copy the webhook URL
-3. delivery_config: `{"webhook_url": "https://hooks.slack.com/services/..."}`
+3. Pass via CLI:
+```bash
+wayve automations create morning_brief --cron "30 7 * * *" --timezone Europe/Amsterdam --channel slack --delivery-config '{"webhook_url":"https://hooks.slack.com/services/..."}' --json
+```
 
 **Email:**
-1. delivery_config: `{"email": "you@example.com"}`
+```bash
+wayve automations create morning_brief --cron "30 7 * * *" --timezone Europe/Amsterdam --channel email --delivery-config '{"email":"you@example.com"}' --json
+```
 
 **Pull (no setup needed):**
-Messages are stored server-side and automatically presented when you start a new Claude Code session (via the SessionStart hook).
+Messages are stored server-side and automatically presented when you start a new Claude Code session (via the SessionStart hook). No `--delivery-config` needed.
 
 ## Setup Flow
 
@@ -88,19 +120,21 @@ When offering automations to the user:
 1. **Ask what they want**: "I can set up proactive notifications. Want the Starter Bundle (morning brief + weekly rituals) or the Full Bundle?"
 2. **Ask timezone**: "What's your timezone? (e.g., Europe/Amsterdam)"
 3. **Ask delivery channel**: "Where should I send notifications — Telegram, Discord, Slack, email, or just show them when you start a session?"
-4. **Collect channel credentials** if needed (bot token, webhook URL, etc.)
-5. **Create the bundle or individual automations** via `wayve_manage_automations`
-6. **Confirm**: Show what was created with schedules
+4. **Ask explicit permission before collecting credentials**: Explain exactly what data you need (e.g., bot token + chat ID for Telegram), why you need it (to deliver notifications), and how it's stored (encrypted with AES-256-GCM, deletable anytime by removing the automation). **Never collect or pass credentials without the user explicitly confirming.** If the user declines, offer the `pull` channel instead (no credentials needed).
+5. **Collect channel credentials** if the user agreed — guide them through getting the token/webhook (see Channel Setup Details above)
+6. **Create the bundle or individual automations** via CLI commands, passing `--delivery-config` with the credentials
+7. **Confirm**: Show what was created with schedules
 
-### Example: Create a starter bundle
+### Example: Create an agent routine
+```bash
+wayve automations create agent_routine --cron "0 9 * * 1" --timezone Europe/Amsterdam --channel pull --name "Weekly Content Research" --config '{"description": "Research trending topics in my niche", "agent_instructions": "Every Monday at 9am, research the top 10 trending topics in solopreneur AI tools. Summarize each with a one-line hook and report via Telegram.", "skills": ["research", "content"], "pillar_id": "..."}' --json
 ```
-wayve_manage_automations(
-  action: 'create_bundle',
-  bundle: 'starter',
-  timezone: 'Europe/Amsterdam',
-  delivery_channel: 'telegram',
-  delivery_config: { bot_token: '...', chat_id: '...' }
-)
+
+Note: `delivery_channel` defaults to "pull" for agent routines. No credentials needed.
+
+### Example: Create a starter bundle (push notifications)
+```bash
+wayve automations bundle starter --timezone Europe/Amsterdam --channel telegram --delivery-config '{"bot_token":"YOUR_TOKEN","chat_id":"YOUR_CHAT_ID"}' --json
 ```
 
 ## Bundles
@@ -122,10 +156,10 @@ Everything in Starter, plus:
 
 | User says | Action |
 |-----------|--------|
-| "List my automations" | `wayve_manage_automations(action: 'list')` |
-| "Pause my morning briefs" | `wayve_manage_automations(action: 'update', id: '...', enabled: false)` |
-| "Resume morning briefs" | `wayve_manage_automations(action: 'update', id: '...', enabled: true)` |
-| "Change morning brief to 8:00" | `wayve_manage_automations(action: 'update', id: '...', schedule_cron: '0 8 * * *')` |
+| "List my automations" | `wayve automations list --json` |
+| "Pause my morning briefs" | `wayve automations update ID --enabled false --json` |
+| "Resume morning briefs" | `wayve automations update ID --enabled true --json` |
+| "Change morning brief to 8:00" | `wayve automations update ID --cron "0 8 * * *" --json` |
 | "Delete all automations" | List, then delete each |
 | "Switch to Discord" | Update each automation with new delivery_channel + delivery_config |
 
@@ -146,7 +180,7 @@ Frame it naturally: "Want me to send you a morning brief at 7:30 every day? I ca
 ## Security Constraints
 
 - **User approval required** — every automation must be explicitly approved
-- **Predefined types only** — only the 9 types listed above are accepted
-- **No arbitrary code execution** — messages are fixed templates filled with live data
+- **Predefined types only** — only the 10 types listed above are accepted (9 push + agent_routine)
+- **No arbitrary code execution** — push messages are fixed templates filled with live data; agent routines are stored playbooks, NOT executed server-side
 - **Delivery credentials encrypted** — AES-256-GCM at rest, never returned via API
 - **User can stop at any time** — "stop all reminders" must be respected immediately
