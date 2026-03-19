@@ -233,46 +233,240 @@ echo "$(dig +short api.telegram.org A | head -1) api.telegram.org" | sudo tee -a
 
 ## WhatsApp — Vollständige Anleitung
 
-### Config
+WhatsApp nutzt WhatsApp Web (Baileys) als Channel-Adapter. Der Gateway besitzt die verknüpfte Session.
+
+### 1. Schnell-Setup
+
+```json5
+{
+  channels: {
+    whatsapp: {
+      enabled: true,
+      dmPolicy: "pairing",           // Default für unbekannte Sender
+      allowFrom: ["+15551234567"],   // E.164 MIT + !
+      groupPolicy: "allowlist",
+      groupAllowFrom: ["+15551234567"],
+    },
+  },
+}
+```
+
+```bash
+# QR-Code anzeigen
+openclaw channels login --channel whatsapp
+
+# Für spezifischen Account:
+openclaw channels login --channel whatsapp --account work
+
+# Gateway starten
+openclaw gateway
+
+# Pairing genehmigen (falls pairing mode)
+openclaw pairing list whatsapp
+openclaw pairing approve whatsapp <CODE>
+```
+
+**Empfehlung:** Separate Nummer für OpenClaw nutzen (saubereres Routing, weniger self-chat-Konfusion).
+
+### 2. Deployment-Muster
+
+| Muster | Beschreibung |
+|---|---|
+| **Dedizierte Nummer** | Sauberste Option, eigene WhatsApp-Identität für OpenClaw |
+| **Personal-Nummer** | Onboarding schreibt `selfChatMode: true`, `allowFrom` inkludiert eigene Nummer |
+
+### 3. Access Control & DM-Policy
+
+**DM-Policy (`channels.whatsapp.dmPolicy`)** steuert Direkt-Chat-Zugriff:
+
+| Modus | Verhalten |
+|---|---|
+| `pairing` | Default — User muss pairing anfragen und genehmigt werden |
+| `allowlist` | Nur `allowFrom`-Nummern dürfen schreiben |
+| `open` | Erfordert `allowFrom: ["*"]` — jeder darf schreiben (gefährlich!) |
+| `disabled` | Keine DMs erlaubt |
+
+```json5
+{
+  channels: {
+    whatsapp: {
+      dmPolicy: "allowlist",
+      allowFrom: ["+4915568920209", "+4917212345678"],
+      // Multi-Account-Override:
+      accounts: {
+        work: {
+          dmPolicy: "pairing",  // Override für "work"-Account
+        },
+      },
+    },
+  },
+}
+```
+
+**Wichtig:** `allowFrom` akzeptiert E.164-Nummern (werden intern normalisiert).
+
+**Self-Chat-Verhalten:**
+- Wenn die verknüpfte Nummer auch in `allowFrom` steht:
+  - Read-Receipts für Self-Chat werden übersprungen
+  - Mention-JID Auto-Trigger verhindert Selbst-Ping
+  - `messages.responsePrefix` defaultet zu `[{identity.name}]` oder `[openclaw]`
+
+### 4. Group Access (zweilagig)
+
+**Schicht 1: Gruppen-Mitgliedschafts-Allowlist (`channels.whatsapp.groups`)**
+- Wenn weggelassen: Alle Gruppen sind berechtigt
+- Wenn vorhanden: Wirkt als Gruppen-Allowlist (`"*"` erlaubt alle)
+
+**Schicht 2: Gruppen-Sender-Policy (`groupPolicy` + `groupAllowFrom`)**
+
+| groupPolicy | Verhalten |
+|---|---|
+| `open` | Sender-Allowlist wird umgangen |
+| `allowlist` | Sender muss `groupAllowFrom` entsprechen (oder `*`) |
+| `disabled` | Alle Gruppen-Nachrichten blockieren |
+
+**Fallback-Logik:**
+- Wenn `groupAllowFrom` nicht gesetzt → Fallback auf `allowFrom`
+- Sender-Allowlists werden VOR Mention/Reply-Aktivierung geprüft
+
+```json5
+{
+  channels: {
+    whatsapp: {
+      groups: {
+        "*": { requireMention: true },      // Alle Gruppen: nur @mention
+        "120363xxx@g.us": {                  // Spezifische Gruppe
+          groupPolicy: "open",                // Jeder in dieser Gruppe
+        },
+      },
+      groupPolicy: "allowlist",
+      groupAllowFrom: ["+4915568920209"],
+    },
+  },
+}
+```
+
+**Wichtig:** Wenn KEIN `channels.whatsapp` Block existiert, ist der groupPolicy-Fallback `allowlist` (mit Warning-Log), selbst wenn `channels.defaults.groupPolicy` gesetzt ist.
+
+### 5. Mention-Aktivierung & /activation
+
+Gruppen-Antworten erfordern Mention by default. Mention-Erkennung:
+- Explizite WhatsApp-Mentions der Bot-Identität
+- Konfigurierte Mention-Regex (`agents.list[].groupChat.mentionPatterns`)
+- Implizite Reply-to-Bot-Erkennung (Reply-Sender = Bot-Identität)
+
+**Sicherheits-Hinweis:** Reply/Quote erfüllt nur Mention-Gating, gewährt aber KEINE Sender-Autorisierung. Bei `groupPolicy: "allowlist"` werden nicht-allowlisted Sender auch beim Reply auf allowlisted User blockiert.
+
+**Session-Level Aktivierung:**
+- `/activation mention` — Nur bei Mention antworten
+- `/activation always` — Immer antworten (Override)
+
+`activation` aktualisiert Session-State (nicht global), Owner-gegate.
+
+### 6. Config-Referenz
+
 ```json5
 {
   channels: {
     whatsapp: {
       enabled: true,
       dmPolicy: "allowlist",
-      selfChatMode: true,
-      allowFrom: ["+4915568920209"],   // E.164 MIT + !
+      allowFrom: ["+4915568920209"],
+      selfChatMode: true,          // Self-Chat als Bot-Befehle
+
       groupPolicy: "allowlist",
-      debounceMs: 0,                   // 0 = sofort
+      groupAllowFrom: ["+4915568920209"],
+      groups: {
+        "*": { requireMention: true },
+      },
+
+      // Delivery
+      textChunkLimit: 4000,
+      chunkMode: "newline",        // "length" | "newline"
       mediaMaxMb: 50,
+      sendReadReceipts: true,      // Default
+
+      // Ack-Reactions
+      ackReaction: {
+        emoji: "👀",
+        direct: true,
+        group: "mentions",         // "always" | "mentions" | "never"
+      },
+
+      // Debounce
+      debounceMs: 0,               // 0 = sofort
+
+      // Multi-Account
+      accounts: {
+        work: {
+          enabled: true,
+          authDir: "~/.openclaw/credentials/whatsapp/work",
+          dmPolicy: "pairing",
+        },
+      },
     },
   },
 }
 ```
 
-### QR-Code scannen
+### 7. Pairing-Workflow
+
 ```bash
+# 1. Gateway starten
 openclaw gateway start
-# QR erscheint in Terminal oder Dashboard → Channels-Seite
-# WhatsApp → Verknüpfte Geräte → QR scannen
+
+# 2. QR-Code scannen (WhatsApp → Verknüpfte Geräte)
+# QR erscheint in Terminal oder Dashboard → Channels
+
+# 3. Bei pairing mode: Code genehmigen
+openclaw pairing list whatsapp
+openclaw pairing approve whatsapp ABCD1234
+
+# Danach auf allowlist wechseln:
+# allowFrom in Config eintragen + dmPolicy: "allowlist"
 ```
 
-### WhatsApp-Eigenheiten
-- **dmPolicy ist GLOBAL** für den ganzen WhatsApp-Account (nicht per-Agent!)
+Pairing-Requests verfallen nach 1 Stunde. Max 3 pending Requests pro Channel.
+
+### 8. Multi-Account & Credentials
+
+**Account-Selection:**
+- Account-IDs kommen aus `channels.whatsapp.accounts`
+- Default: `default` falls vorhanden, sonst erster Account (sortiert)
+- IDs werden intern normalisiert
+
+**Credential-Paths:**
+- Aktuell: `~/.openclaw/credentials/whatsapp/<accountId>/creds.json`
+- Backup: `creds.json.bak`
+- Legacy-Default-Auth in `~/.openclaw/credentials/` wird noch erkannt/migriert
+
+**Logout:**
+```bash
+openclaw channels logout --channel whatsapp           # Default-Account
+openclaw channels logout --channel whatsapp --account work  # Spezifisch
+```
+
+### 9. Troubleshooting
+
+| Problem | Ursache | Lösung |
+|---|---|---|
+| "Not linked" | Keine Session | `openclaw channels login` + QR scannen |
+| Reconnect-Loop | Verbindung instabil | `openclaw doctor` + Logs prüfen |
+| "No active listener" | Gateway nicht läuft | Gateway starten, Account verknüpfen |
+| Gruppen ignoriert | `groupPolicy`, `groupAllowFrom`, `groups` prüfen | Mention-Gating + Duplicate-Keys checken |
+| Gruppen-Nachrichten blockiert | Sender nicht in Allowlist | `groupAllowFrom` oder `groupPolicy: "open"` |
+| Duplicate Keys | Spätere Keys überschreiben frühere | JSON5: nur EIN `groupPolicy` pro Scope |
+| Gruppen-ID nicht gefunden | Nachricht senden → `openclaw logs --follow` | Chat-ID ablesen |
+| Baileys-Warnung | Runtime nicht Node | Node nutzen (nicht Bun) für WhatsApp/Telegram |
+
+### 10. WhatsApp-Eigenheiten
+
+- **dmPolicy ist GLOBAL** für den WhatsApp-Account (nicht per-Agent!)
 - **selfChatMode**: Nachrichten an sich selbst = Bot-Befehle
 - **Max 4 verknüpfte Geräte** (WhatsApp-Limit)
 - **Baileys** = Reverse-Engineered, kein offizielles API → kann brechen
-
-### WhatsApp Troubleshooting
-
-| Problem | Lösung |
-|---|---|
-| QR erscheint nicht | Dashboard → Channels nutzen |
-| "Connection closed" nach Scan | Gateway restart → erneut scannen |
-| Bot antwortet nicht | `allowFrom` mit +Ländercode prüfen |
-| Nachrichten verzögert | `debounceMs: 0` |
-| Media nicht verarbeitet | `mediaMaxMb` erhöhen |
-| Nach einigen Tagen getrennt | WhatsApp-App → Verknüpfte Geräte prüfen |
+- **Status/Broadcast-Chats** werden ignoriert (`@status`, `@broadcast`)
+- **Read-Receipts** standardmäßig aktiviert, Self-Chat überspringt sie
 
 ---
 
@@ -361,11 +555,9 @@ openclaw logs --follow --channel telegram
 
 ---
 
-## Allgemeine Regeln
+## Verwandte Docs
 
-1. **dmPolicy immer `allowlist`** in Produktion
-2. **allowFrom korrekt**: Telegram = Zahl, WhatsApp = E.164 String
-3. **mediaMaxMb erhöhen** — Default ist oft nur 5 MB
-4. **Nach Config-Änderung**: `openclaw channels restart <channel>`
-5. **Streaming spart keine Tokens** — nur UX
-6. **plugins.entries** ≠ **channels** — Channel-Config gehört in `channels`!
+- **Quick-Ref**: `references/quick-reference.md` — Channel-Quick-Setup
+- **Security**: `references/security-hardening.md` — dmPolicy, Allowlists, Access Control
+- **Multi-Agent**: `references/multi-agent.md` — Per-Channel Bindings
+- **CLI**: `references/cli-reference.md` — `openclaw channels` und `openclaw pairing` Befehle

@@ -6,6 +6,8 @@
 # IMMER zuerst:
 openclaw --version
 openclaw doctor
+openclaw doctor --run doctor    # DM-Policy-Check
+openclaw doctor --run security  # Security-Audit
 openclaw status
 
 # Logs lesen:
@@ -14,6 +16,9 @@ journalctl --user -u openclaw-gateway -n 50 --no-pager
 tail -n 120 /tmp/openclaw-gateway.log
 # Docker:
 docker compose logs -f openclaw-gateway
+
+# Deep Health (Gateway + Channels):
+openclaw health --token "$OPENCLAW_GATEWAY_TOKEN"
 ```
 
 ---
@@ -209,3 +214,267 @@ cp ~/.openclaw/openclaw.json.bak ~/.openclaw/openclaw.json
 systemctl --user start openclaw-gateway
 openclaw doctor
 ```
+
+---
+
+## SecretRef-Probleme
+
+### "Secret provider not found"
+
+```bash
+# Provider-Config prüfen:
+openclaw secrets configure --providers-only
+
+# Testen:
+openclaw secrets reload
+
+# Audit:
+openclaw secrets audit --check
+```
+
+**Häufige Ursachen:**
+- Fehlender `secrets.providers` Block in Config
+- `provider`-Name nicht registriert
+- `exec`-Kommando nicht ausführbar
+
+### "Environment variable not found"
+
+```json5
+// Falsch:
+{ source: "env", provider: "default", id: "openai_api_key" }  // Kleinbuchstaben
+
+// Richtig:
+{ source: "env", provider: "default", id: "OPENAI_API_KEY" }  // GROSSBUCHSTABEN
+```
+
+### Exec-SecretRef mit 1Password
+
+```json5
+secrets: {
+  providers: {
+    onepassword: {
+      source: "exec",
+      command: "/opt/homebrew/bin/op",
+      args: ["read", "op://Vault/Item/field"],
+      allowSymlinkCommand: true,  // Für Homebrew-Shims
+    },
+  },
+}
+```
+
+---
+
+## Sandbox-Probleme
+
+### Container startet nicht
+
+```bash
+# Image prüfen:
+docker images | grep openclaw-sandbox
+
+# Fehlt? Nachbauen:
+scripts/sandbox-setup.sh  # Standard
+scripts/sandbox-common-setup.sh  # Mit Tooling
+```
+
+### Permission denied in Sandbox
+
+```bash
+# UID/GID mismatch
+# Option 1: Container-User auf Host-User setzen
+docker.user: "1000:1000"
+
+# Option 2: Workspace beschreibbar
+sudo chown -R 1000:$(id -g) ~/.openclaw/workspace
+```
+
+### Tools nicht gefunden in Sandbox
+
+```json5
+// setupCommand braucht Netzwerk + Root:
+sandbox: {
+  docker: {
+    network: "bridge",      // Nicht "none"!
+    readOnlyRoot: false,    // Für apt-get
+    user: "0:0",            // Root für setup
+    setupCommand: "apt-get update && apt-get install -y git curl jq",
+  },
+}
+```
+
+### Sandbox-Pod läuft nicht
+
+```bash
+# Status prüfen:
+openclaw sandbox list
+openclaw sandbox status
+
+# Logs:
+journalctl --user -u openclaw-gateway -n 100 | grep -i sandbox
+```
+
+---
+
+## Skill-Gating-Probleme
+
+### Skill wird nicht geladen
+
+```bash
+# Skill-Status prüfen:
+openclaw skills list
+
+# Wenn fehlt, SKILL.md prüfen:
+# - YAML-Frontmatter mit name + description?
+# - Kein Syntax-Fehler im YAML?
+# - description darf KEINE Doppelpunkte ohne Quotes haben!
+```
+
+**YAML-Fehler-Beispiel:**
+```markdown
+# FALSCH:
+---
+name: my-skill
+description: Use when X, Y: Z  ← Doppelpunkt ohne Quotes!
+---
+
+# RICHTIG:
+---
+name: my-skill
+description: "Use when X, Y: Z"
+---
+```
+
+### "requires.bins" nicht erfüllt
+
+```json5
+// Skill braucht Binary auf HOST und in Sandbox:
+// 1. Host-Check: Binary auf PATH?
+which uv
+
+// 2. Sandbox: In setupCommand installieren
+sandbox: {
+  docker: {
+    network: "bridge",
+    readOnlyRoot: false,
+    user: "0:0",
+    setupCommand: "apt-get update && apt-get install -y curl && curl -LsSf https://astral.sh/uv/install.sh | sh",
+  },
+}
+```
+
+---
+
+## Multi-Agent-Probleme
+
+### Bindings greifen nicht
+
+```bash
+# Bindings auflisten:
+openclaw agents list --bindings
+
+# Häufige Fehler:
+# - accountId vergessen (Default-Account wird angenommen)
+# - peer-Format falsch (Channel-spezifisch)
+# - Reihenfolge: Spezifische Bindings zuerst!
+```
+
+### Agent wird nicht gefunden
+
+```json5
+// Falsch: Kein default-Agent
+agents: { list: [{ id: "work", ... }] }
+
+// Richtig: Default-Agent markieren
+agents: { list: [{ id: "main", default: true, ... }, { id: "work", ... }] }
+```
+
+### Credentials teilen
+
+**Auth-Profile sind per-Agent!**
+
+```bash
+# Credential kopieren (manuell):
+cp ~/.openclaw/credentials/anthropic/default \
+   ~/.openclaw/agents/work/agent/credentials/anthropic/default
+```
+
+---
+
+## Model-Provider-Probleme
+
+### "Model not found"
+
+```json5
+// Falsches Format:
+models: { default: "claude-sonnet-4" }  // Fehlt Provider!
+
+// Richtig:
+models: { default: "anthropic/claude-sonnet-4-20250514" }
+
+// OpenRouter mit Provider-Prefix:
+models: {
+  providers: {
+    openrouter: { baseUrl: "https://openrouter.ai/api", api: "openai-completions" },
+  },
+  default: "openrouter/anthropic/claude-sonnet-4",  // Provider-Prefix!
+}
+```
+
+### Ollama in Docker
+
+```json5
+models: {
+  providers: {
+    ollama: {
+      // macOS Docker Desktop:
+      baseUrl: "http://host.docker.internal:11434",
+      // Linux:
+      // baseUrl: "http://172.17.0.1:11434",
+      api: "openai-completions",
+    },
+  },
+}
+```
+
+---
+
+## Docker-Specific
+
+### Build OOM (Exit 137)
+
+```bash
+# Mindestens 2GB RAM für Build
+# Option 1: Swap erhöhen
+# Option 2: Mit mehr RAM bauen
+```
+
+### Container nicht erreichbar
+
+```bash
+# Bind-Adresse prüfen:
+docker compose exec openclaw-gateway env | grep BIND
+
+# LAN-Access:
+# gateway.bind: "lan" in docker-compose.yml oder OPENCLAW_GATEWAY_BIND=lan
+```
+
+### QR nicht angezeigt
+
+```bash
+# Dashboard → Channels → WhatsApp QR
+# ODER:
+openclaw channels login --channel whatsapp --qr terminal
+```
+
+---
+
+## Performance-Optimierung
+
+| Problem | Lösung |
+|---------|--------|
+| Langsame Antworten | Kleineres Model für heartbeat |
+| Hohe API-Kosten | `heartbeat.every: "6h"` statt `"30m"` |
+| Docker langsam auf macOS | npm-Installation statt Docker |
+| Context-Compaction-Loop | Größeres contextWindow oder `compaction.maxTokens` erhöhen |
+| Memory-Search langsam | Erster Aufruf = Model-Download (~5min) |
+| Skills-Token-Overhead | Unnötige Skills deaktivieren (`enabled: false`) |

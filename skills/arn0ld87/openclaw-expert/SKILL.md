@@ -1,15 +1,7 @@
 ---
 name: openclaw-expert
 description: >
-  Expert skill for OpenClaw (formerly Clawdbot/MoltBot) — the self-hosted AI agent framework.
-  ALWAYS use when user mentions OpenClaw, Clawdbot, MoltBot, openclaw.json, openclaw gateway,
-  openclaw channels, openclaw nodes, openclaw models, openclaw skills, openclaw doctor,
-  AGENTS.md, SOUL.md, USER.md, HEARTBEAT.md, MEMORY.md, IDENTITY.md, TOOLS.md, BOOTSTRAP.md,
-  ClawHub, clawhub, openclaw workspace, openclaw config, openclaw sessions, openclaw pairing,
-  openclaw docker, openclaw sandbox, openclaw heartbeat, openclaw compaction, memorySearch,
-  multi-agent, bindings, dmPolicy. Covers installation, configuration, troubleshooting,
-  security hardening, channel setup, skill development, memory tuning, Docker deployment.
-  Also trigger for "my bot", "my agent", "Lobster", or agent issues after config changes.
+  OpenClaw self-hosted AI agent framework expert. Trigger for: openclaw.json, gateway, channels, models, skills, agents, secrets, cron, sandbox, memory, multi-agent, bindings, dmPolicy, SecretRef, session config, workspace files (AGENTS.md, SOUL.md, MEMORY.md), troubleshooting, security hardening. Covers installation, configuration, channel setup, memory tuning, Docker deployment.
 ---
 
 # OpenClaw Expert Skill
@@ -55,6 +47,7 @@ Messaging-Kanäle (WhatsApp, Telegram, Slack, Discord, Signal, iMessage, Teams, 
 ```
 
 ### Verzeichnisstruktur
+
 ```
 ~/.openclaw/
 ├── openclaw.json          # Haupt-Config (JSON5 – Kommentare + trailing commas!)
@@ -64,8 +57,10 @@ Messaging-Kanäle (WhatsApp, Telegram, Slack, Discord, Signal, iMessage, Teams, 
 │   └── openrouter
 ├── agents/
 │   └── <agentId>/
+│       ├── agent/         # Auth-Profile, Model-Registry
 │       └── sessions/      # Session-Logs (*.jsonl)
 ├── skills/                # Managed/lokale Skills
+├── cron/                  # Cron-Jobs (jobs.json, runs/)
 └── workspace/             # Agent-Workspace (= das "Gehirn")
     ├── AGENTS.md          # Betriebsanweisungen (in JEDER Session geladen)
     ├── SOUL.md            # Persönlichkeit, Ton, Grenzen (jede Session)
@@ -74,10 +69,81 @@ Messaging-Kanäle (WhatsApp, Telegram, Slack, Discord, Signal, iMessage, Teams, 
     ├── IDENTITY.md        # Name, Emoji, Vibe
     ├── HEARTBEAT.md       # Scheduled-Tasks / Cron-Checkliste
     ├── MEMORY.md          # Langzeit-Gedächtnis (nur private Sessions!)
+    ├── BOOT.md            # Startup-Checkliste (bei Gateway-Restart)
     ├── BOOTSTRAP.md       # Einmal-Setup (nach Ausführung gelöscht)
     ├── memory/            # Tages-Logs (YYYY-MM-DD.md)
-    ├── skills/            # Workspace-Skills
-    └── .git/              # Git-Backup (empfohlen!)
+    └── skills/            # Workspace-Skills
+```
+
+---
+
+## ⚡ Quick-Start: Häufige Aufgaben
+
+### Neuinstallation
+```bash
+pnpm add -g openclaw@latest && pnpm approve-builds -g
+openclaw onboard                           # Interaktiver Wizard
+openclaw doctor                            # Gesundheitscheck
+```
+
+### Channel einrichten (WhatsApp)
+```bash
+openclaw channels login --channel whatsapp --account personal
+openclaw pairing list whatsapp
+openclaw pairing approve whatsapp <CODE>
+```
+
+### Multi-Agent Setup
+```bash
+openclaw agents add work                   # Neuer Agent
+openclaw agents bind work "whatsapp:biz"  # Routing-Regel
+```
+
+### Memory mit Semantic Search
+```json5
+// In openclaw.json:
+agents: {
+  defaults: {
+    memorySearch: {
+      provider: "openai",
+      model: "text-embedding-3-small",
+      query: {
+        hybrid: { enabled: true },
+        mmr: { enabled: true, lambda: 0.7 },
+        temporalDecay: { enabled: true, halfLifeDays: 30 }
+      }
+    }
+  }
+}
+```
+
+### Sandbox aktivieren
+```json5
+agents: {
+  defaults: {
+    sandbox: {
+      mode: "non-main",
+      scope: "agent",
+      workspaceAccess: "ro",
+      docker: { image: "openclaw-sandbox:bookworm-slim" }
+    }
+  }
+}
+```
+
+### Cron-Job erstellen
+```bash
+openclaw cron add --name "Tageszusammenfassung" \
+  --cron "0 7 * * *" \
+  --message "Fasse die wichtigsten Ereignisse zusammen" \
+  --announce
+```
+
+### Config-Problem debuggen
+```bash
+openclaw config validate
+openclaw doctor --fix
+systemctl --user restart openclaw-gateway
 ```
 
 ---
@@ -89,23 +155,27 @@ BEVOR du eine Aktion durchführst.** Die Dateien liegen unter `references/` im S
 
 | Aufgabe | Referenzdatei | Inhalt |
 |---|---|---|
+| **Schnellnachschlage** | `references/quick-reference.md` | Einseitige Referenz: Verzeichnisse, Minimal-Config, CLI-Einzeiler, Troubleshooting-Patterns |
 | Installation & erste Schritte | `references/installation.md` | npm/pnpm, Docker, VPS-Setup, Onboarding-Wizard |
-| openclaw.json bearbeiten | `references/config-reference.md` | Vollständige Feld-Referenz basierend auf realer Config (auth, models, agents, tools, gateway…) |
+| openclaw.json bearbeiten | `references/config-reference.md` | Vollständige Feld-Referenz (agents, models, channels, session, secrets, bindings, $include…) |
 | Dashboard (Control UI) | `references/dashboard.md` | Alle Dashboard-Bereiche, Zugriff, Troubleshooting |
 | Workspace-Dateien schreiben | `references/workspace-files.md` | AGENTS.md, SOUL.md, USER.md, HEARTBEAT.md, MEMORY.md Templates |
 | Channels einrichten | `references/channels.md` | Telegram (komplett!), WhatsApp, Discord, Slack, Signal + Troubleshooting |
 | Memory & Compaction tunen | `references/memory-system.md` | memoryFlush, memorySearch, Compaction, Semantic Search, Decay |
 | Docker-Deployment | `references/docker-setup.md` | docker-compose, Sandbox, alpine/openclaw, Permissions |
-| Security-Hardening | `references/security-hardening.md` | dmPolicy, Token-Rotation, Allowlists, Sandboxing, CIS-Style |
+| Security-Hardening | `references/security-hardening.md` | dmPolicy, SecretRef, Token-Rotation, Allowlists, Sandboxing, CIS-Style |
 | Skills entwickeln/installieren | `references/skills-guide.md` | SKILL.md-Format, ClawHub, Workspace-Skills, Security-Review |
-| Multi-Agent-Routing | `references/multi-agent.md` | agents.list, bindings, accountId, agentId, Isolation |
-| CLI-Referenz | `references/cli-reference.md` | Alle Befehle mit Syntax und Beispielen |
+| Multi-Agent-Routing | `references/multi-agent.md` | agents.list, bindings, accountId, agentId, Isolation, Per-Agent Sandbox/Tools |
+| CLI-Referenz | `references/cli-reference.md` | Alle Befehle mit Syntax und Beispielen (agents, browser, cron, secrets, sandbox…) |
 | Dashboard / Control UI | `references/dashboard.md` | Sidebar-Navigation, Bereiche, CORS, Config, Troubleshooting |
-| Nodes & Remote-Zugriff | `references/nodes-and-remote.md` | Node-Typen, Pairing, Headless-Nodes, Bonjour/mDNS, Exec-Approvals |
+| Nodes & Remote-Zugriff | `references/nodes-and-remote.md` | Node-Typen, Pairing, Headless-Nodes, Bonjour/mDNS, Exec-Approval |
 | Tailscale-Integration | `references/tailscale-integration.md` | Serve vs Funnel vs Tailnet-Bind, SSH-Tunnel, Auth, Config-Beispiele |
 | Praxis-Beispiele | `references/examples.md` | 7 vollständige Setup-Szenarien (Einsteiger → Multi-Agent → Kosten-optimiert) |
-| Troubleshooting | `references/troubleshooting.md` | Häufige Fehler, Logs, Diagnose-Schritte |
+| Troubleshooting | `references/troubleshooting.md` | Häufige Fehler, Logs, Diagnose-Schritte, SecretRef, Sandbox, Skill-Gating |
 | Tricks & Power-User | `references/tricks-and-hacks.md` | Community-Tipps, Cost-Saving, Obsidian, Surge, Watchdog |
+
+> **Companion Skill**: Für Cognee Knowledge-Graph-Memory (Docker-Setup, LLM/Embedding-Config,
+> Ollama Cloud + OpenAI Hybrid, Plugin-Troubleshooting) → den **`cognee-openclaw-memory` Skill** nutzen.
 
 ---
 
@@ -124,23 +194,48 @@ openclaw gateway start|stop|restart|status
 openclaw gateway install              # systemd user service
 openclaw gateway log                  # Logs (= journalctl --user -u openclaw-gateway -f)
 
+# Agents (Multi-Agent)
+openclaw agents list                  # Agent-Liste
+openclaw agents add <id>              # Neuen Agent erstellen
+openclaw agents bind <agent> <binding> # Binding hinzufügen
+openclaw agents unbind <agent> <binding> # Binding entfernen
+
 # Channels
 openclaw channels list|add|remove|restart
 openclaw channels status --probe      # Live-Check
+openclaw channels login --channel whatsapp --account <id>  # WhatsApp Account
 
 # Models
 openclaw models list|set <provider/model>
+openclaw models auth setup-token      # Interaktiver Auth-Setup
 
 # Skills
 openclaw skills list|reload
 clawhub search|install|update <name>
 
+# Secrets (Secure Credential Management)
+openclaw secrets audit                # Plaintext-Scan
+openclaw secrets configure            # Interaktiver Wizard
+openclaw secrets reload               # Runtime-Refresh
+
+# Cron Jobs
+openclaw cron list                    # Alle Jobs
+openclaw cron add --name "..." --cron "0 7 * * *" --message "..." --announce
+openclaw cron runs --id <jobId>       # Run-History
+
+# Browser Automation
+openclaw browser start|stop|status
+
+# Sandbox
+openclaw sandbox list|status
+
 # Memory & Sessions
 openclaw sessions list|clean
 openclaw memory flush
 
-# Update
-pnpm add -g openclaw@latest && pnpm approve-builds -g && openclaw doctor
+# Security
+openclaw token:rotate --force --length 64
+openclaw security audit --deep
 
 # Nodes & Devices
 openclaw nodes status                 # Verbundene Nodes anzeigen
@@ -155,9 +250,17 @@ openclaw pairing list|approve <channel> <code>
 # Config
 openclaw config list|get|set|validate
 
-# Security
-openclaw token:rotate --force --length 64
-openclaw security audit --deep
+# Hooks
+openclaw hooks list|test
+
+# Webhooks
+openclaw webhooks list|test
+
+# DNS (für Nodes)
+openclaw dns setup|status
+
+# Update
+pnpm add -g openclaw@latest && pnpm approve-builds -g && openclaw doctor
 ```
 
 ---
@@ -165,35 +268,42 @@ openclaw security audit --deep
 ## Sicherheits-Grundregeln (IMMER beachten!)
 
 1. **Gateway bind: `loopback`** — Niemals `lan` oder `0.0.0.0` ohne Tailscale/VPN
-2. **dmPolicy: `allowlist`** — Niemals `open` in Produktion
+2. **dmPolicy: `allowlist` oder `pairing`** — Niemals `open` in Produktion
 3. **Token: mindestens 64 Zeichen** — `openclaw token:rotate --force --length 64`
-4. **Credentials: `chmod 600`** — `chmod 600 ~/.openclaw/credentials/*`
-5. **Skills reviewen** — Vor Installation Quellcode prüfen, ClawHub "Hide Suspicious" nutzen
-6. **Kein root** — OpenClaw als eigener User betreiben
-7. **Workspace = privat** — Git-Backup in **privates** Repo, MEMORY.md nie in Groups laden
-8. **API-Spending-Limits** — Beim Provider setzen, bevor Heartbeat aktiviert wird
-9. **Sandbox für Tools** — `tools.exec.host: "sandbox"` wenn möglich
+4. **Secrets mit SecretRef** — API-Keys nie im Plaintext in Config, `openclaw secrets configure`
+5. **Credentials: `chmod 600`** — `chmod 600 ~/.openclaw/credentials/*`
+6. **Skills reviewen** — Vor Installation Quellcode prüfen, ClawHub "Hide Suspicious" nutzen
+7. **Kein root** — OpenClaw als eigener User betreiben
+8. **Workspace = privat** — Git-Backup in **privates** Repo, MEMORY.md nie in Groups laden
+9. **API-Spending-Limits** — Beim Provider setzen, bevor Heartbeat aktiviert wird
+10. **Sandbox für Tools** — `agents.defaults.sandbox.mode: "all"` wenn möglich
 
 ---
 
 ## Workflow: Docs nachschlagen
 
 ### Offizielle Docs-URLs (für web_fetch)
+
 ```
 https://docs.openclaw.ai                          # Hauptseite
 https://docs.openclaw.ai/install/docker           # Docker
 https://docs.openclaw.ai/concepts/agent-workspace # Workspace
 https://docs.openclaw.ai/concepts/memory          # Memory
 https://docs.openclaw.ai/concepts/multi-agent     # Multi-Agent
+https://docs.openclaw.ai/concepts/session         # Session Management
+https://docs.openclaw.ai/automation/cron-jobs     # Cron Jobs
+https://docs.openclaw.ai/gateway/secrets          # Secrets Management
+https://docs.openclaw.ai/gateway/configuration    # Config
 https://docs.openclaw.ai/channels/<name>          # Channel-Guides
 https://docs.openclaw.ai/models                   # Models
-https://docs.openclaw.ai/tools/skills             # Skills
+https://docs.openclaw.ai/tools/skills              # Skills
 https://docs.openclaw.ai/security                 # Security
 ```
 
 Alternative Docs-Mirror: `https://openclaw.im/docs/`
 
 ### Community-Suche (für web_search)
+
 ```
 "openclaw <Thema> 2026 tips"
 "openclaw <Problem> fix workaround github issue"
@@ -234,3 +344,52 @@ cd ~/.openclaw/workspace && git add -A && git commit -m "backup: $(date +%Y%m%d_
 7. `systemctl --user restart openclaw-gateway`
 8. `openclaw status` + Funktionstest im Channel
 9. Bei Fehler: `cp ~/.openclaw/openclaw.json.bak ~/.openclaw/openclaw.json && systemctl --user restart openclaw-gateway`
+
+---
+
+## Wichtige Konzepte (Kurzreferenz)
+
+### Multi-Agent-Routing
+
+```json5
+{
+  agents: {
+    list: [
+      { id: "home", default: true, workspace: "~/.openclaw/workspace-home" },
+      { id: "work", workspace: "~/.openclaw/workspace-work" },
+    ],
+  },
+  bindings: [
+    { agentId: "home", match: { channel: "whatsapp", accountId: "personal" } },
+    { agentId: "work", match: { channel: "whatsapp", accountId: "biz" } },
+  ],
+}
+```
+
+### Session-DmScope
+
+- `main` — Alle DMs teilen eine Session (Single-User)
+- `per-channel-peer` — DMs pro Channel+Sender isolieren (Multi-User empfohlen)
+- `per-account-channel-peer` — DMs pro Account+Channel+Sender (Multi-Account)
+
+### Config-Hot-Reload
+
+| Modus | Verhalten |
+|---|---|
+| `hybrid` | Auto-Applie + Auto-Restart für Kritisches |
+| `hot` | Nur Hot-Applie, Warnung bei Restart-Bedarf |
+| `restart` | Immer Restart bei Änderung |
+| `off` | Kein File-Watching |
+
+### SecretRef
+
+```json5
+// Env-Variable
+{ source: "env", provider: "default", id: "OPENAI_API_KEY" }
+
+// File
+{ source: "file", provider: "filemain", id: "/providers/openai/apiKey" }
+
+// Exec (1Password, Vault, sops)
+{ source: "exec", provider: "vault", id: "providers/openai/apiKey" }
+```

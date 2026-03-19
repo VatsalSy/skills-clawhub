@@ -8,13 +8,35 @@
   - Ausnahme: `gateway.reload` und `gateway.remote` triggern KEINEN Restart
 - Validierung: `openclaw config validate`
 
+### $include — Config aufteilen
+
+```json5
+// ~/.openclaw/openclaw.json
+{
+  gateway: { port: 18789 },
+  agents: { $include: "./agents.json5" },
+  channels: { $include: "./channels.json5" },
+  broadcast: {
+    $include: ["./clients/a.json5", "./clients/b.json5"],
+  },
+}
+```
+
+Regeln:
+- **Einzelne Datei**: ersetzt das enthaltende Objekt
+- **Array von Dateien**: deep-merge in Reihenfolge (spätere gewinnen)
+- **Sibling-Keys**: werden nach includes gemergt (überschreiben included values)
+- **Nested includes**: bis zu 10 Ebenen tief unterstützt
+- **Relative Pfade**: relativ zur einbindenden Datei aufgelöst
+- **Fehlerbehandlung**: klare Fehler bei fehlenden Dateien, Parse-Fehlern und Zyklen
+
 ---
 
 ## Alle Top-Level Sections
 
 ```
-meta / wizard / update / auth / models / agents / tools / messages /
-commands / session / hooks / channels / canvasHost / gateway / skills / plugins
+meta / wizard / update / agents / models / tools / messages /
+commands / session / hooks / cron / channels / canvasHost / gateway / skills / plugins / secrets / bindings / env
 ```
 
 ---
@@ -26,8 +48,8 @@ Automatisch verwaltet — nicht manuell editieren.
 ```json5
 {
   meta: {
-    lastTouchedVersion: "2026.2.26",
-    lastTouchedAt: "2026-02-28T06:10:52.119Z",
+    lastTouchedVersion: "2026.3.17",
+    lastTouchedAt: "2026-03-17T10:30:00.000Z",
   },
 }
 ```
@@ -42,7 +64,7 @@ Tracking des Setup-Wizards — nicht manuell editieren.
 {
   wizard: {
     lastRunAt: "...",
-    lastRunVersion: "2026.2.26",
+    lastRunVersion: "2026.3.17",
     lastRunCommand: "configure",    // "setup" | "configure" | "onboard"
     lastRunMode: "local",           // "local" | "remote"
   },
@@ -66,51 +88,138 @@ Tracking des Setup-Wizards — nicht manuell editieren.
 
 ---
 
-## auth — Provider-Authentifizierung
+## agents — Agent-Konfiguration
 
-Auth-Profile pro LLM-Provider. Key-Format: `provider:label`.
+### agents.defaults
 
 ```json5
 {
-  auth: {
-    profiles: {
-      // API-Key (häufigster Fall)
-      "deepseek:default": { provider: "deepseek", mode: "api_key" },
-      "mistral:default":  { provider: "mistral",  mode: "api_key" },
-      "google:default":   { provider: "google",   mode: "api_key" },
-      "nvidia:default":   { provider: "nvidia",   mode: "api_key" },
-      "deepgram:default": { provider: "deepgram", mode: "api_key" },
-
-      // OAuth/Token
-      "github-copilot:github":  { provider: "github-copilot",  mode: "token" },
-      "openai-codex:default":   { provider: "openai-codex",    mode: "oauth" },
-      "anthropic:default":      { provider: "anthropic",        mode: "token" },
-      "google-antigravity:user@gmail.com": {
-        provider: "google-antigravity", mode: "oauth", email: "user@gmail.com",
+  agents: {
+    defaults: {
+      model: {
+        primary: "anthropic/claude-sonnet-4-6",
+        fallbacks: ["openai/gpt-5.2"],
       },
 
-      // Lokal (Ollama — Key meist leer/dummy)
-      "ollama:default": { provider: "ollama", mode: "api_key" },
+      // Modelle mit Aliases (für /model <alias>)
+      models: {
+        "anthropic/claude-sonnet-4-6": { alias: "Sonnet" },
+        "anthropic/claude-opus-4-6": { alias: "Opus" },
+        "openai/gpt-5.2": { alias: "GPT" },
+        "google/gemini-3-pro-preview": { alias: "gemini" },
+      },
+
+      workspace: "~/.openclaw/workspace",
+      skipBootstrap: false,
+
+      // Context-Pruning: alte Tool-Ergebnisse entfernen
+      contextPruning: {
+        mode: "cache-ttl",
+        ttl: "1h",
+      },
+
+      // Compaction
+      compaction: {
+        mode: "safeguard",    // "safeguard" | "aggressive" | "manual"
+      },
+
+      timeoutSeconds: 1800,
+      heartbeat: { every: "1h" },
+      maxConcurrent: 4,
+      subagents: { maxConcurrent: 8 },
+
+      // Group-Chat-Mention-Patterns
+      groupChat: {
+        mentionPatterns: ["@bot", "bot"],
+      },
+
+      // Sandbox (per-agent)
+      sandbox: {
+        mode: "off",         // "off" | "non-main" | "all"
+        scope: "session",    // "session" | "agent" | "shared"
+        workspaceAccess: "rw",  // "rw" | "ro" | "none"
+        docker: {
+          image: "openclaw-sandbox:latest",
+          setupCommand: "apt-get update && apt-get install -y git curl",
+        },
+        ssh: {
+          target: "user@gateway-host:22",
+          identityData: { source: "env", provider: "default", id: "SSH_IDENTITY" },
+          certificateData: { source: "env", provider: "default", id: "SSH_CERTIFICATE" },
+          knownHostsData: { source: "env", provider: "default", id: "SSH_KNOWN_HOSTS" },
+        },
+      },
+
+      // Per-Agent Tools
+      tools: {
+        allow: ["read", "sessions_list"],
+        deny: ["exec", "write", "edit", "apply_patch", "browser"],
+      },
+
+      // Bootstrap-Limits
+      bootstrapMaxChars: 20000,
+      bootstrapTotalMaxChars: 150000,
     },
   },
 }
 ```
 
-### Bekannte Provider
+### agents.list — Multi-Agent-Routing
 
-| Provider | API-Typ | Auth | Modelle |
-|---|---|---|---|
-| `anthropic` | anthropic-messages | api_key/token | Claude Sonnet/Opus/Haiku |
-| `openai-codex` | openai | oauth | GPT-5.x Codex |
-| `github-copilot` | openai | token | GPT-5.x, GPT-4.1 |
-| `google` | google-generative-ai | api_key | Gemini 3 Pro/Flash |
-| `google-antigravity` | google-generative-ai | oauth | Antigravity-Modelle |
-| `deepseek` | openai-completions | api_key | V3, R1, V3.2, V3.2-Speciale |
-| `moonshot` | openai-completions | api_key | Kimi K2.5 |
-| `mistral` | openai-completions | api_key | Mistral Large |
-| `nvidia` | openai-completions | api_key | NIM: Kimi, Qwen, DeepSeek |
-| `ollama` | openai-completions | api_key | Lokal + Cloud (`:cloud` Suffix) |
-| `deepgram` | deepgram | api_key | Audio: Nova-3 |
+```json5
+{
+  agents: {
+    list: [
+      {
+        id: "home",
+        default: true,
+        name: "Home",
+        workspace: "~/.openclaw/workspace-home",
+        agentDir: "~/.openclaw/agents/home/agent",
+        model: { primary: "anthropic/claude-sonnet-4-6" },
+        groupChat: { mentionPatterns: ["@home", "Home"] },
+        sandbox: { mode: "off" },
+      },
+      {
+        id: "work",
+        name: "Work",
+        workspace: "~/.openclaw/workspace-work",
+        agentDir: "~/.openclaw/agents/work/agent",
+        model: { primary: "anthropic/claude-opus-4-6" },
+        sandbox: { mode: "all", scope: "agent" },
+        tools: {
+          allow: ["read", "exec"],
+          deny: ["write", "edit"],
+        },
+      },
+    ],
+  },
+}
+```
+
+### Compaction-Modi
+
+| Modus | Verhalten | Kosten |
+|---|---|---|
+| `safeguard` | Auto bei ~80% Context-Limit | Moderat |
+| `aggressive` | Häufiger compacten | Spart Tokens |
+| `manual` | Nur mit `/compact` | Volle Kontrolle |
+
+### Sandbox-Modi
+
+| Modus | Verhalten |
+|---|---|
+| `off` | Kein Sandbox (Standard) |
+| `non-main` | Nur Nicht-Main-Sessions |
+| `all` | Alle Sessions |
+
+### Sandbox-Scopes
+
+| Scope | Container-Isolation |
+|---|---|
+| `session` | Ein Container pro Session |
+| `agent` | Ein Container pro Agent |
+| `shared` | Gemeinsamer Container |
 
 ---
 
@@ -121,22 +230,35 @@ Auth-Profile pro LLM-Provider. Key-Format: `provider:label`.
   models: {
     mode: "merge",    // "merge" = mit Defaults zusammenführen | "replace" = nur eigene
     providers: {
-      "<provider-name>": {
-        baseUrl: "https://...",       // API-Endpoint
-        api: "openai-completions",    // API-Typ (siehe Tabelle)
-        // apiKey: "<key>",           // Optional direkt hier (besser: credentials/)
-        // auth: "api-key",           // Explizite Auth-Methode
+      "anthropic": {
+        baseUrl: "https://api.anthropic.com",
+        api: "anthropic-messages",
         models: [
           {
-            id: "model-id",            // Unique ID
-            name: "Anzeigename",       // Für Dashboard/Chat
-            reasoning: false,           // true = CoT/Reasoning-Modell
-            input: ["text"],            // ["text"] | ["text", "image"]
-            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+            id: "claude-sonnet-4-6",
+            name: "Claude Sonnet 4.6",
+            reasoning: false,
+            input: ["text", "image"],
+            cost: { input: 3, output: 15, cacheRead: 0.3, cacheWrite: 3.75 },
             contextWindow: 200000,
             maxTokens: 8192,
-            api: "openai-completions",  // Kann pro Modell überschrieben werden
           },
+        ],
+      },
+      "openai": {
+        baseUrl: "https://api.openai.com/v1",
+        api: "openai-completions",
+        models: [
+          { id: "gpt-5.2", name: "GPT-5.2", reasoning: true },
+          { id: "gpt-5.2-codex", name: "GPT-5.2 Codex", reasoning: false },
+        ],
+      },
+      "ollama": {
+        baseUrl: "http://localhost:11434/v1",
+        api: "openai-completions",
+        models: [
+          { id: "kimi-k2.5:cloud", name: "Kimi K2.5 (Cloud)", reasoning: true },
+          { id: "deepseek-v3.2:cloud", name: "DeepSeek V3.2 (Cloud)", reasoning: true },
         ],
       },
     },
@@ -151,10 +273,9 @@ Auth-Profile pro LLM-Provider. Key-Format: `provider:label`.
 | `anthropic-messages` | Anthropic (Claude) |
 | `openai-completions` | OpenAI-kompatibel (DeepSeek, Mistral, NVIDIA, Ollama, Moonshot) |
 | `google-generative-ai` | Google (Gemini, Antigravity) |
+| `deepgram` | Audio: Nova-3 |
 
 ### Trick: Gleiche baseUrl, verschiedene API-Keys
-
-Wenn verschiedene NVIDIA-Modelle verschiedene Keys brauchen:
 
 ```json5
 "nvidia":          { baseUrl: "https://integrate.api.nvidia.com/v1", models: [...] },
@@ -164,145 +285,14 @@ Wenn verschiedene NVIDIA-Modelle verschiedene Keys brauchen:
 
 ### Trick: Ollama Cloud-Modelle
 
-Ollama kann Cloud-Modelle proxyen — kostenfrei, kein eigener API-Key:
-
 ```json5
 "ollama": {
   baseUrl: "http://localhost:11434/v1",
   models: [
     { id: "kimi-k2.5:cloud", name: "Kimi K2.5 (Cloud)", reasoning: true, contextWindow: 262144 },
     { id: "deepseek-v3.2:cloud", name: "DeepSeek V3.2 (Cloud)", reasoning: true },
-    { id: "qwen3.5:397b-cloud", name: "Qwen 3.5 397B (Cloud)", reasoning: true },
-    // Vision-Modell
     { id: "qwen3-vl:235b-instruct-cloud", input: ["text", "image"] },
   ],
-}
-```
-
----
-
-## agents — Agent-Konfiguration
-
-```json5
-{
-  agents: {
-    defaults: {
-      model: {
-        primary: "openai-codex/gpt-5.3-codex",   // Standard-Modell
-      },
-
-      // Modelle mit Aliases (für /model <alias>)
-      models: {
-        "anthropic/claude-sonnet-4-6":  { alias: "Sonnet" },
-        "deepseek/deepseek-reasoner":   { alias: "R1" },
-        "ollama/kimi-k2.5:cloud":       { alias: "Ollama-Kimi" },
-        "google/gemini-3-pro-preview":  { alias: "gemini" },
-        // Ohne alias: /model google/gemini-3-pro-high (voller Pfad)
-      },
-
-      workspace: "/home/admin/.openclaw/workspace",
-
-      // Context-Pruning: alte Tool-Ergebnisse entfernen
-      contextPruning: {
-        mode: "cache-ttl",    // "cache-ttl" | "none"
-        ttl: "1h",            // Cache-Lebensdauer
-      },
-
-      // Compaction
-      compaction: {
-        mode: "safeguard",    // "safeguard" | "aggressive" | "manual"
-      },
-
-      timeoutSeconds: 1800,   // LLM-Timeout (30 Min)
-
-      heartbeat: { every: "1h" },   // "30m" | "1h" | "4h" | "12h" | "24h"
-
-      maxConcurrent: 4,              // Max parallele Tool-Aufrufe
-      subagents: { maxConcurrent: 8 },
-    },
-  },
-}
-```
-
-### Compaction-Modi
-
-| Modus | Verhalten | Kosten |
-|---|---|---|
-| `safeguard` | Auto bei ~80% Context-Limit | Moderat |
-| `aggressive` | Häufiger compacten | Spart Tokens |
-| `manual` | Nur mit `/compact` | Volle Kontrolle |
-
----
-
-## tools
-
-```json5
-{
-  tools: {
-    web: {
-      search: { enabled: false, apiKey: "<brave/tavily-key>" },
-      fetch: { enabled: true },
-    },
-    media: {
-      audio: {
-        enabled: true,
-        maxBytes: 20971520,   // 20 MB
-        providerOptions: {
-          deepgram: { detect_language: true, punctuate: true, smart_format: true },
-        },
-        models: [{ provider: "deepgram", model: "nova-3" }],
-      },
-    },
-    sessions: { visibility: "all" },  // "all" | "own" | "none"
-  },
-}
-```
-
----
-
-## messages — TTS & Reaktionen
-
-```json5
-{
-  messages: {
-    tts: {
-      provider: "edge",    // "edge" | "elevenlabs" | "openai"
-      edge: { enabled: true, voice: "de-DE-ConradNeural", lang: "de-DE" },
-    },
-    ackReactionScope: "group-mentions",  // "all" | "group-mentions" | "none"
-  },
-}
-```
-
-Deutsche Edge-TTS-Stimmen: `de-DE-ConradNeural` (m), `de-DE-KatjaNeural` (w),
-`de-DE-AmalaNeural` (w), `de-DE-FlorianMultilingualNeural` (m).
-
----
-
-## commands / session / hooks
-
-```json5
-{
-  commands: {
-    native: "auto",          // Slash-Commands
-    nativeSkills: "auto",    // Skill-Commands
-    restart: true,           // /restart erlauben
-    ownerDisplay: "raw",     // "raw" | "masked" | "hidden"
-  },
-  session: {
-    dmScope: "per-channel-peer",  // "per-channel-peer" | "global" | "per-channel"
-  },
-  hooks: {
-    internal: {
-      enabled: true,
-      entries: {
-        "boot-md": { enabled: true },
-        "bootstrap-extra-files": { enabled: true },
-        "command-logger": { enabled: true },
-        "session-memory": { enabled: true },
-      },
-    },
-  },
 }
 ```
 
@@ -315,21 +305,71 @@ Deutsche Edge-TTS-Stimmen: `de-DE-ConradNeural` (m), `de-DE-KatjaNeural` (w),
   channels: {
     whatsapp: {
       enabled: true,
-      dmPolicy: "allowlist",
+      dmPolicy: "allowlist",       // "pairing" | "allowlist" | "open" | "disabled"
       selfChatMode: true,
-      allowFrom: ["+4915568920209"],   // E.164-Format MIT +
+      allowFrom: ["+4915568920209"],
       groupPolicy: "allowlist",
+      groups: {
+        "*": { requireMention: true },
+        "120363xxx@g.us": { allow: true, requireMention: false },
+      },
       debounceMs: 0,
       mediaMaxMb: 50,
+      accounts: {
+        personal: { authDir: "~/.openclaw/credentials/whatsapp/personal" },
+        biz: { authDir: "~/.openclaw/credentials/whatsapp/biz" },
+      },
+      defaultAccount: "personal",
+      healthMonitor: { enabled: true },
     },
+
     telegram: {
       enabled: true,
+      dmPolicy: "pairing",
+      accounts: {
+        default: {
+          botToken: "123456:ABC...",
+          dmPolicy: "allowlist",
+          allowFrom: ["tg:7403482253"],
+          groupPolicy: "allowlist",
+          streaming: "partial",
+          mediaMaxMb: 50,
+        },
+        alerts: {
+          botToken: "987654:XYZ...",
+          dmPolicy: "allowlist",
+          allowFrom: ["tg:123456789"],
+        },
+      },
+    },
+
+    discord: {
+      enabled: true,
+      accounts: {
+        default: {
+          token: "DISCORD_BOT_TOKEN_MAIN",
+          guilds: {
+            "123456789012345678": {
+              channels: {
+                "222222222222222222": { allow: true, requireMention: false },
+              },
+            },
+          },
+        },
+      },
+    },
+
+    slack: {
+      enabled: true,
+      appToken: "xapp-...",
+      botToken: "xoxb-...",
       dmPolicy: "allowlist",
-      botToken: "<von-BotFather>",
-      allowFrom: [7403482253],         // Telegram User-ID (ZAHL, kein String!)
-      groupPolicy: "allowlist",
-      streaming: "partial",            // "partial" | "full" | "off"
-      mediaMaxMb: 50,
+      allowFrom: ["slack:U12345"],
+    },
+
+    signal: {
+      enabled: true,
+      account: "+15551234567",
     },
   },
 }
@@ -339,11 +379,36 @@ Deutsche Edge-TTS-Stimmen: `de-DE-ConradNeural` (m), `de-DE-KatjaNeural` (w),
 
 | Wert | Bedeutung | Produktion? |
 |---|---|---|
-| `allowlist` | Nur `allowFrom` | ✅ Immer |
+| `pairing` | One-Time-Pairing-Code | ✅ Empfohlen |
+| `allowlist` | Nur `allowFrom` | ✅ Sicher |
 | `open` | Jeder | ⚠️ Nur Tests |
-| `closed` | Keine DMs | Gruppen-only |
+| `disabled` | Keine DMs | Gruppen-only |
 
 **ACHTUNG**: WhatsApp dmPolicy gilt **GLOBAL** für den Account!
+
+### Multi-Account-Routing
+
+```json5
+{
+  bindings: [
+    { agentId: "home", match: { channel: "whatsapp", accountId: "personal" } },
+    { agentId: "work", match: { channel: "whatsapp", accountId: "biz" } },
+  ],
+}
+```
+
+### Routing-Priorität (Bindings)
+
+Bindings sind **deterministisch** und **spezifischste gewinnt**:
+
+1. `peer` match (exakte DM/Group/Channel-ID)
+2. `parentPeer` match (Thread-Vererbung)
+3. `guildId + roles` (Discord Role Routing)
+4. `guildId` (Discord)
+5. `teamId` (Slack)
+6. `accountId` match für einen Channel
+7. Channel-Level match (`accountId: "*"`)
+8. Fallback auf Default-Agent (`agents.list[].default`, sonst erster Eintrag, sonst `main`)
 
 ---
 
@@ -355,19 +420,167 @@ Deutsche Edge-TTS-Stimmen: `de-DE-ConradNeural` (m), `de-DE-KatjaNeural` (w),
     port: 18789,
     mode: "local",           // "local" | "remote"
     bind: "loopback",        // "loopback" | "lan" | "tailnet" | "custom"
+    reload: {
+      mode: "hybrid",        // "hybrid" | "hot" | "restart" | "off"
+      debounceMs: 300,
+    },
     controlUi: {
-      // enabled: true,
-      allowedOrigins: ["https://hostname.taildcb944.ts.net"],  // CORS!
+      enabled: true,
+      allowedOrigins: ["https://hostname.taildcb944.ts.net"],
     },
     auth: {
       mode: "token",
-      token: "<token>",              // Besser: OPENCLAW_GATEWAY_TOKEN env
+      token: { source: "env", provider: "default", id: "OPENCLAW_GATEWAY_TOKEN" },
       allowTailscale: true,
     },
-    trustedProxies: ["100.64.0.0/10"],  // Tailscale CGNAT — PFLICHT für allowTailscale!
+    trustedProxies: ["100.64.0.0/10"],  // Tailscale CGNAT
     tailscale: {
       mode: "serve",         // "off" | "serve" | "funnel"
       resetOnExit: false,
+    },
+    channelHealthCheckMinutes: 5,
+    channelStaleEventThresholdMinutes: 30,
+    channelMaxRestartsPerHour: 10,
+    push: {
+      apns: {
+        relay: {
+          baseUrl: "https://relay.example.com",
+          timeoutMs: 10000,
+        },
+      },
+    },
+  },
+}
+```
+
+### Reload-Modi
+
+| Modus | Verhalten |
+|---|---|
+| `hybrid` | Hot-Applie für sichere Änderungen, Auto-Restart für kritische |
+| `hot` | Nur Hot-Applie, loggt Warnung wenn Restart nötig |
+| `restart` | Immer Restart bei Config-Änderung |
+| `off` | Kein File-Watching, manuell Restart |
+
+### Hot-Applie vs Restart
+
+| Kategorie | Hot-Applie? |
+|---|---|
+| Channels (`channels.*`) | ✅ Ja |
+| Agents & Models (`agent`, `agents`, `models`) | ✅ Ja |
+| Automation (`hooks`, `cron`, `heartbeat`) | ✅ Ja |
+| Sessions & Messages (`session`, `messages`) | ✅ Ja |
+| Tools & Media (`tools`, `browser`, `skills`, `audio`) | ✅ Ja |
+| UI & Misc (`ui`, `logging`, `identity`, `bindings`) | ✅ Ja |
+| Gateway Server (`gateway.*`) | ❌ Restart |
+| Infrastructure (`discovery`, `canvasHost`, `plugins`) | ❌ Restart |
+
+---
+
+## session — Session-Management
+
+```json5
+{
+  session: {
+    dmScope: "per-channel-peer",  // "main" | "per-peer" | "per-channel-peer" | "per-account-channel-peer"
+    mainKey: "main",
+
+    identityLinks: {
+      alice: ["telegram:123456789", "discord:987654321012345678"],
+    },
+
+    threadBindings: {
+      enabled: true,
+      idleHours: 24,
+      maxAgeHours: 0,
+    },
+
+    reset: {
+      mode: "daily",
+      atHour: 4,
+      idleMinutes: 120,
+    },
+
+    resetByType: {
+      thread: { mode: "daily", atHour: 4 },
+      direct: { mode: "idle", idleMinutes: 240 },
+      group: { mode: "idle", idleMinutes: 120 },
+    },
+
+    resetByChannel: {
+      discord: { mode: "idle", idleMinutes: 10080 },
+    },
+
+    resetTriggers: ["/new", "/reset"],
+
+    sendPolicy: {
+      rules: [
+        { action: "deny", match: { channel: "discord", chatType: "group" } },
+        { action: "deny", match: { keyPrefix: "cron:" } },
+      ],
+      default: "allow",
+    },
+
+    maintenance: {
+      mode: "enforce",
+      pruneAfter: "30d",
+      maxEntries: 500,
+      rotateBytes: "10mb",
+      maxDiskBytes: "1gb",
+      highWaterBytes: "800mb",
+      resetArchiveRetention: "14d",
+    },
+
+    store: "~/.openclaw/agents/{agentId}/sessions/sessions.json",
+  },
+}
+```
+
+### dmScope-Optionen
+
+| Wert | Session-Key | Empfohlen für |
+|---|---|---|
+| `main` | `agent:<id>:<mainKey>` | Single-User |
+| `per-peer` | `agent:<id>:direct:<peerId>` | Multi-Device |
+| `per-channel-peer` | `agent:<id>:<channel>:direct:<peerId>` | Multi-User Inboxes |
+| `per-account-channel-peer` | `agent:<id>:<channel>:<account>:direct:<peerId>` | Multi-Account |
+
+### Maintenance-Modi
+
+| Modus | Verhalten |
+|---|---|
+| `warn` | Reportet nur, mutiert nicht |
+| `enforce` | Wendet Cleanup an |
+
+---
+
+## tools
+
+```json5
+{
+  tools: {
+    web: {
+      search: {
+        enabled: false,
+        provider: "brave",   // "brave" | "tavily"
+        apiKey: { source: "env", provider: "default", id: "BRAVE_API_KEY" },
+      },
+      fetch: { enabled: true },
+    },
+    media: {
+      audio: {
+        enabled: true,
+        maxBytes: 20971520,
+        providerOptions: {
+          deepgram: { detect_language: true, punctuate: true, smart_format: true },
+        },
+        models: [{ provider: "deepgram", model: "nova-3" }],
+      },
+    },
+    sessions: { visibility: "all" },
+    agentToAgent: {
+      enabled: false,
+      allow: ["home", "work"],
     },
   },
 }
@@ -375,24 +588,212 @@ Deutsche Edge-TTS-Stimmen: `de-DE-ConradNeural` (m), `de-DE-KatjaNeural` (w),
 
 ---
 
-## skills / plugins
+## messages — TTS & Reaktionen
 
 ```json5
 {
-  skills: {
-    entries: {
-      "gh-issues": { apiKey: "<github-token>" },
-      "peekaboo": { enabled: true },
+  messages: {
+    tts: {
+      provider: "edge",
+      edge: { enabled: true, voice: "de-DE-ConradNeural", lang: "de-DE" },
     },
+    ackReactionScope: "group-mentions",  // "all" | "group-mentions" | "none"
   },
-  plugins: {
-    entries: {
-      telegram: { enabled: true },
-      whatsapp: { enabled: true },
+}
+```
+
+Deutsche Edge-TTS-Stimmen: `de-DE-ConradNeural` (m), `de-DE-KatjaNeural` (w).
+
+---
+
+## commands / hooks / cron
+
+```json5
+{
+  commands: {
+    native: "auto",
+    nativeSkills: "auto",
+    restart: true,
+    ownerDisplay: "raw",
+  },
+
+  hooks: {
+    enabled: true,
+    token: { source: "env", provider: "default", id: "HOOKS_TOKEN" },
+    path: "/hooks",
+    defaultSessionKey: "hook:ingress",
+    allowRequestSessionKey: false,
+    allowedSessionKeyPrefixes: ["hook:"],
+    mappings: [
+      {
+        match: { path: "gmail" },
+        action: "agent",
+        agentId: "main",
+        deliver: true,
+      },
+    ],
+  },
+
+  cron: {
+    enabled: true,
+    maxConcurrentRuns: 2,
+    sessionRetention: "24h",
+    runLog: {
+      maxBytes: "2mb",
+      keepLines: 2000,
+    },
+    retry: {
+      maxAttempts: 3,
+      backoffMs: [60000, 120000, 300000],
+      retryOn: ["rate_limit", "overloaded", "network", "server_error"],
     },
   },
 }
 ```
+
+---
+
+## secrets — Secrets Management
+
+```json5
+{
+  secrets: {
+    providers: {
+      default: { source: "env" },
+      filemain: {
+        source: "file",
+        path: "~/.openclaw/secrets.json",
+        mode: "json",
+      },
+      vault: {
+        source: "exec",
+        command: "/usr/local/bin/openclaw-vault-resolver",
+        args: ["--profile", "prod"],
+        passEnv: ["PATH", "VAULT_ADDR"],
+        jsonOnly: true,
+      },
+    },
+    defaults: {
+      env: "default",
+      file: "filemain",
+      exec: "vault",
+    },
+  },
+}
+```
+
+### SecretRef-Contract
+
+```json5
+// Env-Variable
+{ source: "env", provider: "default", id: "OPENAI_API_KEY" }
+
+// File (JSON-Pointer)
+{ source: "file", provider: "filemain", id: "/providers/openai/apiKey" }
+
+// Exec (externer Resolver)
+{ source: "exec", provider: "vault", id: "providers/openai/apiKey" }
+```
+
+### Verwendungsbeispiele
+
+```json5
+{
+  models: {
+    providers: {
+      openai: {
+        apiKey: { source: "env", provider: "default", id: "OPENAI_API_KEY" },
+      },
+    },
+  },
+  channels: {
+    googlechat: {
+      serviceAccountRef: {
+        source: "exec",
+        provider: "vault",
+        id: "channels/googlechat/serviceAccount",
+      },
+    },
+  },
+}
+```
+
+---
+
+## bindings — Multi-Agent-Routing
+
+```json5
+{
+  bindings: [
+    // WhatsApp Personal → Home Agent
+    { agentId: "home", match: { channel: "whatsapp", accountId: "personal" } },
+
+    // WhatsApp Business → Work Agent
+    { agentId: "work", match: { channel: "whatsapp", accountId: "biz" } },
+
+    // Spezifischer DM zu Opus
+    {
+      agentId: "opus",
+      match: {
+        channel: "whatsapp",
+        peer: { kind: "direct", id: "+15551234567" },
+      },
+    },
+
+    // Spezifische Gruppe zu Family Agent
+    {
+      agentId: "family",
+      match: {
+        channel: "whatsapp",
+        peer: { kind: "group", id: "120363xxx@g.us" },
+      },
+    },
+
+    // Discord Guild + Role Routing
+    {
+      agentId: "mod",
+      match: {
+        channel: "discord",
+        guildId: "123456789",
+        roles: ["admin", "moderator"],
+      },
+    },
+  ],
+}
+```
+
+---
+
+## env — Environment Variables
+
+```json5
+{
+  env: {
+    OPENROUTER_API_KEY: "sk-or-...",
+    vars: { GROQ_API_KEY: "gsk-..." },
+    shellEnv: { enabled: true, timeoutMs: 15000 },
+  },
+}
+```
+
+### Env-Var-Substitution
+
+```json5
+{
+  gateway: { auth: { token: "${OPENCLAW_GATEWAY_TOKEN}" } },
+  models: {
+    providers: {
+      custom: { apiKey: "${CUSTOM_API_KEY}" },
+    },
+  },
+}
+```
+
+Regeln:
+- Nur Großbuchstaben: `[A-Z_][A-Z0-9_]*`
+- Fehlende/leere Variablen → Fehler
+- Escape mit `$${VAR}` für literale Ausgabe
+- Funktioniert in `$include`-Dateien
 
 ---
 
@@ -408,7 +809,7 @@ Deutsche Edge-TTS-Stimmen: `de-DE-ConradNeural` (m), `de-DE-KatjaNeural` (w),
 | `trustedProxies` fehlt | allowTailscale ignoriert | `["100.64.0.0/10"]` |
 | `allowedOrigins` fehlt | CORS im Dashboard | Tailscale-Domain eintragen |
 | Provider ≠ auth.profiles Key | Auth fehlschlag | Namen abgleichen |
-| `cost: 0` bei Ollama Cloud | Falsche Kostenanzeige | Korrekt — Cloud-Modelle sind gratis |
+| `dmScope: "main"` mit Multi-User | Session-Lecks | `"per-channel-peer"` |
 
 ---
 
@@ -417,6 +818,65 @@ Deutsche Edge-TTS-Stimmen: `de-DE-ConradNeural` (m), `de-DE-KatjaNeural` (w),
 ```bash
 openclaw config validate       # Syntax + Struktur prüfen
 openclaw config get <pfad>     # Einzelnen Wert lesen
+openclaw config set <pfad> <wert>  # Wert setzen
 openclaw config edit           # Im Editor öffnen
 openclaw doctor                # Gesundheitscheck nach Änderung
 ```
+
+---
+
+## Config Hot-Reload
+
+Gateway beobachtet `~/.openclaw/openclaw.json`:
+
+- **Hot-Applie**: Channels, Models, Agents, Tools, Hooks, Cron, Session
+- **Restart-Bedingung**: Gateway-Server, Infrastructure
+
+Änderungen triggern automatisch (je nach `gateway.reload.mode`).
+
+---
+
+## Workspace-Dateien
+
+| Datei | Zweck | Geladen |
+|---|---|---|
+| `AGENTS.md` | Betriebsanweisungen | Jede Session |
+| `SOUL.md` | Persönlichkeit, Ton | Jede Session |
+| `USER.md` | Nutzerprofil | Jede Session |
+| `TOOLS.md` | Tool-Hinweise | Jede Session |
+| `IDENTITY.md` | Name, Emoji, Vibe | Bootstrap |
+| `HEARTBEAT.md` | Scheduled-Tasks / Cron-Checkliste | Heartbeat |
+| `MEMORY.md` | Langzeit-Gedächtnis | Nur private Sessions |
+| `BOOT.md` | Startup-Checkliste | Gateway-Restart |
+| `BOOTSTRAP.md` | Einmal-Setup | Nur einmal |
+| `memory/YYYY-MM-DD.md` | Tages-Logs | Session-Start |
+
+---
+
+## Per-Agent Sandbox & Tools
+
+```json5
+{
+  agents: {
+    list: [
+      {
+        id: "personal",
+        workspace: "~/.openclaw/workspace-personal",
+        sandbox: { mode: "off" },
+        // Keine Tool-Beschränkungen
+      },
+      {
+        id: "family",
+        workspace: "~/.openclaw/workspace-family",
+        sandbox: { mode: "all", scope: "agent" },
+        tools: {
+          allow: ["read"],
+          deny: ["exec", "write", "edit", "apply_patch"],
+        },
+      },
+    ],
+  },
+}
+```
+
+**Hinweis**: `tools.elevated` ist **global** und sender-basiert, nicht per-Agent konfigurierbar.
