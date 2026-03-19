@@ -8,7 +8,8 @@
   "freeze": {
     "substantive_threshold_seconds": 120,
     "substantive_min_actions": 1,
-    "substantive_min_file_changes": 2
+    "substantive_min_file_changes": 2,
+    "stale_cognition_hours": 24
   },
   "boot": {
     "stale_threshold_hours": 24,
@@ -19,20 +20,20 @@
   },
   "temperature": {
     "physical_vocab": [
-      "кризис",
-      "давление",
-      "фокус",
-      "импульс",
-      "накопление",
-      "штиль"
+      "crisis",
+      "pressure",
+      "focus",
+      "impulse",
+      "accumulation",
+      "calm"
     ],
     "cognitive_vocab": [
-      "строительство",
-      "исследование",
-      "интенсивное",
-      "созерцание",
-      "краткое",
-      "нейтральное"
+      "building",
+      "exploring",
+      "intensive",
+      "contemplation",
+      "brief",
+      "neutral"
     ]
   },
   "environment_delta": {
@@ -62,6 +63,11 @@
     "require_evidence": true,
     "min_execution_rate_warning": 0.5,
     "_comment": "Gate blocks new proposals until pending actions resolved. 600s = 10min max per action before auto-defer."
+  },
+  "watchdog": {
+    "max_stale_minutes": 15,
+    "max_process_age_seconds": 300,
+    "_comment": "Watchdog runs every 15min. Kills processes stuck >5min, restarts daemon if MINDSTATE stale >15min."
   },
   "wake_gate": {
     "enabled": false,

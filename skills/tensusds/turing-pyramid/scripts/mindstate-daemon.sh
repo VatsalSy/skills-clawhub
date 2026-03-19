@@ -22,9 +22,21 @@ DECAY_CONFIG=$(mindstate_decay_config)
 MS_CONFIG=$(mindstate_ms_config)
 PREV_SNAPSHOT=$(mindstate_prev_snapshot)
 LOCK_FILE=$(mindstate_lock_file)
+ASSETS_DIR="$(_ms_assets)"
 
 NOW_EPOCH=$(now_epoch)
 NOW_ISO=$(now_iso)
+
+# ─── Trap: cleanup on unexpected termination ───
+_daemon_cleanup() {
+    # Remove any tmp files created by THIS process
+    rm -f "$MINDSTATE_FILE.tmp.$$" "$PREV_SNAPSHOT.tmp.$$" 2>/dev/null
+    # Release flock automatically (fd closed on exit)
+}
+trap _daemon_cleanup EXIT SIGTERM SIGINT SIGHUP
+
+# ─── Orphaned .tmp cleanup (older than 10 min) ───
+find "$ASSETS_DIR" "$WORKSPACE" -maxdepth 1 -name "*.tmp.*" -mmin +10 -delete 2>/dev/null || true
 
 # ─── Self-throttle: skip if last update too recent ───
 MIN_INTERVAL=$(jq -r '.daemon.min_interval_seconds // 240' "$MS_CONFIG" 2>/dev/null || echo 240)
@@ -181,7 +193,24 @@ if [[ -n "$disk_pct" ]] && (( disk_pct > disk_thresh )); then
     disk_warning="  disk_usage: ${disk_pct}% (WARNING)"
 fi
 
-# ─── 6. Physical temperature ───
+# ─── 6. Stale cognition detection ───
+cognition_stale=""
+cognition_stale_hours=0
+if [[ -f "$MINDSTATE_FILE" ]]; then
+    frozen_at=$(grep "^frozen_at:" "$MINDSTATE_FILE" 2>/dev/null | head -1 | sed 's/^frozen_at: *//')
+    if [[ -n "$frozen_at" && "$frozen_at" != "never" ]]; then
+        frozen_epoch=$(iso_to_epoch "$frozen_at")
+        cognition_stale_hours=$(echo "scale=1; ($NOW_EPOCH - $frozen_epoch) / 3600" | bc -l)
+        stale_cog_thresh=$(jq -r '.freeze.stale_cognition_hours // 24' "$MS_CONFIG" 2>/dev/null || echo 24)
+        if (( $(echo "$cognition_stale_hours > $stale_cog_thresh" | bc -l) )); then
+            cognition_stale="stale (${cognition_stale_hours}h since last freeze)"
+        fi
+    elif [[ "$frozen_at" == "never" ]]; then
+        cognition_stale="never frozen"
+    fi
+fi
+
+# ─── 7. Physical temperature ───
 # 6-word deterministic vocabulary, first-match wins
 
 # Check recent spontaneous (within 6h)
@@ -214,20 +243,20 @@ fi
 # Temperature mapping (order matters: first match wins)
 # Temperature thresholds calibrated for Turing-exp formula:
 # Homeostasis avg ≈ 0.25, moderate stress avg ≈ 2-3, crisis avg ≈ 5+
-physical_temperature="штиль"
+physical_temperature="calm"
 if [[ -n "$critical_needs" ]]; then
-    physical_temperature="кризис"
+    physical_temperature="crisis"
 elif (( $(echo "$avg_tension > 3" | bc -l) )); then
-    physical_temperature="давление"
+    physical_temperature="pressure"
 elif (( $(echo "$max_tension > 2" | bc -l) )) && (( $(echo "$avg_tension <= 3" | bc -l) )); then
-    physical_temperature="фокус"
+    physical_temperature="focus"
 elif $recent_spontaneous; then
-    physical_temperature="импульс"
+    physical_temperature="impulse"
 elif $surplus_accumulating; then
-    physical_temperature="накопление"
+    physical_temperature="accumulation"
 fi
 
-# ─── 7. Assemble ## reality ───
+# ─── 8. Assemble ## reality ───
 # Build pyramid snapshot lines
 PYRAMID_BLOCK=""
 for need in $(echo "$needs_list" | sort); do
@@ -256,10 +285,11 @@ environment_delta:
   stale_files: ${stale_files:-none}
 system:
   gateway: $gateway_alive
-${disk_warning}
+${disk_warning}${cognition_stale:+
+  cognition: $cognition_stale}
 physical_temperature: $physical_temperature"
 
-# ─── 8. Atomic write: replace reality, preserve cognition+forecast ───
+# ─── 9. Atomic write: replace reality, preserve cognition+forecast ───
 TMP_FILE="$MINDSTATE_FILE.tmp.$$"
 
 if [[ -f "$MINDSTATE_FILE" ]]; then
@@ -272,7 +302,7 @@ frozen_at: never
 trajectory: (awaiting first session)
 open_threads: []
 momentum: (none)
-cognitive_temperature: инициализация
+cognitive_temperature: initializing
 
 ## forecast
 structural: []
@@ -291,7 +321,7 @@ EOF
 
 mv "$TMP_FILE" "$MINDSTATE_FILE"
 
-# ─── 9. Save snapshot for trend comparison ───
+# ─── 10. Save snapshot for trend comparison ───
 TMP_PREV="$PREV_SNAPSHOT.tmp.$$"
 echo "{" > "$TMP_PREV"
 first=true

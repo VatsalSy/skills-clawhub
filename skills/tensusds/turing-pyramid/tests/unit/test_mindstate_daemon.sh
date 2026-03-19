@@ -81,7 +81,7 @@ trend_count=$(grep -cE "  [a-z]+: [0-9.]+ [↑↓→]" "$TEST_WORKSPACE/MINDSTAT
 echo "Test 5: Physical temperature valid"
 temp=$(grep "^physical_temperature:" "$TEST_WORKSPACE/MINDSTATE.md" | sed 's/physical_temperature: *//')
 case "$temp" in
-    кризис|давление|фокус|импульс|накопление|штиль) pass "temperature '$temp' is valid" ;;
+    crisis|pressure|focus|impulse|accumulation|calm) pass "temperature '$temp' is valid" ;;
     *) fail "temperature '$temp' is not in vocabulary" ;;
 esac
 
@@ -99,12 +99,12 @@ cat > "$TEST_WORKSPACE/MINDSTATE.md" << 'EOF'
 # MINDSTATE
 ## reality
 timestamp: old
-physical_temperature: штиль
+physical_temperature: calm
 
 ## cognition
 frozen_at: 2026-01-01T00:00:00Z
 trajectory: TEST_TRAJECTORY_MARKER
-cognitive_temperature: строительство
+cognitive_temperature: building
 
 ## forecast
 structural:
@@ -133,14 +133,14 @@ for need in security integrity coherence closure autonomy connection competence 
         "$STATE_FILE" > "$STATE_FILE.tmp" && mv "$STATE_FILE.tmp" "$STATE_FILE"
 done
 
-# ─── Test 9: Temperature кризис priority ───
-echo "Test 9: Temperature кризис priority"
+# ─── Test 9: Temperature crisis priority ───
+echo "Test 9: Temperature crisis priority"
 jq '.connection.satisfaction = 0.3' "$STATE_FILE" > "$STATE_FILE.tmp" && mv "$STATE_FILE.tmp" "$STATE_FILE"
 touch -d "2026-01-01" "$TEST_WORKSPACE/MINDSTATE.md"
 rm -f "$TEST_ASSETS/mindstate.lock"
 bash "$DAEMON" 2>/dev/null
 temp=$(grep "^physical_temperature:" "$TEST_WORKSPACE/MINDSTATE.md" | sed 's/physical_temperature: *//')
-[[ "$temp" == "кризис" ]] && pass "кризис when critical" || fail "'$temp', expected кризис"
+[[ "$temp" == "crisis" ]] && pass "crisis when critical" || fail "'$temp', expected crisis"
 
 # Restore
 for need in security integrity coherence closure autonomy connection competence understanding recognition expression; do

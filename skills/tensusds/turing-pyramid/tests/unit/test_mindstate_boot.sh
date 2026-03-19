@@ -54,14 +54,14 @@ wms << 'EOF'
 timestamp: 2026-03-18T03:00:00Z
 last_session_end: 2026-03-18T02:00:00Z
 hours_elapsed: 1.0
-physical_temperature: штиль
+physical_temperature: calm
 critical_needs: none
 surplus_gate: OPEN
 
 ## cognition
 frozen_at: 2026-03-18T02:00:00Z
 trajectory: testing boot
-cognitive_temperature: штиль
+cognitive_temperature: calm
 
 ## forecast
 structural:
@@ -83,14 +83,14 @@ wms << 'EOF'
 timestamp: 2026-03-18T08:00:00Z
 last_session_end: 2026-03-18T02:00:00Z
 hours_elapsed: 6.0
-physical_temperature: кризис
+physical_temperature: crisis
 critical_needs: connection
 surplus_gate: CLOSED
 
 ## cognition
 frozen_at: 2026-03-18T02:00:00Z
 trajectory: deep building
-cognitive_temperature: строительство
+cognitive_temperature: building
 
 ## forecast
 structural:
@@ -101,7 +101,7 @@ EOF
 rm -f "$TEST_ASSETS/mindstate.lock"
 output=$(bash "$BOOT" 2>&1)
 echo "$output" | grep -q "TEMPERATURE DRIFT" && pass "Drift detected" || fail "Not detected"
-echo "$output" | grep -q "Temperature: кризис" && pass "Merged = physical" || fail "$(echo "$output" | grep Temperature)"
+echo "$output" | grep -q "Temperature: crisis" && pass "Merged = physical" || fail "$(echo "$output" | grep Temperature)"
 # Restore
 jq '.connection.satisfaction = 2.5' "$STATE_FILE" > "$STATE_FILE.tmp" && mv "$STATE_FILE.tmp" "$STATE_FILE"
 
@@ -115,14 +115,14 @@ wms << 'EOF'
 timestamp: 2026-03-18T08:00:00Z
 last_session_end: 2026-03-18T02:00:00Z
 hours_elapsed: 4.0
-physical_temperature: кризис
+physical_temperature: crisis
 critical_needs: connection
 surplus_gate: CLOSED
 
 ## cognition
 frozen_at: 2026-03-18T02:00:00Z
 trajectory: research
-cognitive_temperature: строительство
+cognitive_temperature: building
 
 ## forecast
 structural:
@@ -143,14 +143,14 @@ wms << 'EOF'
 timestamp: 2026-03-18T08:00:00Z
 last_session_end: 2026-03-17T00:00:00Z
 hours_elapsed: 32.0
-physical_temperature: штиль
+physical_temperature: calm
 critical_needs: none
 surplus_gate: OPEN
 
 ## cognition
 frozen_at: 2026-03-17T00:00:00Z
 trajectory: old work
-cognitive_temperature: нейтральное
+cognitive_temperature: neutral
 
 ## forecast
 structural:
@@ -171,14 +171,14 @@ wms << 'EOF'
 timestamp: 2026-03-18T08:00:00Z
 last_session_end: 2026-03-16T00:00:00Z
 hours_elapsed: 52.0
-physical_temperature: штиль
+physical_temperature: calm
 critical_needs: none
 surplus_gate: OPEN
 
 ## cognition
 frozen_at: 2026-03-16T00:00:00Z
 trajectory: old work
-cognitive_temperature: нейтральное
+cognitive_temperature: neutral
 
 ## forecast
 structural:
@@ -205,7 +205,7 @@ wms << 'EOF'
 timestamp: 2026-03-18T08:00:00Z
 last_session_end: 2026-03-18T07:00:00Z
 hours_elapsed: 1.0
-physical_temperature: штиль
+physical_temperature: calm
 critical_needs: none
 surplus_gate: OPEN
 
@@ -215,7 +215,7 @@ trajectory: writing tests
 open_threads:
   - Build continuity layer
   - Write mindstate tests
-cognitive_temperature: строительство
+cognitive_temperature: building
 
 ## forecast
 structural:

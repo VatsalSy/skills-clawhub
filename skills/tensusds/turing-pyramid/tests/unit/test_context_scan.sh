@@ -193,7 +193,7 @@ cat > "$MOCK_SKILL/assets/context-triggers.json" << 'CONF'
       "detector": {
         "type": "file_keyword_delta",
         "path": "research/",
-        "keywords": ["consciousness", "qualia"]
+        "keywords": ["distributed", "consensus"]
       },
       "threshold": 1,
       "boost": {"needs": ["understanding"], "amount": 0.06, "label": "[CONTEXT:kw]"},
@@ -217,7 +217,7 @@ trigger_count=$(echo "$output" | grep -c '"id"' || true)
 assert_eq "no new keywords no trigger" "0" "$trigger_count"
 
 # Add file WITH keyword
-echo "exploring consciousness and awareness" > "$WORKSPACE/research/mind.md"
+echo "exploring distributed systems and consensus" > "$WORKSPACE/research/mind.md"
 output=$("$MOCK_SKILL/scripts/context-scan.sh" 2>/dev/null)
 trigger_count=$(echo "$output" | grep -c '"id"' || true)
 assert_eq "new keyword file triggers" "1" "$trigger_count"
@@ -232,13 +232,13 @@ trigger_count=$(echo "$output" | grep -c '"id"' || true)
 assert_eq "same keywords no trigger" "0" "$trigger_count"
 
 # Add second keyword in new file
-echo "the hard problem of qualia" > "$WORKSPACE/research/qualia.md"
+echo "exploring consensus algorithms in detail" > "$WORKSPACE/research/algorithms.md"
 output=$("$MOCK_SKILL/scripts/context-scan.sh" 2>/dev/null)
 trigger_count=$(echo "$output" | grep -c '"id"' || true)
 assert_eq "second keyword triggers" "1" "$trigger_count"
 
 # Multiple keywords in same file — counts files not occurrences
-echo "consciousness and qualia together" > "$WORKSPACE/research/both.md"
+echo "distributed systems and consensus together" > "$WORKSPACE/research/both.md"
 output=$("$MOCK_SKILL/scripts/context-scan.sh" 2>/dev/null)
 trigger_count=$(echo "$output" | grep -c '"id"' || true)
 assert_eq "multi-keyword file triggers" "1" "$trigger_count"

@@ -69,7 +69,7 @@ fi
 
 # ─── 3. Temperature merge ───
 temp_status="ALIGNED"
-merged_temperature="${cognitive_temp:-нейтральное}"
+merged_temperature="${cognitive_temp:-neutral}"
 
 if [[ -n "$physical_temp" && -n "$cognitive_temp" && "$physical_temp" != "$cognitive_temp" ]]; then
     temp_status="DRIFT_DETECTED"

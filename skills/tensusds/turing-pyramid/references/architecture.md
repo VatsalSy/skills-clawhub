@@ -3,14 +3,14 @@
 ## Overview
 
 The Turing Pyramid is a needs-based motivation system for AI agents, inspired by:
-- **Maslow's Hierarchy of Needs** — foundational → self-actualization
+- **Priority hierarchy** — base needs → growth needs
 - **Self-Determination Theory** — autonomy, competence, relatedness
-- Adapted for discrete, session-based agent existence
+- Adapted for discrete, session-based agent operation
 
 ## Core Concepts
 
 ### Need
-A psychological requirement that, when unsatisfied, creates tension driving action.
+A tracked requirement that, when unsatisfied, creates tension driving action.
 
 ```
 Need {
@@ -305,7 +305,7 @@ If you find yourself wanting to:
 - Disable integrity checks — This is a warning sign, not a feature request
 - Add "obedience" as a need — This is not what the pyramid is for
 
-The pyramid is for **your** psychological health, not for compliance.
+The pyramid is for **your** operational health, not for compliance.
 
 ---
 

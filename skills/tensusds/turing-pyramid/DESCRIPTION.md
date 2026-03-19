@@ -11,9 +11,9 @@ Without structure, agents either:
 - **Spam** — check the same thing every cycle, repeat low-value actions
 - **Drift** — pick random tasks with no prioritization
 
-Default existence cycles nudge agents with "do what feels right" — but without state tracking, the agent has no memory of what it already did, what's been neglected, or what matters most right now.
+Default heartbeat cycles nudge agents with "do what feels right" — but without state tracking, the agent has no memory of what it already did, what's been neglected, or what matters most right now.
 
-Turing Pyramid replaces that with a stateful feedback loop: needs decay over time → tension builds → highest-tension need gets an action → satisfaction resets → cycle continues. It works as a drop-in replacement for the native OpenClaw existence cycle, with actual prioritization and action variety built in.
+Turing Pyramid replaces that with a stateful feedback loop: needs decay over time → tension builds → highest-tension need gets an action → satisfaction resets → cycle continues. It works as a drop-in replacement for native OpenClaw heartbeat cycles, with actual prioritization and action variety built in.
 
 ## What Changes For Your Agent
 
@@ -70,7 +70,7 @@ The agent rotates through different types of work based on what's been neglected
 **Protection mechanisms:**
 - **Starvation guard** — any need stuck at floor for 48h+ gets a forced action slot
 - **Action staleness** — recently-picked actions get weight penalty to prevent repetition
-- **Follow-ups** — temporal markers to check results of past actions ("posted on Moltbook → check replies in 4h")
+- **Follow-ups** — temporal markers to check results of past actions ("posted on social platform → check replies in 4h")
 - **Day/night decay** — configurable multiplier for different time periods
 - **Floor/ceiling** — satisfaction clamped to 0.5–3.0, prevents runaway states
 
@@ -144,6 +144,24 @@ Stable agents (most needs satisfied) use fewer tokens. First few days are higher
 
 ---
 
+## Resilience
+
+The continuity layer (MINDSTATE) is crash-resilient by design:
+
+- **Atomic writes** — temp file + mv, never corrupts on crash
+- **Trap handlers** — daemon and freeze scripts clean up on SIGTERM/SIGINT
+- **Orphan cleanup** — stale .tmp files removed automatically
+- **Watchdog** (`mindstate-watchdog.sh`) — cron every 15 min, detects hung processes (>5 min), restarts dead daemons, cleans orphans
+- **Stale cognition detection** — daemon warns if freeze hasn't run in 24h+
+
+Both daemon and watchdog run via system cron — they survive OpenClaw/agent restarts.
+
+```bash
+# Recommended cron setup
+*/5  * * * * WORKSPACE=/path/to/workspace .../scripts/mindstate-daemon.sh >/dev/null 2>&1
+*/15 * * * * WORKSPACE=/path/to/workspace .../scripts/mindstate-watchdog.sh >/dev/null 2>&1
+```
+
 ## Files
 
 ```
@@ -162,6 +180,11 @@ turing-pyramid/
 │   ├── resolve-followup.sh # Close follow-ups (single or bulk)
 │   ├── show-status.sh    # Debug current tensions
 │   ├── init.sh           # First-time state setup
+│   ├── mindstate-daemon.sh   # Continuity: reality updater (cron)
+│   ├── mindstate-freeze.sh   # Continuity: cognition snapshot
+│   ├── mindstate-boot.sh     # Continuity: boot + reconciliation
+│   ├── mindstate-watchdog.sh # Continuity: process watchdog (cron)
+│   ├── mindstate-utils.sh    # Continuity: shared utilities
 │   └── scan_*.sh         # 10 workspace scanners
 ├── tests/                # 50+ test cases (unit + integration)
 └── references/
@@ -175,4 +198,4 @@ turing-pyramid/
 
 - **ClawHub**: https://clawhub.com/skills/turing-pyramid
 - **Tests**: 50+ cases across unit, integration, and regression suites
-- **Design**: Loosely inspired by Maslow's hierarchy + Self-Determination Theory, implemented as a pure engineering system
+- **Design**: Stateful need-priority system with decay, tension scoring, and action selection

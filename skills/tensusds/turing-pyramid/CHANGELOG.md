@@ -1,5 +1,44 @@
 # Changelog
 
+## v1.28.0 (2026-03-19) — Resilience & Crash Recovery
+- **New: `mindstate-watchdog.sh`** — process watchdog, cron every 15 min
+  - Detects stale MINDSTATE.md (daemon dead for >15 min) → restarts daemon
+  - Finds hung mindstate processes (>5 min) → SIGTERM, then SIGKILL
+  - Cleans orphaned `.tmp.*` files (>10 min old)
+  - Auto-rotating log (`assets/watchdog.log`, 200 lines max)
+  - Supports `--dry-run` for testing
+  - Configurable thresholds via `mindstate-config.json` → `watchdog` section
+- **Trap handlers** in `mindstate-daemon.sh` and `mindstate-freeze.sh`
+  - EXIT/SIGTERM/SIGINT/SIGHUP traps clean up PID-specific temp files
+- **Orphan cleanup** in daemon — removes `*.tmp.*` files older than 10 min on every run
+- **Stale cognition detection** in daemon
+  - Monitors `frozen_at` timestamp from cognition section
+  - If freeze hasn't run in `stale_cognition_hours` (default: 24h), adds warning to MINDSTATE.md: `system.cognition: stale (Xh since last freeze)`
+- **Config additions** to `mindstate-config.json`:
+  - `freeze.stale_cognition_hours` (default: 24)
+  - `watchdog.max_stale_minutes` (default: 15)
+  - `watchdog.max_process_age_seconds` (default: 300)
+- **init.sh** updated: now shows recommended cron setup for both daemon + watchdog, resilience summary
+- **SKILL.md** updated: new "Resilience & Crash Recovery" section with failure mode table
+- **DESCRIPTION.md** updated: resilience section, file tree includes watchdog
+
+## v1.27.4 (2026-03-19) — Full sanitization pass
+- Removed all remaining philosophical/psychological language from code comments, docs, and tests
+- Replaced with practical engineering terminology throughout
+- Test data sanitized (neutral keywords for context scan tests)
+- All published files verified: zero Russian, zero PII, zero personal paths, zero philosophy
+
+## v1.27.3 (2026-03-19) — Security + i18n cleanup
+- All Russian language strings replaced with English equivalents (temperature words, cross-need notes, scan keywords, TODO descriptions)
+- Platform-specific references replaced with generic terms (social platform) in all published files
+- Onboarding guide updated: agent instructions include execution gate workflow (propose → execute → resolve → mark-satisfied)
+- Steward guide updated: execution rate monitoring, gate-status.sh recommendation
+- Stale nested skills/ directory excluded from publish
+
+## v1.27.2 (2026-03-19) — Bootstrap + gate edge case
+- **Edge case fix**: `--bootstrap` mode now sets SKIP_GATE=true (clean slate initialization should not be blocked by stale pending actions)
+- Gate-check moved after bootstrap detection in run-cycle.sh
+
 ## v1.27.1 (2026-03-19) — Gate hardening (post-review)
 - **Bug fix**: flock (fd 203) on gate.lock prevents data races between concurrent gate operations
 - **Bug fix**: tmp.$$ PID-unique temp filenames prevent collision on concurrent writes
@@ -27,7 +66,7 @@
 - **Turing-exp tension formula**: replaces linear `importance × deprivation`
   - `tension = dep² + importance × max(0, dep - crisis_threshold)²`
   - At homeostasis (dep < threshold): all needs produce equal tension → round-robin selection
-  - In crisis (dep > threshold): importance amplifies signal → Maslow hierarchy activates
+  - In crisis (dep > threshold): importance amplifies signal → importance hierarchy activates
   - Configurable `crisis_threshold` (default 1.0, meaning sat < 2.0 activates hierarchy)
   - Solves monopoly problem: high-importance needs no longer dominate at homeostasis
   - Solves starvation problem: low-importance needs get equal slots when system is healthy
@@ -36,13 +75,13 @@
 - 25/25 tests passing (22 unit + 3 integration, 1 stress test skipped)
 
 ## v1.23.0 (2026-03-18)
-- **Continuity Layer (Layer D)**: pseudo-continuous existence across discrete sessions
+- **Continuity Layer (Layer D)**: state persistence across discrete sessions
   - `mindstate-daemon.sh` — reality updater (cron every 5min), tracks pyramid state, filesystem, system health, physical temperature
   - `mindstate-freeze.sh` — cognition snapshot at substantive session end (trajectory, open_threads, momentum, cognitive temperature)
   - `mindstate-boot.sh` — boot with forecast reconciliation, continuity scoring (SMOOTH/PARTIAL/HARD_BREAK), temperature drift detection
   - `mindstate-utils.sh` — shared utilities (compute_satisfaction, is_substantive, mindstate_get)
   - `mindstate-config.json` — configurable thresholds, temperature vocab, staleness detection
-- **Temperature system**: 6 physical words (кризис/давление/фокус/импульс/накопление/штиль) + 6 cognitive words, deterministic mapping, drift detection at boot
+- **Temperature system**: 6 physical states (crisis/pressure/focus/impulse/accumulation/calm) + 6 cognitive states, deterministic mapping, drift detection at boot
 - **Boot sequence**: MINDSTATE.md → SOUL.md → MEMORY.md (position+velocity before identity before history)
 - **Test isolation**: `MINDSTATE_ASSETS_DIR` env var for isolated test state
 - **Bug fixes**: `mindstate_get()` pipefail safety, `((0++))` arithmetic under `set -e`, `find -newer` on nonexistent files
@@ -53,7 +92,7 @@
 - **Spontaneity tuning**: gate_min 1.5→1.0, baseline 2.0→1.5, threshold 10→6 — first [SPONTANEOUS] event now reachable in ~16-24h instead of ~80h. Eliminates spontaneity paralysis.
 
 ## v1.22.0 (2026-03-16)
-- **Negation-aware scanning**: scanner now detects negation context ("no", "not", "never", "zero", "clean", "intact", "без") around trigger words — lines like "No X found" are treated as neutral instead of negative. Prevents self-referential false positives in documentation.
+- **Negation-aware scanning**: scanner now detects negation context ("no", "not", "never", "zero", "clean", "intact") around trigger words — lines like "No X found" are treated as neutral instead of negative. Prevents self-referential false positives in documentation.
 - Supports English and Russian negation markers
 - 22/22 tests green
 

@@ -103,10 +103,10 @@ exit_if_grace() {
 
 # ─── NEGATION DETECTION ────────────────────────────────────────
 # Detects if a line contains a negation context around a trigger word.
-# Catches: "No X found", "not compromised", "без утечек", "never leaked",
+# Catches: "No X found", "not compromised", "no leaks", "never leaked",
 #          "zero vulnerabilities", "clean (no issues)"
 # Returns: 0 = negation detected (line should be neutral), 1 = no negation
-NEGATION_PATTERN="(^|[^a-z])(no|not|never|none|zero|без|clean|passed|intact|safe)[^a-z]"
+NEGATION_PATTERN="(^|[^a-z])(no|not|never|none|zero|clean|passed|intact|safe)[^a-z]"
 
 line_has_negation() {
     local line="$1"

@@ -46,7 +46,7 @@ If impact 2 is rolled, there's 70% chance of A, 30% chance of B.
 - Weights are relative (70/30 = same as 7/3)
 
 **Common adjustments**:
-- No Moltbook? Set all Moltbook action weights to 0
+- No social platform? Set all social platform action weights to 0
 - No steward interaction? Reduce "ask steward" weights
 - Prefer journaling over posting? Boost memory actions, reduce social
 
@@ -103,7 +103,7 @@ MEMORY_DIR="$HOME/my-agent/logs"
 grep -ciE "(learned|understood|TIL|insight)" "$file"
 
 # With Russian
-grep -ciE "(learned|understood|TIL|insight|узнал|понял|инсайт)" "$file"
+grep -ciE "(learned|understood|TIL|insight|learned|understood|insight)" "$file"
 ```
 
 **Thresholds** — Adjust sensitivity:
@@ -167,9 +167,9 @@ If something breaks, restore from `needs-state.template.json` or re-run `init.sh
 - Check that scans are finding your files (path issues?)
 - Verify needs-state.json has recent timestamps
 
-### "I don't use Moltbook/social features"
+### "I don't use social platform/social features"
 Set weight=0 for:
-- "post to Moltbook" actions
+- "post to social platform" actions
 - "check mentions" actions
 - "engage with feed" actions
 

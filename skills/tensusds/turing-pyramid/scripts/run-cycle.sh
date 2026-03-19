@@ -45,6 +45,15 @@ NOW=$(date +%s)
 NOW_ISO=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 TODAY=$(date +%Y-%m-%d)
 
+# Bootstrap mode: process ALL needs (also skips gate — clean slate)
+if [[ "$1" == "--bootstrap" ]]; then
+    MAX_ACTIONS=10
+    SKIP_GATE=true
+    echo "🚀 BOOTSTRAP MODE — processing all needs"
+else
+    MAX_ACTIONS=$(jq -r '.settings.max_actions_per_cycle // 3' "$CONFIG_FILE")
+fi
+
 # ─── Execution Gate: block new proposals if pending actions exist ───
 if [[ "${SKIP_GATE:-}" != "true" ]]; then
     GATE_CHECK="$SCRIPTS_DIR/gate-check.sh"
@@ -58,14 +67,6 @@ if [[ "${SKIP_GATE:-}" != "true" ]]; then
             exit 0
         fi
     fi
-fi
-
-# Bootstrap mode: process ALL needs
-if [[ "$1" == "--bootstrap" ]]; then
-    MAX_ACTIONS=10
-    echo "🚀 BOOTSTRAP MODE — processing all needs"
-else
-    MAX_ACTIONS=$(jq -r '.settings.max_actions_per_cycle // 3' "$CONFIG_FILE")
 fi
 
 # No-scans mode for testing (env or arg)
@@ -137,7 +138,7 @@ calculate_tensions() {
         if (( $(echo "$deprivation > 3" | bc -l) )); then deprivation="3.00"; fi
         # Turing-exp: tension = dep² + importance × max(0, dep - crisis_threshold)²
         # Below threshold: all needs compete equally (pure deprivation)
-        # Above threshold: importance amplifies crisis signal (Maslow hierarchy emerges)
+        # Above threshold: importance amplifies crisis signal (priority hierarchy emerges)
         local crisis_excess=$(echo "scale=4; $deprivation - $CRISIS_THRESHOLD" | bc -l)
         if (( $(echo "$crisis_excess < 0" | bc -l) )); then crisis_excess="0"; fi
         local tension=$(echo "scale=1; ($deprivation * $deprivation) + ($importance * $crisis_excess * $crisis_excess)" | bc -l)
@@ -944,7 +945,7 @@ for need in "${top_needs_array[@]}"; do
                 record_action_selection "$need" "$selected_action"
                 # Register in execution gate (skip in test mode)
                 if [[ "${SKIP_GATE:-}" != "true" ]]; then
-                    local gate_args=(--need "$need" --action "$selected_action" --impact "$actual_impact" --source "run-cycle")
+                    gate_args=(--need "$need" --action "$selected_action" --impact "$actual_impact" --source "run-cycle")
                     if $is_forced_need; then
                         gate_args+=(--non-deferrable)
                     fi

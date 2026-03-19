@@ -17,7 +17,7 @@
 - **Homeostasis rebalance** — recognition 72→48h, competence 48→36h, connection 6→8h
 - **Steward actions removed** — organic interaction > system-driven nudging
 - **Autonomy consolidated** — 24→13 actions
-- **Description rewrite** — positioned as existence cycle replacement, not psychology framework
+- **Description rewrite** — positioned as heartbeat cycle replacement, practical action system
 
 ### v1.15.0 (2026-03-07)
 - **Starvation Guard** — Forced action for needs stuck at floor too long
@@ -79,13 +79,13 @@
 
 | Preset | Needs | Focus | Use case |
 |--------|-------|-------|----------|
-| `minimal` | 3-4 | security, competence, closure | Скрипт-агент, автоматизация |
-| `base` | 10 | current set | Универсальный (текущий дефолт) |
-| `conversational` | 5-6 | connection, expression, understanding, coherence | Чат-бот, собеседник |
-| `researcher` | 6-7 | understanding, expression, curiosity(?), competence, recognition | Исследователь, аналитик |
-| `coder` | 5-6 | competence, closure, security, integrity, understanding | Программист, code agent |
-| `scraper` | 3-4 | competence, security, closure | Data collection, мониторинг |
-| `counselor` | 6-7 | connection, understanding, coherence, integrity, expression | Психолог, коуч |
+| `minimal` | 3-4 | security, competence, closure | Script agent, automation |
+| `base` | 10 | current set | Universal (current default) |
+| `conversational` | 5-6 | connection, expression, understanding, coherence | Chatbot, conversational agent |
+| `researcher` | 6-7 | understanding, expression, curiosity(?), competence, recognition | Researcher, analyst |
+| `coder` | 5-6 | competence, closure, security, integrity, understanding | Programmer, code agent |
+| `scraper` | 3-4 | competence, security, closure | Data collection, monitoring |
+| `counselor` | 6-7 | connection, understanding, coherence, integrity, expression | Counselor, coach |
 
 **Design principles:**
 - Each preset = complete needs-config.json + cross-need-impact.json + tuned decay rates

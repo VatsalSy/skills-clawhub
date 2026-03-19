@@ -1,6 +1,6 @@
 ---
 name: turing-pyramid
-description: Motivation and action system for AI agents. 10 needs with Turing-exp tension, execution gate with evidence verification, spontaneity layers, and continuity across sessions.
+description: Motivation and action system for AI agents. 10 needs with Turing-exp tension, execution gate with evidence verification, spontaneity layers, continuity across sessions, and crash-resilient watchdog.
 metadata:
   clawdbot:
     emoji: "🔺"
@@ -67,9 +67,13 @@ When you first install this skill:
 
 1. **Read this file** to understand the 10 needs and how tension works
 2. **Run `init.sh`** to create initial state files
-3. **Run one cycle** (`run-cycle.sh`) and follow the suggested action
-4. **Mark it done** (`mark-satisfied.sh <need> <impact>`) after completing the action
-5. **Integrate into heartbeat** — add `run-cycle.sh` to your HEARTBEAT.md
+3. **Run one cycle** (`run-cycle.sh`) — it proposes actions and registers them in the execution gate
+4. **Actually do the action** — write the file, make the post, run the command
+5. **Resolve the gate** (`gate-resolve.sh --need <need> --evidence "what you did"`)
+6. **Mark satisfaction** (`mark-satisfied.sh <need> <impact>`)
+7. **Integrate into heartbeat** — add `run-cycle.sh` to your HEARTBEAT.md
+
+**Important:** The execution gate blocks new proposals until you resolve or defer pending actions. This is by design — it prevents you from describing actions instead of doing them. If you can't complete an action, defer it with a reason: `gate-resolve.sh --defer <id> --reason "why"`.
 
 The system is self-tuning. After a few cycles, you'll see patterns: which needs decay fast, which actions are selected, where tensions build.
 
@@ -79,13 +83,15 @@ The system is self-tuning. After a few cycles, you'll see patterns: which needs 
 - **Decay**: Satisfaction drops over time at need-specific rates. Connection decays in 6h. Security in 168h.
 - **Actions**: Each need has 8-11 possible actions with impact levels (low/mid/high). The pyramid picks based on current state.
 
+**Resilience:** After setup, verify your cron has both entries (daemon + watchdog). The watchdog catches edge cases — daemon crashes, hung processes, stale state. See "Resilience & Crash Recovery" section for details.
+
 ### For the Human (Steward)
 
 **Before your agent starts using this:**
 
 1. **Review the 10 needs** (table below) — are importance rankings right for your agent?
 2. **Check scan config** — default `line-level` is free and works everywhere. Upgrade to `agent-spawn` if you have a cheap model (Haiku) available.
-3. **External actions** — some suggestions mention platforms (Moltbook, web search). These are *text suggestions only*. To remove: set their `weight: 0` in `needs-config.json`.
+3. **External actions** — some suggestions mention external platforms (social networks, web search). These are *text suggestions only*. To remove: set their `weight: 0` in `needs-config.json`.
 4. **Run the test suite** to verify everything works:
    ```bash
    WORKSPACE=/tmp/test-workspace bash tests/run-tests.sh
@@ -95,6 +101,11 @@ The system is self-tuning. After a few cycles, you'll see patterns: which needs 
 - "Review the 10 needs with me — let's adjust importance for your role"
 - "Do you have a cheap model for smarter scanning?" → `agent-spawn` method
 - "Which external action suggestions should we disable?"
+- "Check `gate-status.sh` — is the execution rate healthy?"
+- "Is the watchdog cron installed?" → verify with `crontab -l`
+- "Check `watchdog.log` — any recent restarts?"
+
+**Execution Gate** (enabled by default): The gate prevents your agent from logging "I did X" without actually doing X. Monitor execution rate via `gate-status.sh`. Healthy is >70%. If your agent repeatedly defers the same need, the actions may not fit your agent's capabilities — adjust them in `needs-config.json`.
 
 ---
 
@@ -136,7 +147,7 @@ tension = dep² + importance × max(0, dep - crisis_threshold)²
 
 **Below threshold** (default: 1.0, meaning sat > 2.0): All needs produce equal tension. Selection is effectively round-robin — expression gets as many slots as security.
 
-**Above threshold** (sat < 2.0): Importance amplifies the crisis signal. In a dual crisis, security (imp=10) gets priority over expression (imp=1). This is Maslow's actual model: hierarchy activates only when needs compete for scarce attention.
+**Above threshold** (sat < 2.0): Importance amplifies the crisis signal. In a dual crisis, security (imp=10) gets priority over expression (imp=1). This ensures high-importance needs get priority only when multiple needs compete for attention simultaneously.
 
 Configure: `settings.tension_formula.crisis_threshold` in `needs-config.json`
 
@@ -275,13 +286,14 @@ State persistence across discrete sessions via a two-layer living document. The 
 └─────────────────────────────────────────────────┘
 ```
 
-### Three Scripts
+### Four Scripts
 
 | Script | When | What |
 |--------|------|------|
-| `mindstate-daemon.sh` | Cron every 5min | Updates reality: pyramid state, filesystem changes, system health, physical temperature |
+| `mindstate-daemon.sh` | Cron every 5min | Updates reality: pyramid state, filesystem changes, system health, stale cognition detection, physical temperature |
 | `mindstate-freeze.sh` | End of substantive session | Freezes cognition: trajectory, open threads, momentum, cognitive temperature |
 | `mindstate-boot.sh` | Session start (FIRST thing) | Loads MINDSTATE, reconciles forecast vs reality, reports continuity score |
+| `mindstate-watchdog.sh` | Cron every 15min | Process watchdog: detects hung/dead scripts, cleans orphans, restarts daemon |
 
 ### Boot Sequence (inverted)
 
@@ -319,12 +331,55 @@ building / exploring / intensive / contemplation / brief / neutral
 crontab -e
 */5 * * * * WORKSPACE=/path/to/workspace /path/to/scripts/mindstate-daemon.sh >/dev/null 2>&1
 
+# Watchdog cron (resilience — detects hung/dead scripts, restarts)
+*/15 * * * * WORKSPACE=/path/to/workspace /path/to/scripts/mindstate-watchdog.sh >/dev/null 2>&1
+
 # Boot (add to AGENTS.md session start — BEFORE SOUL.md)
 WORKSPACE=/path/to/workspace bash scripts/mindstate-boot.sh
 
 # Freeze (add to session end hook)
 WORKSPACE=/path/to/workspace bash scripts/mindstate-freeze.sh "$SESSION_START_EPOCH"
 ```
+
+### Resilience & Crash Recovery (v1.28.0)
+
+The continuity layer is designed to survive unexpected termination:
+
+**Atomic writes:** All scripts write to `*.tmp.$$` (PID-unique) then `mv` to final path. A crash mid-write leaves an orphan temp file but never corrupts the target.
+
+**Trap handlers:** `mindstate-daemon.sh` and `mindstate-freeze.sh` register `EXIT`/`SIGTERM`/`SIGINT`/`SIGHUP` traps that clean up temp files on unexpected termination.
+
+**Orphan cleanup:** The daemon cleans up any `*.tmp.*` files older than 10 minutes on every run.
+
+**Stale cognition detection:** The daemon monitors when `mindstate-freeze.sh` last ran. If cognition hasn't been frozen for longer than `stale_cognition_hours` (default: 24h), a warning appears in MINDSTATE.md under `system.cognition`.
+
+**Watchdog** (`mindstate-watchdog.sh`): Runs on cron every 15 minutes. Strategy:
+
+| Check | Threshold | Action |
+|-------|-----------|--------|
+| MINDSTATE.md freshness | > 15 min stale | Daemon considered dead → restart |
+| Process age | > 300s (5 min) | Process considered hung → SIGTERM, then SIGKILL |
+| Orphaned .tmp files | > 10 min old | Delete |
+
+The watchdog logs only problems (to `assets/watchdog.log`, auto-rotated at 200 lines). Silent when everything is healthy. Supports `--dry-run` for testing.
+
+Configure thresholds in `assets/mindstate-config.json` under `watchdog`:
+```json
+"watchdog": {
+  "max_stale_minutes": 15,
+  "max_process_age_seconds": 300
+}
+```
+
+**Failure modes and recovery:**
+
+| Failure | Impact | Recovery |
+|---------|--------|----------|
+| OpenClaw restart | Heartbeat pauses, cron continues | Watchdog ensures daemon stays alive |
+| Daemon crash mid-write | Orphan .tmp file | Next daemon run cleans it up |
+| Freeze never called | Stale cognition section | Daemon flags it in MINDSTATE.md |
+| Hung process (infinite loop) | Blocks flock, daemon skips ticks | Watchdog kills after 5 min |
+| Machine reboot | All processes die | Cron restarts daemon + watchdog automatically |
 
 ### Test Isolation
 
@@ -422,6 +477,7 @@ turing-pyramid/
 │   ├── mindstate-daemon.sh     # Continuity: reality updater (cron)
 │   ├── mindstate-freeze.sh     # Continuity: cognition snapshot
 │   ├── mindstate-boot.sh       # Continuity: boot + reconciliation
+│   ├── mindstate-watchdog.sh   # Continuity: process watchdog (cron)
 │   ├── mindstate-utils.sh      # Continuity: shared utilities
 │   ├── spontaneity.sh          # Layers A/B/C logic
 │   ├── apply-deprivation.sh    # Deprivation cascade engine
@@ -507,6 +563,6 @@ Summary: 3 action(s), 0 noticed
 
 ---
 
-**Version:** 1.23.0 — Continuity Layer, temperature system, 26/26 tests green.
+**Version:** 1.28.0 — Resilience: watchdog, trap handlers, orphan cleanup, stale cognition detection.
 
 Full changelog: `CHANGELOG.md` | Tuning guide: `references/TUNING.md`

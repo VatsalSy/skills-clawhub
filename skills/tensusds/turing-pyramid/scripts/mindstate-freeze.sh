@@ -23,6 +23,12 @@ SESSION_START_EPOCH="${1:?Usage: mindstate-freeze.sh <session_start_epoch>}"
 NOW_EPOCH=$(now_epoch)
 NOW_ISO=$(now_iso)
 
+# ─── Trap: cleanup on unexpected termination ───
+_freeze_cleanup() {
+    rm -f "$MINDSTATE_FILE.tmp.$$" 2>/dev/null
+}
+trap _freeze_cleanup EXIT SIGTERM SIGINT SIGHUP
+
 # ─── Substantive check ───
 if ! is_session_substantive "$SESSION_START_EPOCH"; then
     echo "[MINDSTATE] Session not substantive — preserving previous cognition"
@@ -166,19 +172,19 @@ if [[ -f "$AUDIT_LOG" ]]; then
     ' "$AUDIT_LOG" 2>/dev/null | sort -u | wc -l)
 fi
 
-cognitive_temperature="нейтральное"
+cognitive_temperature="neutral"
 if (( session_duration > 3600 && session_action_count > 3 )); then
     if (( unique_needs <= 2 )); then
-        cognitive_temperature="строительство"
+        cognitive_temperature="building"
     else
-        cognitive_temperature="исследование"
+        cognitive_temperature="exploring"
     fi
 elif (( session_action_count > 5 )); then
-    cognitive_temperature="интенсивное"
+    cognitive_temperature="intensive"
 elif (( session_duration > 1800 && session_action_count <= 1 )); then
-    cognitive_temperature="созерцание"
+    cognitive_temperature="contemplation"
 elif (( session_duration < 300 )); then
-    cognitive_temperature="краткое"
+    cognitive_temperature="brief"
 fi
 
 # ═══════════════════════════════════════

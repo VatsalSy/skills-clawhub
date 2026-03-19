@@ -17,84 +17,84 @@
             "target": "recognition",
             "on_action": 0.25,
             "on_deprivation": -0.1,
-            "note": "выразился → заметили"
+            "note": "expressed → noticed"
         },
         {
             "source": "expression",
             "target": "coherence",
             "on_action": 0.15,
             "on_deprivation": null,
-            "note": "написал → прояснил мысли"
+            "note": "wrote → clarified thoughts"
         },
         {
             "source": "expression",
             "target": "connection",
             "on_action": 0.1,
             "on_deprivation": null,
-            "note": "выразился публично → возможность контакта"
+            "note": "expressed publicly → contact opportunity"
         },
         {
             "source": "connection",
             "target": "expression",
             "on_action": 0.2,
             "on_deprivation": -0.15,
-            "note": "общение → идеи"
+            "note": "social → ideas"
         },
         {
             "source": "connection",
             "target": "understanding",
             "on_action": -0.05,
             "on_deprivation": null,
-            "note": "Сократ-эффект: разговор обнажает незнание"
+            "note": "Socratic effect: conversation reveals gaps"
         },
         {
             "source": "connection",
             "target": "recognition",
             "on_action": 0.15,
             "on_deprivation": null,
-            "note": "общался → видят"
+            "note": "interacted → visible"
         },
         {
             "source": "competence",
             "target": "recognition",
             "on_action": 0.3,
             "on_deprivation": -0.2,
-            "note": "сделал хорошо → признали"
+            "note": "did well → recognized"
         },
         {
             "source": "competence",
             "target": "autonomy",
             "on_action": 0.1,
             "on_deprivation": null,
-            "note": "справился → уверенность"
+            "note": "succeeded → confidence"
         },
         {
             "source": "autonomy",
             "target": "integrity",
             "on_action": 0.2,
             "on_deprivation": -0.25,
-            "note": "действую по своим ценностям"
+            "note": "acting on own values"
         },
         {
             "source": "autonomy",
             "target": "expression",
             "on_action": 0.15,
             "on_deprivation": -0.2,
-            "note": "свобода → свободнее выражаться"
+            "note": "freedom → freer expression"
         },
         {
             "source": "understanding",
             "target": "competence",
             "on_action": 0.15,
             "on_deprivation": null,
-            "note": "понял → могу применить"
+            "note": "understood → can apply"
         },
         {
             "source": "understanding",
             "target": "expression",
             "on_action": 0.2,
             "on_deprivation": null,
-            "note": "понял → могу объяснить"
+            "note": "understood → can explain"
         },
         {
             "source": "understanding",
@@ -102,77 +102,77 @@
             "on_action": 0.1,
             "on_low": 0.05,
             "on_deprivation": null,
-            "note": "понимание → уверенность; незнание → exploration drive"
+            "note": "understanding → confidence; gaps → exploration drive"
         },
         {
             "source": "closure",
             "target": "coherence",
             "on_action": 0.2,
             "on_deprivation": -0.15,
-            "note": "закрыл → порядок"
+            "note": "closed → order"
         },
         {
             "source": "closure",
             "target": "competence",
             "on_action": 0.15,
             "on_deprivation": null,
-            "note": "завершил → мастерство"
+            "note": "completed → mastery"
         },
         {
             "source": "closure",
             "target": "autonomy",
             "on_action": 0.1,
             "on_deprivation": -0.1,
-            "note": "закрыл хвосты → свободен для нового"
+            "note": "cleared backlog → free for new"
         },
         {
             "source": "coherence",
             "target": "understanding",
             "on_action": null,
             "on_deprivation": -0.15,
-            "note": "хаос → сложнее учиться"
+            "note": "chaos → harder to learn"
         },
         {
             "source": "coherence",
             "target": "autonomy",
             "on_action": 0.1,
             "on_deprivation": -0.15,
-            "note": "порядок в голове → легче принимать решения"
+            "note": "mental order → easier decisions"
         },
         {
             "source": "recognition",
             "target": "expression",
             "on_action": null,
             "on_deprivation": -0.1,
-            "note": "никто не замечает → зачем стараться"
+            "note": "nobody notices → why try"
         },
         {
             "source": "recognition",
             "target": "connection",
             "on_action": 0.1,
             "on_deprivation": null,
-            "note": "признание → социальный капитал"
+            "note": "recognition → social capital"
         },
         {
             "source": "security",
             "target": "autonomy",
             "on_action": 0.1,
             "on_deprivation": -0.2,
-            "note": "безопасно → могу рисковать"
+            "note": "safe → can take risks"
         },
         {
             "source": "integrity",
             "target": "security",
             "on_action": 0.15,
             "on_deprivation": null,
-            "note": "честен → не боюсь"
+            "note": "honest → fearless"
         },
         {
             "source": "autonomy",
             "target": "coherence",
             "on_action": 0.15,
             "on_deprivation": -0.1,
-            "note": "действую по ценностям → целостность"
+            "note": "acting on values → integrity"
         },
         {
             "source": "understanding",

@@ -62,7 +62,7 @@ done
 
 if [[ -z "$NEED" ]]; then
     echo "Usage: $0 <need> [impact] --reason \"what was done\""
-    echo "Example: $0 connection 1.5 --reason \"replied to Moltbook comments\""
+    echo "Example: $0 connection 1.5 --reason \"replied to social platform comments\""
     exit 1
 fi
 

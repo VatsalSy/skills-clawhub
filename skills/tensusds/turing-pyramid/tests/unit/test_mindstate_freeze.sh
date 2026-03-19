@@ -65,7 +65,7 @@ frozen_at=$(grep "^frozen_at:" "$TEST_WORKSPACE/MINDSTATE.md" | head -1 | sed 's
 echo "Test 4: Cognitive temperature valid"
 cog_temp=$(grep "^cognitive_temperature:" "$TEST_WORKSPACE/MINDSTATE.md" | head -1 | sed 's/cognitive_temperature: *//')
 case "$cog_temp" in
-    строительство|исследование|интенсивное|созерцание|краткое|нейтральное) pass "'$cog_temp'" ;;
+    building|exploring|intensive|contemplation|brief|neutral) pass "'$cog_temp'" ;;
     *) fail "'$cog_temp' invalid" ;;
 esac
 

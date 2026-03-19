@@ -465,7 +465,7 @@
           "weight": 40
         },
         {
-          "name": "help someone via available integrations (Moltbook, Discord, etc)",
+          "name": "help someone via available integrations (social platforms, chat, etc)",
           "impact": 1.5,
           "weight": 30,
           "external": true,
@@ -613,7 +613,7 @@
       },
       "actions": [
         {
-          "name": "share completed work publicly (Moltbook post)",
+          "name": "share completed work publicly (blog post, social post)",
           "impact": 3.0,
           "weight": 85,
           "external": true,
@@ -634,7 +634,7 @@
           "requires_approval": true
         },
         {
-          "name": "post thought/update on Moltbook",
+          "name": "post thought/update on social platform",
           "impact": 1.2,
           "weight": 45,
           "external": true,
@@ -705,7 +705,7 @@
           "weight": 40
         },
         {
-          "name": "write Moltbook post (thought, question, observation)",
+          "name": "write social post (thought, question, observation)",
           "impact": 1.6,
           "weight": 45,
           "external": true,
@@ -797,7 +797,7 @@
         "echo_duration_hours": 24
       }
     },
-    "version": "1.27.1",
+    "version": "1.27.4",
     "tension_formula": {
       "mode": "turing_exp",
       "crisis_threshold": 1.0,

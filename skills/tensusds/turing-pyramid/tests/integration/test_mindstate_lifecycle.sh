@@ -84,7 +84,7 @@ freeze1=$(bash "$FREEZE" "$session_start" 2>&1)
 echo "$freeze1" | grep -q "Cognition frozen" && pass "Phase 1: Freeze OK" || fail "Phase 1: Freeze failed"
 
 cog_temp1=$(grep "^cognitive_temperature:" "$TEST_WORKSPACE/MINDSTATE.md" | head -1 | sed 's/cognitive_temperature: *//')
-[[ -n "$cog_temp1" && "$cog_temp1" != "инициализация" ]] && pass "Phase 1: Cognitive temp='$cog_temp1'" || fail "Phase 1: Temp not set"
+[[ -n "$cog_temp1" && "$cog_temp1" != "initializing" ]] && pass "Phase 1: Cognitive temp='$cog_temp1'" || fail "Phase 1: Temp not set"
 trajectory1=$(grep "^trajectory:" "$TEST_WORKSPACE/MINDSTATE.md" | head -1 | sed 's/trajectory: *//')
 [[ -n "$trajectory1" ]] && pass "Phase 1: Trajectory='$trajectory1'" || fail "Phase 1: No trajectory"
 
@@ -173,7 +173,7 @@ echo ""
 # ═══════════════════════════════════════
 # PHASE 5: Temperature drift scenario
 # ═══════════════════════════════════════
-echo "Phase 5: Crisis drift (строительство → кризис)"
+echo "Phase 5: Crisis drift (building → crisis)"
 jq '.connection.satisfaction = 0.3' "$STATE_FILE" > "$STATE_FILE.tmp" && mv "$STATE_FILE.tmp" "$STATE_FILE"
 cat > "$TEST_WORKSPACE/MINDSTATE.md" << 'MDEOF'
 # MINDSTATE
@@ -181,14 +181,14 @@ cat > "$TEST_WORKSPACE/MINDSTATE.md" << 'MDEOF'
 timestamp: 2026-03-18T10:00:00Z
 last_session_end: 2026-03-18T06:00:00Z
 hours_elapsed: 4.0
-physical_temperature: кризис
+physical_temperature: crisis
 critical_needs: connection
 surplus_gate: CLOSED
 
 ## cognition
 frozen_at: 2026-03-18T06:00:00Z
 trajectory: peaceful research
-cognitive_temperature: созерцание
+cognitive_temperature: contemplation
 
 ## forecast
 structural:
@@ -201,8 +201,8 @@ touch "$TEST_WORKSPACE/MINDSTATE.md"  # prevent daemon overwrite
 rm -f "$TEST_ASSETS/mindstate.lock"
 boot3=$(bash "$BOOT" 2>&1)
 
-echo "$boot3" | grep -q "TEMPERATURE DRIFT.*созерцание.*кризис" && pass "Phase 5: Drift detected" || fail "Phase 5: No drift"
-echo "$boot3" | grep -q "Temperature: кризис" && pass "Phase 5: Merged=physical" || fail "Phase 5: $(echo "$boot3" | grep Temperature)"
+echo "$boot3" | grep -q "TEMPERATURE DRIFT.*contemplation.*crisis" && pass "Phase 5: Drift detected" || fail "Phase 5: No drift"
+echo "$boot3" | grep -q "Temperature: crisis" && pass "Phase 5: Merged=physical" || fail "Phase 5: $(echo "$boot3" | grep Temperature)"
 echo "$boot3" | grep -q "✓.*connection.*CONFIRMED" && pass "Phase 5: Prediction confirmed" || fail "Phase 5: Not confirmed"
 
 jq '.connection.satisfaction = 2.5' "$STATE_FILE" > "$STATE_FILE.tmp" && mv "$STATE_FILE.tmp" "$STATE_FILE"

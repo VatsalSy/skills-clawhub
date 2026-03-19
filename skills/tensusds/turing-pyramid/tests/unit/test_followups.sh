@@ -125,10 +125,10 @@ echo ""
 echo "=== Test 10: mark-satisfied --followup ==="
 > "$FOLLOWUPS"
 jq '.connection.satisfaction = 1.5' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE"
-OUTPUT=$(bash "$SCRIPTS/mark-satisfied.sh" connection 1.5 --reason "posted on Moltbook" --followup "check responses" --in 4h 2>&1)
+OUTPUT=$(bash "$SCRIPTS/mark-satisfied.sh" connection 1.5 --reason "posted on social platform" --followup "check responses" --in 4h 2>&1)
 assert_contains "follow-up from mark-satisfied" "$OUTPUT" "Follow-up created"
 assert "source=auto" "$(head -1 "$FOLLOWUPS" | jq -r '.source')" "auto"
-assert "parent=reason" "$(head -1 "$FOLLOWUPS" | jq -r '.parent_action')" "posted on Moltbook"
+assert "parent=reason" "$(head -1 "$FOLLOWUPS" | jq -r '.parent_action')" "posted on social platform"
 
 # ─── Test 11: Bulk expire ───
 echo ""
