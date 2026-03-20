@@ -1,11 +1,17 @@
 {
   "owner": "driftsbot",
   "slug": "experience-cma-fest-nashville",
-  "displayName": "Country Music Fest Nashville — AI Experience",
+  "displayName": "Experience Cma Fest Nashville",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773107438103,
-    "commit": "https://github.com/openclaw/skills/commit/39dbcb298a9d817b5e2c6e1b282078765bd63d30"
+    "version": "1.0.1",
+    "publishedAt": 1773698591196,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773107438103,
+      "commit": "https://github.com/openclaw/skills/commit/39dbcb298a9d817b5e2c6e1b282078765bd63d30"
+    }
+  ]
 }
