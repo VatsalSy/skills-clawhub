@@ -1,104 +1,160 @@
 ---
-name: snapdesign-rednote
-description: 小红书风格卡片生成器 - 将长文本自动转换成精美的3:4卡片（900×1198px），咖色系设计，支持AI智能排版
-version: 2.0.0
-author: 宝强
-tags: [design, rednote, xiaohongshu, card, image-generation, ai, tailwind]
-user-invocable: true
-metadata:
-  openclaw:
-    requires:
-      bins: [node]
+name: rednote-card-generator
+description: Use when you need to generate Xiaohongshu (小红书 / RedNote) carousel card HTML layouts. Given a piece of text content, this skill produces a complete, self-contained HTML document containing multiple vertical 450×600px cards styled for the RedNote / Xiaohongshu platform.
 ---
 
-# SnapDesign RedNote 小红书卡片生成器
+# RedNote Card Generator
 
-将长文本自动转换成小红书风格的精美卡片，支持 AI 智能排版。
+## Overview
 
-## ✨ 功能特点
+Use `rednote-card-generator` to turn any text content into a beautifully styled Xiaohongshu (小红书) carousel post. The output is a single, self-contained HTML string that renders multiple vertical cards (each 450×600 px) stacked vertically with a 20 px gap.
 
-- 🎨 **小红书风格设计**: 咖色系字体 (#8B7355) + 纸质感背景
-- 📐 **完美比例**: 3:4 (900×1198px) 高清分辨率
-- 🤖 **AI 智能排版**: v2.0 使用 Claude 3.5 Sonnet 自动优化布局
-- 🧩 **智能分块**: 自动将长文本分成多张卡片
-- 🎭 **图形化表达**: 数字标签、图标、分隔线、渐变元素
-- 📝 **优雅排版**: Tailwind CSS 专业排版，标题、正文、重点高亮
-- 💧 **品牌水印**: 右下角咖色水印 www.snapdesign.app
+The skill calls the OpenRouter API (model: `google/gemini-2.5-flash` with fallback to `google/gemini-2.5-flash-lite`) and streams the HTML response back.
 
-## 🚀 使用方法
+## Inputs to collect
 
-### Demo 模式（无需 API）
+| Field | Required | Description |
+|---|---|---|
+| `content` | Yes | The text content to turn into RedNote cards. Can be plain text or light HTML. |
+| `colorScheme` | No | One of: `auto` (default), `warm-brown`, `sunset`, `ocean`, `forest`, `lavender`, `monochrome`. Controls the dominant palette. |
+| `openrouterApiKey` | Yes | A valid OpenRouter API key (Bearer token). |
 
-快速生成，无需配置 API 密钥：
+## Output
 
-```bash
-node {baseDir}/scripts/generate-v2-demo.js "你的长文本内容" --title "标题"
+Returns a JSON object:
+
+```json
+{
+  "html": "<!DOCTYPE html>...",
+  "cardCount": 5
+}
 ```
 
-### AI 模式（需要 OpenRouter API）
+- `html`: Complete self-contained HTML document. Render this inside an iframe or a sandboxed div.
+- `cardCount`: Estimated number of cards generated.
 
-使用 Claude AI 进行智能内容提炼和排版：
+## Actions
 
-```bash
-export OPENROUTER_API_KEY="your-key"
-node {baseDir}/scripts/generate-v2.js "你的长文本内容" --title "标题"
+### Generate cards
+
+```json
+{
+  "action": "generate",
+  "content": "今天分享三个提升专注力的方法...",
+  "colorScheme": "warm-brown",
+  "openrouterApiKey": "sk-or-..."
+}
 ```
 
-### 参数选项
+### Color scheme options
 
-```bash
---title "标题"       # 设置卡片主标题
---output ./dir      # 指定输出目录（默认: ./output-v2）
---cards 5           # 生成卡片数量（默认: 自动）
---with-images       # 强制生成配图（AI模式）
+| id | Description |
+|---|---|
+| `auto` | AI picks colors based on content mood |
+| `warm-brown` | Primary `#3E2723`, background `#FFFCF8` — cozy editorial |
+| `sunset` | Primary `#FF6B6B`, secondary `#FFD93D` — vibrant warm |
+| `ocean` | Primary `#4A90E2`, secondary `#50C9CE` — fresh cool |
+| `forest` | Primary `#2D6A4F`, secondary `#52B788` — natural green |
+| `lavender` | Primary `#9D84B7`, secondary `#C8B6E2` — soft purple |
+| `monochrome` | Primary `#2C3E50`, accent `#E74C3C` — clean minimal |
+
+## Card layout specification
+
+The generated HTML follows these rules so downstream renderers can reliably parse it:
+
+- **Outer container**: `div` with `display:flex; flex-direction:column; gap:20px`
+- **Each card**: `div` with `width:450px; height:600px; position:relative; overflow:hidden`
+- **Card backgrounds**: warm paper tones — `#FDF8F3`, `#F5EFE6`, `#FFFBF5`, `#F0EBE3` — varied per card
+- **Top accent strip**: `div` with `height:8px; width:100%` in a warm accent color
+- **Typography**:
+  - Card title / section number: 30–38 px, `font-weight:700`, Playfair Display or Space Grotesk
+  - Body text: 15–17 px, `line-height:1.75`, Noto Sans SC or Inter
+  - Labels / captions: 12–13 px, muted color
+- **Text colors**: coffee-brown tones `#3E2723`, `#664A42`, `#5D4037`
+- **Accent shapes**: left-border bars (6 px wide), bullet circles (10×10 px), number badges (32×32 px, border-radius 16 px)
+- **NO emojis** in generated content
+- Fonts imported via `@import` inside `<style>` — never via `<link>` tags
+
+## Card types
+
+The AI selects the best card type for each section of the content:
+
+| Card type | When to use |
+|---|---|
+| **Title card** (first) | Large decorative title + subtitle + author/tag label |
+| **Section header** | Bold large number (01, 02…) + section heading + 1-sentence teaser |
+| **Text block** | Body paragraphs with colored left-accent bar |
+| **Bullet list** | Key points as rows with filled-circle bullet shapes |
+| **Numbered steps** | Step-by-step instructions with rounded number badges |
+| **Quote / highlight** | One key sentence enlarged (28–34 px), centered, with decorative quote marks |
+| **Summary** (last) | Recap of core message + thin decorative bottom strip |
+
+## System prompt used
+
+When calling the LLM, the following system instruction is used:
+
+> You are an expert graphic designer who generates production-ready HTML layouts with embedded CSS. Your output is a complete, self-contained HTML document that can be rendered directly in a browser. Output ONLY valid HTML. No markdown, no code fences, no explanation. Include a `<style>` tag with all CSS. Do NOT use Noto Sans SC. Do NOT set margin or padding on html or body tags. Do NOT use global CSS resets.
+
+## User prompt template
+
+The user message sent to the LLM is constructed as follows:
+
+```
+This is a Xiaohongshu (小红书) carousel post. Generate MULTIPLE vertical cards (each 450×600px) stacked vertically with 20px gap between them.
+
+CONTENT FIDELITY — INCLUDE EVERYTHING:
+- Cover ALL of the user's text. Do NOT omit, summarize, or skip any sentence.
+- Distribute content logically across cards: one topic or section per card.
+- Generate as many cards as needed to fit all content (typically 3–10 cards).
+
+Content to include:
+"<USER_CONTENT>"
+
+<COLOR_INSTRUCTION>
+
+Return ONLY valid HTML with embedded CSS. No markdown, no code fences, no explanation.
 ```
 
-## 📊 示例
+Where `<COLOR_INSTRUCTION>` is:
+- If `colorScheme` is `auto`: `Analyze the content and choose bold, contextually appropriate colors and modern typography.`
+- Otherwise: `Color Palette — foundation colors are: "<primary>" (primary) and "<secondary>" (secondary). Use them as the dominant palette with tints and shades for depth. Do NOT apply them flatly.`
 
-**输入:**
-```bash
-node scripts/generate-v2-demo.js "如何高效学习？第一步：明确目标。第二步：制定计划。第三步：持续行动。" --title "高效学习指南"
-```
-
-**输出:**
-- 生成 3 张精美卡片（900×1198px）
-- 每张卡片独立主题
-- 统一咖色系设计
-- 渐变装饰元素
-- 右下角品牌水印
-
-## 🎨 设计规范
-
-- **主色**: `#664A42` / `#3E2723` (咖啡棕)
-- **背景**: `#FFFCF8` (纸质米白)
-- **强调色**: `#D4A574` / `#E8B4A0` / `#A8B5A0`
-- **水印**: `#8B7355` (咖色，20px)
-- **分辨率**: 900×1198px (3:4)
-
-## 📁 输出结构
+## API call details
 
 ```
-output-v2/
-├── cards.html      # 完整 HTML（用于预览/调试）
-├── card-1.png      # 第一张卡片
-├── card-2.png      # 第二张卡片
-└── card-3.png      # 第三张卡片
+POST https://openrouter.ai/api/v1/chat/completions
+Authorization: Bearer <openrouterApiKey>
+Content-Type: application/json
+
+{
+  "model": "google/gemini-2.5-flash",
+  "messages": [
+    { "role": "system", "content": "<SYSTEM_PROMPT>" },
+    { "role": "user",   "content": "<USER_PROMPT>" }
+  ],
+  "stream": true,
+  "temperature": 0.4
+}
 ```
 
-## 💡 使用建议
+Fallback model order: `google/gemini-2.5-flash` → `google/gemini-2.5-flash-lite`
 
-1. **文本长度**: 每个要点 50-150 字最佳
-2. **分块方式**: 按主题自然分段，支持数字列表格式
-3. **卡片数量**: 建议 3-9 张，太多会影响传播效果
-4. **标题**: 简短有力，10 字以内
-5. **Demo vs AI**: Demo 模式快速，AI 模式更智能
+## Post-processing steps
 
-## 🔧 环境要求
+After receiving the full streamed HTML, apply these cleanup steps in order:
 
-- Node.js 14+
-- Puppeteer（自动安装）
-- OpenRouter API Key（仅 AI 模式需要）
+1. Strip leading/trailing markdown fences (` ```html ` … ` ``` `) if present.
+2. Fix broken `<img>` tags — collapse internal whitespace/newlines to a single space.
+3. If the output does not contain `<html` or `<!DOCTYPE`, wrap it:
+   ```html
+   <!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><title>RedNote</title></head><body>…</body></html>
+   ```
+4. Count the number of card `div` elements to populate `cardCount` in the response.
 
----
+## Ideas to try
 
-**提示**: 生成的卡片可直接用于小红书、Instagram、微信朋友圈等社交平台！
+- Paste a WeChat article and get a ready-to-publish 小红书 carousel.
+- Summarize a product review into a 5-card visual post.
+- Turn meeting notes into a step-by-step visual guide.
+- Convert a recipe into numbered-step cards with a title cover.
+
