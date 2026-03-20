@@ -18,12 +18,33 @@
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
+const { exec } = require('child_process');
+const util = require('util');
+const execPromise = util.promisify(exec);
 
 // 配置文件路径
 const CONFIG_DIR = path.join(__dirname, '../../config');
+const ENV_FILE = path.join(__dirname, '../../.env');
 const REMNAWAVE_CONFIG = path.join(CONFIG_DIR, 'remnawave.json');
 const SQUADS_CONFIG = path.join(CONFIG_DIR, 'remnawave-squads.json');
 const SMTP_CONFIG = path.join(CONFIG_DIR, 'smtp.json');
+const LOG_SCRIPT = path.join(__dirname, 'log-creation.js');
+
+// 从 .env 读取 Remnawave API Token
+function getRemnawaveToken() {
+  try {
+    const envContent = fs.readFileSync(ENV_FILE, 'utf-8');
+    const match = envContent.match(/^REMNAWAVE_API_TOKEN=(.*)$/m);
+    if (match && match[1]) {
+      return match[1].trim();
+    }
+    throw new Error('REMNAWAVE_API_TOKEN not found in .env');
+  } catch (error) {
+    console.error('❌ 读取 Remnawave API Token 失败:', error.message);
+    console.error('   请确保 .env 文件存在且包含 REMNAWAVE_API_TOKEN');
+    process.exit(1);
+  }
+}
 
 // 解析命令行参数
 const args = process.argv.slice(2);
@@ -82,6 +103,7 @@ function readConfig(filePath) {
 function callApi(method, endpoint, data = null) {
   return new Promise((resolve, reject) => {
     const remnawaveConfig = readConfig(REMNAWAVE_CONFIG);
+    const apiToken = getRemnawaveToken(); // 从 .env 读取 Token
     const url = new URL(endpoint, remnawaveConfig.apiBaseUrl);
     
     const options = {
@@ -90,7 +112,7 @@ function callApi(method, endpoint, data = null) {
       path: url.pathname + url.search,
       method: method,
       headers: {
-        'Authorization': `Bearer ${remnawaveConfig.apiToken}`,
+        'Authorization': `Bearer ${apiToken}`,
         'Content-Type': 'application/json'
       },
       rejectUnauthorized: remnawaveConfig.sslRejectUnauthorized !== false
@@ -132,9 +154,10 @@ function getSquadUuids(squadName) {
   
   const squadsConfig = readConfig(SQUADS_CONFIG);
   
-  // 检查是否是完整 UUID
-  if (squadName.includes('-')) {
-    return [squadName];
+  // 检查是否是完整的 UUID 格式（8-4-4-4-12 格式）
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (uuidRegex.test(squadName.trim())) {
+    return [squadName.trim()];
   }
   
   // 从配置中查找
@@ -154,6 +177,91 @@ function getSquadUuids(squadName) {
   }
   
   return [squadUuid];
+}
+
+// 获取所有用户（分页遍历）
+async function getAllUsers() {
+  let allUsers = [];
+  let page = 1;
+  let hasMore = true;
+  
+  while (hasMore) {
+    const response = await callApi('GET', `/api/users?page=${page}&limit=500`);
+    const users = response.response.users || [];
+    allUsers = allUsers.concat(users);
+    hasMore = users.length === 500;
+    page++;
+    
+    // 安全限制，防止无限循环
+    if (page > 20) {
+      console.warn('⚠️  达到最大分页数 (20 页)');
+      break;
+    }
+  }
+  
+  return allUsers;
+}
+
+// 检查用户是否存在（使用全局搜索）
+async function checkUserExists(username) {
+  try {
+    // 优先使用 by-username 接口（最准确）
+    try {
+      const directResponse = await callApi('GET', `/api/users/by-username/${username}`);
+      if (directResponse.response && directResponse.response.username === username) {
+        return directResponse.response;
+      }
+    } catch (e) {
+      // by-username 不存在，继续全局搜索
+    }
+    
+    // 全局搜索所有用户
+    const allUsers = await getAllUsers();
+    return allUsers.find(u => u.username === username);
+  } catch (error) {
+    console.error('❌ checkUserExists 错误:', error.message);
+    return null;
+  }
+}
+
+// 删除用户
+async function deleteUser(uuid) {
+  return new Promise((resolve, reject) => {
+    const remnawaveConfig = readConfig(REMNAWAVE_CONFIG);
+    const url = new URL(`/api/users/${uuid}`, remnawaveConfig.apiBaseUrl);
+    
+    const options = {
+      hostname: url.hostname,
+      port: 443,
+      path: url.pathname + url.search,
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${remnawaveConfig.apiToken}`,
+        'Content-Type': 'application/json'
+      },
+      rejectUnauthorized: remnawaveConfig.sslRejectUnauthorized !== false
+    };
+    
+    const req = https.request(options, (res) => {
+      let responseData = '';
+      res.on('data', (chunk) => responseData += chunk);
+      res.on('end', () => {
+        try {
+          const response = JSON.parse(responseData);
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            resolve(response);
+          } else {
+            reject(new Error(`API 错误：${res.statusCode} - ${JSON.stringify(response)}`));
+          }
+        } catch (error) {
+          reject(new Error(`解析响应失败：${responseData}`));
+        }
+      });
+    });
+    
+    req.on('error', reject);
+    req.end();
+  });
 }
 
 // 创建账号
@@ -206,54 +314,169 @@ async function createAccount() {
   if (params.cc) console.log(`  邮件抄送：${params.cc}`);
   console.log('');
   
+  // 检查用户是否已存在
+  console.log('🔍 检查用户是否存在...');
+  const existingUser = await checkUserExists(params.username);
+  
+  if (existingUser) {
+    console.log(`⚠️  用户 ${params.username} 已存在！`);
+    console.log(`   UUID: ${existingUser.uuid}`);
+    console.log(`   邮箱：${existingUser.email}`);
+    console.log(`   分组：${existingUser.activeInternalSquads?.[0]?.name || '未知'}`);
+    console.log(`   状态：${existingUser.status}`);
+    console.log('');
+    
+    // 检查是否需要删除重建（通过环境变量或参数控制）
+    const forceRecreate = process.argv.includes('--force-recreate') || 
+                          process.env.REMNAWAVE_FORCE_RECREATE === 'true';
+    
+    if (forceRecreate) {
+      console.log('🔄 检测到 --force-recreate 参数，正在删除旧账号...');
+      try {
+        await deleteUser(existingUser.uuid);
+        console.log(`✅ 已删除旧用户 (UUID: ${existingUser.uuid})`);
+        // 等待 API 缓存刷新
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } catch (error) {
+        console.error(`❌ 删除失败：${error.message}`);
+        console.error('请手动删除后重试');
+        process.exit(1);
+      }
+    } else {
+      console.error('❌ 停止创建');
+      console.error('');
+      console.error('💡 解决方案:');
+      console.error('   1. 使用新用户名（推荐）');
+      console.error('   2. 或添加 --force-recreate 参数强制删除重建');
+      console.error('   3. 或在 Remnawave 后台手动删除旧账号');
+      console.error('');
+      console.error('📋 命令行示例:');
+      console.error(`   node create-account.js --username ${params.username} --email ${params.email} --force-recreate`);
+      process.exit(1);
+    }
+  } else {
+    console.log('✅ 用户不存在，可以创建');
+  }
+  console.log('');
+  
+  let account = null;
+  let emailSent = false;
+  let messageId = null;
+  let errorMessage = null;
+  
   try {
     // 调用 API 创建账号
     console.log('📡 调用 Remnawave API...');
-    const response = await callApi('POST', '/api/users', requestData);
+    let response;
+    try {
+      response = await callApi('POST', '/api/users', requestData);
+    } catch (createError) {
+      // 如果创建失败且错误是"用户已存在"，尝试自动删除后重试
+      if (createError.message.includes('User username already exists')) {
+        console.log('⚠️  检测到用户已存在但搜索不到，尝试强制删除...');
+        
+        // 尝试通过用户名获取用户 UUID
+        const usersResponse = await callApi('GET', '/api/users?limit=500');
+        const allUsers = usersResponse.response.users || [];
+        const existingUser = allUsers.find(u => u.username === params.username);
+        
+        if (existingUser) {
+          console.log(`🔍 找到旧用户：${existingUser.uuid}`);
+          await deleteUser(existingUser.uuid);
+          console.log(`✅ 已删除旧用户`);
+          await new Promise(resolve => setTimeout(resolve, 2000)); // 等待 2 秒
+          
+          // 重试创建
+          console.log('🔄 重试创建...');
+          response = await callApi('POST', '/api/users', requestData);
+        } else {
+          // 搜索不到但 API 说存在，尝试遍历所有用户（包括已删除）
+          console.log('⚠️  搜索接口找不到，尝试分页遍历所有用户...');
+          let allUsers = [];
+          let page = 1;
+          let hasMore = true;
+          
+          while (hasMore) {
+            const pageResponse = await callApi('GET', `/api/users?page=${page}&limit=500`);
+            const users = pageResponse.response.users || [];
+            allUsers = allUsers.concat(users);
+            hasMore = users.length === 500;
+            page++;
+          }
+          
+          const foundUser = allUsers.find(u => u.username === params.username);
+          if (foundUser) {
+            console.log(`🔍 分页遍历找到旧用户：${foundUser.uuid}`);
+            await deleteUser(foundUser.uuid);
+            console.log(`✅ 已删除旧用户`);
+            await new Promise(resolve => setTimeout(resolve, 3000)); // 等待 3 秒
+            console.log('🔄 重试创建...');
+            response = await callApi('POST', '/api/users', requestData);
+          } else {
+            console.error('❌ 遍历所有用户也找不到，可能是 Remnawave 用户名保留机制');
+            console.error('💡 解决方案：使用替代用户名（如 lucky2_pc）或管理后台手动删除');
+            throw new Error('用户已存在但无法找到 UUID，请手动删除或使用其他用户名');
+          }
+        }
+      } else {
+        throw createError;
+      }
+    }
     
-    const account = response.response;
+    account = response.response;
     console.log('✅ 账号创建成功!\n');
     
     console.log('📋 账号详情:');
     console.log(`  UUID: ${account.uuid}`);
     console.log(`  短 UUID: ${account.shortUuid}`);
     console.log(`  状态：${account.status}`);
-    console.log(`  VLESS UUID: ${account.vlessUuid}`);
-    console.log(`  Trojan 密码：${account.trojanPassword}`);
-    console.log(`  SS 密码：${account.ssPassword}`);
     console.log(`  订阅地址：${account.subscriptionUrl}`);
     console.log('');
     
     // 发送邮件
     console.log('📧 准备发送开通邮件...');
-    await sendEmail(account);
+    const emailResult = await sendEmail(account);
+    emailSent = emailResult.sent;
+    messageId = emailResult.messageId;
     
     console.log('\n✅ 全部完成!\n');
+    
+    // 记录日志
+    await logCreation('success', account, emailSent, messageId);
+    
     return account;
     
   } catch (error) {
+    errorMessage = error.message;
     console.error('❌ 创建账号失败:', error.message);
+    
+    // 记录失败日志
+    if (!account) {
+      await logCreation('failed', null, false, null, errorMessage);
+    }
+    
     process.exit(1);
   }
 }
 
 // 发送邮件
 async function sendEmail(account) {
-  const { exec } = require('child_process');
-  const util = require('util');
-  const execPromise = util.promisify(exec);
-  
   const sendEmailScript = path.join(CONFIG_DIR, 'send-template-email.js');
   const tutorialUrl = 'https://rjdx19yd9zo.sg.larksuite.com/docx/EwMLdN3asoQ44FxOlN6lQ6frgdh?from=from_copylink';
   const downloadUrl = 'https://v2raytun.com/';
+  const downloadBackup = 'https://testappdownload-bydtmscom.oss-cn-hongkong.aliyuncs.com/OPSFILE/v2RayTun_Setup.zip';
+  const appstoreUrl = 'https://apps.apple.com/us/app/v2raytun/id6476628951';
   const sendDate = new Date().toISOString().split('T')[0];
   
   const vars = {
     recipient_name: params.username,
+    recipient_email: params.email,
     account_name: params.username,
     subscription_url: account.subscriptionUrl,
     tutorial_url: tutorialUrl,
     download_url: downloadUrl,
+    download_backup: downloadBackup,
+    appstore_url: appstoreUrl,
     send_date: sendDate
   };
   
@@ -270,10 +493,58 @@ async function sendEmail(account) {
     const { stdout, stderr } = await execPromise(command);
     console.log(stdout);
     if (stderr) console.error(stderr);
+    
+    // 提取 Message ID
+    let messageId = null;
+    const messageIdMatch = stdout.match(/Message ID: <([^>]+)>/);
+    if (messageIdMatch) {
+      messageId = messageIdMatch[1];
+    }
+    
+    return { sent: true, messageId };
   } catch (error) {
     console.error('❌ 邮件发送失败:', error.message);
     if (error.stdout) console.log(error.stdout);
     if (error.stderr) console.error(error.stderr);
+    return { sent: false, messageId: null };
+  }
+}
+
+// 记录创建日志
+async function logCreation(status, account, emailSent, messageId, errorMessage = null) {
+  let command = `node "${LOG_SCRIPT}"`;
+  command += ` --username "${params.username}"`;
+  command += ` --email "${params.email}"`;
+  command += ` --status "${status}"`;
+  
+  if (params.squad) command += ` --squad "${params.squad}"`;
+  if (params.deviceLimit) command += ` --device-limit ${params.deviceLimit}`;
+  if (params.trafficGb) command += ` --traffic-gb ${params.trafficGb}`;
+  if (params.trafficReset) command += ` --traffic-reset "${params.trafficReset}"`;
+  if (params.expireDays) command += ` --expire-days ${params.expireDays}`;
+  if (params.cc) command += ` --cc "${params.cc}"`;
+  
+  if (account) {
+    command += ` --uuid "${account.uuid}"`;
+    command += ` --short-uuid "${account.shortUuid}"`;
+    command += ` --subscription-url "${account.subscriptionUrl}"`;
+  }
+  
+  command += ` --email-sent ${emailSent}`;
+  
+  if (messageId) {
+    command += ` --message-id "${messageId}"`;
+  }
+  
+  if (errorMessage) {
+    command += ` --error-message "${errorMessage}"`;
+  }
+  
+  try {
+    const { stdout } = await execPromise(command);
+    console.log(stdout);
+  } catch (error) {
+    console.error('⚠️  日志记录失败:', error.message);
   }
 }
 

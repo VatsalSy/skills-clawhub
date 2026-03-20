@@ -1,16 +1,18 @@
 {
   "name": "remnawave-account-creator",
-  "version": "1.0.0",
-  "description": "Remnawave 账号创建与邮件发送自动化技能",
+  "version": "1.1.0",
+  "description": "Remnawave 账号创建与分组管理自动化技能（2026-03-19 修复 API 调用）",
   "main": "create-account.js",
   "scripts": {
-    "create": "node create-account.js"
+    "create": "node create-account.js",
+    "add-squad": "node add-user-to-squad-generic.js"
   },
   "keywords": [
     "remnawave",
     "account",
     "email",
-    "automation"
+    "automation",
+    "squad-management"
   ],
   "author": "AI Assistant (小 a)",
   "license": "PRIVATE",
@@ -20,6 +22,6 @@
   "clawhub": {
     "private": true,
     "category": "automation",
-    "tags": ["remnawave", "account", "email"]
+    "tags": ["remnawave", "account", "email", "squad"]
   }
 }
