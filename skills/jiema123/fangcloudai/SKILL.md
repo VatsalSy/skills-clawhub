@@ -13,6 +13,79 @@ Skill 自动从环境变量获取 Token：
 - `FANGCLOUD_ADMIN_TOKEN`: 用于 URL 中包含 `admin` 的企业级接口。
 - `FANGCLOUD_USER_TOKEN`: 用于普通用户级接口。
 
+## 运行环境要求
+
+- **首选分发方式**: 使用 Go 版 CLI 二进制，不依赖客户本地 Python。
+- Skill 根目录只保留说明文档和参考资料；所有代码、构建脚本、构建产物、发布产物统一放在 `cli/` 目录中，避免影响 skill 本身目录结构。
+- 运行 Go 二进制只需要配置环境变量：
+  - `FANGCLOUD_USER_TOKEN`
+  - `FANGCLOUD_ADMIN_TOKEN`，仅当访问 admin URL 时需要
+- 如果要分发给外部客户，优先让客户按环境从线上发布地址下载；离线场景再分发 `cli/release/` 目录中的对应平台原始二进制文件。
+
+## 环境与二进制对应关系
+
+- 先判断客户操作系统，再判断 CPU 架构，然后只使用对应的 CLI 二进制。
+- 不要跨环境混用二进制，例如不要在 Windows 上使用 macOS/Linux 文件，也不要在 `arm64` 机器上优先发 `amd64` 版本。
+- 线上发布地址前缀：`https://app.fangcloud.com/sync/vv25/knowclaw/release/`
+
+### 平台选择
+
+- Windows `amd64`:
+  - 下载 `https://app.fangcloud.com/sync/vv25/knowclaw/release/fangcloud-windows-amd64.exe`
+- Windows `arm64`:
+  - 下载 `https://app.fangcloud.com/sync/vv25/knowclaw/release/fangcloud-windows-arm64.exe`
+- macOS Intel `amd64`:
+  - 下载 `https://app.fangcloud.com/sync/vv25/knowclaw/release/fangcloud-macos-amd64.zip`
+- macOS Apple Silicon `arm64`:
+  - 下载 `https://app.fangcloud.com/sync/vv25/knowclaw/release/fangcloud-macos-arm64.zip`
+- Linux `amd64`:
+  - 下载 `https://app.fangcloud.com/sync/vv25/knowclaw/release/fangcloud-linux-amd64.zip`
+- Linux `arm64`:
+  - 下载 `https://app.fangcloud.com/sync/vv25/knowclaw/release/fangcloud-linux-arm64.zip`
+
+### 如何判断环境
+
+- Windows:
+  - PowerShell 执行 `$env:PROCESSOR_ARCHITECTURE`
+  - 常见结果：`AMD64`、`ARM64`
+- macOS:
+  - 执行 `uname -m`
+  - 常见结果：`x86_64`、`arm64`
+- Linux:
+  - 执行 `uname -m`
+  - 常见结果：`x86_64`、`aarch64`
+
+### 使用规则
+
+- 如果用户没有明确说自己的环境，先让对方确认操作系统和架构，再发对应二进制。
+- 如果是 Apple Silicon Mac，优先使用 `fangcloud-macos-arm64`，不要默认发 Intel 版。
+- 如果是 Windows 用户，始终发 `.exe` 文件。
+- 如果无法确认架构，但系统是 Windows / Linux 普通办公机，优先尝试 `amd64`；如果确认是 ARM 设备，再切到 `arm64`。
+
+### 自动识别并下载
+
+- 优先使用脚本:
+  - macOS / Linux: `./cli/scripts/download_release_binary.sh`
+  - Windows PowerShell: `.\cli\scripts\download_release_binary.ps1`
+- 脚本会做下载后健康检查；校验失败会中止并提示更新发布文件。
+- macOS / Linux 下载结果:
+  - 原始 `zip` 保存到 `cli/release/`
+  - 解压后的二进制保存到 `cli/bin/`
+- Windows 下载结果:
+  - `.exe` 保存到 `cli/release/`
+- macOS / Linux（`bash`）:
+  - `os="$(uname -s)"; arch="$(uname -m)"; base="https://app.fangcloud.com/sync/vv25/knowclaw/release"; case "$os" in Darwin) [ "$arch" = "arm64" ] && file="fangcloud-macos-arm64.zip" || file="fangcloud-macos-amd64.zip" ;; Linux) [ "$arch" = "aarch64" ] && file="fangcloud-linux-arm64.zip" || file="fangcloud-linux-amd64.zip" ;; *) echo "unsupported os: $os"; exit 1 ;; esac; curl -fL "$base/$file" -o "$file"`
+- Windows（PowerShell）:
+  - `$base="https://app.fangcloud.com/sync/vv25/knowclaw/release"; $arch=$env:PROCESSOR_ARCHITECTURE; if ($arch -eq "ARM64") { $file="fangcloud-windows-arm64.exe" } else { $file="fangcloud-windows-amd64.exe" }; Invoke-WebRequest "$base/$file" -OutFile "$file"`
+
+## Go 版 CLI
+
+- **支持命令**:
+  - `fangcloud api <METHOD> <URL或相对路径> [DATA_JSON]`
+  - `fangcloud chat <message> [--agent-id ID] [--type TYPE] [--libs LIBS] [--no-stream]`
+  - `fangcloud organize [--folder-id ID | --folder-url URL] [--mode move|copy] [--dry-run]`
+  - `fangcloud upload <local_dir> [--remote-root PATH | --remote-parent-id ID] [--conflict-strategy overwrite|rename] [--include-hidden] [--dry-run]`
+
 ## 核心功能与接口参考
 
 详细接口定义请参考 [references/openapi.md](references/openapi.md)。
@@ -108,23 +181,46 @@ Skill 自动从环境变量获取 Token：
 
 ## 执行工具
 
-可以使用内置的 Python 客户端执行请求：
-- **通用客户端**: `python3 scripts/fangcloud_client.py <METHOD> <URL> [DATA_JSON]`
-- **智能体对话**: `python3 scripts/chat_agent.py "你的问题" [--agent-id ID] [--type TYPE] [--libs LIBS]`
-  - 示例: `python3 scripts/chat_agent.py "你好" --agent-id 3776`
-  - 示例: `python3 scripts/chat_agent.py "帮我总结文档" --type AI_LIBRARY --libs 123,456`
+优先使用下载后的 Go 二进制，按环境匹配后直接运行。
+- macOS / Linux:
+  - 首次执行 `./cli/scripts/download_release_binary.sh`
+  - 二进制会落到 `cli/bin/`
+  - 之后直接运行 `./cli/bin/fangcloud-macos-arm64 ...` 或 `./cli/bin/fangcloud-linux-amd64 ...`
+  - 如需直接输入命令名，可执行 `export PATH="$(pwd)/cli/bin:$PATH"`
+- Windows PowerShell:
+  - 使用 `.\cli\scripts\run_release_binary.ps1 ...`
+  - Windows 保持脚本入口方式，不改成 `bin` 目录直跑
 
-- **目录自动整理工具**: `python3 scripts/organize_folder.py [--folder-id ID | --folder-url URL] [--mode move|copy] [--dry-run]`
-  - 说明: 按文件后缀自动分类（文档/表格/图片/代码/演示/压缩包/其他），自动创建分类目录并批量移动或复制文件。
-  - 示例(先预演): `python3 scripts/organize_folder.py --folder-url "https://v2.fangcloud.com/atlas-web/desktop/files?desktop=%2Fdesktop%2Ffiles%2Ffolder%2F501007507161" --dry-run`
-  - 示例(执行移动): `python3 scripts/organize_folder.py --folder-id 501007507161 --mode move`
-  - 示例(执行复制): `python3 scripts/organize_folder.py --folder-id 501007507161 --mode copy`
+### 客户使用方式
 
-- **目录上传工具**: `python3 scripts/upload_directory.py <local_dir> [--remote-root PATH | --remote-parent-id ID] [--conflict-strategy overwrite|rename] [--include-hidden] [--dry-run]`
-  - 说明: 将本地目录递归上传到个人空间，默认会在云端创建同名目录并保持子目录结构；支持二次上传，默认同名走覆盖上传（`overwrite`）；默认不上传隐藏文件/目录（可通过 `--include-hidden` 开启）；支持按云端父目录ID上传（`--remote-parent-id`）。
-  - 示例(先预演): `python3 scripts/upload_directory.py ~/dev/workspace/file-check-workspace --dry-run`
-  - 示例(上传到个人空间根目录): `python3 scripts/upload_directory.py ~/dev/workspace/file-check-workspace`
-  - 示例(上传到指定父路径): `python3 scripts/upload_directory.py ~/dev/workspace/file-check-workspace --remote-root "自动上传测试"`
-  - 示例(上传到指定父目录ID): `python3 scripts/upload_directory.py ~/dev/workspace/file-check-workspace --remote-parent-id 501007507161`
-  - 示例(改为重命名策略): `python3 scripts/upload_directory.py ~/dev/workspace/file-check-workspace --conflict-strategy rename`
-  - 示例(包含隐藏文件): `python3 scripts/upload_directory.py ~/dev/workspace/file-check-workspace --include-hidden`
+- macOS / Linux:
+  - `./cli/scripts/download_release_binary.sh`
+  - `./cli/bin/fangcloud-macos-arm64 api GET /v2/user/info`
+  - 或先执行 `export PATH="$(pwd)/cli/bin:$PATH"`，再运行 `fangcloud-macos-arm64 api GET /v2/user/info`
+- Windows PowerShell:
+  - `.\cli\scripts\run_release_binary.ps1 api GET /v2/user/info`
+
+### CLI 子命令
+
+- **通用 API**: `<binary-or-runner> api <METHOD> <URL或相对路径> [DATA_JSON]`
+  - 示例(macOS/Linux): `./cli/bin/fangcloud-macos-arm64 api GET /v2/user/info`
+  - 示例(macOS/Linux): `fangcloud-linux-amd64 api POST /v2/share_link/create "{\"file_id\":123}"`
+  - 示例(Windows): `.\cli\scripts\run_release_binary.ps1 api GET /v2/user/info`
+  - URL 支持完整地址，也支持仅传 `/v2/...` 或 `v2/...`，默认会补成 `https://open.fangcloud.com/api`
+- **智能体对话**: `<binary-or-runner> chat "你的问题" [--agent-id ID] [--type TYPE] [--libs LIBS]`
+  - 示例(macOS/Linux): `fangcloud-macos-arm64 chat "你好" --agent-id 3776`
+  - 示例(macOS/Linux): `fangcloud-linux-amd64 chat "帮我总结文档" --type AI_LIBRARY --libs 123,456`
+- **目录自动整理**: `<binary-or-runner> organize [--folder-id ID | --folder-url URL] [--mode move|copy] [--dry-run]`
+  - 示例(macOS/Linux): `fangcloud-macos-arm64 organize --folder-id 501007507161 --mode move`
+- **目录上传**: `<binary-or-runner> upload <local_dir> [--remote-root PATH | --remote-parent-id ID] [--conflict-strategy overwrite|rename] [--include-hidden] [--dry-run]`
+  - 示例(macOS/Linux): `fangcloud-linux-amd64 upload ~/dev/workspace/file-check-workspace --dry-run`
+
+### 兼容说明
+
+- Go 版 CLI 是当前推荐入口和推荐分发形态。
+- Python 版本已经移除，不再作为回退方案保留。
+
+## 分发方式
+
+- 优先让用户按环境从发布地址下载对应二进制。
+- 如需离线分发，再使用 `cli/release/` 中对应平台的原始二进制文件。

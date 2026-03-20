@@ -3758,6 +3758,7 @@ curl --location --request POST 'https://open.fangcloud.com/api/v2/collection/cre
 }'
 
 接口必填字段 typed_id， name，expired
+expired 默认过期时间 当前时间+15天
 ```
 ---
 
