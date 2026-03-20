@@ -1,165 +1,162 @@
-# Design Inspiration Collection Skills - ClawHub Package
+# 🎨 Design Inspiration Collector
 
-> 打包时间：2026年03月11日 21:30  
-> 版本：1.0.0
+一键从 Behance、Dribbble、Pinterest 三大设计平台收集灵感，自动生成腾讯智能文档
 
 ---
 
-## 📦 包含内容
+## 简介
 
-此包包含以下技能，可直接上传到 ClawHub：
+设计师和产品经理的灵感收集神器！只需说出设计方向，即可自动从全球三大顶级设计平台获取精选案例，并整理成美观的腾讯文档。
 
-### 1. design-inspiration-collector (推荐)
-**完整的多平台设计灵感收集技能**
+### 核心能力
 
-- **功能**：搜索 Pinterest、Dribbble、Behance 三个平台
-- **输出**：生成飞书文档（命名格式：关键词+日期时间）
-- **触发词**：找灵感、收集灵感、设计参考、UI参考、视觉灵感
+✨ **三平台同步搜索**
+   - Pinterest：视觉灵感、配色参考
+   - Dribbble：UI设计、交互案例  
+   - Behance：完整项目、设计系统
 
-#### 特点：
-- ✅ 三平台同时搜索
-- ✅ 自动生成飞书文档
-- ✅ 相关度星级评分
-- ✅ 相关方向推荐
-- ✅ 趋势分析摘要
+📝 **智能文档生成**
+   - 自动创建腾讯智能文档
+   - 按平台分类整理，带星级评分
+   - 包含设计趋势分析和配色建议
 
-#### 依赖：
+🎯 **方向推荐**
+   - 基于主题智能推荐细分方向
+   - 帮助拓展设计思路
+
+---
+
+## 适用场景
+
+- 🚀 产品原型设计前的灵感收集
+- 🎨 UI/UX 设计参考
+- 📱 移动端/App 界面设计
+- 💼 B端/Dashboard 设计
+- 🏥 垂直行业应用设计（医疗、金融、教育等）
+
+---
+
+## 安装
+
 ```bash
-pip install tavily-python playwright
-playwright install chromium
-export TAVILY_API_KEY="your-api-key"
+# 通过 SkillHub 安装
+skillhub install design-inspiration-collector
+
+# 配置 API Key
+export TAVILY_API_KEY="tvly-你的密钥"
 ```
 
 ---
 
-### 2. pinterest-inspiration-collector (旧版)
-**仅搜索 Pinterest 的简化版**
+## 使用方法
 
-- **功能**：仅搜索 Pinterest 平台
-- **输出**：Markdown 报告
-- **状态**：建议使用 design-inspiration-collector 替代
+直接说出设计方向即可触发：
 
----
-
-## 🚀 快速开始
-
-### 安装到 OpenClaw
-
-```bash
-# 方式1：使用 .skill 文件
-clawhub install design-inspiration-collector.skill
-
-# 方式2：复制文件夹
-cp -r design-inspiration-collector ~/.openclaw/workspace/skills/
-```
-
-### 使用方法
-
-在聊天中输入：
 - "帮我收集医疗App的设计灵感"
-- "搜索上传文件的UI参考"
-- "找一些AI界面的视觉灵感"
+- "找一下金融Dashboard的参考"
+- "收集移动端UI设计趋势"
+- "Behance 上有啥好的医疗 UI"
 
 ---
 
-## 📁 文件结构
+## 输出示例
 
 ```
-clawhub_packages/
-├── README.md                          # 本文件
-├── design-inspiration-collector/      # 主技能
-│   ├── SKILL.md                       # 技能定义
-│   └── scripts/
-│       └── design_collector.py        # 主脚本
-└── pinterest-inspiration-collector/   # 旧版技能
-    ├── SKILL.md
-    └── scripts/
-        └── search_pinterest.py
-```
+✅ 已从三大平台收集 15 条精选灵感！
 
----
+📄 腾讯文档：AI医疗移动端设计参考_20260319
+🔗 https://docs.qq.com/aio/xxx
 
-## 🎯 上传 ClawHub 指南
+📊 包含内容：
+• Pinterest 精选 5 条 - 视觉风格、配色方案
+• Dribbble 精选 5 条 - UI组件、交互设计  
+• Behance 精选 5 条 - 完整项目案例
 
-1. 访问 https://clawhub.com
-2. 点击「发布技能」
-3. 选择 `design-inspiration-collector` 文件夹
-4. 填写信息：
-   - **名称**：design-inspiration-collector
-   - **版本**：1.0.0
-   - **标签**：design, inspiration, pinterest, dribbble, behance, ui
-   - **描述**：多平台设计灵感收集技能，支持 Pinterest、Dribbble、Behance
-
----
-
-## 📚 使用示例
-
-### 示例 1：医疗App设计
-```
-用户：帮我收集医疗App的设计灵感
-
-助手：
-✅ 飞书文档已创建！
-
-**文档名称**：医疗App设计灵感_20260311_170245
-**文档链接**：https://feishu.cn/docx/xxx
-
-共收集 15 条设计灵感
-
-📌 相关方向推荐：
-1. AI问诊助手 - 智能问诊、症状分析
-2. 健康追踪 - 运动记录、睡眠监测
-3. 远程医疗 - 视频问诊、处方管理
-```
-
-### 示例 2：上传文件UI
-```
-用户：帮我搜索上传文件的设计样式
-
-助手：
-✅ 飞书文档已创建！
-
-**文档名称**：上传文件设计样式_20260311_2042
-**文档链接**：https://feishu.cn/docx/xxx
-
-📊 趋势概览：
-- 简洁直观的按钮设计
-- 拖拽上传功能
-- 进度指示器
-- 用户友好的反馈
+💡 相关推荐：
+1. AI 心理健康 App 设计
+2. 智能问诊聊天界面
+3. 健康数据可视化
 ```
 
 ---
 
-## 🔧 技术说明
+## 功能特性
 
-### Tavily API
-用于搜索三个设计平台的内容。需要 API Key：
-- 免费额度：每月 1000 次搜索
-- 注册：https://tavily.com
-
-### Feishu API
-用于创建飞书文档。需要配置飞书应用权限。
-
-### Playwright (可选)
-用于截图功能。由于反爬虫限制，截图可能失败，但不影响核心功能。
+| 特性 | 说明 |
+|------|------|
+| 🔍 多平台搜索 | 同时搜索 Behance、Dribbble、Pinterest |
+| ⭐ 智能评分 | 按相关度给出 1-5 星推荐 |
+| 📄 自动文档 | 生成格式化的腾讯智能文档 |
+| 🔗 直达链接 | 每条灵感附带原始链接 |
+| 💡 方向推荐 | 智能推荐相关设计方向 |
 
 ---
 
-## 📝 更新日志
+## 触发词
 
-### v1.0.0 (2026-03-11)
-- ✅ 初始版本
-- ✅ 支持三平台搜索
-- ✅ 飞书文档自动生成
-- ✅ 相关方向推荐
-
----
-
-## 🤝 贡献
-
-欢迎提交 PR 改进此技能！
+```
+找灵感、收集灵感、设计参考、UI参考、视觉灵感、设计趋势、
+Behance、Dribbble、Pinterest、帮我找设计、设计灵感
+```
 
 ---
 
-*Made with ❤️ by AI Assistant*
+## 依赖要求
+
+### 工具依赖
+
+| 工具 | 用途 | 安装命令 |
+|------|------|----------|
+| Tavily API | 搜索三大设计平台 | `pip install tavily-python` |
+| tencent-docs | 创建腾讯文档 | `skillhub install tencent-docs` |
+
+### 环境变量
+
+| 变量名 | 说明 | 必需 |
+|--------|------|------|
+| `TAVILY_API_KEY` | Tavily API 密钥 | ✅ |
+
+---
+
+## 热门设计方向
+
+| 方向 | 搜索关键词 |
+|------|------------|
+| 移动 App | mobile app, ios, android, app ui |
+| 网页设计 | web design, landing page, website |
+| 仪表盘 | dashboard, admin panel, data viz |
+| 电商 | ecommerce, shop, checkout |
+| 金融 | fintech, banking, crypto, payment |
+| 健康 | health, medical, fitness, wellness |
+| 风格 | glassmorphism, neumorphism, minimal |
+
+---
+
+## 项目信息
+
+```yaml
+name: design-inspiration-collector
+version: 1.0.0
+author: your-name
+category: productivity
+tags: [design, ui, ux, inspiration, behance, dribbble, pinterest, tencent-docs]
+emoji: 🎨
+```
+
+---
+
+## 目录结构
+
+```
+design-inspiration-collector/
+├── README.md              # 本文件
+├── SKILL.md               # 技能详细文档
+└── scripts/
+    └── design_collector.py # 核心脚本
+```
+
+---
+
+## 许可证
+
+MIT License

@@ -1,17 +1,16 @@
 ---
 name: design-inspiration-collector
-description: 多平台设计灵感收集技能。当用户需要设计参考、UI灵感、视觉创意时触发。用户提出设计方向（如"医疗App"、"移动端UI"、"金融Dashboard"等），技能负责：(1) 使用Tavily搜索Behance、Dribbble、Pinterest三个平台的相关内容 (2) 整理内容并附上链接 (3) 生成飞书文档，文档命名为"关键词+日期时间"格式 (4) 发送文档链接给用户 (5) 推荐其他相关方向（不带链接）。触发词：找灵感、收集灵感、设计参考、UI参考、视觉灵感、设计趋势、Behance、Dribbble、Pinterest。
-Version：1.0.0
+description: 多平台设计灵感收集技能。当用户需要设计参考、UI灵感、视觉创意时触发。用户提出设计方向（如"医疗App"、"移动端UI"、"金融Dashboard"等），技能负责：(1) 使用Tavily搜索Behance、Dribbble、Pinterest三个平台的相关内容 (2) 整理内容并附上链接 (3) 生成腾讯文档，文档命名为"关键词+日期时间"格式 (4) 发送文档链接给用户 (5) 推荐其他相关方向（不带链接）。触发词：找灵感、收集灵感、设计参考、UI参考、视觉灵感、设计趋势、Behance、Dribbble、Pinterest。
 ---
 
 # 多平台设计灵感收集器
 
-帮助用户从 Behance、Dribbble、Pinterest 三个平台高效收集设计灵感，并生成飞书文档。
+帮助用户从 Behance、Dribbble、Pinterest 三个平台高效收集设计灵感，并生成腾讯文档。
 
 ## 功能特点
 
 1. **多平台搜索**：自动搜索 Behance、Dribbble、Pinterest 三个设计平台
-2. **飞书文档**：自动生成飞书文档，命名为"关键词+日期时间"格式
+2. **腾讯文档**：自动生成腾讯智能文档，命名为"关键词+日期时间"格式
 3. **趋势分析**：提取 AI 设计趋势摘要
 4. **推荐相关**：推荐相关设计方向供进一步探索
 
@@ -38,16 +37,13 @@ query = f"site:dribbble.com {主题} ui design 2026"
 query = f"site:behance.net {主题} ui ux design 2026"
 ```
 
-### Step 3: 生成飞书文档
+### Step 3: 生成腾讯文档
 
-使用 feishu_doc 工具创建飞书文档：
+使用 mcporter 调用 tencent-docs 创建腾讯智能文档：
 
-```python
-# 1. 创建文档，命名为：关键词+日期时间
-feishu_doc action=create title="{关键词}_{YYYYMMDD_HHMMSS}"
-
-# 2. 写入 Markdown 内容
-feishu_doc action=write doc_token=xxx content="markdown内容"
+```bash
+# 创建智能文档，命名为：关键词+日期时间
+mcporter call "tencent-docs" "create_smartcanvas_by_markdown" --args '{"title": "{关键词}_{YYYYMMDD_HHMMSS}", "markdown": "# 内容标题\n\n## 平台1\n- 内容..."}'
 ```
 
 **文档命名格式**：`{关键词}_{YYYYMMDD_HHMMSS}`
@@ -58,7 +54,7 @@ feishu_doc action=write doc_token=xxx content="markdown内容"
 
 ### Step 4: 发送文档链接
 
-将飞书文档链接发送给用户，格式如下：
+将腾讯文档链接发送给用户，格式如下：
 
 ```
 # {主题} 设计灵感收集
@@ -119,7 +115,7 @@ feishu_doc action=write doc_token=xxx content="markdown内容"
 
 ---
 
-**飞书文档链接**：https://feishu.cn/docx/xxx
+**腾讯文档链接**：https://docs.qq.com/doc/xxx
 
 ---
 
@@ -128,7 +124,7 @@ feishu_doc action=write doc_token=xxx content="markdown内容"
 | 工具 | 用途 | 安装 |
 |------|------|------|
 | Tavily API | 搜索三个设计平台 | `pip install tavily-python` |
-| feishu_doc | 创建飞书文档 | 系统内置 |
+| tencent-docs | 创建腾讯文档 | `skillhub install tencent-docs` |
 
 ## 配置说明
 
@@ -160,16 +156,16 @@ export TAVILY_API_KEY="tvly-你的key"
 **执行：**
 1. 搜索三个平台：`healthcare app ui design`
 2. 整理 15 条内容（每个平台 5 条）
-3. 创建飞书文档：`医疗App设计灵感_20260311_170245`
+3. 创建腾讯文档：`医疗App设计灵感_20260311_170245`
 4. 发送文档链接给用户
 5. 推荐相关方向：AI问诊、健康追踪、远程医疗
 
 **回复：**
 ```
-✅ 飞书文档已创建！
+✅ 腾讯文档已创建！
 
 **文档名称**：医疗App设计灵感_20260311_170245
-**文档链接**：https://feishu.cn/docx/xxx
+**文档链接**：https://docs.qq.com/doc/xxx
 
 共收集 15 条设计灵感（Pinterest 5条、Dribbble 5条、Behance 5条）
 
@@ -199,8 +195,8 @@ export TAVILY_API_KEY="tvly-你的key"
 ## 注意事项
 
 1. **三个平台都要搜**：Pinterest、Dribbble、Behance，每个平台至少 5 条
-2. **飞书文档命名**：必须按 `{关键词}_{YYYYMMDD_HHMMSS}` 格式命名
+2. **腾讯文档命名**：必须按 `{关键词}_{YYYYMMDD_HHMMSS}` 格式命名
 3. **按平台分类**：文档中清晰标注 Pinterest、Dribbble、Behance
 4. **推荐内容**：最后推荐 3-5 个相关方向（不带链接）
 5. **星级评分**：按相关度给出 1-5 星评分
-6. **发送链接**：必须发送飞书文档链接给用户
+6. **发送链接**：必须发送腾讯文档链接给用户

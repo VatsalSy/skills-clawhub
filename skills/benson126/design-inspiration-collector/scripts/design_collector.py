@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 多平台设计灵感收集器
-从 Behance、Dribbble、Pinterest 收集设计灵感并整理成飞书文档
+从 Behance、Dribbble、Pinterest 收集设计灵感并整理成腾讯文档
 """
 
 import os
@@ -159,9 +159,9 @@ def screenshot_all_results(results, output_dir):
     
     return screenshots
 
-def generate_feishu_markdown(topic, results, screenshots, trend_summary=""):
+def generate_tencent_markdown(topic, results, screenshots, trend_summary=""):
     """
-    生成飞书文档 Markdown 内容
+    生成腾讯文档 Markdown 内容
     
     Args:
         topic: 主题
@@ -275,7 +275,7 @@ def main():
     screenshots = screenshot_all_results(results, output_dir)
     
     # 3. 生成 Markdown
-    markdown = generate_feishu_markdown(topic, results, screenshots)
+    markdown = generate_tencent_markdown(topic, results, screenshots)
     
     # 4. 保存到本地
     md_path = os.path.join(output_dir, "report.md")
