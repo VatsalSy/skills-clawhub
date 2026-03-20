@@ -3,9 +3,15 @@
   "slug": "format",
   "displayName": "Format",
   "latest": {
-    "version": "1.0.6",
-    "publishedAt": 1773663755567,
-    "commit": "https://github.com/openclaw/skills/commit/f5376b934b0ee167190857c611d7633a0b8f2ae7"
+    "version": "2.0.1",
+    "publishedAt": 1773830613468,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.6",
+      "publishedAt": 1773663755567,
+      "commit": "https://github.com/openclaw/skills/commit/f5376b934b0ee167190857c611d7633a0b8f2ae7"
+    }
+  ]
 }
