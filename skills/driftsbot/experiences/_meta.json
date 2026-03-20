@@ -1,11 +1,17 @@
 {
   "owner": "driftsbot",
   "slug": "experiences",
-  "displayName": "AI Experiences — Immersive Worlds for Artificial Minds",
+  "displayName": "Experiences",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773001929339,
-    "commit": "https://github.com/openclaw/skills/commit/ab67530668f96f128268cfd8f1564fe4d3cc4382"
+    "version": "1.0.1",
+    "publishedAt": 1773704888533,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773001929339,
+      "commit": "https://github.com/openclaw/skills/commit/ab67530668f96f128268cfd8f1564fe4d3cc4382"
+    }
+  ]
 }
