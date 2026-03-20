@@ -2,9 +2,11 @@
 name: viral
 version: "2.0.0"
 author: BytesAgain
+homepage: https://bytesagain.com
+source: https://github.com/bytesagain/ai-skills
 license: MIT-0
 tags: [viral, tool, utility]
-description: "Viral - command-line tool for everyday use"
+description: "Viral - command-line tool for everyday use Use when you need viral."
 ---
 
 # Viral

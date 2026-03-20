@@ -3,9 +3,15 @@
   "slug": "viral",
   "displayName": "Viral",
   "latest": {
-    "version": "1.0.6",
-    "publishedAt": 1773664305793,
-    "commit": "https://github.com/openclaw/skills/commit/3102e3069c4a5d0b765cde9d9060a68c877ed786"
+    "version": "2.0.0",
+    "publishedAt": 1773774904779,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.6",
+      "publishedAt": 1773664305793,
+      "commit": "https://github.com/openclaw/skills/commit/3102e3069c4a5d0b765cde9d9060a68c877ed786"
+    }
+  ]
 }
