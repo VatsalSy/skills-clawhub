@@ -3,11 +3,16 @@
   "slug": "translator-pro",
   "displayName": "Translator Pro",
   "latest": {
-    "version": "2.2.0",
-    "publishedAt": 1773421949514,
-    "commit": "https://github.com/openclaw/skills/commit/2d4ae080a77edf6012286003f434d1eeeeedbea2"
+    "version": "4.0.0",
+    "publishedAt": 1773883419677,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.2.0",
+      "publishedAt": 1773421949514,
+      "commit": "https://github.com/openclaw/skills/commit/2d4ae080a77edf6012286003f434d1eeeeedbea2"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1773187460457,
