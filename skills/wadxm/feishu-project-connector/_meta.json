@@ -3,11 +3,16 @@
   "slug": "feishu-project-connector",
   "displayName": "Feishu Project(Meego) Connector",
   "latest": {
-    "version": "1.0.8",
-    "publishedAt": 1773324140827,
-    "commit": "https://github.com/openclaw/skills/commit/3413cf09d013afd6ef9feb7bc9106c50a785a678"
+    "version": "1.0.10",
+    "publishedAt": 1773762910957,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.8",
+      "publishedAt": 1773324140827,
+      "commit": "https://github.com/openclaw/skills/commit/3413cf09d013afd6ef9feb7bc9106c50a785a678"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1773206506270,
