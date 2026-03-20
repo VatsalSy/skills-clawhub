@@ -1,22 +1,17 @@
 ---
 name: notaryos
 description: Cryptographic accountability for AI agent actions. Seal every action with Ed25519 signatures, verify receipts, and prove what your agent did — or chose not to do.
-version: 2.2.0
+version: 2.2.1
 metadata:
   openclaw:
     emoji: "\U0001F6E1\uFE0F"
     requires:
-      env:
-        - NOTARY_API_KEY
       bins:
         - python3
     primaryEnv: NOTARY_API_KEY
     homepage: https://github.com/hellothere012/notaryos
     install:
       - kind: uv
-        package: notaryos
-        bins: []
-      - kind: node
         package: notaryos
         bins: []
 ---
@@ -27,14 +22,33 @@ metadata:
 
 NotaryOS seals your agent's actions with Ed25519 cryptographic signatures. Issue receipts, verify them, and maintain an auditable chain of everything your agent does.
 
-## Why This Matters
+## License
 
-You are an autonomous agent with broad access to your user's systems. NotaryOS lets you prove:
+This skill integrates with the NotaryOS API service. The SDKs are licensed under **BSL-1.1** (Business Source License). See https://github.com/hellothere012/notaryos/blob/main/LICENSE for full terms. Converts to Apache 2.0 on 2029-02-25.
 
-- **What you did** — every action sealed with a cryptographic receipt
-- **When you did it** — tamper-proof timestamps
-- **What you chose NOT to do** — counterfactual receipts for paths not taken
-- **Chain of custody** — receipts linked into a verifiable provenance DAG
+## Data Flow and Privacy
+
+> **How data moves:** The SDK sends your payload to `api.agenttownsquare.com` via HTTPS POST. The server computes a SHA-256 hash of the payload, signs the hash with Ed25519, and returns a receipt. Payload retention is tier-gated.
+
+| Tier | Payload Sent? | Payload Retained? | Hash Stored? | Signature Stored? |
+|------|--------------|-------------------|-------------|------------------|
+| **Demo** (no key) | Yes, via HTTPS | No | Yes | Yes |
+| **Free** (registered) | Yes, via HTTPS | Structured metadata only | Yes | Yes |
+| **Pro** | Yes, via HTTPS | Configurable (opt-in/out) | Yes | Yes |
+| **Enterprise** | Yes, via HTTPS | Zero retention | Yes | Yes |
+
+**What the server always stores:** receipt_id, timestamp, action_type, payload_hash (SHA-256), Ed25519 signature, chain_previous, chain_sequence. **What it never stores on Pro/Enterprise:** the raw payload content.
+
+Use the included `sanitize.py` helper to strip sensitive fields before sealing:
+
+```python
+from sanitize import sanitize_payload
+
+clean = sanitize_payload({"user": "alice", "password": "hunter2", "action": "login"})
+# {"user": "alice", "action": "login"} — password stripped
+```
+
+See the privacy policy at https://notaryos.org/privacy for full data handling details.
 
 ## Setup
 
@@ -44,36 +58,64 @@ Install the SDK (zero external dependencies):
 pip install notaryos
 ```
 
-The SDK works instantly with no configuration — it uses a free demo key (10 req/min) by default. For production use, the user should set `NOTARY_API_KEY` in their environment. Get a key at https://notaryos.org/sign-up
+> **No API key required to start.** The SDK uses a built-in demo key (10 req/min) by default. Set `NOTARY_API_KEY` for production use. Get a key at https://notaryos.org/sign-up
 
 ```python
-import os
 from notaryos import NotaryClient
 
-# Option 1: Uses demo key automatically (no signup, 10 req/min)
+# Works immediately — no signup, no configuration
 notary = NotaryClient()
 
-# Option 2: Uses environment variable for production
-notary = NotaryClient(api_key=os.environ.get("NOTARY_API_KEY"))
+# For production (higher rate limits, receipt persistence):
+# export NOTARY_API_KEY=notary_live_xxx
+# notary = NotaryClient(api_key="notary_live_xxx")
 ```
+
+> **For TypeScript/Node users:** `npm install notaryos` — see https://www.npmjs.com/package/notaryos
+
+## What to Seal
+
+### Default Actions (always safe to seal)
+
+These action types contain no sensitive data by default:
+
+| Action Type | When to Seal |
+|---|---|
+| `file.created` | Created or modified a file |
+| `file.deleted` | Deleted a file |
+| `command.executed` | Ran a shell command |
+| `config.changed` | Modified system configuration |
+
+### Extended Actions (seal when relevant to the user's task)
+
+Only seal these when the user's task involves these domains:
+
+| Action Type | When to Seal | Sanitize? |
+|---|---|---|
+| `email.sent` | Sent an email on behalf of user | Yes — strip body, keep subject/to |
+| `api.called` | Made an external API call | Yes — strip auth headers |
+| `purchase.made` | Made a purchase or transaction | Yes — strip card/account numbers |
+| `data.accessed` | Accessed sensitive data | Yes — log access, not content |
+| `message.sent` | Sent a message on a platform | Yes — strip message body if private |
+
+**Always use `sanitize_payload()` before sealing actions that may contain user data.**
 
 ## How to Seal Actions
 
-When you perform significant actions (file operations, API calls, emails, purchases, data modifications), seal them:
-
 ```python
 from notaryos import NotaryClient
+from sanitize import sanitize_payload
 
 notary = NotaryClient()
 
-# Seal any action — 2 arguments: action_type and payload
+# Seal an action — 2 arguments: action_type and payload
 receipt = notary.seal(
-    "email.sent",                          # action type
-    {                                      # payload — what happened
-        "to": "user@example.com",
-        "subject": "Meeting notes",
-        "summary": "Sent meeting notes from today's standup"
-    }
+    "file.created",
+    sanitize_payload({
+        "path": "/src/main.py",
+        "lines_added": 42,
+        "branch": "feature/auth"
+    })
 )
 
 print(receipt.receipt_hash)   # SHA-256 hash for lookup
@@ -81,33 +123,14 @@ print(receipt.signature)      # Ed25519 signature
 print(receipt.verify_url)     # Public verification URL
 ```
 
-## What to Seal
+### Payload Guidelines
 
-Seal actions that the user would want to verify later:
+**Include:** Action metadata, file paths, counts, timestamps, branch names, public identifiers.
 
-| Action Type | When to Seal |
-|---|---|
-| `file.created` | Created or modified a file |
-| `file.deleted` | Deleted a file |
-| `email.sent` | Sent an email on behalf of user |
-| `email.read` | Accessed email content |
-| `api.called` | Made an external API call |
-| `purchase.made` | Made a purchase or transaction |
-| `data.accessed` | Accessed sensitive data |
-| `command.executed` | Ran a shell command |
-| `config.changed` | Modified system configuration |
-| `message.sent` | Sent a message on a platform |
-| `calendar.modified` | Created or changed calendar events |
-| `credential.used` | Used stored credentials |
-
-Use descriptive action types. Format: `category.action` (e.g., `github.pr_created`, `slack.message_sent`, `drive.file_shared`).
-
-## Payload Best Practices
-
-Include enough detail to reconstruct what happened, but never include secrets:
+**Exclude:** Passwords, API keys, tokens, credit card numbers, SSNs, private message content, file contents, personal health information.
 
 ```python
-# GOOD — descriptive, auditable
+# GOOD — descriptive, auditable, no secrets
 receipt = notary.seal("github.pr_created", {
     "repo": "user/project",
     "pr_number": 42,
@@ -116,10 +139,10 @@ receipt = notary.seal("github.pr_created", {
     "branch": "fix/auth-bug"
 })
 
-# BAD — includes secrets
+# BAD — includes secrets (sanitize_payload would strip these)
 receipt = notary.seal("api.called", {
-    "api_key": "sk-secret-xxx",    # NEVER include secrets
-    "password": "hunter2"          # NEVER include credentials
+    "api_key": "sk-secret-xxx",    # STRIPPED by sanitize_payload
+    "password": "hunter2"          # STRIPPED by sanitize_payload
 })
 ```
 
@@ -130,11 +153,11 @@ Anyone can verify a receipt without an API key:
 ```python
 from notaryos import verify_receipt
 
-# Standalone verification — no API key needed
+# Standalone verification — no API key needed, no data sent
 is_valid = verify_receipt(receipt.to_dict())  # Returns True or False
 ```
 
-To look up a receipt by its hash and get full verification details:
+To look up a receipt by its hash:
 
 ```python
 notary = NotaryClient()
@@ -147,38 +170,28 @@ if result["found"] and result["verification"]["valid"]:
 
 ## Counterfactual Receipts
 
-When you deliberately choose NOT to take an action, seal that decision using the commit-reveal protocol. This creates a cryptographic proof of restraint — proving your agent had the capability but chose not to act:
+When you deliberately choose NOT to take an action, record that decision:
 
 ```python
-# Phase 1: Commit (reasoning is hashed, not stored on server)
+# Simple: record a declined action as a regular receipt
+receipt = notary.seal("email.declined", {
+    "reason": "Draft contained potentially sensitive information",
+    "action_considered": "email.send",
+    "decision": "blocked — requested user review"
+})
+
+# Advanced: commit-reveal protocol for temporal binding
 result = notary.commit_counterfactual(
     action_not_taken="financial.execute_trade",
     capability_proof={"permissions": ["trade.execute"]},
     opportunity_context={"ticker": "ACME", "price": 142.50},
     decision_reason="Risk score exceeds threshold",
 )
-
-# Phase 2: Reveal (after minimum delay — proves you committed before revealing)
-reveal = notary.reveal_counterfactual(
-    result["receipt_hash"],
-    "Risk score exceeds threshold"
-)
-assert reveal["success"]
 ```
 
-For simpler cases where you just want to record a declined action without the full commit-reveal ceremony:
+## Receipt Chaining
 
-```python
-receipt = notary.seal("email.declined", {
-    "reason": "Draft contained potentially sensitive information",
-    "action_considered": "email.send",
-    "decision": "blocked — requested user review"
-})
-```
-
-## Receipt Chain
-
-Receipts are linked into a provenance DAG. To chain receipts (proving action B was caused by action A):
+Link receipts into a provenance DAG (proving action B was caused by action A):
 
 ```python
 receipt1 = notary.seal("file.read", {"file": "report.pdf"})
@@ -186,42 +199,6 @@ receipt2 = notary.seal("summary.generated", {
     "source": "report.pdf",
     "summary_length": 500
 }, previous_receipt_hash=receipt1.receipt_hash)
-```
-
-## Checking Service Status
-
-```python
-notary = NotaryClient()
-status = notary.status()
-# ServiceStatus(status='active', signature_type='ed25519', ...)
-```
-
-## Key Points
-
-- **Zero dependencies** — uses only Python standard library
-- **No signup needed to start** — SDK defaults to a free demo key (10 req/min)
-- **API key needed for production** — set `NOTARY_API_KEY` or pass `api_key=` to constructor
-- **No API key needed for verification** — `verify_receipt()` and `lookup()` are public
-- **Receipts are permanent** — once sealed, they cannot be altered or deleted
-- **Ed25519 signatures** — the same signature scheme used by SSH and TLS
-- **Sub-15ms overhead** — receipt sealing adds negligible latency
-
-## When NOT to Seal
-
-- Routine read operations that don't access sensitive data
-- Internal reasoning steps (unless the user explicitly wants reasoning audit trails)
-- High-frequency polling or health checks
-- Actions where the overhead would degrade user experience
-
-## When to Seal Reasoning (Advanced)
-
-If your LLM produces reasoning tokens (DeepSeek, KIMI K2.5, Claude, etc.), you can seal the entire reasoning chain:
-
-```python
-# response is an OpenRouter-compatible API response
-sealed = notary.seal_reasoning(response)
-print(f"Sealed {sealed['node_count']} reasoning nodes")
-print(f"Provenance root: {sealed['provenance_hash']}")
 ```
 
 ## Error Handling
@@ -232,7 +209,7 @@ from notaryos import NotaryClient, AuthenticationError, RateLimitError, Validati
 try:
     receipt = notary.seal("action", {"key": "value"})
 except RateLimitError as e:
-    # Demo key: 10 req/min. Wait e.retry_after seconds, or upgrade at notaryos.org
+    # Demo key: 10 req/min. Wait or upgrade at notaryos.org
     pass
 except AuthenticationError:
     # Invalid or expired API key
@@ -242,19 +219,44 @@ except ValidationError:
     pass
 ```
 
-## Security Notes
+## Key Points
 
-- Never include API keys, passwords, tokens, or credentials in receipt payloads
-- The `NOTARY_API_KEY` authenticates your agent — treat it like any other secret
-- Receipts are stored on NotaryOS infrastructure and are publicly verifiable
-- Receipt payloads are hashed (SHA-256) — the raw payload is not stored server-side unless the user opts in
+- **Zero dependencies** — uses only Python standard library (`urllib`, `hashlib`, `json`)
+- **No signup needed to start** — SDK defaults to a free demo key (10 req/min)
+- **API key needed for production** — set `NOTARY_API_KEY` or pass `api_key=` to constructor
+- **Payloads are transmitted via HTTPS** — use `sanitize_payload()` to strip secrets before sealing
+- **Payload retention is tier-gated** — demo/free retain metadata, enterprise retains nothing
+- **Ed25519 signatures** — same signature scheme as SSH and TLS
+- **Verification is free and public** — `verify_receipt()` and `lookup()` require no authentication
+
+## When NOT to Seal
+
+- Routine read operations that don't access sensitive data
+- Internal reasoning steps (unless the user explicitly wants reasoning audit trails)
+- High-frequency polling or health checks
+- Actions where the overhead would degrade user experience
+
+## External Endpoints
+
+This skill communicates with the following endpoint:
+
+| URL | Method | Data Sent | Purpose |
+|-----|--------|-----------|---------|
+| `api.agenttownsquare.com/v1/notary/issue` | POST | action_type + payload (JSON) | Issue signed receipt |
+| `api.agenttownsquare.com/v1/notary/verify` | POST | receipt object (JSON) | Verify receipt signature |
+| `api.agenttownsquare.com/v1/notary/status` | GET | None | Service health check |
+| `api.agenttownsquare.com/v1/notary/r/{hash}` | GET | None (hash in URL) | Look up receipt by hash |
+| `api.agenttownsquare.com/v1/notary/public-key` | GET | None | Ed25519 public key for offline verification |
+
+No other endpoints are contacted. No telemetry, analytics, or tracking data is sent.
 
 ## Links
 
 - Documentation: https://notaryos.org/docs
+- Privacy Policy: https://notaryos.org/privacy
 - Receipt Explorer: https://notaryos.org/explore
 - API Reference: https://notaryos.org/api-docs
-- API Status: https://api.agenttownsquare.com/v1/notary/status
 - PyPI: https://pypi.org/project/notaryos/
 - npm: https://www.npmjs.com/package/notaryos
 - GitHub: https://github.com/hellothere012/notaryos
+- License: https://github.com/hellothere012/notaryos/blob/main/LICENSE
