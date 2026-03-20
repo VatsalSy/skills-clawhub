@@ -5,15 +5,19 @@
  *
  *    import { uiPluginRegistry } from "./plugins/registry.ts";
  *    import { isPluginTab, getPluginViewInfo } from "./navigation.ts";
+ *    import { renderTeamChatDrawer, renderTeamChatEdgeTab } from "./views/team-chat-drawer.ts";
  *
  * 2. Before </main>, add:
  *
  *    ${renderPluginTabContent(state)}
  *
- * 3. Add this function (before renderCompactionSettingsView or similar):
+ * 3. After </main> (outside the main content area), add:
+ *
+ *    ${renderTeamChatEdgeTab(state, state.client)}
+ *    ${state.teamChatOpen ? renderTeamChatDrawer(state, state.client) : nothing}
+ *
+ * 4. Add the renderPluginTabContent() function:
  */
-
-// Add this function to app-render.ts:
 
 function renderPluginTabContent(state: AppViewState) {
   if (!isPluginTab(state.tab)) return nothing;
@@ -40,3 +44,15 @@ function renderPluginTabContent(state: AppViewState) {
     </div>
   `;
 }
+
+/**
+ * NOTE on team-chat-drawer styles:
+ *
+ * The OpenClaw app uses `createRenderRoot() { return this; }` (no Shadow DOM).
+ * This means Lit `css` tagged templates are NOT applied — styles must be
+ * embedded as inline `<style>` tags in the rendered HTML.
+ *
+ * The team-chat-drawer.ts file exports its styles via an inline `<style>` tag
+ * included in the `renderTeamChatEdgeTab()` output (rendered even when the
+ * drawer is closed, so styles are always present).
+ */

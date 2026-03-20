@@ -1,6 +1,6 @@
 ---
 name: team-projects
-description: "Multi-agent project management with task boards, @-mention routing, WBS, and orchestrated team collaboration. Includes a Control UI plugin tab with project dashboard. Enables a coordinator agent to plan projects, break down work into phases and tasks, assign to specialist agents, dispatch via sessions_spawn, and track progress to completion. Use when: (1) managing work across multiple OpenClaw agents, (2) creating project plans with work breakdown structures, (3) assigning and tracking tasks across agents, (4) coordinating multi-agent workflows with dependencies, (5) running team-based projects with progress tracking."
+description: "Multi-agent project management with task boards, @-mention routing, WBS, and orchestrated team collaboration. Includes a Control UI plugin tab with project dashboard and a right-edge Team Chat drawer for live activity. Enables a coordinator agent to plan projects, break down work into phases and tasks, assign to specialist agents, dispatch via sessions_spawn, and track progress to completion. Use when: (1) managing work across multiple OpenClaw agents, (2) creating project plans with work breakdown structures, (3) assigning and tracking tasks across agents, (4) coordinating multi-agent workflows with dependencies, (5) running team-based projects with progress tracking."
 metadata:
   {
     "openclaw": {
@@ -17,7 +17,7 @@ metadata:
 
 # Team Projects 📋
 
-Multi-agent project management for OpenClaw. Run agent teams that plan, assign, execute, and track work together. Includes a **Control UI plugin tab** for visual project tracking.
+Multi-agent project management for OpenClaw. Run agent teams that plan, assign, execute, and track work together. Includes a **Control UI plugin tab** for visual project tracking and a **right-edge Team Chat drawer** for live agent activity.
 
 ## Overview
 
@@ -32,6 +32,18 @@ User → Coordinator (Koda) → dispatches tasks via sessions_spawn
 ```
 
 Each agent works independently with their own tools and workspace. The coordinator tracks progress, manages dependencies, and advances the project.
+
+## UI Components
+
+### 1. Projects Tab (sidebar)
+A full project dashboard registered as a plugin tab in the Control sidebar under the "Control" group. Shows project cards, task boards with phase sections, team overview, and progress stats.
+
+### 2. Team Chat Drawer (right edge)
+A slide-out panel accessible from a vertical "Team" tab fixed to the right edge of the screen. Shows:
+- Live agent activity feed (sub-agent sessions, messages)
+- Project progress bar
+- Task overview (collapsible)
+- Quick message input to send commands
 
 ## Installation
 
@@ -71,9 +83,9 @@ Add `subagents.allowAgents` to the **coordinator agent's list entry** (NOT on `a
 
 > ⚠️ **Critical:** `allowAgents` must be on the agent's own entry in `agents.list`. Setting it on `agents.defaults.subagents` does NOT work. The code reads `resolveAgentConfig(cfg, requesterAgentId)?.subagents?.allowAgents` which resolves the per-agent config, not defaults.
 
-### Step 2: Gateway Plugin Installation (for UI tab)
+### Step 2: Gateway Plugin Installation (for Projects tab)
 
-The UI tab requires installing a gateway plugin. This involves 4 registration points in the OpenClaw source:
+The Projects tab requires installing a gateway plugin. This involves 4 registration points in the OpenClaw source:
 
 #### 2a. Plugin SDK entry
 
@@ -102,33 +114,7 @@ Create `extensions/team-projects/openclaw.plugin.json`:
 }
 ```
 
-Create `extensions/team-projects/index.ts`:
-
-```typescript
-import type { OpenClawPluginApi } from "openclaw/plugin-sdk/team-projects";
-import { emptyPluginConfigSchema } from "openclaw/plugin-sdk/team-projects";
-
-const plugin = {
-  id: "team-projects",
-  name: "Team Projects",
-  description: "Multi-agent project management with task boards and orchestrated collaboration.",
-  configSchema: emptyPluginConfigSchema(),
-  register(api: OpenClawPluginApi) {
-    if (typeof api.registerView === "function") {
-      api.registerView({
-        id: "team-projects",
-        label: "Projects",
-        subtitle: "Multi-agent team projects",
-        icon: "clipboard-list",
-        group: "Control",
-        position: 3,
-      });
-    }
-  },
-};
-
-export default plugin;
-```
+Create `extensions/team-projects/index.ts` — see `gateway-plugin/index.ts`.
 
 #### 2c. Register in build pipeline (4 files)
 
@@ -168,22 +154,57 @@ export default plugin;
 }
 ```
 
-### Step 3: UI View Renderer (for Control dashboard)
+### Step 3: UI View Installation
+
+#### 3a. Team Projects view
 
 Copy `gateway-plugin/team-projects-view.ts` to `ui/src/ui/views/team-projects.ts`.
 
-Then wire it into the app:
+#### 3b. Team Chat Drawer
 
-**`ui/src/ui/app-render.ts`:**
-1. Add import: `import { uiPluginRegistry } from "./plugins/registry.ts";`
-2. Add import: `import { isPluginTab, getPluginViewInfo } from "./navigation.ts";`
-3. Before `</main>`, add: `${renderPluginTabContent(state)}`
-4. Add the `renderPluginTabContent()` function (see `gateway-plugin/app-render-patch.ts`)
+Copy `gateway-plugin/team-chat-drawer.ts` to `ui/src/ui/views/team-chat-drawer.ts`.
 
-**`ui/src/ui/app-gateway.ts`:**
-1. Add import: `import { renderTeamProjects } from "./views/team-projects.ts";`
-2. After `uiPluginRegistry.loadFromGateway(data)`, call `registerPluginViewRenderers(host)`
-3. Add the `registerPluginViewRenderers()` function (see `gateway-plugin/app-gateway-patch.ts`)
+> ⚠️ **Critical: No Shadow DOM** — The OpenClaw app uses `createRenderRoot() { return this; }`, so Lit `css` tagged templates are NOT applied. All styles must be embedded as inline `<style>` tags in the rendered HTML. The team-chat-drawer uses an inline `<style>` block inside `renderTeamChatEdgeTab()` so styles are present even when the drawer is closed.
+
+#### 3c. Wire into app-render.ts
+
+See `gateway-plugin/app-render-patch.ts` for the integration points:
+
+1. Import `renderTeamChatDrawer` and `renderTeamChatEdgeTab` from `./views/team-chat-drawer.ts`
+2. Before `</main>`, add `${renderPluginTabContent(state)}`
+3. After `</main>`, add the edge tab and drawer renders
+4. Add the `renderPluginTabContent()` function
+
+#### 3d. Wire into app-gateway.ts
+
+See `gateway-plugin/app-gateway-patch.ts` for the integration points:
+
+1. Import `uiPluginRegistry` from `./plugins/registry.ts`
+2. Import `renderTeamProjects` from `./views/team-projects.ts`
+3. In `onHello`, after `applySnapshot()`, call `registerTeamProjectsPlugin()`
+4. Add the `registerTeamProjectsPlugin()` function
+
+#### 3e. Add view state fields
+
+In `ui/src/ui/app-view-state.ts`, add to `AppViewState`:
+
+```typescript
+teamChatOpen: boolean;
+teamChatProject: unknown;
+teamChatSessions: unknown[];
+teamChatActivity: unknown[];
+teamChatLoading: boolean;
+teamChatInput: string;
+teamChatTasksCollapsed: boolean;
+```
+
+In `ui/src/ui/app-settings.ts`, add `teamChatOpen?: boolean` to `SettingsHost` type, and add defensive cleanup in `applyTabSelection()`:
+
+```typescript
+} else if (host.teamChatOpen) {
+  host.teamChatOpen = false;
+}
+```
 
 ### Step 4: Build & Restart
 
@@ -355,9 +376,10 @@ project
 4. **File-based persistence** — Simple JSON storage. No database required. Works on any OpenClaw instance.
 5. **CLI-first** — All operations available via CLI. The UI is optional.
 6. **Agent-native** — Uses OpenClaw's existing `sessions_spawn`, `sessions_send`, and `agents_list` tools. No custom transport.
-7. **Plugin architecture** — UI tab registered via OpenClaw's `registerView()` plugin API. Requires the plugin-architecture skill to be installed.
+7. **Plugin architecture** — Projects tab registered via OpenClaw's `uiPluginRegistry` (client-side). Team Chat drawer uses inline `<style>` tags for CSS (no Shadow DOM).
+8. **Client-side plugin registration** — Since the gateway plugin view registration pipeline isn't fully wired end-to-end, the Projects tab is registered client-side in `app-gateway.ts` during `onHello`. This is reliable and avoids depending on gateway-side plugin infrastructure.
 
-### Plugin Registration Points (4 required)
+### Plugin Registration Points (4 required for gateway plugin)
 
 When adding a new gateway plugin to OpenClaw, you must register it in 4 places:
 
@@ -370,6 +392,14 @@ When adding a new gateway plugin to OpenClaw, you must register it in 4 places:
 | `package.json` → exports → `./plugin-sdk/<id>` | Package subpath export |
 
 Missing any one of these causes `Cannot find module` errors at runtime.
+
+### CSS Gotcha: No Shadow DOM
+
+OpenClaw's `OpenClawApp` uses `createRenderRoot() { return this; }` — it renders directly to the DOM without Shadow DOM. This means:
+
+- Lit `css` tagged templates (used with `static styles`) are **never applied**
+- All styles must be embedded as `<style>` tags in the HTML returned by render functions
+- The `teamChatDrawerStyles` export was originally dead code until fixed to use inline styles
 
 ## Coordinator Prompt Template
 
@@ -392,12 +422,16 @@ The CLI passes `--dependsOn task_abc` as a string, not an array. The project sto
 ### UI requires hard refresh
 After rebuilding the UI (`pnpm ui:build`) and restarting the gateway, browsers may cache the old JS bundle. Always hard-refresh (Ctrl+Shift+R) after UI changes.
 
+### Icon availability
+The icon used for the Projects tab must exist in `ui/src/ui/icons.ts`. Available icons include: `fileText`, `folder`, `barChart`, `zap`, `brain`, `settings`, `plug`, etc. Custom icon names like `clipboard-list` won't work — use `fileText` instead.
+
 ## Limitations
 
 - **No real-time UI sync** — The UI reads from JSON files; updates appear on refresh, not live push.
 - **No native gateway RPC** — The project board is managed via CLI tools, not gateway RPC methods (yet).
 - **Single coordinator** — One agent coordinates per project (though you could have different coordinators for different projects).
 - **No cost tracking** — Task cost/token tracking depends on OpenClaw's session usage system.
+- **Client-side plugin registration** — The gateway-side plugin view registration pipeline (`registerView` → hello snapshot → `loadFromGateway`) is scaffolded but not fully wired. Plugin tabs are registered client-side instead.
 
 ## Future Enhancements
 
@@ -408,6 +442,7 @@ After rebuilding the UI (`pnpm ui:build`) and restarting the gateway, browsers m
 - [ ] Cost/token budget per task
 - [ ] Agent capability auto-detection from tools config
 - [ ] Cron-based project health checks
+- [ ] Gateway-side plugin view registration (when pipeline is complete)
 
 ## Files
 
@@ -427,8 +462,10 @@ team-projects/
 │   ├── openclaw.plugin.json             # Plugin manifest
 │   ├── plugin-sdk-entry.ts              # SDK type entry (src/plugin-sdk/team-projects.ts)
 │   ├── team-projects-view.ts            # UI view renderer (ui/src/ui/views/team-projects.ts)
-│   ├── app-render-patch.ts              # Patch for app-render.ts (plugin tab catch-all)
-│   └── app-gateway-patch.ts             # Patch for app-gateway.ts (renderer registration)
+│   ├── team-chat-drawer.ts              # Team Chat drawer + edge tab (ui/src/ui/views/team-chat-drawer.ts)
+│   ├── app-render-patch.ts              # Patch for app-render.ts (plugin tab catch-all + drawer)
+│   ├── app-gateway-patch.ts             # Patch for app-gateway.ts (renderer registration)
+│   └── BUILD_REGISTRATION.md            # Build pipeline registration checklist
 ├── templates/
 │   ├── coordinator-prompt.md            # System prompt for coordinator agent
 │   └── worker-prompt.md                 # System prompt fragment for worker agents

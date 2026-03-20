@@ -12,8 +12,8 @@ const plugin = {
         id: "team-projects",
         label: "Projects",
         subtitle: "Multi-agent team projects",
-        icon: "clipboard-list",
-        group: "Control",
+        icon: "fileText",
+        group: "control",
         position: 3,
       });
     }
