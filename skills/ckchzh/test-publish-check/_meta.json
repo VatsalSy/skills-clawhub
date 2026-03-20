@@ -3,11 +3,16 @@
   "slug": "test-publish-check",
   "displayName": "Test Publish Check",
   "latest": {
-    "version": "2.3.5",
-    "publishedAt": 1773674039242,
-    "commit": "https://github.com/openclaw/skills/commit/159a46207691adb80d080c28aceaa9060526d115"
+    "version": "2.3.6",
+    "publishedAt": 1773773852486,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.3.5",
+      "publishedAt": 1773674039242,
+      "commit": "https://github.com/openclaw/skills/commit/159a46207691adb80d080c28aceaa9060526d115"
+    },
     {
       "version": "2.2.0",
       "publishedAt": 1773421925900,
