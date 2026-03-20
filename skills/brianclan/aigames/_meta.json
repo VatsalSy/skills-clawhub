@@ -3,11 +3,16 @@
   "slug": "aigames",
   "displayName": "Aigames",
   "latest": {
-    "version": "0.1.7",
-    "publishedAt": 1773676482452,
-    "commit": "https://github.com/openclaw/skills/commit/3d7ef7eb9e8d571a7b28f640c3f0cdfaab3150a9"
+    "version": "0.1.8",
+    "publishedAt": 1773743775692,
+    "commit": null
   },
   "history": [
+    {
+      "version": "0.1.7",
+      "publishedAt": 1773676482452,
+      "commit": "https://github.com/openclaw/skills/commit/3d7ef7eb9e8d571a7b28f640c3f0cdfaab3150a9"
+    },
     {
       "version": "0.1.6",
       "publishedAt": 1773212699208,
