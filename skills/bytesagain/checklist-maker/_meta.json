@@ -3,11 +3,16 @@
   "slug": "checklist-maker",
   "displayName": "Checklist Maker",
   "latest": {
-    "version": "1.0.7",
-    "publishedAt": 1773665099835,
-    "commit": "https://github.com/openclaw/skills/commit/f0d866c4ecb58d6f83ec568887ea356e478fc962"
+    "version": "2.0.0",
+    "publishedAt": 1773773126199,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.7",
+      "publishedAt": 1773665099835,
+      "commit": "https://github.com/openclaw/skills/commit/f0d866c4ecb58d6f83ec568887ea356e478fc962"
+    },
     {
       "version": "2.2.0",
       "publishedAt": 1773421006283,
