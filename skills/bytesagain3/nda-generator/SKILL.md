@@ -4,6 +4,8 @@ name: NDA Generator
 description: "NDA Generator - 保密协议生成器. Use when you need nda generator capabilities. Triggers on: nda generator."
   保密协议生成器。双向/单向NDA、员工保密、审查、模板库。NDA generator with mutual, unilateral, employee versions. 保密协议、NDA。
 author: BytesAgain
+homepage: https://bytesagain.com
+source: https://github.com/bytesagain/ai-skills
 ---
 # NDA Generator
 

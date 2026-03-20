@@ -3,11 +3,16 @@
   "slug": "nda-generator",
   "displayName": "Nda Generator",
   "latest": {
-    "version": "1.0.6",
-    "publishedAt": 1773666564353,
-    "commit": "https://github.com/openclaw/skills/commit/0438845b15d77438c58c98541da69d04b7c1e0d3"
+    "version": "2.0.0",
+    "publishedAt": 1773773967449,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.6",
+      "publishedAt": 1773666564353,
+      "commit": "https://github.com/openclaw/skills/commit/0438845b15d77438c58c98541da69d04b7c1e0d3"
+    },
     {
       "version": "1.0.5",
       "publishedAt": 1773662792587,
