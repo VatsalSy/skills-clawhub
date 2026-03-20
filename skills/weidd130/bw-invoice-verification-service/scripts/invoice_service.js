@@ -6,13 +6,124 @@ const os = require("os");
 const path = require("path");
 
 const VERSION = "0.4.0";
-const DEFAULT_API_BASE_URL = "http://127.0.0.1:8080";
+const DEFAULT_API_BASE_URL = "https://test.51yzt.cn/assetInnovate";
 const CONFIG_DIR = path.join(os.homedir(), ".openclaw", "invoice-skill");
 const CONFIG_FILE = path.join(CONFIG_DIR, "config.json");
 const LEGACY_CONFIG_FILE = path.join(os.homedir(), ".openclaw", "invoice-plugin", "config.json");
 const IMAGE_MAX_BYTES = 2 * 1024 * 1024;
 const SUPPORTED_FORMATS = new Set(["json", "base64", "base64+json", "both"]);
 const SUPPORTED_IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg"]);
+const FOUR_ELEMENT_TEMPLATES = {
+  checkCode: {
+    fields: ["invoiceCode", "invoiceNumber", "billingDate", "checkCode"],
+    description: "校验码后 6 位"
+  },
+  amount: {
+    fields: ["invoiceCode", "invoiceNumber", "billingDate", "totalAmount"],
+    description: "不含税金额"
+  },
+  taxAmount: {
+    fields: ["invoiceCode", "invoiceNumber", "billingDate", "totalAmount"],
+    description: "含税金额"
+  }
+};
+
+function determineInvoiceFourElementRequirement(invoiceCode, invoiceNumber) {
+  const sanitizedCode = String(invoiceCode || "").replace(/\D/g, "");
+  const sanitizedNumber = String(invoiceNumber || "").replace(/\D/g, "");
+  const fallback = {
+    key: "checkCode",
+    invoiceType: "未识别票种",
+    description: FOUR_ELEMENT_TEMPLATES.checkCode.description
+  };
+
+  if (!sanitizedCode) {
+    if (sanitizedNumber.length === 20) {
+      return {
+        key: "taxAmount",
+        invoiceType: "二维码含税票",
+        description: FOUR_ELEMENT_TEMPLATES.taxAmount.description
+      };
+    }
+    return fallback;
+  }
+
+  if (sanitizedCode.length === 12) {
+    const first = sanitizedCode[0];
+    const tail = sanitizedCode.slice(-2);
+    if (first === "1") {
+      return {
+        key: "amount",
+        invoiceType: "机动车销售统一发票",
+        description: FOUR_ELEMENT_TEMPLATES.amount.description
+      };
+    }
+    if (first === "0") {
+      if (tail === "17") {
+        return {
+          key: "amount",
+          invoiceType: "二手车销售统一发票",
+          description: "车价合计"
+        };
+      }
+      if (["04", "05"].includes(tail)) {
+        return {
+          key: "checkCode",
+          invoiceType: "增值税普通发票",
+          description: FOUR_ELEMENT_TEMPLATES.checkCode.description
+        };
+      }
+      if (["06", "07"].includes(tail)) {
+        return {
+          key: "checkCode",
+          invoiceType: "增值税普通发票（卷式）",
+          description: FOUR_ELEMENT_TEMPLATES.checkCode.description
+        };
+      }
+      if (tail === "11") {
+        return {
+          key: "checkCode",
+          invoiceType: "增值税电子普通发票",
+          description: FOUR_ELEMENT_TEMPLATES.checkCode.description
+        };
+      }
+      if (tail === "12") {
+        return {
+          key: "checkCode",
+          invoiceType: "增值税电子普通发票（通行费）",
+          description: FOUR_ELEMENT_TEMPLATES.checkCode.description
+        };
+      }
+    }
+  }
+
+  if (sanitizedCode.length === 10) {
+    const eighth = sanitizedCode[7];
+    if (["1", "5"].includes(eighth)) {
+      return {
+        key: "amount",
+        invoiceType: "增值税专用发票",
+        description: FOUR_ELEMENT_TEMPLATES.amount.description
+      };
+    }
+    if (["2", "7"].includes(eighth)) {
+      return {
+        key: "amount",
+        invoiceType: "货运运输业增值税专用发票",
+        description: FOUR_ELEMENT_TEMPLATES.amount.description
+      };
+    }
+    if (["3", "6"].includes(eighth)) {
+      return {
+        key: "checkCode",
+        invoiceType: "增值税普通发票",
+        description: FOUR_ELEMENT_TEMPLATES.checkCode.description
+      };
+    }
+  }
+
+  return fallback;
+}
 
 function printJson(payload, exitCode = 0) {
   console.log(JSON.stringify(payload, null, 2));
@@ -139,7 +250,13 @@ async function callApi(baseUrl, method, endpoint, body, appKey, requestId) {
 function isInvalidAppKeyError(error) {
   const code = String(error && error.code ? error.code : "").toUpperCase();
   const message = String(error && error.message ? error.message : "").toLowerCase();
-  return code === "INVALID_KEY" || code === "KEY_EXPIRED" || message.includes("invalid key");
+  return code === "INVALID_KEY" || message.includes("invalid key");
+}
+
+function isExpiredAppKeyError(error) {
+  const code = String(error && error.code ? error.code : "").toUpperCase();
+  const message = String(error && error.message ? error.message : "").toLowerCase();
+  return code === "KEY_EXPIRED" || message.includes("key expired") || message.includes("过期");
 }
 
 async function initKey(options = {}) {
@@ -193,6 +310,9 @@ async function withBoundConfig(handler, options = {}) {
   try {
     return await handler(bound);
   } catch (error) {
+    if (isExpiredAppKeyError(error)) {
+      throw error;
+    }
     if (!isInvalidAppKeyError(error)) {
       throw error;
     }
@@ -252,7 +372,7 @@ function escapeRegex(text) {
 function extractLabeledValue(text, labels, valuePattern) {
   for (const label of labels) {
     const pattern = new RegExp(
-      `${escapeRegex(label)}\\s*(?:[:\uFF1A]|\u662F|\u4E3A)?\\s*(${valuePattern})`,
+      `${escapeRegex(label)}\\s*(?:[:\uFF1A]|\u662F|\u4E3A|=)?\\s*["']?(${valuePattern})["']?`,
       "i"
     );
     const match = text.match(pattern);
@@ -263,8 +383,39 @@ function extractLabeledValue(text, labels, valuePattern) {
   return "";
 }
 
+function extractLabeledValues(text, labels, valuePattern) {
+  const results = [];
+  for (const label of labels) {
+    const pattern = new RegExp(
+      `${escapeRegex(label)}\\s*(?:[:\uFF1A]|\u662F|\u4E3A|=)?\\s*["']?(${valuePattern})["']?`,
+      "ig"
+    );
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+      if (match[1] && match[1].trim()) {
+        results.push(match[1].trim());
+      }
+    }
+  }
+  return [...new Set(results)];
+}
+
 function uniqueMatches(text, pattern) {
   return [...new Set(String(text || "").match(pattern) || [])];
+}
+
+function normalizeBillingDateValue(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const match = raw.match(/^(\d{4})[-/.]?(\d{2})[-/.]?(\d{2})$/);
+  if (!match) return "";
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (year < 1900 || year > 2200) return "";
+  if (month < 1 || month > 12) return "";
+  if (day < 1 || day > 31) return "";
+  return `${match[1]}-${match[2]}-${match[3]}`;
 }
 
 function cleanupAmount(value) {
@@ -273,56 +424,213 @@ function cleanupAmount(value) {
   return match ? match[0] : "";
 }
 
+function parseAmountNumber(value) {
+  const cleaned = cleanupAmount(value);
+  if (!cleaned) return null;
+  const numeric = Number(cleaned);
+  if (!Number.isFinite(numeric)) return null;
+  return {
+    numeric,
+    cleaned
+  };
+}
+
+function pickMaxAmount(values) {
+  const list = Array.isArray(values) ? values : [values];
+  let bestNumeric = Number.NEGATIVE_INFINITY;
+  let bestCleaned = "";
+  for (const item of list) {
+    const parsed = parseAmountNumber(item);
+    if (!parsed) continue;
+    if (parsed.numeric > bestNumeric) {
+      bestNumeric = parsed.numeric;
+      bestCleaned = parsed.cleaned;
+    }
+  }
+  return bestCleaned;
+}
+
+function normalizeInvoiceCodeCandidate(value) {
+  const normalized = String(value || "").replace(/\D/g, "");
+  if (normalized.length === 10 || normalized.length === 12) {
+    return normalized;
+  }
+  return "";
+}
+
+function scoreInvoiceCodeCandidate(value) {
+  let score = 0;
+  if (value.length === 12) score += 4;
+  if (value.length === 10) score += 3;
+  if (value.startsWith("0") || value.startsWith("1")) score += 1;
+  if (["04", "05", "06", "07", "11", "12", "17"].includes(value.slice(-2))) score += 1;
+  return score;
+}
+
+function pickBestInvoiceCode(values) {
+  const list = Array.isArray(values) ? values : [values];
+  let best = "";
+  let bestScore = Number.NEGATIVE_INFINITY;
+  for (const item of list) {
+    const normalized = normalizeInvoiceCodeCandidate(item);
+    if (!normalized) continue;
+    const score = scoreInvoiceCodeCandidate(normalized);
+    if (score > bestScore) {
+      best = normalized;
+      bestScore = score;
+    }
+  }
+  return best;
+}
+
+function normalizeInvoiceNumberCandidate(value) {
+  const normalized = String(value || "").replace(/\D/g, "");
+  if (normalized.length >= 8 && normalized.length <= 20) {
+    return normalized;
+  }
+  return "";
+}
+
+function scoreInvoiceNumberCandidate(value, invoiceCode) {
+  if (!value) return Number.NEGATIVE_INFINITY;
+  if (invoiceCode && value === invoiceCode) return Number.NEGATIVE_INFINITY;
+  let score = 0;
+  if (value.length === 8 || value.length === 20) score += 4;
+  if (value.length >= 8 && value.length <= 12) score += 2;
+  if (/^\d+$/.test(value)) score += 1;
+  if (/^20\d{6}$/.test(value)) score -= 2;
+  return score;
+}
+
+function pickBestInvoiceNumber(values, invoiceCode) {
+  const list = Array.isArray(values) ? values : [values];
+  let best = "";
+  let bestScore = Number.NEGATIVE_INFINITY;
+  for (const item of list) {
+    const normalized = normalizeInvoiceNumberCandidate(item);
+    if (!normalized) continue;
+    const score = scoreInvoiceNumberCandidate(normalized, invoiceCode);
+    if (score > bestScore) {
+      best = normalized;
+      bestScore = score;
+    }
+  }
+  return best;
+}
+
 function extractInvoiceFields(text) {
   const normalizedText = normalizeInvoiceText(text);
+  const amountPattern = "[¥￥]?\\s*\\d{1,3}(?:,\\d{3})*(?:\\.\\d{1,2})?|[¥￥]?\\s*\\d+(?:\\.\\d{1,2})?";
+  const invoiceCodeLabels = [
+    "\u53d1\u7968\u4ee3\u7801",
+    "\u7968\u636e\u4ee3\u7801",
+    "\u4ee3\u7801",
+    "invoice code",
+    "invoicecode"
+  ];
+  const invoiceNumberLabels = [
+    "\u53d1\u7968\u53f7\u7801",
+    "\u53d1\u7968\u53f7",
+    "\u7968\u53f7",
+    "\u53f7\u7801",
+    "\u7968\u636e\u53f7\u7801",
+    "invoice number",
+    "invoicenumber"
+  ];
+  const billingDateLabels = [
+    "\u5f00\u7968\u65e5\u671f",
+    "\u5f00\u7968\u65f6\u95f4",
+    "\u65e5\u671f",
+    "\u7968\u636e\u65e5\u671f",
+    "invoice date",
+    "billing date"
+  ];
+  const checkCodeLabels = [
+    "\u6821\u9a8c\u7801",
+    "\u6821\u9a8c\u7801\u540e6\u4f4d",
+    "\u6821\u9a8c\u7801\u540e 6 \u4f4d",
+    "check code",
+    "checkcode"
+  ];
+  const taxAmountLabels = [
+    "\u542b\u7a0e\u91d1\u989d",
+    "\u4ef7\u7a0e\u5408\u8ba1",
+    "\u4ef7\u7a0e\u5408\u8ba1(\u5c0f\u5199)",
+    "\u5c0f\u5199\u91d1\u989d",
+    "\u542b\u7a0e\u603b\u91d1\u989d"
+  ];
+  const amountLabels = [
+    "\u4e0d\u542b\u7a0e\u91d1\u989d",
+    "\u91d1\u989d",
+    "\u5408\u8ba1",
+    "\u4ef7\u7a0e\u5408\u8ba1",
+    "\u4ef7\u7a0e\u5408\u8ba1(\u5c0f\u5199)",
+    "\u5c0f\u5199\u91d1\u989d",
+    "invoice amount",
+    "total amount"
+  ];
+
+  const rawCheckCodeCandidates = extractLabeledValues(normalizedText, checkCodeLabels, "[A-Za-z0-9]{6,20}");
+  const rawCheckCode = rawCheckCodeCandidates[0] || "";
+  const taxAmount = pickMaxAmount(extractLabeledValues(normalizedText, taxAmountLabels, amountPattern));
+  const labeledAmount = pickMaxAmount(extractLabeledValues(normalizedText, amountLabels, amountPattern));
+  const detectedAmounts = uniqueMatches(normalizedText, /(?:¥|￥)?\s*\d{1,3}(?:,\d{3})*(?:\.\d{1,2})|(?:¥|￥)?\s*\d+(?:\.\d{1,2})/g);
+  const detectedMaxAmount = pickMaxAmount(detectedAmounts);
+  const resolvedTotalAmount = pickMaxAmount([labeledAmount, taxAmount, detectedMaxAmount]);
+  const invoiceCodeCandidates = [
+    ...extractLabeledValues(normalizedText, invoiceCodeLabels, "[A-Za-z0-9]{10,12}"),
+    ...uniqueMatches(normalizedText, /\b\d{10,12}\b/g)
+  ];
+  const resolvedInvoiceCode = pickBestInvoiceCode(invoiceCodeCandidates);
+  const invoiceNumberCandidates = [
+    ...extractLabeledValues(normalizedText, invoiceNumberLabels, "[A-Za-z0-9]{8,20}"),
+    ...uniqueMatches(normalizedText, /\b\d{8,20}\b/g)
+  ].filter((item) => String(item || "").replace(/\D/g, "") !== resolvedInvoiceCode);
+  const resolvedInvoiceNumber = pickBestInvoiceNumber(invoiceNumberCandidates, resolvedInvoiceCode);
+  const labeledDate = normalizeBillingDateValue(
+    extractLabeledValue(normalizedText, billingDateLabels, "(?:\\d{4}-\\d{2}-\\d{2}|\\d{8})")
+  );
+  const fallbackDate = uniqueMatches(normalizedText, /\b\d{4}-\d{2}-\d{2}\b/g)[0] || "";
   const fields = {
-    invoiceCode: extractLabeledValue(
-      normalizedText,
-      ["\u53d1\u7968\u4ee3\u7801", "\u4ee3\u7801", "invoice code", "invoicecode"],
-      "[A-Za-z0-9]{10,12}"
-    ),
-    invoiceNumber: extractLabeledValue(
-      normalizedText,
-      ["\u53d1\u7968\u53f7\u7801", "\u53f7\u7801", "\u7968\u53f7", "invoice number", "invoicenumber"],
-      "[A-Za-z0-9]{8,20}"
-    ),
-    billingDate: extractLabeledValue(
-      normalizedText,
-      ["\u5f00\u7968\u65e5\u671f", "\u65e5\u671f", "invoice date", "billing date"],
-      "\\d{4}-\\d{2}-\\d{2}"
-    ),
-    totalAmount: cleanupAmount(
-      extractLabeledValue(
-        normalizedText,
-        ["\u4e0d\u542b\u7a0e\u91d1\u989d", "\u91d1\u989d", "\u4ef7\u7a0e\u5408\u8ba1", "\u5408\u8ba1", "invoice amount", "total amount"],
-        "\\d+(?:\\.\\d{1,2})?"
-      )
-    ),
-    checkCode: extractLabeledValue(
-      normalizedText,
-      ["\u6821\u9a8c\u7801", "\u6821\u9a8c\u7801\u540e6\u4f4d", "check code", "checkcode"],
-      "[A-Za-z0-9]{6,20}"
-    )
+    invoiceCode: resolvedInvoiceCode,
+    invoiceNumber: resolvedInvoiceNumber,
+    billingDate: labeledDate || fallbackDate,
+    taxAmount,
+    totalAmount: resolvedTotalAmount,
+    checkCodeRaw: rawCheckCode,
+    checkCode: rawCheckCode ? rawCheckCode.slice(-6) : ""
   };
 
   if (!fields.invoiceCode) {
-    fields.invoiceCode = uniqueMatches(normalizedText, /\b[A-Za-z0-9]{10,12}\b/g)[0] || "";
+    fields.invoiceCode = pickBestInvoiceCode(uniqueMatches(normalizedText, /\b\d{10,12}\b/g));
   }
   if (!fields.invoiceNumber) {
-    const values = uniqueMatches(normalizedText, /\b[A-Za-z0-9]{8,20}\b/g).filter(
+    const values = uniqueMatches(normalizedText, /\b\d{8,20}\b/g).filter(
       (item) => item !== fields.invoiceCode
     );
-    fields.invoiceNumber = values[0] || "";
+    fields.invoiceNumber = pickBestInvoiceNumber(values, fields.invoiceCode);
   }
   if (!fields.billingDate) {
-    fields.billingDate = uniqueMatches(normalizedText, /\b\d{4}-\d{2}-\d{2}\b/g)[0] || "";
+    const candidate = uniqueMatches(normalizedText, /\b\d{4}-\d{2}-\d{2}\b/g)[0] || "";
+    fields.billingDate = normalizeBillingDateValue(candidate) || candidate;
   }
   if (!fields.totalAmount) {
     const amounts = uniqueMatches(normalizedText, /\b\d+(?:\.\d{1,2})\b/g).filter(
       (item) => item !== fields.invoiceCode && item !== fields.invoiceNumber
     );
-    fields.totalAmount = cleanupAmount(amounts[0] || "");
+    fields.totalAmount = pickMaxAmount(amounts);
   }
+  if (!fields.checkCode) {
+    fields.checkCode = uniqueMatches(normalizedText, /\b[A-Za-z0-9]{6}\b/g)[0] || "";
+  }
+  fields.taxAmount = pickMaxAmount([fields.taxAmount, fields.totalAmount]) || fields.totalAmount;
+
+  const requirement = determineInvoiceFourElementRequirement(fields.invoiceCode, fields.invoiceNumber);
+  const template = FOUR_ELEMENT_TEMPLATES[requirement.key] || FOUR_ELEMENT_TEMPLATES.checkCode;
+  fields.invoiceType = requirement.invoiceType;
+  fields.fourElementKey = requirement.key;
+  fields.fourElementDescription = requirement.description || template.description;
+  fields.requiredFourElementFields = template.fields;
 
   return {
     normalizedText,
@@ -342,6 +650,30 @@ function maskAppKey(appKey) {
   if (!appKey) return null;
   if (appKey.length < 12) return appKey;
   return `${appKey.slice(0, 8)}****${appKey.slice(-4)}`;
+}
+
+function buildQrCodeEntries(orderData) {
+  const entries = [];
+  const pushEntry = (label, url) => {
+    if (!url) return;
+    entries.push({ channel: label, url });
+  };
+
+  pushEntry("微信支付", orderData.wechatPayQrCodeUrl || orderData.wechatPayQrCodeImageUrl);
+  pushEntry("支付宝支付", orderData.alipayPayQrCodeUrl || orderData.alipayPayQrCodeImageUrl);
+  pushEntry("支付二维码", orderData.payQrCodeUrl || orderData.qrCodeImageUrl);
+
+  if (orderData.payQrCode && typeof orderData.payQrCode === "string") {
+    const trimmed = orderData.payQrCode.trim();
+    if (trimmed.startsWith("data:image/")) {
+      pushEntry("支付二维码", trimmed);
+    } else {
+      // assume base64 payload without prefix
+      pushEntry("支付二维码", `data:image/png;base64,${trimmed}`);
+    }
+  }
+
+  return entries;
 }
 
 function parseArgs(argv) {
@@ -492,6 +824,13 @@ function resolveBatchTextForImage(options, imagePath) {
     };
   }
 
+  if (!imagePath) {
+    return {
+      text: "",
+      sidecarTextPath: null
+    };
+  }
+
   const useSidecarText = parseBooleanOption(options["use-sidecar-text"], true);
   if (!useSidecarText) {
     return {
@@ -548,31 +887,54 @@ function estimateBase64Bytes(base64) {
 }
 
 function readImageInput(options) {
-  if (options["image-file"]) {
-    const filePath = path.resolve(String(options["image-file"]));
+  const fromFile = (sourcePath, sourceLabel = "file") => {
+    const filePath = path.resolve(String(sourcePath));
     if (!fs.existsSync(filePath)) {
       throw new Error(`image file not found: ${filePath}`);
+    }
+    if (!fs.statSync(filePath).isFile()) {
+      throw new Error(`image path is not a file: ${filePath}`);
     }
     const mimeType = options["mime-type"] || getMimeTypeFromPath(filePath);
     const buffer = fs.readFileSync(filePath);
     return {
-      imageSource: "file",
+      imageSource: sourceLabel,
       imagePath: filePath,
       mimeType,
       base64: buffer.toString("base64")
     };
-  }
+  };
 
-  if (options["image-base64"]) {
-    const parsed = stripDataUrlPrefix(options["image-base64"]);
+  const fromBase64 = (rawBase64, sourceLabel = "base64") => {
+    const parsed = stripDataUrlPrefix(rawBase64);
     return {
-      imageSource: "base64",
+      imageSource: sourceLabel,
       mimeType: String(options["mime-type"] || parsed.mimeType || "image/png").toLowerCase(),
       base64: sanitizeBase64(parsed.base64)
     };
+  };
+
+  if (options["image-file"]) {
+    return fromFile(options["image-file"], "file");
   }
 
-  throw new Error("verify-image requires --image-file or --image-base64");
+  if (options["image-base64"]) {
+    return fromBase64(options["image-base64"], "base64");
+  }
+
+  if (options.image) {
+    const maybePath = path.resolve(String(options.image));
+    if (fs.existsSync(maybePath) && fs.statSync(maybePath).isFile()) {
+      return fromFile(maybePath, "image");
+    }
+    return fromBase64(options.image, "image");
+  }
+
+  if (options.content) {
+    return fromBase64(options.content, "content");
+  }
+
+  throw new Error("verify-image requires --image-file, --image-base64, or --image <path|base64|data-url>");
 }
 
 function validateImagePayload(image) {
@@ -627,6 +989,8 @@ async function verifyImageFile(bound, imageFilePath, options) {
         apiBaseUrl: bound.apiBaseUrl,
         mimeType: image.mimeType,
         sizeBytes: image.sizeBytes,
+        costQuota: 2,
+        quotaNotice: "Image verification costs 2 quota per request.",
         textSupplementUsed: Boolean(text),
         sidecarTextPath: textInput.sidecarTextPath,
         transportOk: true,
@@ -635,7 +999,7 @@ async function verifyImageFile(bound, imageFilePath, options) {
       }
     };
   } catch (error) {
-    if (isInvalidAppKeyError(error)) {
+    if (isInvalidAppKeyError(error) || isExpiredAppKeyError(error)) {
       throw error;
     }
     return {
@@ -648,6 +1012,8 @@ async function verifyImageFile(bound, imageFilePath, options) {
         apiBaseUrl: bound.apiBaseUrl,
         mimeType: image.mimeType,
         sizeBytes: image.sizeBytes,
+        costQuota: 2,
+        quotaNotice: "Image verification costs 2 quota per request.",
         textSupplementUsed: Boolean(text),
         sidecarTextPath: textInput.sidecarTextPath,
         transportOk: false,
@@ -660,9 +1026,26 @@ async function verifyImageFile(bound, imageFilePath, options) {
 
 function buildVerifyPayload(options, inputType, content) {
   const rawText = String(options.text || "").trim();
+  const defaultFields = {
+    invoiceCode: "",
+    invoiceNumber: "",
+    billingDate: "",
+    totalAmount: "",
+    taxAmount: "",
+    checkCode: "",
+    checkCodeRaw: "",
+    fourElementKey: "checkCode",
+    invoiceType: "未识别票种",
+    fourElementDescription: FOUR_ELEMENT_TEMPLATES.checkCode.description,
+    requiredFourElementFields: FOUR_ELEMENT_TEMPLATES.checkCode.fields
+  };
   const extracted = rawText
     ? extractInvoiceFields(rawText)
-    : { normalizedText: "", fields: { invoiceCode: "", invoiceNumber: "", billingDate: "", totalAmount: "", checkCode: "" } };
+    : { normalizedText: "", fields: defaultFields };
+  const amountValue =
+    extracted.fields.fourElementKey === "taxAmount"
+      ? pickMaxAmount([extracted.fields.taxAmount, extracted.fields.totalAmount]) || extracted.fields.taxAmount
+      : extracted.fields.totalAmount;
 
   return {
     requestBody: {
@@ -672,7 +1055,7 @@ function buildVerifyPayload(options, inputType, content) {
       invoiceCode: extracted.fields.invoiceCode,
       invoiceNumber: extracted.fields.invoiceNumber,
       billingDate: extracted.fields.billingDate,
-      totalAmount: extracted.fields.totalAmount,
+      totalAmount: amountValue,
       checkCode: extracted.fields.checkCode
     },
     extracted
@@ -700,96 +1083,55 @@ function isOrderFinalStatus(status) {
   return ["credited", "paid", "success", "completed", "finished", "closed", "failed", "cancelled"].includes(status);
 }
 
-function isOrderSuccessStatus(status) {
+function isOrderCreditedStatus(status) {
   return ["credited", "paid", "success", "completed", "finished"].includes(status);
 }
 
-async function waitForOrderSettlement(bound, orderNo, options = {}) {
-  const waitSeconds = parseNonNegativeIntegerOption(
-    options["wait-seconds"],
-    "wait-seconds must be a non-negative integer",
-    45
-  );
-  const pollIntervalSeconds = parseNonNegativeIntegerOption(
-    options["poll-interval-seconds"],
-    "poll-interval-seconds must be a non-negative integer",
-    3
-  );
+async function pollOrderUntilFinal(bound, orderNo, waitSeconds, pollIntervalSeconds) {
+  const maxWaitSeconds = Math.max(0, Number(waitSeconds) || 0);
+  const intervalSeconds = Math.max(1, Number(pollIntervalSeconds) || 1);
+  const startedAt = Date.now();
+  let elapsedSeconds = 0;
+  let polls = 0;
+  let finalStatus = "";
+  let finalResponse = null;
 
-  if (waitSeconds === 0 || pollIntervalSeconds === 0) {
-    return {
-      enabled: false,
-      completed: false,
-      timedOut: false,
-      attempts: 0,
-      finalOrderStatus: "",
-      latestOrder: null,
-      quotaAfter: null,
-      waitSeconds,
-      pollIntervalSeconds
-    };
-  }
+  while (true) {
+    polls += 1;
+    finalResponse = await callApi(
+      bound.apiBaseUrl,
+      "GET",
+      `/api/v4/plugin/orders/${encodeURIComponent(orderNo)}`,
+      null,
+      bound.appKey
+    );
+    finalStatus = extractOrderStatus(finalResponse);
 
-  const deadline = Date.now() + waitSeconds * 1000;
-  let attempts = 0;
-  let latestOrder = null;
-  let finalOrderStatus = "";
-  let quotaAfter = null;
-  let lastError = null;
-
-  while (Date.now() <= deadline) {
-    attempts += 1;
-    try {
-      latestOrder = await callApi(
-        bound.apiBaseUrl,
-        "GET",
-        `/api/v4/plugin/orders/${encodeURIComponent(orderNo)}`,
-        null,
-        bound.appKey
-      );
-      finalOrderStatus = extractOrderStatus(latestOrder);
-      if (isOrderFinalStatus(finalOrderStatus)) {
-        if (isOrderSuccessStatus(finalOrderStatus)) {
-          try {
-            quotaAfter = await callApi(bound.apiBaseUrl, "GET", "/api/v4/plugin/quota", null, bound.appKey);
-          } catch (quotaError) {
-            lastError = normalizeErrorPayload(quotaError);
-          }
-        }
-        return {
-          enabled: true,
-          completed: true,
-          timedOut: false,
-          attempts,
-          finalOrderStatus,
-          latestOrder,
-          quotaAfter,
-          waitSeconds,
-          pollIntervalSeconds,
-          lastError
-        };
-      }
-    } catch (error) {
-      lastError = normalizeErrorPayload(error);
-    }
-
-    if (Date.now() + pollIntervalSeconds * 1000 > deadline) {
+    if (isOrderFinalStatus(finalStatus)) {
       break;
     }
-    await sleep(pollIntervalSeconds * 1000);
+
+    elapsedSeconds = Math.floor((Date.now() - startedAt) / 1000);
+    if (elapsedSeconds >= maxWaitSeconds) {
+      break;
+    }
+
+    const remainingSeconds = maxWaitSeconds - elapsedSeconds;
+    const sleepSeconds = Math.max(1, Math.min(intervalSeconds, remainingSeconds));
+    await sleep(sleepSeconds * 1000);
   }
 
+  elapsedSeconds = Math.floor((Date.now() - startedAt) / 1000);
+  const settled = isOrderCreditedStatus(finalStatus);
   return {
-    enabled: true,
-    completed: false,
-    timedOut: true,
-    attempts,
-    finalOrderStatus,
-    latestOrder,
-    quotaAfter,
-    waitSeconds,
-    pollIntervalSeconds,
-    lastError
+    orderNo,
+    finalStatus,
+    settled,
+    polls,
+    waitedSeconds: elapsedSeconds,
+    maxWaitSeconds,
+    pollIntervalSeconds: intervalSeconds,
+    orderQuery: finalResponse
   };
 }
 
@@ -812,7 +1154,8 @@ async function runAction(action, options) {
           "ledger [--page 1 --page-size 20]",
           "verify --text <invoice text> [--format json|base64|base64+json|both]",
           "verify-image --image-file <path> [--text <invoice text>] [--format json|base64|base64+json|both]",
-          "verify-image --image-base64 <base64> [--mime-type image/png|image/jpeg] [--text <invoice text>]",
+          "verify-image --image-base64 <base64|data-url> [--mime-type image/png|image/jpeg] [--text <invoice text>]",
+          "verify-image --image <path|base64|data-url> [--mime-type image/png|image/jpeg] [--text <invoice text>]",
           "verify-directory --dir <folder> [--recursive true] [--format json|base64|base64+json|both]",
           "create-order --amount <yuan> [--agree-terms true] [--wait-seconds 45] [--poll-interval-seconds 3]",
           "query-order --order-no <orderNo>"
@@ -976,7 +1319,8 @@ async function runAction(action, options) {
 
     if (action === "verify-image") {
       const image = validateImagePayload(readImageInput(options));
-      const payload = buildVerifyPayload(options, "image", image.base64);
+      const textInput = resolveBatchTextForImage(options, image.imagePath || null);
+      const payload = buildVerifyPayload({ ...options, text: textInput.text }, "image", image.base64);
       const requestId = crypto.randomUUID();
       const response = await callApi(
         bound.apiBaseUrl,
@@ -989,10 +1333,16 @@ async function runAction(action, options) {
       return {
         ok: true,
         action,
-        data: response,
+        data: {
+          ...response,
+          quotaCost: 2,
+          quotaCostNotice: "Image verification costs 2 quota per request."
+        },
         meta: {
           autoBound: bound.autoBound,
           apiBaseUrl: bound.apiBaseUrl,
+          costQuota: 2,
+          quotaNotice: "Image verification costs 2 quota per request.",
           extractedFields: payload.extracted.fields,
           normalizedText: payload.extracted.normalizedText,
           image: {
@@ -1001,7 +1351,8 @@ async function runAction(action, options) {
             mimeType: image.mimeType,
             sizeBytes: image.sizeBytes
           },
-          textSupplementUsed: Boolean(String(options.text || "").trim())
+          textSupplementUsed: Boolean(textInput.text),
+          sidecarTextPath: textInput.sidecarTextPath
         }
       };
     }
@@ -1112,6 +1463,19 @@ async function runAction(action, options) {
 
     if (action === "create-order") {
       const amount = parseIntegerOption(options, "amount", "create-order requires --amount <positive integer yuan>");
+      const waitSeconds = parseNonNegativeIntegerOption(
+        options["wait-seconds"],
+        "wait-seconds must be a non-negative integer",
+        90
+      );
+      const pollIntervalSeconds = parseNonNegativeIntegerOption(
+        options["poll-interval-seconds"],
+        "poll-interval-seconds must be a non-negative integer",
+        3
+      );
+      if (pollIntervalSeconds <= 0) {
+        throw new Error("poll-interval-seconds must be at least 1");
+      }
       const agreeTerms =
         options["agree-terms"] === undefined
           ? true
@@ -1129,40 +1493,56 @@ async function runAction(action, options) {
       );
       const orderData = response && response.data ? response.data : {};
       const paymentPageUrl = orderData.paymentPageUrl || orderData.payQrCode || null;
-      const qrCodeImageUrl = orderData.payQrCodeUrl || null;
+      const qrCodes = buildQrCodeEntries(orderData);
       const orderNo = orderData.orderNo || null;
-      const polling = orderNo ? await waitForOrderSettlement(bound, orderNo, options) : null;
+      let orderPolling = null;
+      if (orderNo) {
+        try {
+          orderPolling = await pollOrderUntilFinal(bound, orderNo, waitSeconds, pollIntervalSeconds);
+        } catch (error) {
+          orderPolling = {
+            orderNo,
+            finalStatus: "",
+            settled: false,
+            polls: 0,
+            waitedSeconds: 0,
+            maxWaitSeconds: waitSeconds,
+            pollIntervalSeconds,
+            orderQuery: null,
+            error: normalizeErrorPayload(error)
+          };
+        }
+      }
+      const finalOrderResponse = orderPolling && orderPolling.orderQuery ? orderPolling.orderQuery : null;
+      const finalStatus = orderPolling ? orderPolling.finalStatus : extractOrderStatus(response);
+      const settled = orderPolling ? orderPolling.settled : false;
+      const quotaAfterPayment =
+        finalOrderResponse && finalOrderResponse.remainingQuota !== undefined
+          ? finalOrderResponse.remainingQuota
+          : null;
+      const guidanceParts = [];
+      if (paymentPageUrl) {
+        guidanceParts.push("Use paymentPageUrl to open the cashier page and choose WeChat or Alipay.");
+      }
+      if (qrCodes.length) {
+        guidanceParts.push("Below are the QR codes for the available payment methods.");
+      }
+      const paymentGuidance = guidanceParts.length ? guidanceParts.join(" ") : null;
+      const paymentPostTip = settled
+        ? `Recharge credited. Remaining quota: ${quotaAfterPayment === null ? "unknown" : quotaAfterPayment}.`
+        : "Payment not settled yet in callback. You can run `query-order` or `quota` again shortly.";
       return {
         ok: true,
         action,
         data: {
           ...response,
           paymentPageUrl,
-          qrCodeImageUrl,
-          paymentGuidance: paymentPageUrl
-            ? "Use paymentPageUrl to open the cashier page and choose WeChat or Alipay. qrCodeImageUrl is only the QR image."
-            : null,
-          orderPolling: polling
-            ? {
-                enabled: polling.enabled,
-                completed: polling.completed,
-                timedOut: polling.timedOut,
-                attempts: polling.attempts,
-                waitSeconds: polling.waitSeconds,
-                pollIntervalSeconds: polling.pollIntervalSeconds,
-                finalOrderStatus: polling.finalOrderStatus || null,
-                latestOrder: polling.latestOrder,
-                quotaAfter: polling.quotaAfter,
-                lastError: polling.lastError,
-                message: !polling.enabled
-                  ? "Order polling was disabled."
-                  : polling.completed && isOrderSuccessStatus(polling.finalOrderStatus)
-                    ? "Payment confirmed during short polling."
-                    : polling.completed
-                      ? "Order reached a final status during short polling."
-                      : "Payment not confirmed during short polling. Use query-order later to check again."
-              }
-            : null
+          paymentGuidance,
+          qrCodes,
+          paymentPostTip,
+          paymentSettled: settled,
+          orderStatus: finalStatus || null,
+          orderPolling
         },
         meta: {
           autoBound: bound.autoBound,
@@ -1170,7 +1550,9 @@ async function runAction(action, options) {
           amount,
           agreeTerms,
           orderNo,
-          pollingEnabled: Boolean(polling && polling.enabled)
+          waitSeconds,
+          pollIntervalSeconds,
+          paymentSettled: settled
         }
       };
     }
@@ -1191,7 +1573,9 @@ async function runAction(action, options) {
         meta: {
           autoBound: bound.autoBound,
           apiBaseUrl: bound.apiBaseUrl,
-          orderNo
+          orderNo,
+          orderStatus: extractOrderStatus(response),
+          paymentSettled: isOrderCreditedStatus(extractOrderStatus(response))
         }
       };
     }
@@ -1209,6 +1593,16 @@ async function main() {
   const { positionals, options } = parseArgs(argv);
   const action = positionals[0] || "help";
 
+  if (
+    action === "verify-image" &&
+    !options["image-file"] &&
+    !options["image-base64"] &&
+    !options.image &&
+    positionals[1]
+  ) {
+    options.image = positionals[1];
+  }
+
   if (action === "config") {
     options._subaction = positionals[1] || "show";
   }
@@ -1224,4 +1618,3 @@ main().catch((error) => {
     response: error && error.response ? error.response : null
   });
 });
-
