@@ -1,7 +1,7 @@
 ---
 name: wireframe
-description: "Draw page wireframes in ASCII or SVG, map user flows, and export annotated designs to HTML."
-version: "3.2.0"
+description: "Create wireframes and user flows. Use when sketching page layouts in ASCII/SVG, mapping flows, or exporting to HTML."
+version: "3.4.0"
 author: BytesAgain
 homepage: https://bytesagain.com
 source: https://github.com/bytesagain/ai-skills
