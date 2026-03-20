@@ -3,9 +3,15 @@
   "slug": "u2-tts",
   "displayName": "U2-tts",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1773288985379,
-    "commit": "https://github.com/openclaw/skills/commit/f5ae174dd136b616cd09ea4a959ee53502edff44"
+    "version": "1.0.5",
+    "publishedAt": 1773730368857,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1773288985379,
+      "commit": "https://github.com/openclaw/skills/commit/f5ae174dd136b616cd09ea4a959ee53502edff44"
+    }
+  ]
 }

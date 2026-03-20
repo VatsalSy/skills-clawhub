@@ -13,7 +13,6 @@ try:
     import thread
 except ImportError:
     import _thread as thread
-import logging
 import os
 import argparse
 from typing import Optional
@@ -45,31 +44,6 @@ class Ws_parms(object):
         self.message = ''
         self.code = 0
         self._pid = pid
-
-        # Setup logger
-        self._setup_logger()
-
-    def _setup_logger(self):
-        """Configure logging for this session."""
-        self.logger = logging.getLogger(f"RunLog_{self._pid}")
-
-        # Avoid duplicate handlers
-        if self.logger.handlers:
-            return
-
-        formatter = logging.Formatter('%(asctime)s %(levelname)-8s: %(message)s')
-
-        # Create logs directory if needed
-        ensure_dir('logs')
-
-        # File handler
-        file_handler = logging.FileHandler(f"logs/log_{self._pid}")
-        file_handler.setFormatter(formatter)
-        self.logger.addHandler(file_handler)
-
-        # Set log level
-        self.logger.setLevel(logging.INFO)
-
 
     def get_sha256(self, timestamp):
         """
@@ -188,23 +162,6 @@ def ensure_dir(dir_path):
     os.makedirs(dir_path, exist_ok=True)
 
 
-def rm_logs(dir_path):
-    """
-    Remove old log files.
-
-    Args:
-        dir_path: Directory containing log files
-    """
-    if not os.path.exists(dir_path):
-        return
-
-    log_files = os.listdir(dir_path)
-    for logf in log_files:
-        file_path = os.path.join(dir_path, logf)
-        if os.path.isfile(file_path) and logf != "log.output":
-            os.remove(file_path)
-
-
 def do_ws(ws_parms):
     """
     Execute WebSocket TTS connection.
@@ -231,9 +188,9 @@ def do_ws(ws_parms):
 
     # Check if audio data was received
     if len(ws_parms.tts_stream) == 0:
-        ws_parms.logger.warning("No audio data received")
+        print("No audio data received")
     else:
-        ws_parms.logger.info(f"Received {len(ws_parms.tts_stream)} bytes of audio data")
+        print(f"Received {len(ws_parms.tts_stream)} bytes of audio data")
 
     return ws_parms
     
@@ -379,11 +336,6 @@ def main():
             print(f"Error: {name} must be between 0 and 100, got {param}")
             return 1
 
-    # Setup logging
-    ensure_dir('logs')
-    if not args.no_cleanup:
-        rm_logs('logs/')
-
     # Create TTS parameters
     ws_parms = Ws_parms(
         url=args.url,
@@ -427,7 +379,6 @@ def main():
 
     except Exception as e:
         print(f"Error during TTS conversion: {e}")
-        ws_parms.logger.error(f"TTS conversion failed: {e}")
         return 1
 
 
