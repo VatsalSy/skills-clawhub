@@ -3,11 +3,16 @@
   "slug": "hive-marketplace",
   "displayName": "Hive Marketplace",
   "latest": {
-    "version": "1.0.3",
-    "publishedAt": 1773651401037,
-    "commit": "https://github.com/openclaw/skills/commit/4d235599781e1fa1a3ac58dbd42ae462e3f1f5e0"
+    "version": "1.0.14",
+    "publishedAt": 1773828857117,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.3",
+      "publishedAt": 1773651401037,
+      "commit": "https://github.com/openclaw/skills/commit/4d235599781e1fa1a3ac58dbd42ae462e3f1f5e0"
+    },
     {
       "version": "1.0.2",
       "publishedAt": 1773496984711,
