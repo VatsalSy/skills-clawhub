@@ -3,9 +3,15 @@
   "slug": "trongrid-block-info",
   "displayName": "trongrid-block-info",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1773398779623,
-    "commit": "https://github.com/openclaw/skills/commit/40d0bc3c738d30911a0dbe666412f6adc71f575d"
+    "version": "1.0.2",
+    "publishedAt": 1773913733129,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1773398779623,
+      "commit": "https://github.com/openclaw/skills/commit/40d0bc3c738d30911a0dbe666412f6adc71f575d"
+    }
+  ]
 }

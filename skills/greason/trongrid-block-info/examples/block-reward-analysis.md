@@ -8,10 +8,10 @@ Who produced block #68000000 and how much TRX was burned?
 
 ## Expected Workflow
 
-1. **Fetch Block** → `getBlockByNum(68000000)` → Block header with witness address
+1. **Fetch Block** → `getBlock(68000000, detail=false)` → Block header with witness address
 2. **Block Stats** → `getBlockStatistics(68000000)` → Fee stats, energy/net usage
 3. **Transaction Info** → `getTransactionInfoByBlockNum(68000000)` → All transaction receipts
-4. **SR Lookup** → `listWitnesses()` → Match witness address to SR name
+4. **SR Lookup** → `getPaginatedNowWitnessList()` → Match witness address to SR name
 5. **SR Brokerage** → `getBrokerage(witnessAddress)` → Reward split
 6. **Block Balance** → `getBlockBalance(hash, number)` → All balance changes
 
@@ -52,9 +52,9 @@ Who produced block #68000000 and how much TRX was burned?
 
 | Tool | Call Count | Purpose |
 |------|-----------|---------|
-| `getBlockByNum` | 1 | Block header data |
+| `getBlock` | 1 | Block header data (`id_or_num=68000000, detail=false`) |
 | `getBlockStatistics` | 1 | Block fee statistics |
 | `getTransactionInfoByBlockNum` | 1 | Transaction receipts |
-| `listWitnesses` | 1 | SR name lookup |
+| `getPaginatedNowWitnessList` | 1 | SR name lookup |
 | `getBrokerage` | 1 | Reward distribution |
 | `getBlockBalance` | 1 | Balance changes |

@@ -8,10 +8,10 @@ What is the latest block on TRON?
 
 ## Expected Workflow
 
-1. **Latest Block** → `getNowBlock()` → Block header + transactions
-2. **Confirmed Block** → `solidityGetNowBlock()` → Latest irreversible block for comparison
+1. **Latest Block** → `getBlock()` (no params) → Block header + transactions
+2. **Confirmed Block** → `solidityGetBlock()` (no params) → Latest irreversible block for comparison
 3. **Block Transactions** → `getTransactionInfoByBlockNum(blockNum)` → Fee and receipt details
-4. **SR List** → `listWitnesses()` → Match witness address to SR name
+4. **SR List** → `getPaginatedNowWitnessList()` → Match witness address to SR name
 5. **SR Brokerage** → `getBrokerage(witnessAddress)` → Reward distribution ratio
 
 ## Expected Output (Sample)
@@ -60,8 +60,8 @@ What is the latest block on TRON?
 
 | Tool | Call Count | Purpose |
 |------|-----------|---------|
-| `getNowBlock` | 1 | Latest block data |
-| `solidityGetNowBlock` | 1 | Latest confirmed block |
+| `getBlock` | 1 | Latest block data (no params) |
+| `solidityGetBlock` | 1 | Latest confirmed block (no params) |
 | `getTransactionInfoByBlockNum` | 1 | Transaction receipts |
-| `listWitnesses` | 1 | SR identification |
+| `getPaginatedNowWitnessList` | 1 | SR identification |
 | `getBrokerage` | 1 | SR reward ratio |
