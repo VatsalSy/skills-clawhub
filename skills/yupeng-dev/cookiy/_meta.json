@@ -3,11 +3,16 @@
   "slug": "cookiy",
   "displayName": "Cookiy",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1773635716529,
-    "commit": "https://github.com/openclaw/skills/commit/0f616033d053c8bc208418121c6845382de17d60"
+    "version": "1.0.4",
+    "publishedAt": 1773914204844,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1773635716529,
+      "commit": "https://github.com/openclaw/skills/commit/0f616033d053c8bc208418121c6845382de17d60"
+    },
     {
       "version": "1.0.0",
       "publishedAt": 1773404294015,

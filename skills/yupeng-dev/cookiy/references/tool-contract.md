@@ -35,14 +35,25 @@ An array of tool names the server recommends calling next. ALWAYS prefer
 this over guessing the next step. Examples:
 - After `cookiy_study_list` success: `["cookiy_study_get"]`
 - After `cookiy_recruit_create` preview: `["cookiy_recruit_create"]`
-- After `cookiy_report_generate`: `["cookiy_report_status"]`
+- After `cookiy_report_status` when `report_status` is `PREVIEW` or `READY`: `["cookiy_report_share_link_get"]`
+
+For recruitment truth, prefer evidence in this order:
+1. `cookiy_interview_list`
+2. `cookiy_recruit_status`
+3. The latest `cookiy_recruit_create` response
+4. `cookiy_study_get.state`
+
+`cookiy_recruit_status` is the billing-aware recruitment authority in
+the current public contract. There is no separate `sync` flag; the
+server already reconciles pending recruit checkout state before
+reporting status.
 
 ### `status_message`
 
 A server-composed directive describing the current state and what to do
 next. Treat it as an executable instruction, not informational prose.
 Examples:
-- "Do NOT call cookiy_report_generate again — poll this endpoint periodically"
+- "Poll cookiy_report_status periodically until report_status=PREVIEW or READY"
 - "Review the target group, language, and pricing with the user"
 
 ### `presentation_hint`
@@ -98,26 +109,44 @@ When any tool returns status_code 402:
 4. If `retry_same_tool`, `retry_tool_name`, or `retry_input_hint` are
    present in `structuredContent.data`, follow them for the post-payment
    retry path.
-5. NEVER recalculate or restate prices from raw quote fields.
+5. For recruitment specifically, after payment prefer this sequence:
+   `cookiy_recruit_status` -> `cookiy_interview_list` ->
+   retry `cookiy_recruit_create` only if those checks still show that
+   launch/configuration has not taken effect.
+6. NEVER recalculate or restate prices from raw quote fields.
 
-### Trial balance rules
+### Experience bonus rules
 
-- New users receive a trial balance (typically $3.00).
-- Trial balance is deducted at real product prices.
-- Trial balance covers:
+- New users may receive an `experience_bonus` allocation visible in
+  `cookiy_balance_get`.
+- Experience bonus is deducted at real product prices.
+- Experience bonus covers eligible actions such as:
   - Discussion guide generation (`cookiy_study_create`)
   - AI-to-AI interview generation (`cookiy_simulated_interview_generate`)
   - Report access when retrieving the share link
     (`cookiy_report_share_link_get`)
-- Trial balance does NOT cover:
+- Experience bonus does NOT cover:
   - Recruitment of real participants (`cookiy_recruit_create`)
-  - Recruitment is always a separate paid charge.
+  - Recruitment requires paid credit or cash credit.
 - `cookiy_balance_get` may also show `experience_bonus`. Eligible MCP
   actions use that bonus before purchased credits, so paid product
   counters may stay unchanged even when an action succeeded.
 - If a covered operation fails before task dispatch, the credit is
   refunded automatically.
-- Use `cookiy_balance_get` to check current trial balance.
+- Use `cookiy_balance_get` to check current experience bonus, cash
+  credit, and per-product paid counters.
+
+### Balance display rules
+
+When presenting `cookiy_balance_get` output:
+- Prefer `consumer_balance_overview`.
+- Prefer `recent_purchases[].display_line` and
+  `recent_usage[].display_line` for user-facing billing statements.
+- Quote the exact money strings returned by the server.
+- Do NOT recompute amounts from cents, drop leading dollar digits, or
+  merge purchase rows with usage rows.
+- Treat usage rows as historical consumption, not as remaining
+  purchasable recruit credit.
 
 ## Error handling by status code
 
@@ -131,6 +160,9 @@ When any tool returns status_code 402:
 | 404 | Not found | Verify the identifier. It may have been deleted or never existed. |
 | 409 | Conflict | Revision mismatch or state conflict. Re-fetch current state and retry. |
 | 422 | Invalid payload | Read `error.details` for field-level errors. |
+| 429 | Rate limited | Back off and retry later. |
+| 500 | Internal failure | Treat as transient and retry with backoff. |
+| 502 | Upstream dependency failure | Retry later; dependency may be unavailable. |
 | 503 | Unavailable | Temporary. Wait and retry once. |
 
 ## URL rules
@@ -164,3 +196,10 @@ For async operations, poll at reasonable intervals:
 - `cookiy_simulated_interview_status`: every 5-10 seconds
 - `cookiy_report_status`: every 10-30 seconds (reports take longer)
 - `cookiy_recruit_status`: every 30-60 seconds (recruitment is slow)
+
+## Agent boundary rules
+
+- Do not describe recruitment as started, paused, or failed from
+  preview-only output.
+- Do not promise background monitoring unless a real automation layer
+  actually exists outside the MCP call you are making right now.
