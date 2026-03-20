@@ -1,7 +1,7 @@
 ---
 name: MockData
 description: "Generate realistic fake data — names, emails, addresses — for testing and dev. Use when seeding databases, mocking API responses, creating sample records."
-version: "2.0.0"
+version: "3.0.0"
 author: "BytesAgain"
 homepage: https://bytesagain.com
 source: https://github.com/bytesagain/ai-skills
@@ -9,120 +9,64 @@ tags: ["mock","fake","data","generator","testing","development","faker","sample"
 categories: ["Developer Tools", "Utility"]
 ---
 
-# MockData
+# MockData — Mock Data Generator
 
-Data operations toolkit for ingesting, transforming, querying, filtering, and managing data entries. Each command category maintains its own log, and the tool provides full export, search, profiling, and pipeline capabilities — all stored locally as timestamped log files.
+Generate realistic random data for testing, development, and prototyping. Outputs names, emails, phone numbers, addresses, UUIDs, CSV files, and JSON records.
 
 ## Commands
 
-All commands are invoked via `mockdata <command> [args]`.
-
-### Core Data Commands
-
-Each of these commands works the same way: called without arguments it shows the 20 most recent entries from that category; called with arguments it saves a new timestamped entry.
-
 | Command | Description |
 |---------|-------------|
-| `ingest <input>` | Log a data ingestion event (source, format, row count, etc.) |
-| `transform <input>` | Log a data transformation step (normalization, type conversion, etc.) |
-| `query <input>` | Log a query execution (SQL, API call, search parameters) |
-| `filter <input>` | Log a filter operation (criteria applied, rows matched) |
-| `aggregate <input>` | Log an aggregation result (sum, count, average, group-by) |
-| `visualize <input>` | Log a visualization task (chart type, dimensions, output format) |
-| `export <input>` | Log an export operation (destination, format, record count) |
-| `sample <input>` | Log a sampling operation (sample size, method, seed) |
-| `schema <input>` | Log a schema definition or change (fields, types, constraints) |
-| `validate <input>` | Log a validation result (rules checked, pass/fail, errors found) |
-| `pipeline <input>` | Log a pipeline execution (steps, duration, status) |
-| `profile <input>` | Log a data profiling result (distributions, nulls, cardinality) |
-
-### Utility Commands
-
-| Command | Description |
-|---------|-------------|
-| `stats` | Summary statistics — entry counts per category, total entries, data size, earliest record |
-| `export <fmt>` | Export all data in `json`, `csv`, or `txt` format (note: this is the utility export, separate from the logging `export` command) |
-| `search <term>` | Search across all log files for a keyword (case-insensitive) |
-| `recent` | Show the 20 most recent entries from the activity history |
-| `status` | Health check — version, data directory, total entries, disk usage, last activity |
-| `help` | Show the built-in help message |
-| `version` | Print version string (`mockdata v2.0.0`) |
-
-## Data Storage
-
-- **Location:** `~/.local/share/mockdata/`
-- **Format:** Each command category has its own `.log` file (e.g. `ingest.log`, `transform.log`, `pipeline.log`)
-- **History:** All activity is also appended to `history.log` with timestamps
-- **Exports:** Generated export files are saved to the same data directory as `export.json`, `export.csv`, or `export.txt`
-- **Entry format:** Each log line is `YYYY-MM-DD HH:MM|<value>`
-
-## Requirements
-
-- Bash 4+
-- Standard Unix utilities (`date`, `wc`, `du`, `head`, `tail`, `grep`, `basename`, `cat`)
-- No external dependencies, no API keys, no network access needed
-
-## When to Use
-
-1. **Data pipeline documentation** — Log each step of a data pipeline (ingest → transform → validate → export) to maintain an audit trail of what was processed and when
-2. **Schema tracking** — Record schema definitions and changes over time, making it easy to trace when fields were added, renamed, or removed
-3. **ETL monitoring** — Use `ingest`, `transform`, `filter`, and `aggregate` to log ETL job details, then `search` or `export` to review execution history
-4. **Data quality assurance** — Log validation results and profiling outputs to track data quality metrics across runs, and quickly find issues with `search`
-5. **Experiment tracking** — Record query parameters, sampling methods, and aggregation results to document data experiments and reproduce analyses later
+| `name [count]` | Generate random full names (first + last, from 160+ name pool) |
+| `email [count]` | Generate random email addresses (realistic patterns with varied domains) |
+| `phone [count]` | Generate random US phone numbers (+1-XXX-XXX-XXXX format) |
+| `address [count]` | Generate random US street addresses with city, state, ZIP |
+| `uuid [count]` | Generate random UUID v4 values (from /dev/urandom) |
+| `csv <rows> <cols>` | Generate CSV with auto-typed columns (id, name, email, phone, city, score) |
+| `json [count]` | Generate JSON array of records with id, name, email, phone, age, city |
 
 ## Examples
 
 ```bash
-# Log a data ingestion event
-mockdata ingest "Loaded 50,000 rows from users.csv into staging table"
+# Generate 5 random names
+mockdata name 5
 
-# View recent ingestion entries (no args = show last 20)
-mockdata ingest
+# Generate 10 email addresses
+mockdata email 10
 
-# Log a transformation step
-mockdata transform "Normalized email addresses to lowercase, 12 duplicates removed"
+# Generate UUIDs
+mockdata uuid 3
 
-# Log a validation result
-mockdata validate "Schema check passed: all 15 required fields present, 0 nulls in PK"
+# Generate a CSV file with 100 rows and 4 columns
+mockdata csv 100 4 > test-data.csv
 
-# Log a pipeline run
-mockdata pipeline "Daily ETL completed: ingest→transform→validate→load in 4m32s"
+# Generate JSON records
+mockdata json 5 > users.json
 
-# Log a data profile
-mockdata profile "users table: 125K rows, 3.2% null emails, age range 18-99"
-
-# Search across all logs for a keyword
-mockdata search "duplicates"
-
-# Show summary statistics
-mockdata stats
-
-# Export everything to JSON
-mockdata export json
-
-# Export to CSV for spreadsheet analysis
-mockdata export csv
-
-# Check overall health status
-mockdata status
-
-# View 20 most recent activities
-mockdata recent
+# Combine for seeding
+mockdata json 50 > seed.json
 ```
 
-## Output
+## Data Sources
 
-All command output goes to stdout. Redirect to save:
+- **Names:** 80+ first names × 80+ last names (10,000+ combinations)
+- **Emails:** Varied patterns — `first.last@`, `firstlast42@`, `flast@` across 10 domains
+- **Phones:** Random US format with valid area code ranges
+- **Addresses:** 20 street types × 20 cities × 20 states
+- **UUIDs:** Generated from `/dev/urandom` with proper v4 formatting
 
-```bash
-mockdata stats > report.txt
-mockdata export json   # saves to ~/.local/share/mockdata/export.json
-```
+## CSV Column Types
 
-## Configuration
+Columns cycle through these types based on position:
+1. `id` (sequential)
+2. `name` (random full name)
+3. `email` (random email)
+4. `phone` (random phone)
+5. `city` (random city)
+6. `score` (random 0-99)
 
-No configuration file needed. Data directory is fixed at `~/.local/share/mockdata/`.
+## Notes
 
----
-
-*Powered by BytesAgain | bytesagain.com | hello@bytesagain.com*
+- All output goes to stdout — pipe to a file to save
+- JSON output is valid JSON (array of objects)
+- No external dependencies — uses bash builtins and `/dev/urandom`

@@ -3,11 +3,16 @@
   "slug": "mockdata",
   "displayName": "Mockdata",
   "latest": {
-    "version": "2.0.1",
-    "publishedAt": 1773830822764,
-    "commit": "https://github.com/openclaw/skills/commit/e6df2fdf43991e8e78a55e80c802f178b5798e49"
+    "version": "3.0.0",
+    "publishedAt": 1773916920895,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.0.1",
+      "publishedAt": 1773830822764,
+      "commit": "https://github.com/openclaw/skills/commit/e6df2fdf43991e8e78a55e80c802f178b5798e49"
+    },
     {
       "version": "1.0.6",
       "publishedAt": 1773663929500,
