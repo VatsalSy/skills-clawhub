@@ -4,13 +4,14 @@
 import { execSync, exec } from "node:child_process";
 import { readdirSync, readFileSync, existsSync, statSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
+import { homedir } from "node:os";
 import { promisify } from "node:util";
 
 const execAsync = promisify(exec);
 
 // ── Constants ─────────────────────────────────────────────────────────
 
-const HOME = process.env.HOME || "/Users/lesa";
+const HOME = process.env.HOME || homedir();
 export const LDM_ROOT = process.env.LDM_ROOT || join(HOME, ".ldm");
 
 // ── Types ────────────────────────────────────────────────────────────
@@ -185,9 +186,11 @@ export async function sendMessage(
 ): Promise<string> {
   const { token, port } = resolveGatewayConfig(openclawDir);
   const agentId = options?.agentId || "main";
-  const user = options?.user || "claude-code";
   const senderLabel = options?.senderLabel || "Claude Code";
 
+  // Send user: "main" to route to the main session (agent:main:main).
+  // This ensures Parker sees CC's messages in the same stream as iMessage.
+  // The OpenClaw gateway treats user: "main" as "use the default session."
   const response = await fetch(`http://127.0.0.1:${port}/v1/chat/completions`, {
     method: "POST",
     headers: {
@@ -196,7 +199,7 @@ export async function sendMessage(
     },
     body: JSON.stringify({
       model: agentId,
-      user,
+      user: "main",
       messages: [
         {
           role: "user",

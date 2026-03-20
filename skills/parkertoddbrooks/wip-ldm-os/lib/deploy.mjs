@@ -76,11 +76,17 @@ function saveRegistry(registry) {
   writeJSON(REGISTRY_PATH, registry);
 }
 
+// Core extensions are always enabled. Everything else defaults to disabled on first install.
+const CORE_EXTENSIONS = new Set(['memory-crystal']);
+
 function updateRegistry(name, info) {
   const registry = loadRegistry();
+  const existing = registry.extensions[name];
+  const isCore = CORE_EXTENSIONS.has(name);
   registry.extensions[name] = {
-    ...registry.extensions[name],
+    ...existing,
     ...info,
+    enabled: existing?.enabled ?? isCore,
     updatedAt: new Date().toISOString(),
   };
   saveRegistry(registry);
@@ -372,11 +378,25 @@ function installCLI(repoPath, door) {
         return true;
       }
     } catch {
-      // Registry check failed, fall through to local install
+      // Registry check failed, fall through
     }
+
+    // Exact version not on npm. Try latest from registry instead of local install (#32, #81)
+    try {
+      const latestVersion = execSync(`npm view ${packageName} version 2>/dev/null`, {
+        encoding: 'utf8', timeout: 15000,
+      }).trim();
+      if (latestVersion) {
+        execSync(`npm install -g ${packageName}@${latestVersion}`, { stdio: 'pipe', timeout: 60000 });
+        ensureBinExecutable(binNames);
+        ok(`CLI: ${binNames.join(', ')} installed from registry (v${latestVersion}, repo has v${packageVersion})`);
+        return true;
+      }
+    } catch {}
   }
 
-  // Fallback: local install (creates symlinks, but better than nothing)
+  // Last resort: local install (creates symlinks ... warns user)
+  console.log(`  ! Warning: installing locally from ${repoPath} (creates symlinks to source dir)`);
   try {
     execSync('npm install -g .', { cwd: repoPath, stdio: 'pipe' });
     ensureBinExecutable(binNames);
@@ -558,9 +578,9 @@ function installClaudeCodeHook(repoPath, door) {
   const extDir = join(LDM_EXTENSIONS, toolName);
   const installedGuard = join(extDir, 'guard.mjs');
 
-  // Deploy guard.mjs to ~/.ldm/extensions/{toolName}/ if not already there
+  // Deploy guard.mjs to ~/.ldm/extensions/{toolName}/ (#85: always update, not just when missing)
   const srcGuard = join(repoPath, 'guard.mjs');
-  if (!existsSync(installedGuard) && existsSync(srcGuard)) {
+  if (existsSync(srcGuard)) {
     try {
       if (!existsSync(extDir)) mkdirSync(extDir, { recursive: true });
       copyFileSync(srcGuard, installedGuard);
@@ -669,7 +689,38 @@ export function installSingleTool(toolPath) {
 
   if (ifaceNames.length === 0) return 0;
 
-  const toolName = pkg?.name?.replace(/^@\w+\//, '') || basename(toolPath);
+  // Derive tool name from package.json, never from /tmp/ clone path
+  let toolName = pkg?.name?.replace(/^@\w+\//, '') || basename(toolPath);
+  // Strip ldm-install- prefix if it leaked from clone path
+  toolName = toolName.replace(/^ldm-install-/, '');
+
+  // Migrate ldm-install-* ghost directories (#96)
+  // Old installs used /tmp/ldm-install-<name> as source, which leaked into the directory name.
+  // If both ldm-install-<name> and <name> exist, remove the ghost and clean the registry.
+  const ghostName = `ldm-install-${toolName}`;
+  const ghostPath = join(LDM_EXTENSIONS, ghostName);
+  if (existsSync(ghostPath) && ghostName !== toolName) {
+    if (!DRY_RUN) {
+      const trashDir = join(LDM_ROOT, '_trash', new Date().toISOString().split('T')[0]);
+      try {
+        mkdirSync(trashDir, { recursive: true });
+        const trashDest = join(trashDir, ghostName);
+        cpSync(ghostPath, trashDest, { recursive: true });
+        rmSync(ghostPath, { recursive: true, force: true });
+        // Clean registry
+        const registry = loadRegistry();
+        if (registry.extensions?.[ghostName]) {
+          delete registry.extensions[ghostName];
+          saveRegistry(registry);
+        }
+        log(`Migrated ghost directory: ${ghostName} -> _trash/ (real name: ${toolName})`);
+      } catch (e) {
+        log(`Warning: could not migrate ${ghostName}: ${e.message}`);
+      }
+    } else {
+      log(`Would migrate ghost directory: ${ghostName} -> _trash/ (real name: ${toolName})`);
+    }
+  }
 
   if (!JSON_OUTPUT) {
     console.log('');
@@ -727,16 +778,32 @@ export function installSingleTool(toolPath) {
     }
   }
 
+  // Only register MCP, hooks, and skills if extension is enabled (#111)
+  const registry = loadRegistry();
+  const isEnabled = registry.extensions?.[toolName]?.enabled ?? CORE_EXTENSIONS.has(toolName);
+
   if (interfaces.mcp) {
-    if (registerMCP(toolPath, interfaces.mcp, toolName)) installed++;
+    if (isEnabled) {
+      if (registerMCP(toolPath, interfaces.mcp, toolName)) installed++;
+    } else {
+      skip(`MCP: ${toolName} installed but not enabled. Run: ldm enable ${toolName}`);
+    }
   }
 
   if (interfaces.claudeCodeHook) {
-    if (installClaudeCodeHook(toolPath, interfaces.claudeCodeHook)) installed++;
+    if (isEnabled) {
+      if (installClaudeCodeHook(toolPath, interfaces.claudeCodeHook)) installed++;
+    } else {
+      skip(`Hook: ${toolName} installed but not enabled`);
+    }
   }
 
   if (interfaces.skill) {
-    if (installSkill(toolPath, toolName)) installed++;
+    if (isEnabled) {
+      if (installSkill(toolPath, toolName)) installed++;
+    } else {
+      skip(`Skill: ${toolName} installed but not enabled`);
+    }
   }
 
   if (interfaces.module) {
@@ -823,6 +890,93 @@ export async function installFromPath(repoPath) {
   return { tools: 1, interfaces: installed };
 }
 
+// ── Enable / Disable (#111) ──
+
+function unregisterMCP(name) {
+  try {
+    execSync(`claude mcp remove --scope user ${name} 2>/dev/null`, { stdio: 'pipe', timeout: 10000 });
+  } catch {}
+  // Also clean ~/.claude.json directly
+  const claudeJson = join(HOME, '.claude.json');
+  try {
+    const config = readJSON(claudeJson);
+    if (config?.mcpServers?.[name]) {
+      delete config.mcpServers[name];
+      writeJSON(claudeJson, config);
+    }
+  } catch {}
+}
+
+function removeClaudeCodeHook(name) {
+  const settingsPath = join(HOME, '.claude', 'settings.json');
+  try {
+    const settings = readJSON(settingsPath);
+    if (!settings?.hooks) return;
+    let changed = false;
+    for (const [event, entries] of Object.entries(settings.hooks)) {
+      if (!Array.isArray(entries)) continue;
+      for (const entry of entries) {
+        if (!entry.hooks || !Array.isArray(entry.hooks)) continue;
+        const before = entry.hooks.length;
+        entry.hooks = entry.hooks.filter(h => !h.command?.includes(name));
+        if (entry.hooks.length < before) changed = true;
+      }
+      // Remove empty entries
+      settings.hooks[event] = entries.filter(e => e.hooks?.length > 0);
+    }
+    if (changed) writeJSON(settingsPath, settings);
+  } catch {}
+}
+
+function removeSkill(name) {
+  const skillDir = join(OC_ROOT, 'skills', name);
+  try {
+    if (existsSync(skillDir)) {
+      rmSync(skillDir, { recursive: true, force: true });
+    }
+  } catch {}
+}
+
+export async function enableExtension(name) {
+  const reg = loadRegistry();
+  const entry = reg.extensions?.[name];
+  if (!entry) return { ok: false, reason: 'not installed' };
+  if (entry.enabled) return { ok: true, reason: 'already enabled' };
+
+  const extPath = entry.ldmPath || join(LDM_EXTENSIONS, name);
+  if (!existsSync(extPath)) return { ok: false, reason: 'extension dir missing' };
+
+  const { detectInterfaces } = await import('./detect.mjs');
+  const { interfaces } = detectInterfaces(extPath);
+
+  if (interfaces.mcp) registerMCP(extPath, interfaces.mcp, name);
+  if (interfaces.claudeCodeHook) installClaudeCodeHook(extPath, interfaces.claudeCodeHook);
+  if (interfaces.skill) installSkill(extPath, name);
+
+  entry.enabled = true;
+  entry.updatedAt = new Date().toISOString();
+  saveRegistry(reg);
+  return { ok: true, reason: 'enabled' };
+}
+
+export function disableExtension(name) {
+  if (CORE_EXTENSIONS.has(name)) return { ok: false, reason: 'core extension, cannot disable' };
+
+  const reg = loadRegistry();
+  const entry = reg.extensions?.[name];
+  if (!entry) return { ok: false, reason: 'not installed' };
+  if (!entry.enabled) return { ok: true, reason: 'already disabled' };
+
+  unregisterMCP(name);
+  removeClaudeCodeHook(name);
+  removeSkill(name);
+
+  entry.enabled = false;
+  entry.updatedAt = new Date().toISOString();
+  saveRegistry(reg);
+  return { ok: true, reason: 'disabled' };
+}
+
 // ── Exports for ldm CLI ──
 
-export { loadRegistry, saveRegistry, updateRegistry, readJSON, writeJSON, runBuildIfNeeded };
+export { loadRegistry, saveRegistry, updateRegistry, readJSON, writeJSON, runBuildIfNeeded, CORE_EXTENSIONS };

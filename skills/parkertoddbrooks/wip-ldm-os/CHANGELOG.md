@@ -1,6 +1,574 @@
 # Changelog
 
 
+## 0.4.37 (2026-03-20)
+
+# Release Notes: wip-ldm-os v0.4.37
+
+**TECHNICAL.md audit: CLI reference, installation system, operations all documented.**
+
+## What changed
+
+Full TECHNICAL.md audit covering v0.4.5 through v0.4.36. The file was an architecture/philosophy document with zero operational docs. Now includes:
+
+- **CLI Reference:** All ldm commands (init, install, doctor, status, worktree, updates, enable/disable, uninstall) with usage and flags.
+- **Installation System:** Catalog, registry, interface detection, self-update, parent package detection, ghost cleanup, private repo redirect, staging directory.
+- **Operations:** Process monitor, debug logger (LDM_DEBUG=1), CI pipeline, Prettier config.
+- **Updated architecture diagram:** Now shows extensions/, logs/, tmp/, state/, actual agent names (cc-mini, oc-lesa-mini).
+
+## Why
+
+32 releases shipped with only the philosophical architecture doc. Agents and users had no reference for how `ldm install` works, what `ldm doctor` checks, or what the catalog system does.
+
+## Issues closed
+
+- #155
+
+## How to verify
+
+```bash
+grep "ldm install" TECHNICAL.md       # CLI reference
+grep "catalog" TECHNICAL.md           # installation system
+grep "LDM_DEBUG" TECHNICAL.md         # debug logger
+```
+
+## 0.4.36 (2026-03-20)
+
+# Release Notes: wip-ldm-os v0.4.36
+
+**Prettier config, .gitignore cleanup, prepublishOnly hook.**
+
+## What changed
+
+- Prettier config added (.prettierrc + fmt/fmt:check scripts) (#149)
+- .gitignore updated: dist/, node_modules/, .claude/worktrees/, _worktrees/ (#152)
+- prepublishOnly hook ensures bridge is built before npm publish
+
+## Issues closed
+
+- #149
+- #152
+
+## How to verify
+
+```bash
+npm run fmt:check    # verify formatting
+cat .gitignore       # should include dist/
+```
+
+## 0.4.35 (2026-03-20)
+
+# Release Notes: wip-ldm-os v0.4.35
+
+**Repo review quick fixes: hardcoded path, engines field, safer fs ops, debug logger, CI pipeline.**
+
+## What changed
+
+1. **Fix hardcoded /Users/lesa path (#144).** `src/bridge/core.ts` now uses `os.homedir()` instead of a hardcoded fallback. Breaks for any non-lesa user were possible.
+
+2. **Add engines field (#151).** `package.json` now declares `node >= 18`. Users get a clear error on older Node instead of cryptic ESM failures.
+
+3. **Replace shell rm -rf with fs.rmSync (#150).** Two locations in `lib/deploy.mjs` used `execSync('rm -rf ...')`. Now uses Node's built-in `rmSync` (no shell injection surface, cross-platform).
+
+4. **Add debug logger (#148).** New `lib/log.mjs` with `LDM_DEBUG=1` opt-in. Foundation for replacing 29 silent `catch {}` blocks across the codebase.
+
+5. **Add GitHub Actions CI (#146).** `.github/workflows/ci.yml` runs build + test on push and PR. Expands as test coverage grows.
+
+## Issues closed
+
+- #144
+- #146
+- #148
+- #150
+- #151
+
+## How to verify
+
+```bash
+# Debug mode:
+LDM_DEBUG=1 ldm install --dry-run
+
+# Engines check:
+node -e "console.log(JSON.parse(require('fs').readFileSync('package.json','utf8')).engines)"
+```
+
+## 0.4.34 (2026-03-18)
+
+# Release Notes: wip-ldm-os v0.4.34
+
+**Fix: detect updates for all npm packages, rename ghost extension dirs.**
+
+## What changed
+
+1. **Non-scoped packages now checked for updates (#141).** Previously, `ldm install` only checked `@wipcomputer/*` packages. Extensions like `tavily` (unscoped) were invisible to the update loop. Now all packages are checked.
+
+2. **Ghost `ldm-install-*` dirs renamed to clean names (#141).** Extensions installed from GitHub got deployed as `ldm-install-<repo>` instead of `<repo>`. Now the cleanup renames these dirs (and their registry entries) to the correct names. Both `~/.ldm/extensions/` and `~/.openclaw/extensions/` are handled.
+
+3. **Tavily added to catalog.** Was installed but not in catalog, so the installer couldn't manage it.
+
+## Why
+
+`ldm install` ran twice and didn't pick up tavily v1.0.0 -> v1.0.2 or wip-xai-grok v1.0.2 -> v1.0.3. Tavily was skipped because of the scope filter. Grok was invisible because the dir was named `ldm-install-wip-xai-grok` instead of `wip-xai-grok`.
+
+## Issues closed
+
+- #141
+
+## How to verify
+
+```bash
+ldm install --dry-run
+# Should show tavily update if behind
+# Should NOT show ldm-install-* names
+# Ghost dirs should be renamed to clean names
+```
+
+## 0.4.33 (2026-03-18)
+
+# Release Notes: wip-ldm-os v0.4.33
+
+**Fix registry version tracking + add ldm worktree command.**
+
+## What changed
+
+### Registry fix (#139)
+After `ldm install` updates a toolbox-style package (like wip-ai-devops-toolbox with 12 sub-tools), the registry now updates the version for ALL sub-tools, not just the parent entry. Previously, sub-tools kept their old version in the registry, causing `ldm install --dry-run` to show them as needing updates again.
+
+### ldm worktree command (#130)
+New command for centralized worktree management:
+
+```bash
+ldm worktree add cc-mini/fix-bug    # creates _worktrees/<repo>--cc-mini--fix-bug/
+ldm worktree list                    # shows all active worktrees
+ldm worktree remove <path>           # removes a worktree
+ldm worktree clean                   # prunes stale worktrees
+```
+
+Auto-detects the repo from CWD. Creates worktrees in a sibling `_worktrees/` directory so they don't get mixed in with real repos.
+
+## Why
+
+Registry versions weren't updated for sub-tools, causing phantom re-updates. Worktrees created as repo siblings caused confusion with iCloud sync and directory listings.
+
+## Issues closed
+
+- #139
+- #130
+
+## How to verify
+
+```bash
+ldm install
+ldm install --dry-run
+# Should show "Everything is up to date" (no phantom updates)
+```
+
+## 0.4.32 (2026-03-18)
+
+# Release Notes: wip-ldm-os v0.4.32
+
+**Fix parent package detection so toolbox updates show correctly.**
+
+## What changed
+
+Parent package detection in `ldm install --dry-run` was skipping packages already checked by the extension loop. This caused `wip-ai-devops-toolbox` to never appear as a parent update. Instead, only `wip-release` (one of 12 sub-tools) showed.
+
+The root cause: `checkedNpm` was pre-populated from the extension loop results. When the parent detection loop ran, `@wipcomputer/wip-ai-devops-toolbox` was already in the set, so it was skipped. The parent loop is supposed to REPLACE sub-tool entries with the parent name, not skip them.
+
+## Why
+
+Follow-up fix for v0.4.31. The parent detection logic was correct in intent but had a data flow bug.
+
+## Issues closed
+
+- #132
+
+## How to verify
+
+```bash
+ldm install --dry-run
+# Should show: wip-ai-devops-toolbox (not wip-release) for toolbox updates
+```
+
+## 0.4.31 (2026-03-18)
+
+# Release Notes: wip-ldm-os v0.4.31
+
+**Fix ldm install: detect CLI updates, parent package updates, and clean ghost entries.**
+
+## What changed
+
+Three bugs fixed in `ldm install --dry-run` and `ldm install`:
+
+1. **CLI self-update detection.** `ldm install --dry-run` now shows when LDM OS CLI itself is behind. Previously the CLI version check was display-only in dry-run and silently updated during real installs. Now it's part of the update plan.
+
+2. **Parent package detection.** Toolbox-style repos (like wip-ai-devops-toolbox with 12 sub-tools) now report updates under the parent name. Previously only individual sub-tools were checked, so "wip-release v1.9.44 -> v1.9.45" showed instead of "wip-ai-devops-toolbox v1.9.44 -> v1.9.45". The other 11 sub-tools were invisible.
+
+3. **Ghost registry cleanup.** Entries with `-private` suffix or `ldm-install-` prefix (from pre-v0.4.30 installs) are automatically cleaned from the registry. No more phantom "wip-xai-grok-private" showing as a separate extension.
+
+## Why
+
+After releasing three packages (memory-crystal v0.7.28, LDM OS v0.4.30, wip-ai-devops-toolbox v1.9.45), `ldm install --dry-run` couldn't detect any of its own updates. The installer was blind to its own releases. Broke when universal installer was moved internally in v0.4.29.
+
+## Issues closed
+
+- #132
+
+## How to verify
+
+```bash
+# Install, then immediately check:
+ldm install --dry-run
+# Should show CLI update if behind
+# Should show parent package names (not sub-tool names)
+# Should NOT show -private or ldm-install- ghost entries
+```
+
+## 0.4.30 (2026-03-18)
+
+# Release Notes: wip-ldm-os v0.4.30
+
+**Fix installer: catalog name lookup, private repo redirect, staging dir.**
+
+## What changed
+
+Three installer bugs fixed:
+
+1. **Catalog name lookup (#133):** `ldm install xai-grok` now works. `findInCatalog` matches partial IDs (e.g. "xai-grok" finds "wip-xai-grok"), display names (e.g. "xAI Grok"), and registryMatches. Previously only exact ID match worked.
+
+2. **Private repo redirect (#134):** `ldm install wipcomputer/foo-private` now auto-redirects to the public repo (`wipcomputer/foo`). Extensions should come from public repos (code only), not private repos (which contain ai/ folders with internal plans and notes).
+
+3. **Staging dir moved from /tmp/ to ~/.ldm/tmp/ (#135):** macOS clears /tmp/ on reboot. Install staging clones were lost after restart, and MCP configs pointing to /tmp/ paths would break. Now uses ~/.ldm/tmp/ which persists. Doctor cleanup checks both old and new locations.
+
+## Why
+
+Users couldn't install catalog components by name. Private repos leaked internal content into installed extensions. /tmp/ staging caused ghost directories and broken MCP configs after reboots.
+
+## Issues closed
+
+- #133
+- #134
+- #135
+
+## How to verify
+
+```bash
+npm install -g @wipcomputer/wip-ldm-os@0.4.30
+ldm install xai-grok --dry-run     # should resolve via catalog
+ldm install --dry-run               # staging uses ~/.ldm/tmp/
+```
+
+## 0.4.29 (2026-03-17)
+
+# Fix ldm install: CLIs, catalog fallback, /tmp/ symlinks, help
+
+Five interconnected bugs fixed in ldm install:
+
+1. **Global CLIs not updated (#81):** Added a second loop in `cmdInstallCatalog()` that checks `state.cliBinaries` against catalog `cliMatches`. CLIs installed via `npm install -g` are now detected and updated.
+
+2. **Catalog fallback (#82):** When no catalog entry matches an extension, falls back to `package.json` `repository.url` instead of skipping. Also added `wip-branch-guard` to catalog registryMatches/cliMatches.
+
+3. **/tmp/ symlink prevention (#32):** `installCLI()` in deploy.mjs now tries the latest npm version before falling back to local `npm install -g .`. This prevents /tmp/ symlinks in most cases.
+
+4. **/tmp/ cleanup (#32):** After `installFromPath()` completes, /tmp/ clones are deleted automatically.
+
+5. **--help flag:** `ldm install --help` now shows usage instead of triggering a real install.
+
+Closes #81, #82. Partial fix for #32.
+
+## 0.4.28 (2026-03-17)
+
+# Fix ldm install: CLIs, catalog fallback, /tmp/ symlinks, help
+
+Five interconnected bugs fixed in ldm install:
+
+1. **Global CLIs not updated (#81):** Added a second loop in `cmdInstallCatalog()` that checks `state.cliBinaries` against catalog `cliMatches`. CLIs installed via `npm install -g` are now detected and updated.
+
+2. **Catalog fallback (#82):** When no catalog entry matches an extension, falls back to `package.json` `repository.url` instead of skipping. Also added `wip-branch-guard` to catalog registryMatches/cliMatches.
+
+3. **/tmp/ symlink prevention (#32):** `installCLI()` in deploy.mjs now tries the latest npm version before falling back to local `npm install -g .`. This prevents /tmp/ symlinks in most cases.
+
+4. **/tmp/ cleanup (#32):** After `installFromPath()` completes, /tmp/ clones are deleted automatically.
+
+5. **--help flag:** `ldm install --help` now shows usage instead of triggering a real install.
+
+Closes #81, #82. Partial fix for #32.
+
+## 0.4.27 (2026-03-17)
+
+# Fix ldm install: CLIs, catalog fallback, /tmp/ symlinks, help
+
+Five interconnected bugs fixed in ldm install:
+
+1. **Global CLIs not updated (#81):** Added a second loop in `cmdInstallCatalog()` that checks `state.cliBinaries` against catalog `cliMatches`. CLIs installed via `npm install -g` are now detected and updated.
+
+2. **Catalog fallback (#82):** When no catalog entry matches an extension, falls back to `package.json` `repository.url` instead of skipping. Also added `wip-branch-guard` to catalog registryMatches/cliMatches.
+
+3. **/tmp/ symlink prevention (#32):** `installCLI()` in deploy.mjs now tries the latest npm version before falling back to local `npm install -g .`. This prevents /tmp/ symlinks in most cases.
+
+4. **/tmp/ cleanup (#32):** After `installFromPath()` completes, /tmp/ clones are deleted automatically.
+
+5. **--help flag:** `ldm install --help` now shows usage instead of triggering a real install.
+
+Closes #81, #82. Partial fix for #32.
+
+## 0.4.26 (2026-03-17)
+
+# Fix ldm install: CLIs, catalog fallback, /tmp/ symlinks, help
+
+Five interconnected bugs fixed in ldm install:
+
+1. **Global CLIs not updated (#81):** Added a second loop in `cmdInstallCatalog()` that checks `state.cliBinaries` against catalog `cliMatches`. CLIs installed via `npm install -g` are now detected and updated.
+
+2. **Catalog fallback (#82):** When no catalog entry matches an extension, falls back to `package.json` `repository.url` instead of skipping. Also added `wip-branch-guard` to catalog registryMatches/cliMatches.
+
+3. **/tmp/ symlink prevention (#32):** `installCLI()` in deploy.mjs now tries the latest npm version before falling back to local `npm install -g .`. This prevents /tmp/ symlinks in most cases.
+
+4. **/tmp/ cleanup (#32):** After `installFromPath()` completes, /tmp/ clones are deleted automatically.
+
+5. **--help flag:** `ldm install --help` now shows usage instead of triggering a real install.
+
+Closes #81, #82. Partial fix for #32.
+
+## 0.4.25 (2026-03-17)
+
+# Fix ldm install: CLIs, catalog fallback, /tmp/ symlinks, help
+
+Five interconnected bugs fixed in ldm install:
+
+1. **Global CLIs not updated (#81):** Added a second loop in `cmdInstallCatalog()` that checks `state.cliBinaries` against catalog `cliMatches`. CLIs installed via `npm install -g` are now detected and updated.
+
+2. **Catalog fallback (#82):** When no catalog entry matches an extension, falls back to `package.json` `repository.url` instead of skipping. Also added `wip-branch-guard` to catalog registryMatches/cliMatches.
+
+3. **/tmp/ symlink prevention (#32):** `installCLI()` in deploy.mjs now tries the latest npm version before falling back to local `npm install -g .`. This prevents /tmp/ symlinks in most cases.
+
+4. **/tmp/ cleanup (#32):** After `installFromPath()` completes, /tmp/ clones are deleted automatically.
+
+5. **--help flag:** `ldm install --help` now shows usage instead of triggering a real install.
+
+Closes #81, #82. Partial fix for #32.
+
+## 0.4.24 (2026-03-17)
+
+# Fix ldm install: CLIs, catalog fallback, /tmp/ symlinks, help
+
+Five interconnected bugs fixed in ldm install:
+
+1. **Global CLIs not updated (#81):** Added a second loop in `cmdInstallCatalog()` that checks `state.cliBinaries` against catalog `cliMatches`. CLIs installed via `npm install -g` are now detected and updated.
+
+2. **Catalog fallback (#82):** When no catalog entry matches an extension, falls back to `package.json` `repository.url` instead of skipping. Also added `wip-branch-guard` to catalog registryMatches/cliMatches.
+
+3. **/tmp/ symlink prevention (#32):** `installCLI()` in deploy.mjs now tries the latest npm version before falling back to local `npm install -g .`. This prevents /tmp/ symlinks in most cases.
+
+4. **/tmp/ cleanup (#32):** After `installFromPath()` completes, /tmp/ clones are deleted automatically.
+
+5. **--help flag:** `ldm install --help` now shows usage instead of triggering a real install.
+
+Closes #81, #82. Partial fix for #32.
+
+## 0.4.23 (2026-03-17)
+
+# Fix ldm install: CLIs, catalog fallback, /tmp/ symlinks, help
+
+Five interconnected bugs fixed in ldm install:
+
+1. **Global CLIs not updated (#81):** Added a second loop in `cmdInstallCatalog()` that checks `state.cliBinaries` against catalog `cliMatches`. CLIs installed via `npm install -g` are now detected and updated.
+
+2. **Catalog fallback (#82):** When no catalog entry matches an extension, falls back to `package.json` `repository.url` instead of skipping. Also added `wip-branch-guard` to catalog registryMatches/cliMatches.
+
+3. **/tmp/ symlink prevention (#32):** `installCLI()` in deploy.mjs now tries the latest npm version before falling back to local `npm install -g .`. This prevents /tmp/ symlinks in most cases.
+
+4. **/tmp/ cleanup (#32):** After `installFromPath()` completes, /tmp/ clones are deleted automatically.
+
+5. **--help flag:** `ldm install --help` now shows usage instead of triggering a real install.
+
+Closes #81, #82. Partial fix for #32.
+
+## 0.4.22 (2026-03-17)
+
+# Fix ldm install: CLIs, catalog fallback, /tmp/ symlinks, help
+
+Five interconnected bugs fixed in ldm install:
+
+1. **Global CLIs not updated (#81):** Added a second loop in `cmdInstallCatalog()` that checks `state.cliBinaries` against catalog `cliMatches`. CLIs installed via `npm install -g` are now detected and updated.
+
+2. **Catalog fallback (#82):** When no catalog entry matches an extension, falls back to `package.json` `repository.url` instead of skipping. Also added `wip-branch-guard` to catalog registryMatches/cliMatches.
+
+3. **/tmp/ symlink prevention (#32):** `installCLI()` in deploy.mjs now tries the latest npm version before falling back to local `npm install -g .`. This prevents /tmp/ symlinks in most cases.
+
+4. **/tmp/ cleanup (#32):** After `installFromPath()` completes, /tmp/ clones are deleted automatically.
+
+5. **--help flag:** `ldm install --help` now shows usage instead of triggering a real install.
+
+Closes #81, #82. Partial fix for #32.
+
+## 0.4.21 (2026-03-17)
+
+# Fix ldm install: CLIs, catalog fallback, /tmp/ symlinks, help
+
+Five interconnected bugs fixed in ldm install:
+
+1. **Global CLIs not updated (#81):** Added a second loop in `cmdInstallCatalog()` that checks `state.cliBinaries` against catalog `cliMatches`. CLIs installed via `npm install -g` are now detected and updated.
+
+2. **Catalog fallback (#82):** When no catalog entry matches an extension, falls back to `package.json` `repository.url` instead of skipping. Also added `wip-branch-guard` to catalog registryMatches/cliMatches.
+
+3. **/tmp/ symlink prevention (#32):** `installCLI()` in deploy.mjs now tries the latest npm version before falling back to local `npm install -g .`. This prevents /tmp/ symlinks in most cases.
+
+4. **/tmp/ cleanup (#32):** After `installFromPath()` completes, /tmp/ clones are deleted automatically.
+
+5. **--help flag:** `ldm install --help` now shows usage instead of triggering a real install.
+
+Closes #81, #82. Partial fix for #32.
+
+## 0.4.20 (2026-03-17)
+
+# Fix ldm install: CLIs, catalog fallback, /tmp/ symlinks, help
+
+Five interconnected bugs fixed in ldm install:
+
+1. **Global CLIs not updated (#81):** Added a second loop in `cmdInstallCatalog()` that checks `state.cliBinaries` against catalog `cliMatches`. CLIs installed via `npm install -g` are now detected and updated.
+
+2. **Catalog fallback (#82):** When no catalog entry matches an extension, falls back to `package.json` `repository.url` instead of skipping. Also added `wip-branch-guard` to catalog registryMatches/cliMatches.
+
+3. **/tmp/ symlink prevention (#32):** `installCLI()` in deploy.mjs now tries the latest npm version before falling back to local `npm install -g .`. This prevents /tmp/ symlinks in most cases.
+
+4. **/tmp/ cleanup (#32):** After `installFromPath()` completes, /tmp/ clones are deleted automatically.
+
+5. **--help flag:** `ldm install --help` now shows usage instead of triggering a real install.
+
+Closes #81, #82. Partial fix for #32.
+
+## 0.4.19 (2026-03-17)
+
+# Fix ldm install: CLIs, catalog fallback, /tmp/ symlinks, help
+
+Five interconnected bugs fixed in ldm install:
+
+1. **Global CLIs not updated (#81):** Added a second loop in `cmdInstallCatalog()` that checks `state.cliBinaries` against catalog `cliMatches`. CLIs installed via `npm install -g` are now detected and updated.
+
+2. **Catalog fallback (#82):** When no catalog entry matches an extension, falls back to `package.json` `repository.url` instead of skipping. Also added `wip-branch-guard` to catalog registryMatches/cliMatches.
+
+3. **/tmp/ symlink prevention (#32):** `installCLI()` in deploy.mjs now tries the latest npm version before falling back to local `npm install -g .`. This prevents /tmp/ symlinks in most cases.
+
+4. **/tmp/ cleanup (#32):** After `installFromPath()` completes, /tmp/ clones are deleted automatically.
+
+5. **--help flag:** `ldm install --help` now shows usage instead of triggering a real install.
+
+Closes #81, #82. Partial fix for #32.
+
+## 0.4.18 (2026-03-17)
+
+# Fix ldm install: CLIs, catalog fallback, /tmp/ symlinks, help
+
+Five interconnected bugs fixed in ldm install:
+
+1. **Global CLIs not updated (#81):** Added a second loop in `cmdInstallCatalog()` that checks `state.cliBinaries` against catalog `cliMatches`. CLIs installed via `npm install -g` are now detected and updated.
+
+2. **Catalog fallback (#82):** When no catalog entry matches an extension, falls back to `package.json` `repository.url` instead of skipping. Also added `wip-branch-guard` to catalog registryMatches/cliMatches.
+
+3. **/tmp/ symlink prevention (#32):** `installCLI()` in deploy.mjs now tries the latest npm version before falling back to local `npm install -g .`. This prevents /tmp/ symlinks in most cases.
+
+4. **/tmp/ cleanup (#32):** After `installFromPath()` completes, /tmp/ clones are deleted automatically.
+
+5. **--help flag:** `ldm install --help` now shows usage instead of triggering a real install.
+
+Closes #81, #82. Partial fix for #32.
+
+## 0.4.17 (2026-03-17)
+
+# Fix ldm install: CLIs, catalog fallback, /tmp/ symlinks, help
+
+Five interconnected bugs fixed in ldm install:
+
+1. **Global CLIs not updated (#81):** Added a second loop in `cmdInstallCatalog()` that checks `state.cliBinaries` against catalog `cliMatches`. CLIs installed via `npm install -g` are now detected and updated.
+
+2. **Catalog fallback (#82):** When no catalog entry matches an extension, falls back to `package.json` `repository.url` instead of skipping. Also added `wip-branch-guard` to catalog registryMatches/cliMatches.
+
+3. **/tmp/ symlink prevention (#32):** `installCLI()` in deploy.mjs now tries the latest npm version before falling back to local `npm install -g .`. This prevents /tmp/ symlinks in most cases.
+
+4. **/tmp/ cleanup (#32):** After `installFromPath()` completes, /tmp/ clones are deleted automatically.
+
+5. **--help flag:** `ldm install --help` now shows usage instead of triggering a real install.
+
+Closes #81, #82. Partial fix for #32.
+
+## 0.4.16 (2026-03-17)
+
+# Fix ldm install: CLIs, catalog fallback, /tmp/ symlinks, help
+
+Five interconnected bugs fixed in ldm install:
+
+1. **Global CLIs not updated (#81):** Added a second loop in `cmdInstallCatalog()` that checks `state.cliBinaries` against catalog `cliMatches`. CLIs installed via `npm install -g` are now detected and updated.
+
+2. **Catalog fallback (#82):** When no catalog entry matches an extension, falls back to `package.json` `repository.url` instead of skipping. Also added `wip-branch-guard` to catalog registryMatches/cliMatches.
+
+3. **/tmp/ symlink prevention (#32):** `installCLI()` in deploy.mjs now tries the latest npm version before falling back to local `npm install -g .`. This prevents /tmp/ symlinks in most cases.
+
+4. **/tmp/ cleanup (#32):** After `installFromPath()` completes, /tmp/ clones are deleted automatically.
+
+5. **--help flag:** `ldm install --help` now shows usage instead of triggering a real install.
+
+Closes #81, #82. Partial fix for #32.
+
+## 0.4.15 (2026-03-17)
+
+# Bridge unified session fix
+
+Bridge now sends `user: "main"` instead of `user: "claude-code"` when calling the OpenClaw chatCompletions endpoint. This routes CC messages to the main session instead of creating a separate `agent:main:openai-user:claude-code` session.
+
+**Before:** CC messages went to an isolated session. Parker couldn't see them in the TUI.
+**After:** CC messages appear in the same session as iMessage. Parker sees everything in one place.
+
+Requires the companion OpenClaw gateway dist patch (local only, not upstream) that treats `user: "main"` as the default session key.
+
+Closes #76
+
+## 0.4.14 (2026-03-17)
+
+# LDM OS v0.4.14
+
+Three fixes from dogfood:
+
+1. **Deploy safety** (#69): abort if build fails or dist/ missing. Prevents overwriting working extensions with unbuilt clones.
+2. **Spawn loop** (#70): wip-install --version exits immediately. Was triggering recursive process spawning.
+3. **npm install null** (#74): skip extensions with no catalog repo instead of running npm install null.
+4. **Process monitor** (#75): auto-kill zombie npm/ldm processes every 3 min via cron. ldm init deploys it.
+5. **Catalog show** (#72): `ldm catalog show <name>` describes what each component installs.
+
+## Issues closed
+
+- Closes #69
+- Closes #70
+- Closes #72
+- Closes #74
+- Closes #75
+
+## 0.4.13 (2026-03-17)
+
+# Release Notes: wip-ldm-os v0.4.13
+
+**Add `ldm catalog show` command for full component install details**
+
+## What changed
+
+- New `ldm catalog show <name>` command that displays full install details for any component in the catalog: npm package, repo, CLI commands, MCP servers, post-install steps.
+- Also updated Memory Crystal npm references from unscoped `memory-crystal` to `@wipcomputer/memory-crystal` in spec docs.
+
+## Why
+
+Users running `ldm install` could see the component list but had no way to inspect a specific component's details before installing. `ldm catalog show memory-crystal` now gives the full picture.
+
+## Issues closed
+
+- Closes #72
+
+## How to verify
+
+```bash
+ldm catalog show memory-crystal
+ldm catalog show wip-ai-devops-toolbox
+```
+
 ## 0.4.12 (2026-03-16)
 
 # LDM OS v0.4.12

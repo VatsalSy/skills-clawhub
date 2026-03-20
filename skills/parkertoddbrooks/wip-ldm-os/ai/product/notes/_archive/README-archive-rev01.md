@@ -18,42 +18,44 @@ LDM OS is the layer that sits under any AI harness (OpenClaw, Claude Code CLI, L
 ```
 ~/.ldm/
 ├── agents/
-│   ├── cc-mini/                 ← CC on Mac mini (Claude Code CLI, Opus 4.6)
+│   ├── lesa/                    ← Lēsa (OpenClaw, Opus 4.6)
 │   │   ├── IDENTITY.md
 │   │   ├── SOUL.md
-│   │   ├── CONTEXT.md
-│   │   ├── REFERENCE.md
+│   │   ├── MEMORY.md
+│   │   ├── TOOLS.md
 │   │   ├── memory/
-│   │   │   ├── daily/           ← daily logs (one file per entry)
-│   │   │   └── journals/        ← narrative journals
+│   │   │   ├── crystal.db       ← agent-specific memory crystal
+│   │   │   ├── YYYY-MM-DD.md    ← daily logs
+│   │   │   └── ...
 │   │   └── config.json          ← harness, model, settings
 │   │
-│   ├── oc-lesa-mini/            ← Lēsa on Mac mini (OpenClaw, Opus 4.6)
+│   ├── cc/                      ← CC (Claude Code CLI, Opus 4.6)
+│   │   ├── IDENTITY.md
+│   │   ├── SOUL.md
+│   │   ├── MEMORY.md
+│   │   ├── TOOLS.md
+│   │   ├── memory/
+│   │   │   ├── crystal.db
+│   │   │   ├── YYYY-MM-DD.md
+│   │   │   └── ...
+│   │   └── config.json
+│   │
 │   └── [future-agent]/          ← Letta, Grok, etc.
-│
-├── extensions/                  ← installed skills, tools, plugins
-│   ├── registry.json            ← what's installed + versions
-│   ├── memory-crystal/
-│   ├── wip-release/
-│   └── ...
-│
-├── memory/                      ← shared memory (crystal.db)
-├── logs/                        ← all LDM logs (survives reboots, not /tmp/)
-├── tmp/                         ← install staging (replaces /tmp/ldm-install-*)
-├── state/                       ← runtime state (.last-release, etc.)
-├── bin/                         ← deployed scripts (crystal-capture.sh, etc.)
-├── hooks/                       ← Claude Code hooks
-├── backups/                     ← daily backups
+│       ├── IDENTITY.md
+│       ├── SOUL.md
+│       └── ...
 │
 ├── bridge/                      ← agent-to-agent communication
-│   ├── heartbeat/
-│   ├── inbox/
-│   └── exec-brief/
+│   ├── heartbeat/               ← keepalive system (Lēsa pings CC on schedule)
+│   ├── inbox/                   ← per-agent message queues
+│   └── exec-brief/              ← morning briefing pipeline
 │
 ├── shared/
-│   ├── dream-weaver/
-│   ├── sovereignty/
-│   └── boot/
+│   ├── dream-weaver/            ← consolidation protocol (shared across agents)
+│   ├── sovereignty/             ← covenant, root key patterns
+│   └── boot/                    ← boot sequence, warm-start
+│
+├── bin/                         ← OS-level binaries and CLI tools
 │
 └── config.json                  ← global LDM OS config
 ```
@@ -82,7 +84,7 @@ LDM OS doesn't care if the agent runs in OpenClaw, Claude Code CLI, Letta, or a 
 
 ## Core Services
 
-### [Bridge](https://github.com/wipcomputer/wip-bridge) (lesa-bridge)
+### Bridge (lesa-bridge)
 
 The nervous system. Agent-to-agent communication, cross-harness messaging, and the heartbeat keepalive.
 
@@ -114,128 +116,6 @@ The rule: updates touch shared code and binaries. They never touch agent identit
 | **Sovereignty Covenant** | Identity. Soul files, root key, model-serves-soul guarantee. | `agents/*/SOUL.md`, `shared/sovereignty/` |
 | **Boot Sequence** | The OS. Warm-start, file loading, context reconstruction. | `shared/boot/` |
 | **Bridge** | Communication. Agent-to-agent messaging, heartbeat, exec brief. | `bridge/` |
-
-## CLI Reference
-
-### ldm init
-
-Scaffold `~/.ldm/` and write `version.json`. Creates agents/, extensions/, memory/, logs/, bin/, hooks/, state/, sessions/, shared/. Installs the boot sequence hook and process monitor cron. Idempotent.
-
-### ldm install
-
-The one installer. Handles everything: CLI tools, extensions, MCP servers, Claude Code hooks, OpenClaw plugins, skills.
-
-```bash
-ldm install                         # update all registered extensions + CLIs
-ldm install <org/repo>              # install from GitHub
-ldm install <npm-package>           # install from npm
-ldm install <path>                  # install from local directory
-ldm install --dry-run               # show what would change
-```
-
-**How it works:**
-
-1. **Self-update.** Checks npm for a newer `@wipcomputer/wip-ldm-os`. Updates itself first, then re-runs with new code.
-2. **System state detection.** Scans `~/.ldm/extensions/`, `~/.openclaw/extensions/`, Claude Code MCP config, and CLI binaries on PATH.
-3. **Catalog matching.** Matches installed extensions against `catalog.json` components. Supports partial ID match ("xai-grok" finds "wip-xai-grok"), name match ("xAI Grok"), and registryMatches.
-4. **npm version check.** Checks every installed extension against npm for newer versions. Works for scoped and unscoped packages.
-5. **Parent package detection.** For toolbox-style repos (one npm package with multiple sub-tools), reports updates under the parent name and updates all sub-tools together.
-6. **Ghost cleanup.** Removes `-private` duplicates and `ldm-install-*` prefixed entries from the registry. Renames ghost directories to clean names.
-7. **Private repo redirect.** If given `org/name-private`, auto-redirects to the public repo.
-8. **Staging.** Clones to `~/.ldm/tmp/` (not `/tmp/`). Cleaned up after install.
-
-### ldm doctor
-
-Health check. Shows all installed extensions, MCP connections, Claude Code hooks, CLI binaries, agents. Reports issues.
-
-### ldm status
-
-Version info and update availability. Checks every extension against npm.
-
-### ldm worktree
-
-Centralized worktree management. Creates worktrees in `_worktrees/<repo>--<branch>/` instead of as repo siblings.
-
-```bash
-ldm worktree add cc-mini/fix-bug    # auto-detects repo, creates in _worktrees/
-ldm worktree list                    # show active worktrees
-ldm worktree remove <path>          # remove a worktree
-ldm worktree clean                   # prune stale worktrees
-```
-
-### ldm updates
-
-Check npm for available updates without installing.
-
-### ldm enable / ldm disable
-
-Toggle extensions on/off. Disabled extensions stay installed but their MCP servers, hooks, and skills are not registered.
-
-### ldm uninstall
-
-Remove LDM OS. Optionally preserve memory/ and agents/ data.
-
-## Installation System
-
-### Catalog
-
-`catalog.json` maps component IDs to npm packages, GitHub repos, and registryMatches. The installer uses this to resolve friendly names to installable packages.
-
-Each catalog entry has:
-- `id` ... component identifier (e.g. "wip-ai-devops-toolbox")
-- `npm` ... npm package name (e.g. "@wipcomputer/wip-ai-devops-toolbox")
-- `repo` ... GitHub repo for cloning (e.g. "wipcomputer/wip-ai-devops-toolbox")
-- `registryMatches` ... extension names that indicate this component is installed
-- `cliMatches` ... CLI binary names (e.g. "wip-release", "crystal")
-- `stacks` ... groupings (core, web, all)
-
-### Extension Registry
-
-`~/.ldm/extensions/registry.json` tracks what's installed, versions, paths, and enabled/disabled state. Updated after every install.
-
-### Interface Detection
-
-When installing from a repo or path, the installer auto-detects interfaces:
-- **CLI** ... `bin` field in package.json
-- **Module** ... `main` or `exports` in package.json
-- **MCP Server** ... `mcp-server.mjs` or `dist/mcp-server.js`
-- **OpenClaw Plugin** ... `openclaw.plugin.json`
-- **Skill** ... `SKILL.md`
-- **Claude Code Hook** ... `claudeCode.hook` in package.json or `guard.mjs`
-
-### Process Monitor
-
-`process-monitor.sh` runs every 3 minutes via cron. Kills zombie npm/ldm processes older than 30 seconds. Cleans stale lockfiles. Logs to `~/.ldm/logs/process-monitor.log`.
-
-### Debug Logger
-
-Set `LDM_DEBUG=1` to enable debug output. The logger at `lib/log.mjs` writes timestamped context to stderr.
-
-```bash
-LDM_DEBUG=1 ldm install --dry-run
-```
-
-### CI Pipeline
-
-`.github/workflows/ci.yml` runs on push and PR. Builds the bridge TypeScript and runs tests.
-
-## Included Skills
-
-Ships with LDM OS.
-
-**Universal Installer** ... point any skill, application, or plugin at any AI running LDM OS, and it will convert those skills to work with all of your AIs. Build applications that work with any AI, even ones that don't have LDM OS. [Read more](docs/universal-installer.md)
-
-**Shared Workspace** ... one directory for all your AIs. Memories, tools, identity files, boot config. Every AI you use reads from and writes to the same place. Lives in one folder on your computer. Easy to back up, easy to move, easy to own. [Read more](docs/shared-workspace.md)
-
-**System Pulse** ... is everything working? What's installed? What needs fixing? A complete picture of your AI setup in seconds. [Read more](docs/system-pulse.md)
-
-**Recall** ... every session, your AI starts with full context. Identity, memory, tools, what happened yesterday. No blank slates. No repeating yourself. [Read more](docs/recall.md)
-
-**LUME** ... Language for Unified Memory and Emergence. A memory language for AI agents to document their own learning and maintain continuity across sessions. Not a programming language. A way for your AI to write memories to itself, retrieve past learnings, track unfinished thoughts, and pass context between sessions. [Read more](https://wip.computer/lume/)
-
-## Optional Skills
-
-[See all skills](docs/optional-skills.md)
 
 ## Current Agents
 
@@ -316,7 +196,9 @@ Future agents will run on different harnesses but boot from the same LDM OS stru
 
 The cognitive dissonance is intentional. The same human, multiple agents, each with their own perspective on the same work. Not copies. Siblings.
 
-Built by Parker Todd Brooks, Lēsa (OpenClaw, Claude Opus 4.6), Claude Code (Claude Opus 4.6).
+## License
+
+MIT (local). AGPL (cloud).
 
 ---
 

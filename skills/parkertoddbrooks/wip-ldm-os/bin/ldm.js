@@ -17,7 +17,7 @@
  *   ldm --version         Show version
  */
 
-import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, cpSync, chmodSync, unlinkSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, cpSync, chmodSync, unlinkSync, readlinkSync } from 'node:fs';
 import { join, basename, resolve, dirname } from 'node:path';
 import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -30,6 +30,18 @@ const LDM_ROOT = join(HOME, '.ldm');
 const LDM_EXTENSIONS = join(LDM_ROOT, 'extensions');
 const VERSION_PATH = join(LDM_ROOT, 'version.json');
 const REGISTRY_PATH = join(LDM_EXTENSIONS, 'registry.json');
+const LDM_TMP = join(LDM_ROOT, 'tmp');
+
+// Install log (#101): append to ~/.ldm/logs/install.log
+import { appendFileSync } from 'node:fs';
+const LOG_DIR = join(LDM_ROOT, 'logs');
+const LOG_PATH = join(LOG_DIR, 'install.log');
+function installLog(msg) {
+  try {
+    mkdirSync(LOG_DIR, { recursive: true });
+    appendFileSync(LOG_PATH, `[${new Date().toISOString()}] ${msg}\n`);
+  } catch {}
+}
 
 // Read our own version from package.json
 const pkgPath = join(__dirname, '..', 'package.json');
@@ -52,6 +64,7 @@ if (existsSync(VERSION_PATH)) {
     const v = JSON.parse(readFileSync(VERSION_PATH, 'utf8'));
     if (v.version && v.version !== PKG_VERSION) {
       v.version = PKG_VERSION;
+      v.installed = new Date().toISOString(); // #86: update install date on CLI upgrade
       v.updated = new Date().toISOString();
       writeFileSync(VERSION_PATH, JSON.stringify(v, null, 2) + '\n');
     }
@@ -215,7 +228,21 @@ function loadCatalog() {
 }
 
 function findInCatalog(id) {
-  return loadCatalog().find(c => c.id === id);
+  const q = id.toLowerCase();
+  const catalog = loadCatalog();
+  // Exact id match
+  const exact = catalog.find(c => c.id === id);
+  if (exact) return exact;
+  // Partial id match (e.g. "xai-grok" matches "wip-xai-grok")
+  const partial = catalog.find(c => c.id.toLowerCase().includes(q) || q.includes(c.id.toLowerCase()));
+  if (partial) return partial;
+  // Name match (case-insensitive, e.g. "xAI Grok")
+  const byName = catalog.find(c => c.name && c.name.toLowerCase() === q);
+  if (byName) return byName;
+  // registryMatches match
+  const byRegistry = catalog.find(c => (c.registryMatches || []).some(m => m.toLowerCase() === q));
+  if (byRegistry) return byRegistry;
+  return null;
 }
 
 // ── ldm init ──
@@ -311,6 +338,28 @@ async function cmdInit() {
       // Not set. Set it.
       execSync(`git config --global core.hooksPath "${hooksDir}"`);
       console.log(`  + git pre-commit hook installed (blocks commits on main)`);
+    }
+  }
+
+  // Deploy process monitor (#75)
+  const monitorSrc = join(__dirname, '..', 'bin', 'process-monitor.sh');
+  const monitorDest = join(LDM_ROOT, 'bin', 'process-monitor.sh');
+  if (existsSync(monitorSrc)) {
+    mkdirSync(join(LDM_ROOT, 'bin'), { recursive: true });
+    cpSync(monitorSrc, monitorDest);
+    chmodSync(monitorDest, 0o755);
+    // Add cron entry if not already there
+    try {
+      const crontab = execSync('crontab -l 2>/dev/null', { encoding: 'utf8' });
+      if (!crontab.includes('process-monitor')) {
+        execSync(`(crontab -l 2>/dev/null; echo "*/3 * * * * ${monitorDest}") | crontab -`);
+        console.log(`  + process monitor installed (every 3 min, kills zombie processes)`);
+      }
+    } catch {
+      try {
+        execSync(`echo "*/3 * * * * ${monitorDest}" | crontab -`);
+        console.log(`  + process monitor installed (every 3 min)`);
+      } catch {}
     }
   }
 
@@ -425,6 +474,23 @@ async function cmdInstall() {
 
   setFlags({ dryRun: DRY_RUN, jsonOutput: JSON_OUTPUT });
 
+  // --help flag (#81)
+  if (args.includes('--help') || args.includes('-h')) {
+    console.log(`
+  ldm install                    Update all registered extensions + CLIs
+  ldm install <org/repo>         Install from GitHub
+  ldm install <npm-package>      Install from npm
+  ldm install <path>             Install from local directory
+
+  Flags:
+    --dry-run    Show what would change, don't install
+    --json       JSON output
+    --yes        Auto-accept catalog prompts
+    --none       Skip catalog prompts
+`);
+    process.exit(0);
+  }
+
   // Find the target (skip flags)
   const target = args.slice(1).find(a => !a.startsWith('--'));
 
@@ -433,8 +499,22 @@ async function cmdInstall() {
     return cmdInstallCatalog();
   }
 
+  // If target is a private repo (org/name-private), redirect to public (#134)
+  let resolvedTarget = target;
+  if (target.match(/^[\w-]+\/[\w.-]+-private$/) && !existsSync(resolve(target))) {
+    const publicRepo = target.replace(/-private$/, '');
+    const catalogHit = findInCatalog(basename(publicRepo));
+    if (catalogHit) {
+      console.log(`  Redirecting ${target} to public repo: ${catalogHit.repo}`);
+      resolvedTarget = catalogHit.repo;
+    } else {
+      console.log(`  Redirecting ${target} to public repo: ${publicRepo}`);
+      resolvedTarget = publicRepo;
+    }
+  }
+
   // Check if target is a catalog ID (e.g. "memory-crystal")
-  const catalogEntry = findInCatalog(target);
+  const catalogEntry = findInCatalog(resolvedTarget);
   if (catalogEntry) {
     console.log('');
     console.log(`  Resolved "${target}" via catalog to ${catalogEntry.repo}`);
@@ -442,10 +522,11 @@ async function cmdInstall() {
     // Use the repo field to clone from GitHub
     const repoTarget = catalogEntry.repo;
     const repoName = basename(repoTarget);
-    const repoPath = join('/tmp', `ldm-install-${repoName}`);
+    const repoPath = join(LDM_TMP, `ldm-install-${repoName}`);
     const httpsUrl = `https://github.com/${repoTarget}.git`;
     const sshUrl = `git@github.com:${repoTarget}.git`;
 
+    mkdirSync(LDM_TMP, { recursive: true });
     console.log(`  Cloning ${repoTarget}...`);
     try {
       if (existsSync(repoPath)) {
@@ -471,6 +552,11 @@ async function cmdInstall() {
     }
 
     await installFromPath(repoPath);
+
+    // Clean up staging clone after install (#32, #135)
+    if (!DRY_RUN && repoPath.startsWith(LDM_TMP)) {
+      try { execSync(`rm -rf "${repoPath}"`, { stdio: 'pipe' }); } catch {}
+    }
     return;
   }
 
@@ -478,10 +564,10 @@ async function cmdInstall() {
   let repoPath;
 
   // Check if target looks like an npm package (starts with @ or is a plain name without /)
-  if (target.startsWith('@') || (!target.includes('/') && !existsSync(resolve(target)))) {
+  if (resolvedTarget.startsWith('@') || (!resolvedTarget.includes('/') && !existsSync(resolve(resolvedTarget)))) {
     // Try npm install to temp dir
-    const npmName = target;
-    const tempDir = join('/tmp', `ldm-install-npm-${Date.now()}`);
+    const npmName = resolvedTarget;
+    const tempDir = join(LDM_TMP, `ldm-install-npm-${Date.now()}`);
     console.log('');
     console.log(`  Installing ${npmName} from npm...`);
     try {
@@ -504,19 +590,20 @@ async function cmdInstall() {
     }
   }
 
-  if (!repoPath && (target.startsWith('http') || target.startsWith('git@') || target.match(/^[\w-]+\/[\w.-]+$/))) {
-    const isShorthand = target.match(/^[\w-]+\/[\w.-]+$/);
+  if (!repoPath && (resolvedTarget.startsWith('http') || resolvedTarget.startsWith('git@') || resolvedTarget.match(/^[\w-]+\/[\w.-]+$/))) {
+    const isShorthand = resolvedTarget.match(/^[\w-]+\/[\w.-]+$/);
     const httpsUrl = isShorthand
-      ? `https://github.com/${target}.git`
-      : target;
+      ? `https://github.com/${resolvedTarget}.git`
+      : resolvedTarget;
     const sshUrl = isShorthand
-      ? `git@github.com:${target}.git`
-      : target.replace(/^https:\/\/github\.com\//, 'git@github.com:');
+      ? `git@github.com:${resolvedTarget}.git`
+      : resolvedTarget.replace(/^https:\/\/github\.com\//, 'git@github.com:');
     const repoName = basename(httpsUrl).replace('.git', '');
-    repoPath = join('/tmp', `ldm-install-${repoName}`);
+    repoPath = join(LDM_TMP, `ldm-install-${repoName}`);
 
+    mkdirSync(LDM_TMP, { recursive: true });
     console.log('');
-    console.log(`  Cloning ${isShorthand ? target : httpsUrl}...`);
+    console.log(`  Cloning ${isShorthand ? resolvedTarget : httpsUrl}...`);
     try {
       if (existsSync(repoPath)) {
         execSync(`rm -rf "${repoPath}"`, { stdio: 'pipe' });
@@ -534,7 +621,7 @@ async function cmdInstall() {
       process.exit(1);
     }
   } else if (!repoPath) {
-    repoPath = resolve(target);
+    repoPath = resolve(resolvedTarget);
     if (!existsSync(repoPath)) {
       console.error(`  x Path not found: ${repoPath}`);
       process.exit(1);
@@ -548,6 +635,11 @@ async function cmdInstall() {
   }
 
   await installFromPath(repoPath);
+
+  // Clean up staging clone after install (#32, #135)
+  if (!DRY_RUN && repoPath.startsWith(LDM_TMP)) {
+    try { execSync(`rm -rf "${repoPath}"`, { stdio: 'pipe' }); } catch {}
+  }
 }
 
 // ── Auto-detect unregistered extensions ──
@@ -604,6 +696,33 @@ function autoDetectExtensions() {
 
 async function cmdInstallCatalog() {
   // No lock here. cmdInstall() already holds it when calling this.
+  installLog(`ldm install started (v${PKG_VERSION}, DRY_RUN=${DRY_RUN})`);
+
+  // Self-update: check if CLI itself is outdated. Update first, then re-exec.
+  // This breaks the chicken-and-egg: new features in ldm install are always
+  // available because the installer upgrades itself before doing anything else.
+  if (!DRY_RUN && !process.env.LDM_SELF_UPDATED) {
+    try {
+      const latest = execSync('npm view @wipcomputer/wip-ldm-os version 2>/dev/null', {
+        encoding: 'utf8', timeout: 15000,
+      }).trim();
+      if (latest && latest !== PKG_VERSION) {
+        console.log(`  LDM OS CLI v${PKG_VERSION} -> v${latest}. Updating first...`);
+        try {
+          execSync(`npm install -g @wipcomputer/wip-ldm-os@${latest}`, { stdio: 'inherit', timeout: 60000 });
+          console.log(`  CLI updated to v${latest}. Re-running with new code...`);
+          console.log('');
+          // Re-exec with the new binary. LDM_SELF_UPDATED prevents infinite loop.
+          // process.argv.slice(2) skips 'node' and the script path, keeps just 'install' + flags
+          const reArgs = process.argv.slice(2).join(' ') || 'install';
+          execSync(`LDM_SELF_UPDATED=1 ldm ${reArgs}`, { stdio: 'inherit' });
+          process.exit(0);
+        } catch (e) {
+          console.log(`  ! Self-update failed: ${e.message}. Continuing with v${PKG_VERSION}.`);
+        }
+      }
+    } catch {}
+  }
 
   autoDetectExtensions();
 
@@ -647,8 +766,75 @@ async function cmdInstallCatalog() {
     console.log('');
   }
 
+  // Clean ghost entries from registry (#134, #135)
+  if (registry?.extensions) {
+    const names = Object.keys(registry.extensions);
+    let cleaned = 0;
+    for (const name of names) {
+      // Remove -private duplicates (e.g. wip-xai-grok-private when wip-xai-grok exists)
+      const publicName = name.replace(/-private$/, '');
+      if (name !== publicName && registry.extensions[publicName]) {
+        delete registry.extensions[name];
+        cleaned++;
+        continue;
+      }
+      // Rename ldm-install- prefixed entries to clean names (#141)
+      if (name.startsWith('ldm-install-')) {
+        const cleanName = name.replace(/^ldm-install-/, '');
+        // Transfer registry entry to clean name
+        if (!registry.extensions[cleanName]) {
+          registry.extensions[cleanName] = { ...registry.extensions[name] };
+        }
+        delete registry.extensions[name];
+        // Rename the actual directory if it exists
+        if (!DRY_RUN) {
+          const ghostDir = join(LDM_EXTENSIONS, name);
+          const cleanDir = join(LDM_EXTENSIONS, cleanName);
+          if (existsSync(ghostDir) && !existsSync(cleanDir)) {
+            try {
+              execSync(`mv "${ghostDir}" "${cleanDir}"`, { stdio: 'pipe' });
+            } catch {}
+          } else if (existsSync(ghostDir) && existsSync(cleanDir)) {
+            // Clean version exists, remove ghost
+            try { execSync(`rm -rf "${ghostDir}"`, { stdio: 'pipe' }); } catch {}
+          }
+          // Same for OC extensions
+          const ocGhost = join(HOME, '.openclaw', 'extensions', name);
+          const ocClean = join(HOME, '.openclaw', 'extensions', cleanName);
+          if (existsSync(ocGhost) && !existsSync(ocClean)) {
+            try { execSync(`mv "${ocGhost}" "${ocClean}"`, { stdio: 'pipe' }); } catch {}
+          } else if (existsSync(ocGhost) && existsSync(ocClean)) {
+            try { execSync(`rm -rf "${ocGhost}"`, { stdio: 'pipe' }); } catch {}
+          }
+        }
+        cleaned++;
+      }
+    }
+    if (cleaned > 0 && !DRY_RUN) {
+      writeFileSync(REGISTRY_PATH, JSON.stringify(registry, null, 2));
+      installLog(`Cleaned ${cleaned} ghost registry entries`);
+    }
+  }
+
   // Build the update plan: check ALL installed extensions against npm (#55)
   const npmUpdates = [];
+
+  // Check CLI self-update (#132)
+  try {
+    const cliLatest = execSync('npm view @wipcomputer/wip-ldm-os version 2>/dev/null', {
+      encoding: 'utf8', timeout: 10000,
+    }).trim();
+    if (cliLatest && cliLatest !== PKG_VERSION) {
+      npmUpdates.push({
+        name: 'LDM OS CLI',
+        catalogNpm: '@wipcomputer/wip-ldm-os',
+        currentVersion: PKG_VERSION,
+        latestVersion: cliLatest,
+        hasUpdate: true,
+        isCLI: true,
+      });
+    }
+  } catch {}
 
   // Check every installed extension against npm via catalog
   console.log('  Checking npm for updates...');
@@ -659,13 +845,23 @@ async function cmdInstallCatalog() {
     const extPkgPath = join(LDM_EXTENSIONS, name, 'package.json');
     const extPkg = readJSON(extPkgPath);
     const npmPkg = extPkg?.name;
-    if (!npmPkg || !npmPkg.startsWith('@')) continue; // skip unscoped packages
+    if (!npmPkg) continue; // no package name, skip
 
     // Find catalog entry for the repo URL (used for clone if update needed)
     const catalogEntry = components.find(c => {
       const matches = c.registryMatches || [c.id];
       return matches.includes(name) || c.id === name;
     });
+
+    // Fallback: use repository.url from extension's package.json (#82)
+    let repoUrl = catalogEntry?.repo || null;
+    if (!repoUrl && extPkg?.repository) {
+      const raw = typeof extPkg.repository === 'string'
+        ? extPkg.repository
+        : extPkg.repository.url || '';
+      const ghMatch = raw.match(/github\.com[:/]([^/]+\/[^/.]+)/);
+      if (ghMatch) repoUrl = ghMatch[1];
+    }
 
     const currentVersion = entry.ldmVersion || entry.ocVersion;
     if (!currentVersion) continue;
@@ -678,7 +874,7 @@ async function cmdInstallCatalog() {
       if (latestVersion && latestVersion !== currentVersion) {
         npmUpdates.push({
           ...entry,
-          catalogRepo: catalogEntry?.repo || null,
+          catalogRepo: repoUrl,
           catalogNpm: npmPkg,
           currentVersion,
           latestVersion,
@@ -688,9 +884,122 @@ async function cmdInstallCatalog() {
     } catch {}
   }
 
+  // Check global CLIs not tracked by extension loop (#81)
+  for (const [binName, binInfo] of Object.entries(state.cliBinaries || {})) {
+    const catalogComp = components.find(c =>
+      (c.cliMatches || []).includes(binName)
+    );
+    if (!catalogComp || !catalogComp.npm) continue;
+    // Skip if already covered by extension loop
+    if (npmUpdates.some(e =>
+      e.catalogNpm === catalogComp.npm ||
+      (catalogComp.registryMatches || []).includes(e.name)
+    )) continue;
+
+    const currentVersion = binInfo.version;
+    if (!currentVersion) continue;
+
+    try {
+      const latestVersion = execSync(`npm view ${catalogComp.npm} version 2>/dev/null`, {
+        encoding: 'utf8', timeout: 10000,
+      }).trim();
+      if (latestVersion && latestVersion !== currentVersion) {
+        npmUpdates.push({
+          name: binName,
+          catalogRepo: catalogComp.repo,
+          catalogNpm: catalogComp.npm,
+          currentVersion,
+          latestVersion,
+          hasUpdate: true,
+          cliOnly: true,
+        });
+      }
+    } catch {}
+  }
+
+  // Check parent packages for toolbox-style repos (#132)
+  // If sub-tools are installed but the parent npm package has a newer version,
+  // report the parent as needing an update (not the individual sub-tool).
+  // Don't skip packages already found by the extension loop. The parent check
+  // REPLACES sub-tool entries with the parent name.
+  const checkedParentNpm = new Set();
+  for (const comp of components) {
+    if (!comp.npm || checkedParentNpm.has(comp.npm)) continue;
+    if (!comp.registryMatches || comp.registryMatches.length === 0) continue;
+
+    // If any registryMatch is installed, check the parent package
+    const installedMatch = comp.registryMatches.find(m => reconciled[m]);
+    if (!installedMatch) continue;
+
+    const currentVersion = reconciled[installedMatch]?.ldmVersion || reconciled[installedMatch]?.ocVersion || '?';
+
+    try {
+      const latest = execSync(`npm view ${comp.npm} version 2>/dev/null`, {
+        encoding: 'utf8', timeout: 10000,
+      }).trim();
+      if (latest && latest !== currentVersion) {
+        // Remove any sub-tool entries that duplicate this parent
+        for (let i = npmUpdates.length - 1; i >= 0; i--) {
+          if (npmUpdates[i].catalogNpm === comp.npm && !npmUpdates[i].isCLI) {
+            npmUpdates.splice(i, 1);
+          }
+        }
+        npmUpdates.push({
+          name: comp.id,
+          catalogRepo: comp.repo,
+          catalogNpm: comp.npm,
+          currentVersion,
+          latestVersion: latest,
+          hasUpdate: true,
+          isParent: true,
+          registryMatches: comp.registryMatches,
+        });
+      }
+    } catch {}
+    checkedParentNpm.add(comp.npm);
+  }
+
   const totalUpdates = npmUpdates.length;
 
   if (DRY_RUN) {
+    // Summary block (#80)
+    const cliUpdate = npmUpdates.find(u => u.isCLI);
+
+    const agentDirs = (() => {
+      try {
+        return readdirSync(join(LDM_ROOT, 'agents'), { withFileTypes: true })
+          .filter(d => d.isDirectory() && d.name !== '_trash').map(d => d.name);
+      } catch { return []; }
+    })();
+
+    const totalExtensions = Object.keys(reconciled).length;
+    const majorBumps = npmUpdates.filter(e => {
+      const curMajor = parseInt(e.currentVersion.split('.')[0], 10);
+      const latMajor = parseInt(e.latestVersion.split('.')[0], 10);
+      return latMajor > curMajor;
+    });
+
+    console.log('');
+    console.log('  Summary');
+    console.log('  ────────────────────────────────────');
+    if (cliUpdate) {
+      console.log(`  LDM OS CLI       v${PKG_VERSION}  ->  v${cliUpdate.latestVersion}`);
+    } else {
+      console.log(`  LDM OS CLI       v${PKG_VERSION} (latest)`);
+    }
+    if (npmUpdates.length > 0) {
+      console.log(`  Extensions       ${totalExtensions} installed, ${npmUpdates.length} update(s)`);
+    } else {
+      console.log(`  Extensions       ${totalExtensions} installed, all up to date`);
+    }
+    for (const m of majorBumps) {
+      console.log(`  Major bump       ${m.name} v${m.currentVersion} -> v${m.latestVersion}`);
+    }
+    if (agentDirs.length > 0) {
+      console.log(`  Agents           ${agentDirs.join(', ')} (no change)`);
+    }
+    console.log(`  Data             crystal.db, agent files, secrets (never touched)`);
+
     if (npmUpdates.length > 0) {
       // Table output
       const nameW = Math.max(10, ...npmUpdates.map(e => e.name.length));
@@ -710,10 +1019,59 @@ async function cmdInstallCatalog() {
         console.log(`  ${pad(e.name, nameW)} │ ${pad('v' + e.currentVersion, curW)} │ ${pad('v' + e.latestVersion, latW)} │ ${pad(e.catalogNpm, pkgW)}`);
       }
       console.log('');
-      console.log('  No data (crystal.db, agent files) would be touched.');
       console.log('  Old versions would be moved to ~/.ldm/_trash/ (never deleted).');
-    } else {
-      console.log('  Everything is up to date. No changes needed.');
+    }
+
+    // Health check preview (dry-run)
+    const healthIssues = [];
+
+    // Check missing CLIs
+    for (const comp of components) {
+      if (!comp.npm || !comp.cliMatches || comp.cliMatches.length === 0) continue;
+      if (!isCatalogItemInstalled(comp)) continue;
+      for (const binName of comp.cliMatches) {
+        try { execSync(`which ${binName} 2>/dev/null`, { encoding: 'utf8' }); }
+        catch { healthIssues.push(`  ! CLI "${binName}" missing (would reinstall ${comp.npm})`); }
+      }
+    }
+
+    // Check /tmp/ symlinks
+    try {
+      const npmPrefix = execSync('npm config get prefix', { encoding: 'utf8', timeout: 5000 }).trim();
+      const globalModules = join(npmPrefix, 'lib', 'node_modules', '@wipcomputer');
+      if (existsSync(globalModules)) {
+        for (const entry of readdirSync(globalModules, { withFileTypes: true })) {
+          if (!entry.isSymbolicLink()) continue;
+          try {
+            const target = readlinkSync(join(globalModules, entry.name));
+            if (target.includes('/tmp/') || target.includes('/private/tmp/')) {
+              healthIssues.push(`  ! @wipcomputer/${entry.name} symlinked to /tmp/ (would reinstall from npm)`);
+            }
+          } catch {}
+        }
+      }
+    } catch {}
+
+    // Check orphaned staging dirs (old /tmp/ and new ~/.ldm/tmp/)
+    try {
+      const tmpCount = readdirSync('/private/tmp').filter(d => d.startsWith('ldm-install-')).length;
+      if (tmpCount > 0) {
+        healthIssues.push(`  ! ${tmpCount} orphaned /tmp/ldm-install-* dirs (would clean up)`);
+      }
+    } catch {}
+    try {
+      if (existsSync(LDM_TMP)) {
+        const ldmTmpCount = readdirSync(LDM_TMP).filter(d => d.startsWith('ldm-install-')).length;
+        if (ldmTmpCount > 0) {
+          healthIssues.push(`  ! ${ldmTmpCount} orphaned ~/.ldm/tmp/ldm-install-* dirs (would clean up)`);
+        }
+      }
+    } catch {}
+
+    if (healthIssues.length > 0) {
+      console.log('');
+      console.log('  Health issues (would fix on install):');
+      for (const h of healthIssues) console.log(h);
     }
 
     console.log('');
@@ -780,15 +1138,133 @@ async function cmdInstallCatalog() {
 
   let updated = 0;
 
-  // Update from npm via catalog repos (#55)
+  // Update from npm via catalog repos (#55) and CLIs (#81)
   for (const entry of npmUpdates) {
+    // CLI self-update is handled by the self-update block at the top of cmdInstallCatalog()
+    if (entry.isCLI) continue;
+
+    // CLI-only entries: install directly from npm (#81)
+    if (entry.cliOnly) {
+      console.log(`  Updating CLI ${entry.name} v${entry.currentVersion} -> v${entry.latestVersion}...`);
+      try {
+        execSync(`npm install -g ${entry.catalogNpm}@${entry.latestVersion}`, { stdio: 'inherit' });
+        updated++;
+      } catch (e) {
+        console.error(`  x Failed to update CLI ${entry.name}: ${e.message}`);
+      }
+      continue;
+    }
+
+    if (!entry.catalogRepo) {
+      console.log(`  Skipping ${entry.name}: no catalog repo (install manually with ldm install <org/repo>)`);
+      continue;
+    }
     console.log(`  Updating ${entry.name} v${entry.currentVersion} -> v${entry.latestVersion} (from ${entry.catalogRepo})...`);
     try {
       execSync(`ldm install ${entry.catalogRepo}`, { stdio: 'inherit' });
       updated++;
+
+      // For parent packages, update registry version for all sub-tools (#139)
+      if (entry.isParent && entry.registryMatches) {
+        const registry = readJSON(REGISTRY_PATH);
+        if (registry?.extensions) {
+          for (const subTool of entry.registryMatches) {
+            if (registry.extensions[subTool]) {
+              registry.extensions[subTool].version = entry.latestVersion;
+              registry.extensions[subTool].updatedAt = new Date().toISOString();
+            }
+          }
+          writeFileSync(REGISTRY_PATH, JSON.stringify(registry, null, 2));
+          console.log(`  + Updated registry for ${entry.registryMatches.length} sub-tools`);
+        }
+      }
     } catch (e) {
       console.error(`  x Failed to update ${entry.name}: ${e.message}`);
     }
+  }
+
+  // Health check: fix missing CLIs + dead symlinks (#90)
+  console.log('');
+  console.log('  Running health check...');
+  let healthFixes = 0;
+
+  // 1. Check catalog CLIs exist on disk
+  for (const comp of components) {
+    if (!comp.npm || !comp.cliMatches || comp.cliMatches.length === 0) continue;
+    if (!isCatalogItemInstalled(comp)) continue;
+
+    for (const binName of comp.cliMatches) {
+      try {
+        execSync(`which ${binName} 2>/dev/null`, { encoding: 'utf8' });
+      } catch {
+        // CLI binary missing. Reinstall from npm.
+        console.log(`  ! CLI "${binName}" missing. Reinstalling ${comp.npm}...`);
+        try {
+          execSync(`npm install -g ${comp.npm}`, { stdio: 'inherit', timeout: 60000 });
+          healthFixes++;
+          console.log(`  + CLI: ${binName} restored`);
+        } catch (e) {
+          console.error(`  x Failed to restore ${binName}: ${e.message}`);
+        }
+      }
+    }
+  }
+
+  // 2. Check for /tmp/ symlinks in global npm modules
+  try {
+    const npmPrefix = execSync('npm config get prefix', { encoding: 'utf8', timeout: 5000 }).trim();
+    const globalModules = join(npmPrefix, 'lib', 'node_modules', '@wipcomputer');
+    if (existsSync(globalModules)) {
+      for (const entry of readdirSync(globalModules, { withFileTypes: true })) {
+        if (!entry.isSymbolicLink()) continue;
+        try {
+          const target = readlinkSync(join(globalModules, entry.name));
+          if (target.includes('/tmp/') || target.includes('/private/tmp/')) {
+            const pkgName = `@wipcomputer/${entry.name}`;
+            console.log(`  ! ${pkgName} symlinked to ${target} (will break on reboot). Reinstalling...`);
+            try {
+              execSync(`npm install -g ${pkgName}`, { stdio: 'inherit', timeout: 60000 });
+              healthFixes++;
+              console.log(`  + ${pkgName}: replaced /tmp/ symlink with registry install`);
+            } catch (e) {
+              console.error(`  x Failed to fix ${pkgName}: ${e.message}`);
+            }
+          }
+        } catch {}
+      }
+    }
+  } catch {}
+
+  // 3. Clean orphaned staging dirs (old /tmp/ and new ~/.ldm/tmp/)
+  try {
+    const tmpDirs = readdirSync('/private/tmp').filter(d => d.startsWith('ldm-install-'));
+    if (tmpDirs.length > 0) {
+      console.log(`  Cleaning ${tmpDirs.length} orphaned /tmp/ldm-install-* dirs...`);
+      for (const d of tmpDirs) {
+        try { execSync(`rm -rf "/private/tmp/${d}"`, { stdio: 'pipe', timeout: 10000 }); } catch {}
+      }
+      healthFixes++;
+      console.log(`  + Cleaned ${tmpDirs.length} orphaned /tmp/ clone(s)`);
+    }
+  } catch {}
+  try {
+    if (existsSync(LDM_TMP)) {
+      const ldmTmpDirs = readdirSync(LDM_TMP).filter(d => d.startsWith('ldm-install-'));
+      if (ldmTmpDirs.length > 0) {
+        console.log(`  Cleaning ${ldmTmpDirs.length} orphaned ~/.ldm/tmp/ dirs...`);
+        for (const d of ldmTmpDirs) {
+          try { execSync(`rm -rf "${join(LDM_TMP, d)}"`, { stdio: 'pipe', timeout: 10000 }); } catch {}
+        }
+        healthFixes++;
+        console.log(`  + Cleaned ${ldmTmpDirs.length} orphaned ~/.ldm/tmp/ clone(s)`);
+      }
+    }
+  } catch {}
+
+  if (healthFixes > 0) {
+    console.log(`  ${healthFixes} health issue(s) fixed.`);
+  } else {
+    console.log('  All healthy.');
   }
 
   // Sync boot hook from npm package (#49)
@@ -798,6 +1274,7 @@ async function cmdInstallCatalog() {
 
   console.log('');
   console.log(`  Updated ${updated}/${totalUpdates} extension(s).`);
+  installLog(`ldm install complete: ${updated}/${totalUpdates} updated, ${healthFixes} health fix(es)`);
 
   // Check if CLI itself is outdated (#29)
   checkCliVersion();
@@ -1041,7 +1518,7 @@ function cmdStatus() {
     const extPkgPath = join(LDM_EXTENSIONS, name, 'package.json');
     const extPkg = readJSON(extPkgPath);
     const npmPkg = extPkg?.name;
-    if (!npmPkg || !npmPkg.startsWith('@')) continue;
+    if (!npmPkg) continue;
     const currentVersion = extPkg.version || info.version;
     if (!currentVersion) continue;
     try {
@@ -1529,6 +2006,66 @@ async function cmdStackInstall() {
   console.log('');
 }
 
+// ── ldm catalog show ──
+
+function cmdCatalogShow() {
+  const subcommand = args[1];
+  const target = args[2];
+
+  if (subcommand === 'show' && target) {
+    const entry = loadCatalog().find(c => c.id === target || c.name.toLowerCase() === target.toLowerCase());
+    if (!entry) {
+      console.error(`  Unknown component: "${target}"`);
+      console.error('  Run: ldm catalog');
+      process.exit(1);
+    }
+
+    console.log('');
+    console.log(`  ${entry.name}`);
+    console.log('  ────────────────────────────────────');
+    console.log(`  ${entry.description}`);
+    console.log('');
+    console.log(`  Status: ${entry.status}`);
+    if (entry.repo) console.log(`  Repo: github.com/${entry.repo}`);
+    if (entry.npm) console.log(`  npm: ${entry.npm}`);
+
+    const inst = entry.installs;
+    if (inst) {
+      console.log('');
+      console.log('  What gets installed:');
+      if (inst.cli) console.log(`    CLI: ${Array.isArray(inst.cli) ? inst.cli.join(', ') : inst.cli}`);
+      if (inst.mcp) console.log(`    MCP tools: ${Array.isArray(inst.mcp) ? inst.mcp.join(', ') : inst.mcp}`);
+      if (inst.ocPlugin) console.log(`    OpenClaw plugin: ${inst.ocPlugin}`);
+      if (inst.ccHook) console.log(`    CC hooks: ${inst.ccHook}`);
+      if (inst.cron) console.log(`    Cron: ${inst.cron}`);
+      if (inst.data) console.log(`    Data: ${inst.data}`);
+      if (inst.tools) console.log(`    Tools: ${inst.tools}`);
+      if (inst.web) console.log(`    Web: ${inst.web}`);
+      if (inst.runtime) console.log(`    Runtime: ${inst.runtime}`);
+      if (inst.plugins) console.log(`    Plugins: ${inst.plugins}`);
+      if (inst.skill) console.log(`    Skill: ${inst.skill}`);
+      if (inst.docs) console.log(`    Docs: ${inst.docs}`);
+      if (inst.note) console.log(`    Note: ${inst.note}`);
+    }
+
+    console.log('');
+    return;
+  }
+
+  // Default: list all catalog items
+  const components = loadCatalog();
+  console.log('');
+  console.log('  Catalog');
+  console.log('  ────────────────────────────────────');
+  for (const c of components) {
+    console.log(`  ${c.id}: ${c.name} (${c.status})`);
+    console.log(`    ${c.description}`);
+    console.log('');
+  }
+  console.log('  Show details: ldm catalog show <name>');
+  console.log('');
+}
+
 // ── Main ──
 
 async function main() {
@@ -1572,6 +2109,456 @@ async function main() {
     process.exit(0);
   }
 
+  // ── ldm enable / disable (#111) ──
+
+  async function cmdEnable() {
+    const target = args.slice(1).find(a => !a.startsWith('--'));
+    if (!target) {
+      console.log('  Usage: ldm enable <extension|stack>');
+      console.log('  Example: ldm enable devops-toolbox');
+      console.log('  Stacks: core, web, all');
+      process.exit(1);
+    }
+
+    const { enableExtension } = await import('../lib/deploy.mjs');
+    const stacks = loadCatalog()?.stacks || {};
+    const components = loadCatalog()?.components || [];
+
+    // Resolve stack to component list
+    let names = [target];
+    if (stacks[target]) {
+      const stack = stacks[target];
+      names = stack.components || [];
+      if (stack.includes) {
+        for (const inc of stack.includes) {
+          if (stacks[inc]?.components) names.push(...stacks[inc].components);
+        }
+      }
+    }
+    // Map catalog IDs to registry names
+    const resolvedNames = [];
+    for (const n of names) {
+      const comp = components.find(c => c.id === n);
+      if (comp) {
+        resolvedNames.push(comp.id);
+        for (const m of (comp.registryMatches || [])) resolvedNames.push(m);
+      } else {
+        resolvedNames.push(n);
+      }
+    }
+    const uniqueNames = [...new Set(resolvedNames)];
+
+    const registry = readJSON(REGISTRY_PATH);
+    console.log('');
+    for (const name of uniqueNames) {
+      if (!registry?.extensions?.[name]) continue;
+      const result = await enableExtension(name);
+      if (result.ok) {
+        console.log(`  + ${name}: ${result.reason}`);
+      } else {
+        console.log(`  ! ${name}: ${result.reason}`);
+      }
+    }
+    console.log('');
+  }
+
+  async function cmdDisable() {
+    const target = args.slice(1).find(a => !a.startsWith('--'));
+    if (!target) {
+      console.log('  Usage: ldm disable <extension|stack>');
+      process.exit(1);
+    }
+
+    const { disableExtension } = await import('../lib/deploy.mjs');
+    const stacks = loadCatalog()?.stacks || {};
+    const components = loadCatalog()?.components || [];
+
+    let names = [target];
+    if (stacks[target]) {
+      const stack = stacks[target];
+      names = stack.components || [];
+      if (stack.includes) {
+        for (const inc of stack.includes) {
+          if (stacks[inc]?.components) names.push(...stacks[inc].components);
+        }
+      }
+    }
+    const resolvedNames = [];
+    for (const n of names) {
+      const comp = components.find(c => c.id === n);
+      if (comp) {
+        resolvedNames.push(comp.id);
+        for (const m of (comp.registryMatches || [])) resolvedNames.push(m);
+      } else {
+        resolvedNames.push(n);
+      }
+    }
+    const uniqueNames = [...new Set(resolvedNames)];
+
+    const registry = readJSON(REGISTRY_PATH);
+    console.log('');
+    for (const name of uniqueNames) {
+      if (!registry?.extensions?.[name]) continue;
+      const result = disableExtension(name);
+      if (result.ok) {
+        console.log(`  - ${name}: ${result.reason}`);
+      } else {
+        console.log(`  ! ${name}: ${result.reason}`);
+      }
+    }
+    console.log('');
+  }
+
+  // ── ldm uninstall (#114) ──
+
+  async function cmdUninstall() {
+    const keepData = !args.includes('--all');
+    const isDryRun = args.includes('--dry-run');
+
+    console.log('');
+    console.log('  LDM OS Uninstall');
+    console.log('  ────────────────────────────────────');
+
+    if (keepData) {
+      console.log('  Your data will be PRESERVED:');
+      console.log('    ~/.ldm/memory/     (crystal.db, shared memory)');
+      console.log('    ~/.ldm/agents/     (identity, journals, daily logs)');
+      console.log('');
+      console.log('  Use --all to remove everything including data.');
+    } else {
+      console.log('  WARNING: --all flag set. ALL data will be removed.');
+      console.log('  This includes crystal.db, agent files, journals, everything.');
+    }
+
+    console.log('');
+    console.log('  Will remove:');
+
+    // 1. MCP servers
+    const claudeJsonPath = join(HOME, '.claude.json');
+    try {
+      const claudeJson = JSON.parse(readFileSync(claudeJsonPath, 'utf8'));
+      const mcpNames = Object.keys(claudeJson.mcpServers || {}).filter(n =>
+        n.includes('crystal') || n.includes('wip-') || n.includes('memory') ||
+        n.includes('grok') || n.includes('lesa') || n.includes('1password')
+      );
+      if (mcpNames.length > 0) {
+        console.log(`    MCP servers: ${mcpNames.join(', ')}`);
+      }
+    } catch {}
+
+    // 2. CC hooks
+    const settingsPath = join(HOME, '.claude', 'settings.json');
+    try {
+      const settings = JSON.parse(readFileSync(settingsPath, 'utf8'));
+      let hookCount = 0;
+      for (const [event, entries] of Object.entries(settings.hooks || {})) {
+        for (const entry of (Array.isArray(entries) ? entries : [])) {
+          for (const h of (entry.hooks || [])) {
+            if (h.command?.includes('.ldm') || h.command?.includes('wip-')) hookCount++;
+          }
+        }
+      }
+      if (hookCount > 0) console.log(`    CC hooks: ${hookCount} hook(s)`);
+    } catch {}
+
+    // 3. Skills
+    const skillsDir = join(HOME, '.openclaw', 'skills');
+    try {
+      const skills = readdirSync(skillsDir).filter(d => d !== '.DS_Store');
+      if (skills.length > 0) console.log(`    Skills: ${skills.join(', ')}`);
+    } catch {}
+
+    // 4. Cron jobs
+    try {
+      const crontab = execSync('crontab -l 2>/dev/null', { encoding: 'utf8' });
+      const ldmLines = crontab.split('\n').filter(l => l.includes('.ldm') || l.includes('crystal-capture') || l.includes('process-monitor'));
+      if (ldmLines.length > 0) console.log(`    Cron jobs: ${ldmLines.length}`);
+    } catch {}
+
+    // 5. Global npm packages
+    try {
+      const npmList = execSync('npm list -g --depth=0 --json 2>/dev/null', { encoding: 'utf8' });
+      const deps = JSON.parse(npmList).dependencies || {};
+      const wipPkgs = Object.keys(deps).filter(n => n.startsWith('@wipcomputer/'));
+      if (wipPkgs.length > 0) console.log(`    npm packages: ${wipPkgs.join(', ')}`);
+    } catch {}
+
+    // 6. Directories
+    console.log(`    ~/.ldm/extensions/`);
+    if (!keepData) {
+      console.log(`    ~/.ldm/memory/`);
+      console.log(`    ~/.ldm/agents/`);
+    }
+    console.log(`    ~/.ldm/state/, bin/, hooks/, logs/, sessions/, messages/`);
+
+    if (isDryRun) {
+      console.log('');
+      console.log('  Dry run. Nothing removed.');
+      console.log('');
+      return;
+    }
+
+    // Confirm
+    if (process.stdin.isTTY) {
+      const { createInterface } = await import('readline');
+      const rl = createInterface({ input: process.stdin, output: process.stdout });
+      const answer = await new Promise(resolve => {
+        rl.question('\n  Type "uninstall" to confirm: ', resolve);
+      });
+      rl.close();
+      if (answer.trim() !== 'uninstall') {
+        console.log('  Cancelled.');
+        return;
+      }
+    }
+
+    console.log('');
+    console.log('  Removing...');
+
+    // 1. Unregister MCP servers
+    try {
+      const claudeJson = JSON.parse(readFileSync(claudeJsonPath, 'utf8'));
+      const mcpNames = Object.keys(claudeJson.mcpServers || {}).filter(n =>
+        n.includes('crystal') || n.includes('wip-') || n.includes('memory') ||
+        n.includes('grok') || n.includes('lesa') || n.includes('1password')
+      );
+      for (const name of mcpNames) {
+        delete claudeJson.mcpServers[name];
+      }
+      writeFileSync(claudeJsonPath, JSON.stringify(claudeJson, null, 2) + '\n');
+      console.log(`  + Removed ${mcpNames.length} MCP server(s)`);
+    } catch {}
+
+    // 2. Remove CC hooks
+    try {
+      const settings = JSON.parse(readFileSync(settingsPath, 'utf8'));
+      let removed = 0;
+      for (const [event, entries] of Object.entries(settings.hooks || {})) {
+        if (!Array.isArray(entries)) continue;
+        for (const entry of entries) {
+          if (!entry.hooks) continue;
+          const before = entry.hooks.length;
+          entry.hooks = entry.hooks.filter(h => !h.command?.includes('.ldm') && !h.command?.includes('wip-'));
+          removed += before - entry.hooks.length;
+        }
+        settings.hooks[event] = entries.filter(e => e.hooks?.length > 0);
+      }
+      writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
+      console.log(`  + Removed ${removed} CC hook(s)`);
+    } catch {}
+
+    // 3. Remove skills
+    try {
+      const skills = readdirSync(skillsDir).filter(d => d !== '.DS_Store');
+      for (const s of skills) {
+        execSync(`rm -rf "${join(skillsDir, s)}"`, { stdio: 'pipe' });
+      }
+      console.log(`  + Removed ${skills.length} skill(s)`);
+    } catch {}
+
+    // 4. Remove cron jobs
+    try {
+      const crontab = execSync('crontab -l 2>/dev/null', { encoding: 'utf8' });
+      const filtered = crontab.split('\n').filter(l =>
+        !l.includes('.ldm') && !l.includes('crystal-capture') && !l.includes('process-monitor')
+      ).join('\n');
+      execSync(`echo "${filtered}" | crontab -`, { stdio: 'pipe' });
+      console.log('  + Cleaned cron jobs');
+    } catch {}
+
+    // 5. Remove npm packages
+    try {
+      const npmList = execSync('npm list -g --depth=0 --json 2>/dev/null', { encoding: 'utf8' });
+      const deps = JSON.parse(npmList).dependencies || {};
+      const wipPkgs = Object.keys(deps).filter(n => n.startsWith('@wipcomputer/'));
+      for (const pkg of wipPkgs) {
+        if (pkg === '@wipcomputer/wip-ldm-os') continue; // uninstall self last
+        try { execSync(`npm uninstall -g ${pkg}`, { stdio: 'pipe', timeout: 30000 }); } catch {}
+      }
+      console.log(`  + Removed ${wipPkgs.length - 1} npm package(s)`);
+    } catch {}
+
+    // 6. Remove directories
+    const dirsToRemove = ['extensions', 'state', 'bin', 'hooks', 'logs', 'sessions', 'messages', 'shared', '_trash'];
+    if (!keepData) {
+      dirsToRemove.push('memory', 'agents', 'secrets', 'backups');
+    }
+    for (const dir of dirsToRemove) {
+      const p = join(LDM_ROOT, dir);
+      if (existsSync(p)) {
+        execSync(`rm -rf "${p}"`, { stdio: 'pipe' });
+      }
+    }
+    // Remove config and version files
+    for (const f of ['version.json', 'config.json']) {
+      const p = join(LDM_ROOT, f);
+      if (existsSync(p)) unlinkSync(p);
+    }
+    console.log('  + Removed ~/.ldm/ contents');
+
+    if (keepData) {
+      console.log('');
+      console.log('  Preserved:');
+      console.log('    ~/.ldm/memory/   (your data)');
+      console.log('    ~/.ldm/agents/   (identity + journals)');
+    }
+
+    // 7. Self-uninstall
+    console.log('');
+    console.log('  To finish, run: npm uninstall -g @wipcomputer/wip-ldm-os');
+    console.log('');
+    console.log('  LDM OS uninstalled.');
+    console.log('');
+  }
+
+  // ── ldm worktree ──
+
+  async function cmdWorktree() {
+    const sub = args[1] || 'list';
+
+    if (sub === '--help' || sub === '-h') {
+      console.log(`
+  ldm worktree add <branch>       Create worktree in _worktrees/ (auto-detects repo)
+  ldm worktree list                List all worktrees across repos
+  ldm worktree clean               Prune worktrees for merged branches
+  ldm worktree remove <path>       Remove a specific worktree
+`);
+      process.exit(0);
+    }
+
+    if (sub === 'add') {
+      const branchName = args[2];
+      if (!branchName) {
+        console.error('  Usage: ldm worktree add <branch-name>');
+        console.error('  Example: ldm worktree add cc-mini/fix-bug');
+        process.exit(1);
+      }
+
+      // Auto-detect repo from CWD
+      let repoRoot;
+      try {
+        repoRoot = execSync('git rev-parse --show-toplevel 2>/dev/null', {
+          encoding: 'utf8', timeout: 3000
+        }).trim();
+      } catch {
+        console.error('  Not inside a git repo. cd into a repo first.');
+        process.exit(1);
+      }
+
+      const repoName = basename(repoRoot);
+      const branchSuffix = branchName.replace(/\//g, '--');
+      const worktreesDir = join(dirname(repoRoot), '_worktrees');
+      const worktreePath = join(worktreesDir, `${repoName}--${branchSuffix}`);
+
+      mkdirSync(worktreesDir, { recursive: true });
+
+      console.log(`  Creating worktree for ${repoName}...`);
+      console.log(`  Branch: ${branchName}`);
+      console.log(`  Path: ${worktreePath}`);
+
+      try {
+        execSync(`git worktree add "${worktreePath}" -b "${branchName}"`, {
+          cwd: repoRoot, stdio: 'inherit'
+        });
+        console.log('');
+        console.log(`  Done. Work in: ${worktreePath}`);
+        console.log(`  When done: ldm worktree remove "${worktreePath}"`);
+      } catch (e) {
+        console.error(`  Failed: ${e.message}`);
+        process.exit(1);
+      }
+      return;
+    }
+
+    if (sub === 'list') {
+      // Find all repos and list their worktrees
+      const reposBase = process.env.LDM_REPOS || process.cwd();
+      let found = 0;
+
+      // Check CWD repo
+      try {
+        const root = execSync('git rev-parse --show-toplevel 2>/dev/null', {
+          encoding: 'utf8', timeout: 3000
+        }).trim();
+        const result = execSync('git worktree list', {
+          cwd: root, encoding: 'utf8', timeout: 5000
+        }).trim();
+        if (result.split('\n').length > 1) {
+          console.log(`  ${basename(root)}:`);
+          for (const line of result.split('\n')) {
+            console.log(`    ${line}`);
+          }
+          found++;
+        }
+      } catch {}
+
+      // Also check _worktrees/ dir
+      const worktreesDir = join(dirname(process.cwd()), '_worktrees');
+      if (existsSync(worktreesDir)) {
+        try {
+          const entries = readdirSync(worktreesDir, { withFileTypes: true })
+            .filter(d => d.isDirectory());
+          if (entries.length > 0) {
+            console.log(`  _worktrees/:`);
+            for (const d of entries) {
+              console.log(`    ${d.name}`);
+            }
+            found++;
+          }
+        } catch {}
+      }
+
+      if (found === 0) {
+        console.log('  No active worktrees found.');
+      }
+      return;
+    }
+
+    if (sub === 'remove') {
+      const wtPath = args[2];
+      if (!wtPath) {
+        console.error('  Usage: ldm worktree remove <path>');
+        process.exit(1);
+      }
+      try {
+        // Find the repo root for this worktree
+        const root = execSync('git rev-parse --show-toplevel 2>/dev/null', {
+          cwd: resolve(wtPath), encoding: 'utf8', timeout: 3000
+        }).trim();
+        const mainRoot = execSync('git -C "' + root + '" worktree list --porcelain 2>/dev/null', {
+          encoding: 'utf8', timeout: 5000
+        }).split('\n').find(l => l.startsWith('worktree '))?.replace('worktree ', '');
+
+        execSync(`git worktree remove "${resolve(wtPath)}"`, {
+          cwd: mainRoot || root, stdio: 'inherit'
+        });
+        console.log(`  Removed worktree: ${wtPath}`);
+      } catch (e) {
+        console.error(`  Failed: ${e.message}`);
+        process.exit(1);
+      }
+      return;
+    }
+
+    if (sub === 'clean') {
+      console.log('  Pruning stale worktrees...');
+      try {
+        const root = execSync('git rev-parse --show-toplevel 2>/dev/null', {
+          encoding: 'utf8', timeout: 3000
+        }).trim();
+        execSync('git worktree prune', { cwd: root, stdio: 'inherit' });
+        console.log('  Done.');
+      } catch (e) {
+        console.error(`  Failed: ${e.message}`);
+      }
+      return;
+    }
+
+    console.error(`  Unknown subcommand: ${sub}`);
+    console.error('  Run: ldm worktree --help');
+    process.exit(1);
+  }
+
   if (command === '--version' || command === '-v') {
     console.log(PKG_VERSION);
     process.exit(0);
@@ -1603,8 +2590,23 @@ async function main() {
     case 'stack':
       await cmdStack();
       break;
+    case 'catalog':
+      cmdCatalogShow();
+      break;
     case 'updates':
       await cmdUpdates();
+      break;
+    case 'enable':
+      await cmdEnable();
+      break;
+    case 'disable':
+      await cmdDisable();
+      break;
+    case 'uninstall':
+      await cmdUninstall();
+      break;
+    case 'worktree':
+      await cmdWorktree();
       break;
     default:
       console.error(`  Unknown command: ${command}`);
