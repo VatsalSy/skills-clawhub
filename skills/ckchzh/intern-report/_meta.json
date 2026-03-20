@@ -3,11 +3,16 @@
   "slug": "intern-report",
   "displayName": "Intern Report",
   "latest": {
-    "version": "2.3.4",
-    "publishedAt": 1773666252566,
-    "commit": "https://github.com/openclaw/skills/commit/375e4cd41b61aa60628f625dada67c1d4370a595"
+    "version": "2.0.0",
+    "publishedAt": 1773773794671,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.3.4",
+      "publishedAt": 1773666252566,
+      "commit": "https://github.com/openclaw/skills/commit/375e4cd41b61aa60628f625dada67c1d4370a595"
+    },
     {
       "version": "2.2.0",
       "publishedAt": 1773421430862,
