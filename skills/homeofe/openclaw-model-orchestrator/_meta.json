@@ -1,11 +1,17 @@
 {
   "owner": "homeofe",
   "slug": "openclaw-model-orchestrator",
-  "displayName": "OpenClaw Model Orchestrator",
+  "displayName": "Openclaw Model Orchestrator",
   "latest": {
-    "version": "0.1.0",
-    "publishedAt": 1772468441192,
-    "commit": "https://github.com/openclaw/skills/commit/330af9298f5ecaf689cc69598bb02e8ee848cb66"
+    "version": "0.1.1",
+    "publishedAt": 1773904921794,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "0.1.0",
+      "publishedAt": 1772468441192,
+      "commit": "https://github.com/openclaw/skills/commit/330af9298f5ecaf689cc69598bb02e8ee848cb66"
+    }
+  ]
 }

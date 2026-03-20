@@ -11,7 +11,7 @@ import { execSync } from "node:child_process";
 // Types
 // ---------------------------------------------------------------------------
 
-interface ModelInfo {
+export interface ModelInfo {
   id: string;
   alias?: string;
   provider: string;
@@ -19,15 +19,15 @@ interface ModelInfo {
   tags: string[];
 }
 
-interface TaskProfile {
+export interface TaskProfile {
   planner: string;
   workers: string[];
   reviewer: string;
 }
 
-type OrchestrateMode = "fan-out" | "pipeline" | "consensus";
+export type OrchestrateMode = "fan-out" | "pipeline" | "consensus";
 
-interface OrchestrateRequest {
+export interface OrchestrateRequest {
   mode: OrchestrateMode;
   task: string;
   planner: string;
@@ -35,6 +35,53 @@ interface OrchestrateRequest {
   reviewer: string;
   profile?: string;
 }
+
+export interface InferenceRequest {
+  model: string;
+  messages: Array<{ role: string; content: string }>;
+  maxTokens?: number;
+}
+
+export interface InferenceResponse {
+  content?: string;
+  message?: { content?: string };
+}
+
+/**
+ * T-003: Worker options for timeout and retry configuration.
+ */
+export interface WorkerOptions {
+  /** Timeout in milliseconds per inference call. Default: 60_000 (60s). */
+  timeoutMs?: number;
+  /** Maximum number of retry attempts on transient errors. Default: 2. */
+  maxRetries?: number;
+  /** Base delay in ms for exponential backoff. Default: 1_000. */
+  backoffBaseMs?: number;
+}
+
+/**
+ * T-004: Progress event emitted during orchestration.
+ */
+export interface ProgressEvent {
+  phase: "planning" | "execution" | "review" | "synthesis";
+  /** Model being invoked. */
+  model: string;
+  /** Human-readable label (e.g. subtask title, step name). */
+  label: string;
+  /** "started" | "completed" | "failed" */
+  status: "started" | "completed" | "failed";
+  /** Worker index within a parallel fan-out (0-based). */
+  workerIndex?: number;
+  /** Total workers in this phase. */
+  workerTotal?: number;
+  /** Brief summary of the result (on completion). */
+  resultSummary?: string;
+  /** Error message (on failure). */
+  error?: string;
+}
+
+/** T-004: Callback type for progress events. */
+export type ProgressCallback = (event: ProgressEvent) => void | Promise<void>;
 
 // ---------------------------------------------------------------------------
 // Model Discovery (parses `openclaw models status`)
@@ -45,82 +92,113 @@ let _cachedAliases: Map<string, string> | null = null;
 let _cacheTime = 0;
 const CACHE_TTL_MS = 60_000;
 
-function parseModelsStatus(): { models: ModelInfo[]; aliases: Map<string, string> } {
-  const now = Date.now();
-  if (_cachedModels && _cachedAliases && now - _cacheTime < CACHE_TTL_MS) {
-    return { models: _cachedModels, aliases: _cachedAliases };
+export function parseModelsStatus(raw: string): { models: ModelInfo[]; aliases: Map<string, string> } {
+  const aliases = new Map<string, string>();
+  const models: ModelInfo[] = [];
+
+  // Parse "Aliases (N) : alias1 -> model1, alias2 -> model2, ..."
+  const aliasMatch = raw.match(/Aliases\s*\(\d+\)\s*:\s*(.+?)(?:\nConfigured)/s);
+  if (aliasMatch) {
+    const aliasStr = aliasMatch[1].replace(/\n/g, " ").trim();
+    for (const pair of aliasStr.split(",")) {
+      const m = pair.trim().match(/^(\S+)\s*->\s*(\S+)$/);
+      if (m) aliases.set(m[1], m[2]);
+    }
   }
 
+  // Parse "Configured models (N): model1, model2, ..."
+  const modelsMatch = raw.match(/Configured models\s*\(\d+\)\s*:\s*(.+?)(?:\n\n|\nAuth)/s);
+  if (modelsMatch) {
+    const modelStr = modelsMatch[1].replace(/\n/g, " ").trim();
+
+    // Parse "Providers w/ OAuth/tokens (N): provider1 (N), provider2 (N), ..."
+    const authLine = raw.match(/Providers w\/\s*OAuth\/tokens\s*\(\d+\)\s*:\s*(.+)/);
+    const authedStr = authLine ? authLine[1].toLowerCase() : "";
+
+    for (const chunk of modelStr.split(",")) {
+      const id = chunk.trim();
+      if (!id) continue;
+
+      const provider = id.split("/")[0] || "unknown";
+
+      // Find alias pointing to this model
+      let alias: string | undefined;
+      for (const [a, mid] of aliases) {
+        if (mid === id) { alias = a; break; }
+      }
+
+      // Check if provider has auth configured
+      const auth = authedStr.includes(provider);
+      const isFree = provider === "github-copilot";
+
+      models.push({
+        id,
+        alias,
+        provider,
+        auth,
+        tags: isFree ? ["free"] : [],
+      });
+    }
+  }
+
+  return { models, aliases };
+}
+
+function getModelsStatusRaw(): string {
+  const now = Date.now();
+  if (_cachedModels && _cachedAliases && now - _cacheTime < CACHE_TTL_MS) {
+    // Return cached; callers will use _cachedModels/_cachedAliases
+    return "";
+  }
   try {
-    const raw = execSync("openclaw models status 2>/dev/null", {
+    return execSync("openclaw models status 2>/dev/null", {
       encoding: "utf-8",
       timeout: 15_000,
     });
-
-    const aliases = new Map<string, string>();
-    const models: ModelInfo[] = [];
-
-    // Parse "Aliases (N) : alias1 -> model1, alias2 -> model2, ..."
-    const aliasMatch = raw.match(/Aliases\s*\(\d+\)\s*:\s*(.+?)(?:\nConfigured)/s);
-    if (aliasMatch) {
-      const aliasStr = aliasMatch[1].replace(/\n/g, " ").trim();
-      for (const pair of aliasStr.split(",")) {
-        const m = pair.trim().match(/^(\S+)\s*->\s*(\S+)$/);
-        if (m) aliases.set(m[1], m[2]);
-      }
-    }
-
-    // Parse "Configured models (N): model1, model2, ..."
-    const modelsMatch = raw.match(/Configured models\s*\(\d+\)\s*:\s*(.+?)(?:\n\n|\nAuth)/s);
-    if (modelsMatch) {
-      const modelStr = modelsMatch[1].replace(/\n/g, " ").trim();
-
-      // Parse "Providers w/ OAuth/tokens (N): provider1 (N), provider2 (N), ..."
-      const authLine = raw.match(/Providers w\/\s*OAuth\/tokens\s*\(\d+\)\s*:\s*(.+)/);
-      const authedStr = authLine ? authLine[1].toLowerCase() : "";
-
-      for (const chunk of modelStr.split(",")) {
-        const id = chunk.trim();
-        if (!id) continue;
-
-        const provider = id.split("/")[0] || "unknown";
-
-        // Find alias pointing to this model
-        let alias: string | undefined;
-        for (const [a, mid] of aliases) {
-          if (mid === id) { alias = a; break; }
-        }
-
-        // Check if provider has auth configured
-        const auth = authedStr.includes(provider);
-        const isFree = provider === "github-copilot";
-
-        models.push({
-          id,
-          alias,
-          provider,
-          auth,
-          tags: isFree ? ["free"] : [],
-        });
-      }
-    }
-
-    _cachedModels = models;
-    _cachedAliases = aliases;
-    _cacheTime = now;
-    return { models, aliases };
   } catch {
-    return { models: [], aliases: new Map() };
+    return "";
   }
 }
 
-function getAvailableModels(): ModelInfo[] {
-  return parseModelsStatus().models;
+export function getAvailableModels(): ModelInfo[] {
+  const now = Date.now();
+  if (_cachedModels && _cachedAliases && now - _cacheTime < CACHE_TTL_MS) {
+    return _cachedModels;
+  }
+  const raw = getModelsStatusRaw();
+  if (!raw) return _cachedModels ?? [];
+  const { models, aliases } = parseModelsStatus(raw);
+  _cachedModels = models;
+  _cachedAliases = aliases;
+  _cacheTime = now;
+  return models;
 }
 
-function resolveModel(nameOrAlias: string, models: ModelInfo[]): ModelInfo | undefined {
-  const { aliases } = parseModelsStatus();
-  // Check if it's an alias
+export function getAliasMap(): Map<string, string> {
+  const now = Date.now();
+  if (_cachedModels && _cachedAliases && now - _cacheTime < CACHE_TTL_MS) {
+    return _cachedAliases!;
+  }
+  const raw = getModelsStatusRaw();
+  if (!raw) return _cachedAliases ?? new Map();
+  const { models, aliases } = parseModelsStatus(raw);
+  _cachedModels = models;
+  _cachedAliases = aliases;
+  _cacheTime = now;
+  return aliases;
+}
+
+export function resolveModel(
+  nameOrAlias: string,
+  models: ModelInfo[],
+  aliasOverride?: Map<string, string>,
+): ModelInfo | undefined {
+  // Check by alias field directly on the model objects (works with parsed models in tests)
+  const byAlias = models.find((m) => m.alias === nameOrAlias);
+  if (byAlias) return byAlias;
+
+  // Use provided alias map, else fall back to live module cache
+  const aliases = aliasOverride ?? getAliasMap();
   const fullId = aliases.get(nameOrAlias);
   if (fullId) {
     const found = models.find((m) => m.id === fullId);
@@ -132,11 +210,28 @@ function resolveModel(nameOrAlias: string, models: ModelInfo[]): ModelInfo | und
   return models.find((m) => m.id === nameOrAlias);
 }
 
+/** Resolve a name/alias to the full model ID string. */
+export function resolveModelId(
+  nameOrAlias: string,
+  models: ModelInfo[],
+  aliasOverride?: Map<string, string>,
+): string {
+  // Check by alias field directly on model objects
+  const byAlias = models.find((m) => m.alias === nameOrAlias);
+  if (byAlias) return byAlias.id;
+
+  const aliases = aliasOverride ?? getAliasMap();
+  const fullId = aliases.get(nameOrAlias);
+  if (fullId) return fullId;
+  const found = models.find((m) => m.id === nameOrAlias);
+  return found ? found.id : nameOrAlias;
+}
+
 // ---------------------------------------------------------------------------
 // Task Classification
 // ---------------------------------------------------------------------------
 
-const TASK_KEYWORDS: Record<string, string[]> = {
+export const TASK_KEYWORDS: Record<string, string[]> = {
   coding: [
     "build", "implement", "create", "code", "develop", "feature", "api",
     "endpoint", "function", "class", "module", "refactor", "fix", "bug",
@@ -162,7 +257,7 @@ const TASK_KEYWORDS: Record<string, string[]> = {
   ],
 };
 
-function classifyTask(task: string): string {
+export function classifyTask(task: string): string {
   const lower = task.toLowerCase();
   let bestProfile = "coding";
   let bestScore = 0;
@@ -182,7 +277,7 @@ function classifyTask(task: string): string {
 // AAHP v3 Handoff Object
 // ---------------------------------------------------------------------------
 
-interface AahpHandoff {
+export interface AahpHandoff {
   version: "3.0";
   taskId: string;
   phase: string;
@@ -199,7 +294,7 @@ interface AahpHandoff {
   state: Record<string, unknown>;
 }
 
-function createHandoff(
+export function createHandoff(
   task: string,
   subtask: string | undefined,
   sourceModel: string,
@@ -227,11 +322,99 @@ function createHandoff(
 }
 
 // ---------------------------------------------------------------------------
+// T-004: Safe progress emit (never throws -- progress errors must not abort orchestration)
+// ---------------------------------------------------------------------------
+
+export async function emitProgress(
+  onProgress: ProgressCallback | undefined,
+  event: ProgressEvent,
+): Promise<void> {
+  if (!onProgress) return;
+  try {
+    await onProgress(event);
+  } catch {
+    // Progress callback errors are intentionally swallowed
+  }
+}
+
+// ---------------------------------------------------------------------------
+// T-003: Timeout + Retry Logic
+// ---------------------------------------------------------------------------
+
+const DEFAULT_WORKER_OPTIONS: Required<WorkerOptions> = {
+  timeoutMs: 60_000,
+  maxRetries: 2,
+  backoffBaseMs: 1_000,
+};
+
+/** Wraps a promise with a timeout. Rejects with a timeout error if exceeded. */
+export function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`Inference timed out after ${ms}ms`));
+    }, ms);
+    promise.then(
+      (value) => { clearTimeout(timer); resolve(value); },
+      (err) => { clearTimeout(timer); reject(err); },
+    );
+  });
+}
+
+/** Classifies whether an error is transient (worth retrying). */
+export function isTransientError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return (
+    msg.includes("429") ||
+    msg.includes("503") ||
+    msg.includes("502") ||
+    msg.includes("rate limit") ||
+    msg.includes("overloaded") ||
+    msg.includes("timed out") ||
+    msg.includes("ECONNRESET") ||
+    msg.includes("ETIMEDOUT")
+  );
+}
+
+/** Extracts the text content from an inference response. */
+export function extractContent(result: InferenceResponse): string {
+  return result?.content ?? result?.message?.content ?? "(no output)";
+}
+
+/**
+ * T-003: Invoke api.inference with timeout, retry, and exponential backoff.
+ */
+export async function inferWithRetry(
+  api: { inference: (req: InferenceRequest) => Promise<InferenceResponse> },
+  req: InferenceRequest,
+  opts: WorkerOptions = {},
+): Promise<InferenceResponse> {
+  const { timeoutMs, maxRetries, backoffBaseMs } = { ...DEFAULT_WORKER_OPTIONS, ...opts };
+  let lastErr: unknown;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const result = await withTimeout(api.inference(req), timeoutMs);
+      return result;
+    } catch (err) {
+      lastErr = err;
+      const transient = isTransientError(err);
+      if (!transient || attempt === maxRetries) break;
+
+      // Exponential backoff: 1s, 2s, 4s...
+      const delay = backoffBaseMs * Math.pow(2, attempt);
+      await new Promise((r) => setTimeout(r, delay));
+    }
+  }
+
+  throw lastErr;
+}
+
+// ---------------------------------------------------------------------------
 // Help & Formatting
 // ---------------------------------------------------------------------------
 
-function formatModelList(models: ModelInfo[]): string {
-  const { aliases } = parseModelsStatus();
+export function formatModelList(models: ModelInfo[]): string {
+  const aliases = getAliasMap();
   const lines: string[] = [`*Available Models (${models.length}):*\n`];
 
   const byProvider = new Map<string, ModelInfo[]>();
@@ -261,7 +444,7 @@ function formatModelList(models: ModelInfo[]): string {
   return lines.join("\n");
 }
 
-function formatRecommendation(
+export function formatRecommendation(
   task: string,
   profile: string,
   taskProfile: TaskProfile,
@@ -303,7 +486,7 @@ function formatRecommendation(
   return lines.join("\n");
 }
 
-function showHelp(models: ModelInfo[], profiles: Record<string, TaskProfile>): string {
+export function showHelp(models: ModelInfo[], profiles: Record<string, TaskProfile>): string {
   const lines: string[] = [];
   lines.push("*OpenClaw Model Orchestrator*\n");
   lines.push("Dispatch tasks across multiple LLMs with AAHP v3 handoffs.\n");
@@ -341,14 +524,24 @@ function showHelp(models: ModelInfo[], profiles: Record<string, TaskProfile>): s
 // Orchestration Execution
 // ---------------------------------------------------------------------------
 
-async function executeFanOut(
+export async function executeFanOut(
   req: OrchestrateRequest,
-  api: any,
+  api: { inference: (req: InferenceRequest) => Promise<InferenceResponse> },
+  workerOpts: WorkerOptions = {},
+  onProgress?: ProgressCallback,
 ): Promise<string> {
   const lines: string[] = [];
   lines.push(`*Fan-Out Orchestration*`);
   lines.push(`Task: ${req.task}`);
   lines.push(`Planner: \`${req.planner}\` | Workers: \`${req.workers.join(", ")}\` | Reviewer: \`${req.reviewer}\`\n`);
+
+  // T-004: Report planning start
+  await emitProgress(onProgress, {
+    phase: "planning",
+    model: req.planner,
+    label: "Planning subtasks",
+    status: "started",
+  });
 
   lines.push("*Phase 1: Planning...*");
   const planHandoff = createHandoff(req.task, undefined, "user", req.planner, "fan-out");
@@ -368,15 +561,22 @@ Rules:
 
   let subtasks: Array<{ id: number; title: string; description: string; expectedOutput: string }>;
   try {
-    const planResult = await api.inference({
+    const planResult = await inferWithRetry(api, {
       model: req.planner,
       messages: [{ role: "user", content: planPrompt }],
       maxTokens: 2000,
-    });
-    const content = planResult?.content || planResult?.message?.content || "";
+    }, workerOpts);
+    const content = extractContent(planResult);
     const jsonMatch = content.match(/\[[\s\S]*\]/);
     subtasks = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
     if (!subtasks.length) {
+      await emitProgress(onProgress, {
+        phase: "planning",
+        model: req.planner,
+        label: "Planning subtasks",
+        status: "failed",
+        error: "No subtasks returned",
+      });
       return lines.join("\n") + "\n\nPlanner returned no subtasks. Aborting.";
     }
     lines.push(`  Planned ${subtasks.length} subtasks`);
@@ -384,7 +584,22 @@ Rules:
       lines.push(`  ${st.id}. ${st.title}`);
     }
     lines.push("");
+    // T-004: Planning complete
+    await emitProgress(onProgress, {
+      phase: "planning",
+      model: req.planner,
+      label: "Planning subtasks",
+      status: "completed",
+      resultSummary: `${subtasks.length} subtasks planned`,
+    });
   } catch (e: any) {
+    await emitProgress(onProgress, {
+      phase: "planning",
+      model: req.planner,
+      label: "Planning subtasks",
+      status: "failed",
+      error: e.message,
+    });
     return lines.join("\n") + `\n\nPlanner error: ${e.message}`;
   }
 
@@ -409,23 +624,61 @@ Expected output: ${st.expectedOutput}
 
 Execute this subtask now. Provide only the deliverable output, no explanation or filler.`;
 
+    // T-004: Worker started
+    await emitProgress(onProgress, {
+      phase: "execution",
+      model: workerModel,
+      label: st.title,
+      status: "started",
+      workerIndex: i,
+      workerTotal: subtasks.length,
+    });
+
     try {
-      const result = await api.inference({
+      const result = await inferWithRetry(api, {
         model: workerModel,
         messages: [{ role: "user", content: workerPrompt }],
         maxTokens: 4000,
-      });
-      const content = result?.content || result?.message?.content || "(no output)";
+      }, workerOpts);
+      const content = extractContent(result);
       results.push({ worker: workerModel, subtask: st.title, result: content });
       lines.push(`  [${workerModel}] ${st.title} -- done`);
+      // T-004: Worker completed
+      await emitProgress(onProgress, {
+        phase: "execution",
+        model: workerModel,
+        label: st.title,
+        status: "completed",
+        workerIndex: i,
+        workerTotal: subtasks.length,
+        resultSummary: `${content.length} chars`,
+      });
     } catch (e: any) {
       results.push({ worker: workerModel, subtask: st.title, result: `ERROR: ${e.message}` });
       lines.push(`  [${workerModel}] ${st.title} -- failed: ${e.message}`);
+      // T-004: Worker failed
+      await emitProgress(onProgress, {
+        phase: "execution",
+        model: workerModel,
+        label: st.title,
+        status: "failed",
+        workerIndex: i,
+        workerTotal: subtasks.length,
+        error: e.message,
+      });
     }
   });
 
   await Promise.all(workerPromises);
   lines.push("");
+
+  // T-004: Review started
+  await emitProgress(onProgress, {
+    phase: "review",
+    model: req.reviewer,
+    label: "Reviewing and merging worker results",
+    status: "started",
+  });
 
   lines.push("*Phase 3: Review & Merge...*");
   const reviewPrompt = `You are a senior reviewer. Multiple AI workers executed subtasks in parallel. Review and merge their outputs into a coherent final result.
@@ -438,16 +691,31 @@ ${results.map((r) => `--- [${r.worker}] ${r.subtask} ---\n${r.result}`).join("\n
 Provide a merged, quality-checked final output. Flag any issues or conflicts between worker outputs. Be concise.`;
 
   try {
-    const reviewResult = await api.inference({
+    const reviewResult = await inferWithRetry(api, {
       model: req.reviewer,
       messages: [{ role: "user", content: reviewPrompt }],
       maxTokens: 4000,
-    });
-    const content = reviewResult?.content || reviewResult?.message?.content || "(no review output)";
+    }, workerOpts);
+    const content = extractContent(reviewResult);
     lines.push(`  Review complete by \`${req.reviewer}\`\n`);
     lines.push("*Final Result:*");
     lines.push(content);
+    // T-004: Review completed
+    await emitProgress(onProgress, {
+      phase: "review",
+      model: req.reviewer,
+      label: "Reviewing and merging worker results",
+      status: "completed",
+      resultSummary: `${content.length} chars`,
+    });
   } catch (e: any) {
+    await emitProgress(onProgress, {
+      phase: "review",
+      model: req.reviewer,
+      label: "Reviewing and merging worker results",
+      status: "failed",
+      error: e.message,
+    });
     lines.push(`  Review failed: ${e.message}`);
     lines.push("\n*Raw Worker Results:*");
     for (const r of results) {
@@ -459,9 +727,11 @@ Provide a merged, quality-checked final output. Flag any issues or conflicts bet
   return lines.join("\n");
 }
 
-async function executePipeline(
+export async function executePipeline(
   req: OrchestrateRequest,
-  api: any,
+  api: { inference: (req: InferenceRequest) => Promise<InferenceResponse> },
+  workerOpts: WorkerOptions = {},
+  onProgress?: ProgressCallback,
 ): Promise<string> {
   const lines: string[] = [];
   const chain = [req.planner, ...req.workers, req.reviewer];
@@ -478,6 +748,18 @@ async function executePipeline(
     const model = chain[i];
     const phase = phases[i] || `Step ${i + 1}`;
     lines.push(`*${phase}:* \`${model}\``);
+
+    const progressPhase = i === 0 ? "planning" : i === chain.length - 1 ? "review" : "execution";
+
+    // T-004: Step started
+    await emitProgress(onProgress, {
+      phase: progressPhase,
+      model,
+      label: phase,
+      status: "started",
+      workerIndex: i,
+      workerTotal: chain.length,
+    });
 
     const handoff = createHandoff(req.task, phase, i > 0 ? chain[i - 1] : "user", model, "pipeline", state);
 
@@ -509,15 +791,34 @@ AAHP Handoff: ${JSON.stringify(handoff)}
 Improve and extend this output. Stay focused on the task.`;
 
     try {
-      const result = await api.inference({
+      const result = await inferWithRetry(api, {
         model,
         messages: [{ role: "user", content: prompt }],
         maxTokens: 4000,
-      });
-      lastOutput = result?.content || result?.message?.content || "(no output)";
+      }, workerOpts);
+      lastOutput = extractContent(result);
       state = { ...state, [`step_${i}`]: { model, phase, outputLength: lastOutput.length } };
       lines.push(`  Done (${lastOutput.length} chars)`);
+      // T-004: Step completed
+      await emitProgress(onProgress, {
+        phase: progressPhase,
+        model,
+        label: phase,
+        status: "completed",
+        workerIndex: i,
+        workerTotal: chain.length,
+        resultSummary: `${lastOutput.length} chars`,
+      });
     } catch (e: any) {
+      await emitProgress(onProgress, {
+        phase: progressPhase,
+        model,
+        label: phase,
+        status: "failed",
+        workerIndex: i,
+        workerTotal: chain.length,
+        error: e.message,
+      });
       lines.push(`  Failed: ${e.message}`);
       break;
     }
@@ -528,9 +829,11 @@ Improve and extend this output. Stay focused on the task.`;
   return lines.join("\n");
 }
 
-async function executeConsensus(
+export async function executeConsensus(
   req: OrchestrateRequest,
-  api: any,
+  api: { inference: (req: InferenceRequest) => Promise<InferenceResponse> },
+  workerOpts: WorkerOptions = {},
+  onProgress?: ProgressCallback,
 ): Promise<string> {
   const lines: string[] = [];
   const allWorkers = [req.planner, ...req.workers];
@@ -543,28 +846,66 @@ async function executeConsensus(
   lines.push("*Phase 1: Parallel Query...*");
   const responses: Array<{ model: string; response: string }> = [];
 
-  const promises = allWorkers.map(async (model) => {
+  const promises = allWorkers.map(async (model, i) => {
     const prompt = `${req.task}
 
 Provide a thorough, well-structured response. Be specific and actionable.`;
 
+    // T-004: Worker started
+    await emitProgress(onProgress, {
+      phase: "execution",
+      model,
+      label: `Parallel query ${i + 1}/${allWorkers.length}`,
+      status: "started",
+      workerIndex: i,
+      workerTotal: allWorkers.length,
+    });
+
     try {
-      const result = await api.inference({
+      const result = await inferWithRetry(api, {
         model,
         messages: [{ role: "user", content: prompt }],
         maxTokens: 4000,
-      });
-      const content = result?.content || result?.message?.content || "(no output)";
+      }, workerOpts);
+      const content = extractContent(result);
       responses.push({ model, response: content });
       lines.push(`  [${model}] responded (${content.length} chars)`);
+      // T-004: Worker completed
+      await emitProgress(onProgress, {
+        phase: "execution",
+        model,
+        label: `Parallel query ${i + 1}/${allWorkers.length}`,
+        status: "completed",
+        workerIndex: i,
+        workerTotal: allWorkers.length,
+        resultSummary: `${content.length} chars`,
+      });
     } catch (e: any) {
       responses.push({ model, response: `ERROR: ${e.message}` });
       lines.push(`  [${model}] failed: ${e.message}`);
+      // T-004: Worker failed
+      await emitProgress(onProgress, {
+        phase: "execution",
+        model,
+        label: `Parallel query ${i + 1}/${allWorkers.length}`,
+        status: "failed",
+        workerIndex: i,
+        workerTotal: allWorkers.length,
+        error: e.message,
+      });
     }
   });
 
   await Promise.all(promises);
   lines.push("");
+
+  // T-004: Synthesis started
+  await emitProgress(onProgress, {
+    phase: "synthesis",
+    model: req.reviewer,
+    label: "Synthesizing responses",
+    status: "started",
+  });
 
   lines.push("*Phase 2: Synthesis...*");
   const synthPrompt = `You received responses from ${responses.length} different AI models to the same question. Synthesize the best answer by:
@@ -582,16 +923,31 @@ Provide:
 2. The synthesized final answer`;
 
   try {
-    const result = await api.inference({
+    const result = await inferWithRetry(api, {
       model: req.reviewer,
       messages: [{ role: "user", content: synthPrompt }],
       maxTokens: 4000,
-    });
-    const content = result?.content || result?.message?.content || "(no synthesis)";
+    }, workerOpts);
+    const content = extractContent(result);
     lines.push(`  Synthesized by \`${req.reviewer}\`\n`);
     lines.push("*Consensus Result:*");
     lines.push(content);
+    // T-004: Synthesis completed
+    await emitProgress(onProgress, {
+      phase: "synthesis",
+      model: req.reviewer,
+      label: "Synthesizing responses",
+      status: "completed",
+      resultSummary: `${content.length} chars`,
+    });
   } catch (e: any) {
+    await emitProgress(onProgress, {
+      phase: "synthesis",
+      model: req.reviewer,
+      label: "Synthesizing responses",
+      status: "failed",
+      error: e.message,
+    });
     lines.push(`  Synthesis failed: ${e.message}`);
     lines.push("\n*Raw Responses:*");
     for (const r of responses) {
@@ -607,7 +963,7 @@ Provide:
 // Argument Parsing
 // ---------------------------------------------------------------------------
 
-function parseArgs(argsStr: string): Record<string, string> {
+export function parseArgs(argsStr: string): Record<string, string> {
   const result: Record<string, string> = {};
   const regex = /--(\w[\w-]*)\s+(?:"([^"]*)"|'([^']*)'|(\S+))/g;
   let match;
@@ -632,12 +988,19 @@ export default function register(api: any) {
     defaultReviewer?: string;
     defaultWorkers?: string[];
     maxConcurrent?: number;
+    workerTimeoutMs?: number;
+    workerMaxRetries?: number;
     taskProfiles?: Record<string, TaskProfile>;
   };
 
   if (cfg.enabled === false) return;
 
   const taskProfiles = cfg.taskProfiles || {};
+  const workerOpts: WorkerOptions = {
+    timeoutMs: cfg.workerTimeoutMs ?? DEFAULT_WORKER_OPTIONS.timeoutMs,
+    maxRetries: cfg.workerMaxRetries ?? DEFAULT_WORKER_OPTIONS.maxRetries,
+    backoffBaseMs: DEFAULT_WORKER_OPTIONS.backoffBaseMs,
+  };
 
   api.registerCommand({
     name: "orchestrate",
@@ -652,6 +1015,22 @@ export default function register(api: any) {
       const subcommand = args._subcommand || "";
 
       const reply = (text: string) => ({ text });
+
+      // T-004: Build progress callback that sends intermediate messages via api
+      const onProgress: ProgressCallback | undefined = api.message
+        ? async (evt: ProgressEvent) => {
+            const icon = evt.status === "started" ? "..." : evt.status === "completed" ? "✅" : "❌";
+            const summary = evt.resultSummary ? ` (${evt.resultSummary})` : "";
+            const errInfo = evt.error ? ` -- ${evt.error}` : "";
+            const workerInfo = evt.workerTotal != null ? ` [${(evt.workerIndex ?? 0) + 1}/${evt.workerTotal}]` : "";
+            const msg = `${icon} [${evt.phase}]${workerInfo} \`${evt.model}\` -- ${evt.label}${summary}${errInfo}`;
+            try {
+              await api.message({ text: msg });
+            } catch {
+              // Non-fatal: progress reporting failure should not abort orchestration
+            }
+          }
+        : undefined;
 
       // /orchestrate help
       if (!argsStr || subcommand === "help") {
@@ -712,13 +1091,13 @@ export default function register(api: any) {
       let result: string;
       switch (mode) {
         case "fan-out":
-          result = await executeFanOut(req, api);
+          result = await executeFanOut(req, api, workerOpts, onProgress);
           break;
         case "pipeline":
-          result = await executePipeline(req, api);
+          result = await executePipeline(req, api, workerOpts, onProgress);
           break;
         case "consensus":
-          result = await executeConsensus(req, api);
+          result = await executeConsensus(req, api, workerOpts, onProgress);
           break;
         default:
           result = `Unknown mode: \`${mode}\`. Supported: fan-out, pipeline, consensus`;
