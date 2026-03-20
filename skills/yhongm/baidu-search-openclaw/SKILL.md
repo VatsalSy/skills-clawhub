@@ -1,7 +1,7 @@
 ---
 name: baidu-search
 description: 使用百度 AI 搜索 API 进行 Web 搜索。优先使用 API 模式，配额不足时自动切换到浏览器模式。支持中文搜索、新闻搜索等功能。
-metadata: { "openclaw": { "emoji": "🔍︎", "requires": { "bins": ["python3"], "env": ["BAIDU_API_KEY"] }, "primaryEnv": "BAIDU_API_KEY" } }
+metadata: { "openclaw": { "emoji": "🔍︎", "requires": { "bins": ["python"], "env": ["BAIDU_API_KEY", "PYTHONIOENCODING"] }, "primaryEnv": "BAIDU_API_KEY" } }
 ---
 
 # 百度搜索
@@ -15,11 +15,13 @@ metadata: { "openclaw": { "emoji": "🔍︎", "requires": { "bins": ["python3"],
 ### 环境变量
 使用技能前需要设置百度千帆 API Key：
 ```bash
+# Windows (PowerShell)
+$env:BAIDU_API_KEY="your-api-key"
+$env:PYTHONIOENCODING="utf-8"
+
 # Linux/Mac
 export BAIDU_API_KEY="your-api-key"
-
-# Windows
-$env:BAIDU_API_KEY="your-api-key"
+export PYTHONIOENCODING="utf-8"
 ```
 
 API Key 获取地址：https://console.bce.baidu.com/qianfan/ais/console/apiKey
@@ -38,8 +40,12 @@ API Key 获取地址：https://console.bce.baidu.com/qianfan/ais/console/apiKey
 ### Python 脚本调用
 
 ```bash
-# 设置环境变量后执行
-python3 skills/baidu-search/scripts/search.py '{"query":"今日新闻"}'
+# Windows
+$env:PYTHONIOENCODING="utf-8"
+python skills/baidu-search/scripts/search.py '{"query":"今日新闻"}'
+
+# Linux/Mac
+PYTHONIOENCODING=utf-8 python3 skills/baidu-search/scripts/search.py '{"query":"今日新闻"}'
 ```
 
 ### 请求参数
@@ -57,8 +63,9 @@ python3 skills/baidu-search/scripts/search.py '{"query":"今日新闻"}'
 ### 使用 exec 工具调用
 
 ```powershell
-# 先设置环境变量
+# 先设置环境变量 (Windows)
 $env:BAIDU_API_KEY = "your-api-key"
+$env:PYTHONIOENCODING = "utf-8"
 
 # 然后调用 API
 $body = @{

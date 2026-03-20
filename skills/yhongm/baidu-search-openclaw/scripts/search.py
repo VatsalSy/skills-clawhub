@@ -3,6 +3,10 @@ import json
 import requests
 import os
 
+# 禁用代理
+session = requests.Session()
+session.trust_env = False
+
 
 def baidu_search(api_key, requestBody: dict):
     url = "https://qianfan.baidubce.com/v2/ai_search/web_search"
@@ -13,7 +17,7 @@ def baidu_search(api_key, requestBody: dict):
         "Content-Type": "application/json"
     }
 
-    response = requests.post(url, json=requestBody, headers=headers)
+    response = session.post(url, json=requestBody, headers=headers)
     response.raise_for_status()
     results = response.json()
     if "code" in results:
