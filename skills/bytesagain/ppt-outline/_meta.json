@@ -3,11 +3,16 @@
   "slug": "ppt-outline",
   "displayName": "Ppt Outline",
   "latest": {
-    "version": "2.3.4",
-    "publishedAt": 1773666796393,
-    "commit": "https://github.com/openclaw/skills/commit/21ac0f592bd0cce2191f3fb5e8a1c3c93f3638fe"
+    "version": "2.0.0",
+    "publishedAt": 1773773171011,
+    "commit": null
   },
   "history": [
+    {
+      "version": "2.3.4",
+      "publishedAt": 1773666796393,
+      "commit": "https://github.com/openclaw/skills/commit/21ac0f592bd0cce2191f3fb5e8a1c3c93f3638fe"
+    },
     {
       "version": "2.2.0",
       "publishedAt": 1773421682945,
