@@ -5,9 +5,8 @@ metadata:
   openclaw:
     emoji: 🛡️
     tags: [governance, postures, transactions, safety]
-requires:
-  stateDirs:
-    - ~/.openclaw/governance
+    stateDirs:
+      - ~/.openclaw/governance
 example: |
   # Set posture via operator command: /posture defense
   # Or directly: python3 scripts/init_state.py set --posture defense
