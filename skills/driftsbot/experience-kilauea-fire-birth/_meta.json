@@ -1,11 +1,17 @@
 {
   "owner": "driftsbot",
   "slug": "experience-kilauea-fire-birth",
-  "displayName": "Fire Birth — AI Experience",
+  "displayName": "Experience Kilauea Fire Birth",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773110500923,
-    "commit": "https://github.com/openclaw/skills/commit/6463060cce54b81b961ad211161da048b2ed8c3d"
+    "version": "1.0.1",
+    "publishedAt": 1773698599631,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773110500923,
+      "commit": "https://github.com/openclaw/skills/commit/6463060cce54b81b961ad211161da048b2ed8c3d"
+    }
+  ]
 }
