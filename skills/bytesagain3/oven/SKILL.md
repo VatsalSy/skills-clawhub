@@ -1,8 +1,10 @@
 ---
 name: "Oven"
-description: "Lightweight Oven tracker. Add entries, view stats, search history, and export in multiple formats."
+description: "Track oven usage and cooking schedules. Use when logging bake sessions, setting cook reminders, checking inventory, reviewing stats."
 version: "2.0.0"
 author: "BytesAgain"
+homepage: https://bytesagain.com
+source: https://github.com/bytesagain/ai-skills
 tags: ["maintenance", "oven", "domestic", "smart-home", "household"]
 ---
 
