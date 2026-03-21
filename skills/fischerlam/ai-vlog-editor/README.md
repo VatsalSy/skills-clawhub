@@ -1,38 +1,14 @@
-# ai-vlog-editor
+# AI Vlog Editor
 
-[![ClawHub Skill](https://img.shields.io/badge/ClawHub-Skill-blueviolet)](https://clawhub.io)
-[![Version](https://img.shields.io/badge/version-1.0.7-blue)](SKILL.md)
+This is a scenario-focused variant of the official Sparki Video Editor skill.
 
-> **AI Vlog Editor.**
-> Scenario-specific AI video editing powered by Sparki.
->
-> Powered by [Sparki](https://sparki.io).
+## Best for
+Use this variant when the user specifically wants a vlog, travel vlog, daily-life edit, creator-style montage, or lifestyle video.
 
-## What It Does
+## Example requests
+- Edit this into a chill daily vlog.
+- Turn this travel footage into a creator-style vlog.
+- Make this feel like an upbeat YouTube vlog.
 
-This skill is a scenario-focused wrapper around Sparki's AI video editing workflow.
-
-- Uploads a video file
-- Creates an AI processing job with scene-specific defaults
-- Polls until processing completes
-- Returns a result download URL
-
-## Best For
-- "edit this into a vlog"
-- "make a daily or travel vlog"
-- "turn this footage into a creator-style vlog"
-- "make this feel more like a polished vlog"
-
-## Quick Start
-
-```bash
-export SPARKI_API_KEY="sk_live_your_key_here"
-export SPARKI_API_BASE="https://business-agent-api.sparki.io/api/v1"
-RESULT_URL=$(bash scripts/edit_video.sh my_video.mp4 "21" "chill daily life vibes" "9:16")
-echo "$RESULT_URL"
-```
-
-## Notes
-- Requires `SPARKI_API_KEY`
-- Optionally set `SPARKI_API_BASE` to the API endpoint provided for your Sparki account
-- Supports `9:16`, `1:1`, `16:9`
+## Shared core
+This skill follows the latest official Sparki setup, API-key, upload, and command guidance from the main `sparki-video-editor` skill.
