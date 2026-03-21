@@ -1,0 +1,11 @@
+{
+  "owner": "sipingme",
+  "slug": "toutiao-mcp-skill",
+  "displayName": "Toutiao Mcp",
+  "latest": {
+    "version": "0.1.0",
+    "publishedAt": 1773998651902,
+    "commit": null
+  },
+  "history": []
+}
