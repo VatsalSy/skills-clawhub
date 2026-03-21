@@ -3,9 +3,15 @@
   "slug": "polymarket-central-bank-trader",
   "displayName": "Central Bank & Monetary Policy Trader",
   "latest": {
-    "version": "1.0.0",
-    "publishedAt": 1773653239361,
-    "commit": "https://github.com/openclaw/skills/commit/5474f527f1728776745f759b9650d00444e86a85"
+    "version": "1.0.1",
+    "publishedAt": 1773869600936,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.0",
+      "publishedAt": 1773653239361,
+      "commit": "https://github.com/openclaw/skills/commit/5474f527f1728776745f759b9650d00444e86a85"
+    }
+  ]
 }
