@@ -1,0 +1,11 @@
+{
+  "owner": "torchesfrms",
+  "slug": "binance-exchange",
+  "displayName": "Binance Exchange",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1774022594112,
+    "commit": null
+  },
+  "history": []
+}
