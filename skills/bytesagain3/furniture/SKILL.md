@@ -1,8 +1,10 @@
 ---
 name: "Furniture"
-description: "Furniture — a fast home management tool. Log anything, find it later, export when needed."
+description: "Track home furniture, schedule maintenance, and manage warranty details. Use when cataloging furniture, scheduling cleaning, or tracking warranty expiry dates."
 version: "2.0.0"
 author: "BytesAgain"
+homepage: https://bytesagain.com
+source: https://github.com/bytesagain/ai-skills
 tags: ["furniture", "smart-home", "inventory", "household", "home"]
 ---
 
