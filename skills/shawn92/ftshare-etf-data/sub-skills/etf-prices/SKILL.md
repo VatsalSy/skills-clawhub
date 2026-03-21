@@ -89,3 +89,4 @@ GET https://market.ft.tech/app/api/v2/etfs/510050.XSHG/prices?since=TODAY
 - `since` 与 `since_ts_ms` 二选一；不传 `since` 时必须传 `since_ts_ms`
 - `since_ts_ms` 须属于“今天”或“最近一个交易日”
 - 分时为一分钟一根，数据量随时间范围增大而增加
+- 执行方式：脚本在输出前将 `prices` 中每条记录的 `tm`（毫秒）转为北京时间 ISO 字符串（YYYY-MM-DDTHH:mm:ss）；`since` 与 `since_ts_ms` 二选一，两个都不传或两个都传时退出并提示错误。

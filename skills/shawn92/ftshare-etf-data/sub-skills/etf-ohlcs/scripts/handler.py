@@ -6,10 +6,35 @@ import sys
 import urllib.error
 import urllib.parse
 import urllib.request
+from datetime import datetime, timedelta, timezone
+from typing import Optional
+
+BEIJING_TZ = timezone(timedelta(hours=8))
 
 BASE_URL = "https://market.ft.tech"
 
 SPAN_CHOICES = ("DAY1", "WEEK1", "MONTH1", "YEAR1")
+
+
+def ms_to_iso(ms: Optional[int]) -> Optional[str]:
+    """将毫秒时间戳转为北京时间 ISO 字符串（YYYY-MM-DDTHH:mm:ss）。"""
+    if ms is None:
+        return None
+    return datetime.fromtimestamp(ms / 1000.0, tz=BEIJING_TZ).strftime("%Y-%m-%dT%H:%M:%S")
+
+
+def with_iso_timestamps(data: dict) -> dict:
+    """将 ohlcs 的 otm/ctm、ma5/ma10/ma20 的 ctm 转为北京时间 ISO 字符串（原地修改）。"""
+    for o in data.get("ohlcs", []):
+        if "otm" in o:
+            o["otm"] = ms_to_iso(o["otm"])
+        if "ctm" in o:
+            o["ctm"] = ms_to_iso(o["ctm"])
+    for key in ("ma5", "ma10", "ma20"):
+        for m in data.get(key, []):
+            if "ctm" in m:
+                m["ctm"] = ms_to_iso(m["ctm"])
+    return data
 
 
 def main():
@@ -55,6 +80,7 @@ def main():
     try:
         with urllib.request.urlopen(req) as resp:
             data = json.loads(resp.read().decode())
+        with_iso_timestamps(data)
         print(json.dumps(data, ensure_ascii=False, indent=2))
     except urllib.error.HTTPError as e:
         body = e.read().decode()

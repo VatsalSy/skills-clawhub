@@ -93,4 +93,4 @@ GET https://market.ft.tech/app/api/v2/etfs/510050.XSHG/ohlcs?span=DAY1&limit=50
 
 - `span` 取值仅支持：DAY1、WEEK1、MONTH1、YEAR1
 - 建议传 `--limit` 且不超过 2000，避免单次返回过多
-- 价格保留 4 位小数；时间戳为毫秒
+- 价格保留 4 位小数；脚本在输出前将 ohlcs 的 otm/ctm、ma5/ma10/ma20 的 ctm 转为北京时间 ISO 字符串（YYYY-MM-DDTHH:mm:ss），便于大模型与用户直接阅读时间。

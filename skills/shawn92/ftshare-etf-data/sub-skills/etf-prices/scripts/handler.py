@@ -6,8 +6,19 @@ import sys
 import urllib.error
 import urllib.parse
 import urllib.request
+from datetime import datetime, timedelta, timezone
+from typing import Optional
+
+BEIJING_TZ = timezone(timedelta(hours=8))
 
 BASE_URL = "https://market.ft.tech"
+
+
+def tm_ms_to_iso(ms: Optional[int]) -> Optional[str]:
+    """将毫秒时间戳转为北京时间 ISO 字符串（YYYY-MM-DDTHH:mm:ss）。"""
+    if ms is None:
+        return None
+    return datetime.fromtimestamp(ms / 1000.0, tz=BEIJING_TZ).strftime("%Y-%m-%dT%H:%M:%S")
 
 
 def main():
@@ -31,11 +42,9 @@ def main():
     args = parser.parse_args()
 
     if args.since is None and args.since_ts_ms is None:
-        print("错误：必须指定 --since 或 --since_ts_ms 其一", file=sys.stderr)
-        sys.exit(1)
+        raise ValueError("since 与 since_ts_ms 二选一，必须提供其一")
     if args.since is not None and args.since_ts_ms is not None:
-        print("错误：--since 与 --since_ts_ms 二选一", file=sys.stderr)
-        sys.exit(1)
+        raise ValueError("since 与 since_ts_ms 二选一，不能同时传递")
 
     params = {}
     if args.since is not None:
@@ -53,6 +62,9 @@ def main():
     try:
         with urllib.request.urlopen(req) as resp:
             data = json.loads(resp.read().decode())
+        for rec in data.get("prices", []):
+            if "tm" in rec:
+                rec["tm"] = tm_ms_to_iso(rec["tm"])
         print(json.dumps(data, ensure_ascii=False, indent=2))
     except urllib.error.HTTPError as e:
         body = e.read().decode()
@@ -61,4 +73,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except ValueError as e:
+        print(str(e), file=sys.stderr)
+        sys.exit(1)
