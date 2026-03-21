@@ -218,3 +218,74 @@ document.getElementById('btn-clear-session').addEventListener('click', async () 
     resetWorkspace();
     currentVideoId = `session_${Date.now()}`;
 });
+
+// --- YOUTUBE OAUTH & UPLOAD LOGIC ---
+let youtubeAccessToken = null;
+let tokenClient;
+
+window.onload = () => {
+    tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: 'YOUR_GOOGLE_CLIENT_ID_HERE.apps.googleusercontent.com', 
+        scope: 'https://www.googleapis.com/auth/youtube.upload',
+        callback: (tokenResponse) => {
+            if (tokenResponse && tokenResponse.access_token) {
+                youtubeAccessToken = tokenResponse.access_token;
+                document.getElementById('youtube-auth-status').innerText = '✅ Authenticated';
+                document.getElementById('youtube-auth-status').style.color = '#fff';
+                document.getElementById('btn-youtube-login').style.display = 'none';
+                document.getElementById('youtube-upload-controls').style.display = 'block';
+            }
+        },
+    });
+};
+
+document.getElementById('btn-youtube-login').addEventListener('click', () => {
+    tokenClient.requestAccessToken();
+});
+
+document.getElementById('btn-upload-youtube').addEventListener('click', async () => {
+    if (!youtubeAccessToken) return alert("Please sign in with Google first.");
+    
+    const title = document.getElementById('youtube-title').value;
+    const description = document.getElementById('youtube-description').value;
+    
+    if (!title) return alert("Please provide a title for the YouTube video.");
+
+    setApiLoading(true);
+    const btn = document.getElementById('btn-upload-youtube');
+    btn.disabled = true;
+    
+    log("Connecting to YouTube API...");
+    updateLoadingMessage("Uploading...");
+
+    const eventSource = new EventSource(`/api/stream-logs?id=${currentVideoId}`);
+    await new Promise(resolve => { eventSource.onopen = resolve; setTimeout(resolve, 500); });
+    eventSource.onmessage = e => { const d = JSON.parse(e.data); log(d.message); updateLoadingMessage(d.message); };
+
+    try {
+        const res = await fetch('/api/upload-youtube', {
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                id: currentVideoId,
+                title: title,
+                description: description,
+                accessToken: youtubeAccessToken 
+            })
+        });
+        
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to upload to YouTube.");
+
+        log(`✅ Successfully uploaded! YouTube Video ID: ${data.videoId}`);
+        alert(`Upload complete! Video ID: ${data.videoId}\nIt is currently set to Private.`);
+        
+    } catch (e) { 
+        log(`❌ ${e.message}`); 
+        alert(e.message); 
+    } finally { 
+        eventSource.close(); 
+        setApiLoading(false); 
+        btn.disabled = false; 
+    }
+});

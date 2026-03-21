@@ -14,11 +14,8 @@ module.exports = {
     
     sanitizeId: (id) => {
         if (!id || typeof id !== 'string') return 'default_session';
-        // Strip non-alphanumeric characters
         const safeId = id.replace(/[^a-zA-Z0-9_-]/g, '');
-        // Prevent empty string resolution
         if (!safeId) return 'default_session';
-        // Enforce max length
         return safeId.substring(0, 64);
     }
 };

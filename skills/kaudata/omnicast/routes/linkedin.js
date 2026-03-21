@@ -38,7 +38,6 @@ router.post('/generate-linkedin', async (req, res) => {
     try {
         const ai = new GoogleGenAI({ apiKey: apiKey });
         
-        // 1. Generate LinkedIn Post
         emitStreamLog(safeId, { message: "Crafting social media copy..." });
         const originalText = fs.readFileSync(originalTextPath, 'utf8');
         const scriptText = fs.readFileSync(scriptPath, 'utf8');
@@ -59,7 +58,6 @@ router.post('/generate-linkedin', async (req, res) => {
         const linkedinPost = geminiResponse.text.trim();
         fs.writeFileSync(path.join(sessionDir, 'linkedin_post.txt'), linkedinPost);
 
-        // 2. Multi-Language VTTs
         if (fs.existsSync(vttPath) && targetCaptionLanguages.length > 0) {
             emitStreamLog(safeId, { message: "Translating closed captions..." });
             const baseVtt = fs.readFileSync(vttPath, 'utf8');
@@ -82,12 +80,10 @@ router.post('/generate-linkedin', async (req, res) => {
             }
         }
 
-        // 3. Audio Length Check
         emitStreamLog(safeId, { message: "Checking LinkedIn audio constraints..." });
         const duration = await getAudioDuration(audioPath);
         if (duration < 180) throw new Error(`Audio is too short (${Math.round(duration)}s). LinkedIn requires at least 3 minutes.`);
 
-        // 4. Background Blur & Pad
         emitStreamLog(safeId, { message: "Generating professional blurred background (1280x720)..." });
         const paddedImage = path.join(sessionDir, 'thumbnail-1280.png');
 
@@ -104,7 +100,6 @@ router.post('/generate-linkedin', async (req, res) => {
                 .on('error', reject);
         });
 
-        // 5. Final Video Compilation
         emitStreamLog(safeId, { message: "Rendering final MP4 video. This may take a minute..." });
         const finalVideoPath = path.join(sessionDir, 'linkedin_podcast.mp4');
 

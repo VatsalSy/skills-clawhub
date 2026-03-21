@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>OmniCast Studio</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
     <div style="padding: 20px; max-width: 800px; margin: auto; font-family: sans-serif;">
@@ -107,6 +108,29 @@
                     <label style="font-weight: bold; display: block; margin-bottom: 5px;">Ready-to-Upload Video:</label>
                     <video id="linkedin-video-player" controls style="width: 100%; max-width: 500px; border-radius: 5px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);"></video>
                 </div>
+            </div>
+        </div>
+
+        <div id="youtube-section" style="margin-top: 20px; padding: 15px; background: #c4302b; border-radius: 8px; color: white;">
+            <h3 style="margin-top: 0;">▶️ YouTube Export</h3>
+
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                <button id="btn-youtube-login" style="padding: 10px 15px; background: white; color: #c4302b; border: none; font-weight: bold; border-radius: 4px; cursor: pointer;">
+                    Sign in with Google
+                </button>
+                <span id="youtube-auth-status" style="font-weight: bold; color: #ffcccc;">Not Authenticated</span>
+            </div>
+
+            <div id="youtube-upload-controls" style="display: none; background: rgba(0,0,0,0.15); padding: 15px; border-radius: 5px;">
+                <label style="font-weight: bold; display: block; margin-bottom: 5px;">Video Title:</label>
+                <input type="text" id="youtube-title" style="width: 100%; padding: 10px; margin-bottom: 10px; box-sizing: border-box;" placeholder="Enter podcast title...">
+
+                <label style="font-weight: bold; display: block; margin-bottom: 5px;">Video Description:</label>
+                <textarea id="youtube-description" style="width: 100%; height: 80px; padding: 10px; margin-bottom: 10px; box-sizing: border-box;" placeholder="Enter description (hashtags, links, etc.)..."></textarea>
+
+                <button id="btn-upload-youtube" style="width: 100%; padding: 10px; background: #28a745; color: white; border: none; font-weight: bold; cursor: pointer; border-radius: 4px;">
+                    🚀 Upload to YouTube (Private Draft)
+                </button>
             </div>
         </div>
 

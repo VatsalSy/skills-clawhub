@@ -14,9 +14,7 @@ function extractAndChunkAudio(videoPath, sessionDir) {
     });
 }
 
-// Removed openaiApiKey from parameters
 async function transcribeChunks(chunkPaths, sessionId) {
-    // The SDK automatically finds process.env.OPENAI_API_KEY
     const openai = new OpenAI(); 
     let fullTranscription = "";
     let previousContext = "";

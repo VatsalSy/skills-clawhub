@@ -51,7 +51,7 @@ router.post('/generate-thumbnail', async (req, res) => {
     try {
         const ai = new GoogleGenAI({ apiKey: apiKey });
 
-        emitStreamLog(safeId, { message: "Rendering 16:9 image via Gemini 3.1 Flash Image..." });
+        emitStreamLog(safeId, { message: "Rendering 16:9 image via Gemini 3.1 Flash Image Preview..." });
         
         const imageResponse = await ai.models.generateContent({
             model: 'gemini-3.1-flash-image-preview', 

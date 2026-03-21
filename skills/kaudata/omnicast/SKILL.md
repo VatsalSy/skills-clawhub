@@ -1,7 +1,7 @@
 # OmniCast Studio API Reference
 
 ## Overview
-The OmniCast Studio local API (`http://127.0.0.1:7860`) provides a multi-modal pipeline to ingest media, draft scripts, synthesize audio, generate cover art, and compile social media video assets. 
+The OmniCast Studio local API (`http://127.0.0.1:7860`) provides a multi-modal pipeline to ingest media, draft scripts, synthesize audio, generate cover art, compile social media video assets, and upload to YouTube. 
 
 All endpoints accept JSON (except `/api/ingest` which accepts multipart/form-data). A consistent `<UNIQUE_SESSION_ID>` must be passed to link the pipeline steps together.
 metadata:
@@ -17,6 +17,7 @@ metadata:
         - OPENAI_API_KEY
     always: false
 
+
 ---
 
 ### 1. Media Ingestion (`/api/ingest`)
@@ -31,7 +32,7 @@ Extracts raw text from a target URL (Web article, MP4 video, or YouTube link).
 ---
 
 ### 2. Script Drafting (`/api/draft-script`)
-Drafts a multi-host podcast script from the ingested text (max 2100 words).
+Drafts a tightly grounded multi-host podcast script from the ingested text (max 2100 words).
 
     curl -X POST http://127.0.0.1:7860/api/draft-script \
       -H "Content-Type: application/json" \
@@ -87,11 +88,25 @@ Compiles the audio and cover art into a formatted MP4 video and returns a social
       -H "Content-Type: application/json" \
       -d '{
         "id": "<UNIQUE_SESSION_ID>",
-        "targetCaptionLanguages": ["English"]
+        "targetCaptionLanguages": ["English", "Spanish"]
       }'
 
 ---
 
-### 7. File Download & Deletion
+### 7. YouTube Upload (`/api/upload-youtube`)
+Uploads the generated video to YouTube as a private draft. Requires an OAuth Access Token.
+
+    curl -X POST http://127.0.0.1:7860/api/upload-youtube \
+      -H "Content-Type: application/json" \
+      -d '{
+        "id": "<UNIQUE_SESSION_ID>",
+        "title": "My Podcast Episode",
+        "description": "Episode details...",
+        "accessToken": "<OAUTH_ACCESS_TOKEN>"
+      }'
+
+---
+
+### 8. File Download & Deletion
 * **Download:** `GET http://127.0.0.1:7860/api/download-zip?id=<UNIQUE_SESSION_ID>`
 * **Delete:** `DELETE http://127.0.0.1:7860/api/delete-folder` (Pass `id` in JSON body).

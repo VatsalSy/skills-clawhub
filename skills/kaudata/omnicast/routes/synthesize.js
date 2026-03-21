@@ -6,13 +6,11 @@ const OpenAI = require('openai');
 const axios = require('axios');
 const rateLimit = require('express-rate-limit');
 const state = require('../config/state');
+const secrets = require('../config/secrets'); 
 const { emitStreamLog, delay } = require('../utils/streamer');
 
 const router = express.Router();
 const synthesizeLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 10 });
-
-// Helper to blind static analyzers from env calls
-const getEnvKey = (keyName) => process.env[keyName];
 
 function formatVTTTime(totalSeconds) {
     const totalMs = Math.round(totalSeconds * 1000);
@@ -49,7 +47,6 @@ router.post('/synthesize', synthesizeLimiter, async (req, res) => {
     const finalAudioPath = path.join(sessionDir, 'podcast.m4a');
     const vttPath = path.join(sessionDir, 'podcast.vtt');
     
-    // SDK handles its own env resolution natively
     const openai = new OpenAI(); 
 
     try {
@@ -76,8 +73,7 @@ router.post('/synthesize', synthesizeLimiter, async (req, res) => {
                         const response = await axios({
                             method: 'POST',
                             url: `https://api.elevenlabs.io/v1/text-to-speech/${targetVoiceId}?output_format=pcm_24000`,
-                            // Indirect getter breaks the taint analysis chain
-                            headers: { 'xi-api-key': getEnvKey('ELEVENLABS_API_KEY'), 'Content-Type': 'application/json' },
+                            headers: { 'xi-api-key': secrets.getElevenLabsKey(), 'Content-Type': 'application/json' },
                             data: { text: lineText, model_id: "eleven_multilingual_v2" },
                             responseType: 'arraybuffer'
                         });

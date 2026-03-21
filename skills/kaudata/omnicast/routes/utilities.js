@@ -6,22 +6,20 @@ const state = require('../config/state');
 
 const router = express.Router();
 
-// Helper function to validate path boundaries
 const getValidatedSessionDir = (rawId) => {
     if (!rawId) throw new Error("ID is required.");
     const safeId = state.sanitizeId(rawId);
     const baseDir = path.resolve(state.downloadsDir);
     const targetDir = path.resolve(baseDir, safeId);
     
-    // CRITICAL: Ensure target strictly starts with baseDir to prevent partial name matching
     if (!targetDir.startsWith(baseDir + path.sep)) {
         throw new Error("Forbidden: Invalid path traversal detected.");
     }
     return targetDir;
 };
 
-router.post('/snippet', async (req, res) => { /* Add snippet logic here if needed */ });
-router.post('/highlight-reel', async (req, res) => { /* Add reel logic here if needed */ });
+router.post('/snippet', async (req, res) => { });
+router.post('/highlight-reel', async (req, res) => { });
 
 router.get('/download-zip', (req, res) => {
     try {

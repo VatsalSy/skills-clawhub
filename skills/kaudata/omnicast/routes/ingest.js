@@ -7,7 +7,7 @@ const cheerio = require('cheerio');
 const { YoutubeTranscript } = require('youtube-transcript-plus');
 const state = require('../config/state');
 const { emitStreamLog } = require('../utils/streamer');
-const { processLocalFile } = require('../utils/fileProcessor'); // NEW
+const { processLocalFile } = require('../utils/fileProcessor');
 
 const router = express.Router();
 const tempUploadsDir = path.join(state.downloadsDir, 'temp_uploads');
@@ -33,7 +33,6 @@ router.post('/ingest', upload.single('file'), async (req, res) => {
                 response.data.pipe(writer);
                 await new Promise((resolve, reject) => { writer.on('finish', resolve); writer.on('error', reject); });
                 
-                // Process the downloaded file
                 extractedText = await processLocalFile(tempVideoPath, 'video/mp4', sessionDir, safeId);
                 if (fs.existsSync(tempVideoPath)) fs.unlinkSync(tempVideoPath);
                 

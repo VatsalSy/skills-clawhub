@@ -10,7 +10,8 @@ const draftRoutes = require('./routes/draft');
 const synthesizeRoutes = require('./routes/synthesize');
 const utilityRoutes = require('./routes/utilities');
 const imageRoutes = require('./routes/images');
-const linkedinRoutes = require('./routes/linkedin'); // NEW
+const linkedinRoutes = require('./routes/linkedin');
+const youtubeRoutes = require('./routes/youtube'); 
 
 const app = express();
 const port = process.env.PORT || 7860;
@@ -24,7 +25,8 @@ app.use('/api', draftRoutes);
 app.use('/api', synthesizeRoutes);
 app.use('/api', utilityRoutes);
 app.use('/api', imageRoutes);
-app.use('/api', linkedinRoutes); // NEW
+app.use('/api', linkedinRoutes);
+app.use('/api', youtubeRoutes);
 
 app.get('/api/stream-logs', (req, res) => {
     const { id } = req.query;
