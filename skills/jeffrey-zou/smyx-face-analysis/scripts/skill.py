@@ -3,22 +3,14 @@ import datetime
 import os
 import sys
 
-try:
-    from .config import import_path_common, ApiEnum, ConstantEnum
-except ImportError:
-    from config import import_path_common, ApiEnum, ConstantEnum
+from .config import ApiEnum, ConstantEnum
 
-try:
-    from .api_service import ApiService
-except ImportError:
-    from api_service import ApiService
+from .api_service import ApiService
 
-import_path_common()
-from enum import Enum, StrEnum
-from common.util import CommonUtil
-from common.config import ApiEnum as ApiEnumBase
-from common.base import BaseSkill
-from common.api_service import ApiService as ApiServiceBase
+from skills.scripts.common.util import CommonUtil
+from skills.scripts.common.config import ApiEnum as ApiEnumBase
+from skills.scripts.common.base import BaseSkill
+from skills.scripts.common.api_service import ApiService as ApiServiceBase
 
 
 class Skill(BaseSkill, ApiService):
@@ -87,13 +79,13 @@ class Skill(BaseSkill, ApiService):
                 raise PermissionError(f"文件没有读权限: {file_path}")
 
             ext = os.path.splitext(file_path)[1].lower()[1:]
-            if ext not in ConstantEnum.SUPPORTED_FORMATS.value:
-                raise ValueError(f"不支持的文件格式，支持的格式: {', '.join(ConstantEnum.SUPPORTED_FORMATS.value)}")
+            if ext not in ConstantEnum.SUPPORTED_FORMATS:
+                raise ValueError(f"不支持的文件格式，支持的格式: {', '.join(ConstantEnum.SUPPORTED_FORMATS)}")
 
             file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
-            if file_size_mb > ConstantEnum.MAX_FILE_SIZE_MB.value:
+            if file_size_mb > ConstantEnum.MAX_FILE_SIZE_MB:
                 raise ValueError(
-                    f"文件过大，最大支持 {ConstantEnum.MAX_FILE_SIZE_MB.value}MB，当前文件大小: {file_size_mb:.1f}MB")
+                    f"文件过大，最大支持 {ConstantEnum.MAX_FILE_SIZE_MB}MB，当前文件大小: {file_size_mb:.1f}MB")
 
             return True
 
@@ -131,6 +123,7 @@ class Skill(BaseSkill, ApiService):
         优化规则：只要API服务接口返回面诊报告清单，直接输出API返回的结果，
         无需汇总上下文中的面诊分析报告，以接口返回为准
         """
+
         def _get_analysis_export_url(request_id=None):
             if not request_id:
                 return ""
@@ -138,9 +131,9 @@ class Skill(BaseSkill, ApiService):
 
         # open_id 仅用于本地识别，不传给API - 参数已经在argss中，page方法会正确处理
         open_id = argss.pop('open_id', None)
-        if not open_id:
-            return "⚠️ 错误：缺少 open_id 参数"
-        
+        # if not open_id:
+        #     return "⚠️ 错误：缺少 open_id 参数"
+
         # 获取总页数，然后循环获取所有页
         output_all = ""
         # 先获取第一页来获取总页数
@@ -148,10 +141,10 @@ class Skill(BaseSkill, ApiService):
         # 1. 完整响应：{"success": true, "data": {"records": [...], "total": ...}}
         # 2. 已经提取好的数据：直接返回 data 对象或 records 列表
         response = self.page(pageNum or 1, pageSize or 30, *args, **argss)
-        
+
         if response is None:
             return "⚠️ 获取报告列表失败：response is None"
-        
+
         # 兼容处理：不同版本的基类返回不同格式
         if isinstance(response, list):
             # 基类直接返回了 records 列表，无法获取分页信息，直接使用
@@ -171,14 +164,14 @@ class Skill(BaseSkill, ApiService):
             records = data.get('records', [])
         else:
             return f"⚠️ 获取报告列表失败：response type={type(response)}"
-        
+
         if not records:
             return "⚠️ 暂无面诊分析报告记录"
-        
+
         output_all = f"📋 历史面诊分析报告清单（共 {total} 份）\n\n"
         output_all += "| 报告名称 | 分析时间 | 体质判断 | 点击查看 |\n"
         output_all += "|----------|----------|----------|----------|\n"
-        
+
         # 处理第一页
         for item in records:
             if not isinstance(item, dict):
@@ -194,10 +187,10 @@ class Skill(BaseSkill, ApiService):
                 face_ai = item.get('faceAnalysisResponse', {}) or {}
                 health_assessment = face_ai.get('healthAssessment', {}) or {}
                 subject = health_assessment.get('subject', '未知')
-            report_name = f"面诊分析报告-{str(item.get('createTime', '')).replace('-', '').replace(':', '').replace(' ', '')}"
+            report_name = f"面诊分析报告-{report_id}"
             report_url = _get_analysis_export_url(report_id)
             output_all += f"| {report_name} | {create_time} | {subject} | [🔗 查看报告]({report_url}) |\n"
-        
+
         # 处理剩余页
         for current_page in range(2, pages + 1):
             response = self.page(current_page, 30, *args, **argss)
@@ -221,10 +214,10 @@ class Skill(BaseSkill, ApiService):
                     face_ai = item.get('faceAnalysisResponse', {}) or {}
                     health_assessment = face_ai.get('healthAssessment', {}) or {}
                     subject = health_assessment.get('subject', '未知')
-                report_name = f"面诊分析报告-{str(item.get('createTime', '')).replace('-', '').replace(':', '').replace(' ', '')}"
+                report_name = f"面诊分析报告-{report_id}"
                 report_url = _get_analysis_export_url(report_id)
                 output_all += f"| {report_name} | {create_time} | {subject} | [🔗 查看报告]({report_url}) |\n"
-        
+
         output_all += "\n> 注：面诊分析结果仅供健康参考，不能替代专业医疗诊断。"
         return output_all
 

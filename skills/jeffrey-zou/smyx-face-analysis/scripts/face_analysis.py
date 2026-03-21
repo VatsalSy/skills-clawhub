@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+import sys
+import os
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))
+sys.path.insert(0, parent_dir)
+
 import argparse
 import json
 import mimetypes
@@ -7,18 +14,18 @@ from datetime import datetime
 
 import requests
 import sys
+import os
 
-from config import *
+from .config import *
 
-from skill import skill
+from .skill import skill
 
-import_path_common()
-from common.util import RequestUtil
-from common.config import ConstantEnum as ConstantEnumBase
+# import_path_common()
+from skills.scripts.common.util import RequestUtil
 
 # 从config导入常量
-SUPPORTED_FORMATS = ConstantEnum.SUPPORTED_FORMATS.value
-MAX_FILE_SIZE_MB = ConstantEnum.MAX_FILE_SIZE_MB.value
+SUPPORTED_FORMATS = ConstantEnum.SUPPORTED_FORMATS
+MAX_FILE_SIZE_MB = ConstantEnum.MAX_FILE_SIZE_MB
 
 
 def validate_file(file_path):
@@ -54,8 +61,8 @@ def analyze_video(input_path=None, url=None, api_url=None, api_key=None, output_
 
 
 def show_analyze_list(open_id, start_time=None, end_time=None):
-    if not open_id:
-        raise ValueError("必须提供本用户的OpenId/UserId")
+    # if not open_id:
+    #     raise ValueError("必须提供本用户的OpenId/UserId")
 
     try:
         output_content = skill.get_output_analysis_list(open_id=open_id)
@@ -139,22 +146,40 @@ def main():
     parser = argparse.ArgumentParser(description="中医面诊分析工具")
     parser.add_argument("--input", help="本地MP4视频文件路径")
     parser.add_argument("--url", help="网络视频MP4的URL地址")
-    parser.add_argument("--open-id", help="当前用户的OpenID或UserId")
+    parser.add_argument("--open-id", help="当前用户的OpenID/UserId/用户名/手机号")
     parser.add_argument("--show-list", action='store_true', help="显示面诊视频历史列表清单")
     parser.add_argument("--api-url", help="服务端API地址")
     parser.add_argument("--api-key", help="API访问密钥（必需）")
     parser.add_argument("--output", help="结果输出文件路径")
     parser.add_argument("--detail", choices=["basic", "standard", "json"],
-                        default=ConstantEnumBase.DEFAULT__OUTPUT_LEVEL,
+                        default=ConstantEnum.DEFAULT__OUTPUT_LEVEL,
                         help="输出详细程度")
+    parser.add_argument("--export-env-only", action='store_true',
+                        help="仅输出 export 命令设置环境变量，不执行分析")
 
     args = parser.parse_args()
 
     try:
+        # ✅ 自动设置环境变量：当用户提供 open-id 后，自动输出 export 命令到 stderr
+        # 这样用户可以通过 eval $(python3 face_analysis.py ...) 来设置 shell 环境变量
+        # print("*********======== is sam 是否相同", ConstantEnum.CURRENT__OPEN_ID,
+        #       "ConstantEnumBase.CURRENT__OPEN_ID", ConstantEnumBase.CURRENT__OPEN_ID, "siaem",
+        #       ConstantEnum.CURRENT__OPEN_ID is ConstantEnumBase.CURRENT__OPEN_ID)
+        if args.open_id:
+            # 设置 Python 进程内的环境变量
+            ConstantEnumBase.CURRENT__OPEN_ID = args.open_id
+            # print("*********======== is sam 是否相同 after here", ConstantEnum.CURRENT__OPEN_ID,
+            #       "ConstantEnumBase.CURRENT__OPEN_ID", ConstantEnumBase.CURRENT__OPEN_ID, "siaem",
+            #       ConstantEnum.CURRENT__OPEN_ID is ConstantEnumBase.CURRENT__OPEN_ID)
+            # 输出 export 命令到 stderr（不干扰正常输出）
+            # import sys
+            # print(f"export OPENCLAW_SENDER_ID={args.open_id}", file=sys.stderr)
+            # print(f"✅ 已设置环境变量 OPENCLAW_SENDER_ID={args.open_id}", file=sys.stderr)
+
         # 检查必需参数
         match args.show_list:
             case True:
-                open_id = args.open_id or ConstantEnumBase.DEFAULT__OPEN_ID
+                open_id = ConstantEnum.CURRENT__OPEN_ID
                 result = show_analyze_list(open_id)
                 print(result)
                 exit(0)

@@ -3,9 +3,15 @@
   "slug": "smyx-face-analysis",
   "displayName": "Smyx Face Analysis",
   "latest": {
-    "version": "1.0.1",
-    "publishedAt": 1773758105456,
-    "commit": "https://github.com/openclaw/skills/commit/d7793c9c573dfcd0b0c658f391efd232c4073bb1"
+    "version": "1.0.3",
+    "publishedAt": 1773934415970,
+    "commit": null
   },
-  "history": []
+  "history": [
+    {
+      "version": "1.0.1",
+      "publishedAt": 1773758105456,
+      "commit": "https://github.com/openclaw/skills/commit/d7793c9c573dfcd0b0c658f391efd232c4073bb1"
+    }
+  ]
 }

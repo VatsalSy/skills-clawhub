@@ -3,23 +3,22 @@
 import os
 import sys
 
+# def import_path_common():
+#     current_dir = os.path.dirname(os.path.abspath(__file__))  # .../scripts
+#     parent_dir = os.path.dirname(current_dir)  # .../face_analysis
+#     common_dir = os.path.join(parent_dir, 'common')
+#     if common_dir not in sys.path:
+#         sys.path.insert(0, common_dir)
 
-def import_path_common():
-    current_dir = os.path.dirname(os.path.abspath(__file__))  # .../scripts
-    parent_dir = os.path.dirname(current_dir)  # .../face_analysis
-    common_dir = os.path.join(parent_dir, 'common')
-    if common_dir not in sys.path:
-        sys.path.insert(0, common_dir)
 
+# try:
+from .config import ApiEnum, ConstantEnum
+# except ImportError:
+#     from config import ApiEnum, ConstantEnum
 
-try:
-    from .config import ApiEnum, ConstantEnum
-except ImportError:
-    from config import ApiEnum, ConstantEnum
-
-import_path_common()
-from common.api_service import ApiService as ApiServiceBase
-from common.util import RequestUtil
+# import_path_common()
+from skills.scripts.common.api_service import ApiService as ApiServiceBase
+from skills.scripts.common.util import RequestUtil
 
 
 class ApiService(ApiServiceBase):
@@ -31,7 +30,7 @@ class ApiService(ApiServiceBase):
     def analysis_result(self, *args, **argss):
         return self.http_post(ApiEnum.ANALYSIS_RESULT_URL, *args, **argss)
 
-    def analysis(self, scene_code=ConstantEnum.DEFAULT__SCENE_CODE.value, *args, **argss):
+    def analysis(self, scene_code=ConstantEnum.DEFAULT__SCENE_CODE, *args, **argss):
         params = argss.setdefault("params", {})
         options = {
             "data_as_params": True
