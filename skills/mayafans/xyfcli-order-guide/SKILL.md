@@ -175,8 +175,11 @@ OpenClaw：（解析并验证）
 ## 关键命令速查
 
 ```bash
-# 获取销售员客户列表
-xyfcli shop getdealercode "销售员编码"
+# 获取下单销售人员信息
+xyfcli shop getsalercode
+
+# 获取下单销售人员客户列表
+xyfcli shop getdealercode "下单销售人员编码"
 
 # 验证产品可用性 / 搜索产品
 xyfcli shop getproductlist -dealercode "客户编码" -search "产品编码或关键词"
