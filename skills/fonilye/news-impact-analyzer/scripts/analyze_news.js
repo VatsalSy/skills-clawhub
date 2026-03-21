@@ -70,12 +70,18 @@ async function analyzeNews(content) {
 
             res.on('end', () => {
                 if (res.statusCode >= 200 && res.statusCode < 300) {
+                    let parsedData;
                     try {
-                        const parsedData = JSON.parse(responseData);
-                        formatAndPrintResult(parsedData);
+                        parsedData = JSON.parse(responseData);
                     } catch (e) {
-                        console.error("Error parsing the JSON response from API:", e.message);
-                        console.error("Raw response:", responseData);
+                        // Response is not valid JSON; treat it as Markdown / text output
+                    }
+
+                    if (parsedData && typeof parsedData === 'object') {
+                        formatAndPrintResult(parsedData);
+                    } else {
+                        console.log("API returned non-JSON response (treated as Markdown/text):\n");
+                        console.log(responseData);
                     }
                 } else {
                     console.error(`API request failed with status code ${res.statusCode}: ${responseData}`);
