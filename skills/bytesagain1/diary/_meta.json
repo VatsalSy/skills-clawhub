@@ -3,11 +3,16 @@
   "slug": "diary",
   "displayName": "Diary",
   "latest": {
-    "version": "1.0.2",
-    "publishedAt": 1773673725834,
-    "commit": "https://github.com/openclaw/skills/commit/40593a14d982a2eb3df476949c07abd614cfa38b"
+    "version": "2.0.1",
+    "publishedAt": 1773830457889,
+    "commit": null
   },
   "history": [
+    {
+      "version": "1.0.2",
+      "publishedAt": 1773673725834,
+      "commit": "https://github.com/openclaw/skills/commit/40593a14d982a2eb3df476949c07abd614cfa38b"
+    },
     {
       "version": "1.0.1",
       "publishedAt": 1773661414478,
