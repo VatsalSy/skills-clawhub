@@ -1,0 +1,8 @@
+{
+  "name": "Work Progress",
+  "description": "工作进度检查技能 - 定期检查待办事项完成情况",
+  "version": "3.0.1",
+  "identifier": "work-progress",
+  "author": "前端 ⚡",
+  "category": "productivity"
+}
