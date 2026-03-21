@@ -7,6 +7,30 @@ description: Calculate how return rate affects ecommerce profit, CAC tolerance, 
 
 退货率不是售后指标而已，它会直接吞掉利润、预算空间和增长判断。
 
+## 先交互，再计算
+
+开始时先问：
+1. 你们要看的 return 是：
+   - 退款率
+   - 退货率
+   - 退款+退货综合
+2. 你们平时 return impact 的口径里包含哪些损失？
+   - 收入回吐
+   - 逆向物流
+   - 包材
+   - 二次销售损耗
+   - 客服成本
+3. 产品是否可以二次售卖？恢复率是多少？
+4. 要沿用现有逻辑，还是让我给推荐框架？
+
+## Python script guidance
+
+当用户给出结构化输入后：
+- 生成 Python 脚本计算退货影响
+- 展示 revenue loss 与 extra cost loss
+- 输出调整后利润与 CAC 容忍度
+- 返回可复用脚本
+
 ## 解决的问题
 
 很多团队会盯 GMV、ROAS、AOV，但忽略了一个事实：
@@ -34,10 +58,12 @@ description: Calculate how return rate affects ecommerce profit, CAC tolerance, 
 
 ## 工作流
 
-1. 计算未考虑退货时的基础利润。
-2. 计算退货带来的收入回吐和成本拖累。
-3. 估算调整后的净利润与可承受 CAC。
-4. 标记风险区间和优先修复动作。
+1. 明确 return impact 的口径。
+2. 计算未考虑退货时的基础利润。
+3. 计算退货带来的收入回吐和成本拖累。
+4. 估算调整后的净利润与可承受 CAC。
+5. 标记风险区间和优先修复动作。
+6. 返回可复用 Python 脚本。
 
 ## 输出格式
 
@@ -45,6 +71,7 @@ description: Calculate how return rate affects ecommerce profit, CAC tolerance, 
 2. 退货影响拆解
 3. 调整后利润 / 阈值
 4. 风险提醒与建议动作
+5. Python 脚本
 
 ## 质量标准
 
@@ -52,6 +79,7 @@ description: Calculate how return rate affects ecommerce profit, CAC tolerance, 
 - 输出对经营有用的阈值，而不只是一个百分比。
 - 清楚说明哪些是假设值。
 - 优先指出最值得修的环节。
+- 未确认口径前不假装精确。
 
 ## 资源
 
