@@ -1,7 +1,7 @@
 ---
 name: tia-openness-complete-skill
 description: 基于TIA Openness API的完整PLC自动化技能，支持项目创建、硬件配置、SCL编程、编译下载
-author: Your Name
+author: jiansiting
 version: 1.0.0
 ---
 
