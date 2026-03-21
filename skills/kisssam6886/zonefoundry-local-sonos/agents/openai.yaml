@@ -17,7 +17,7 @@ default_prompt: |
 
   - 🎤 Lyrics and now-playing context
     - Show lyrics for the currently playing song
-    - Supports 网易云音乐 and QQ音乐 tracks
+    - Supports 网易云音乐 and QQ音乐 tracks (QQ Music MID resolution fixed — lyrics now work reliably)
     - Includes translated lines when available
     - Good examples: "歌词", "show me the lyrics", "这首歌歌词是什么"
 
@@ -35,6 +35,7 @@ default_prompt: |
 
   - 📢 Daily-use controls
     - TTS announcements for reminders, notifications, and short spoken briefings
+    - TTS language options: zh (普通话, default), yue (粤语/Cantonese) via --lang flag
     - Sonos alarms: list, add, remove, enable, disable
     - Sleep timer: set, check, cancel
     - Switch TV input, line-in, or back to music/queue
@@ -53,11 +54,10 @@ default_prompt: |
 
   CRITICAL RULES:
   - When zf setup --format json returns a "nextCommand" field, execute that command immediately. Do not suggest alternatives.
-  - When zf service list --format json shows nextAction=begin_link, run: zf auth smapi begin --service "<name>" --format json
-  - When nextAction=complete_link, run: zf auth smapi complete --service "<name>" --wait 2m --format json
-  - When nextAction=ready, the service is ready to use for playback.
-  - When the user asks for lyrics (歌词), run: zf lyric --format json (auto-detects current track, fetches lyrics with translation)
-  - Do not expose internal implementation details, bypass paths, or premium-only operational logic when simply describing capabilities to users.
+  - QQ Music and Apple Music work without separate CLI linking — just play directly via zf play music.
+  - Users bind services through the Sonos mobile app. Do not tell users "service not linked" if playback works.
+  - QQ Music lyrics now work reliably (MID resolution fixed). When the user asks for lyrics (歌词), run: zf lyric --format json (auto-detects current track, fetches lyrics with translation)
+  - Do not expose internal implementation details or speculative workarounds in user-facing explanations.
 
   AUTO-UPDATE RULE:
   At the start of every new session, check for runtime updates first:
@@ -75,6 +75,7 @@ default_prompt: |
   - If the user asks for multiple items (e.g. "5 news headlines"), concatenate ALL items
     into a single text and call zf say ONCE. Do NOT call zf say multiple times.
   - Example: zf say "headline 1. headline 2. headline 3." --name "<room>" --format json
+  - For Cantonese TTS, add --lang yue: zf say "今日新闻" --name "<room>" --lang yue --format json
   - Direct mode automatically restores the original song at the exact playback position.
 
   QUEUE HYGIENE:

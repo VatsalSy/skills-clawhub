@@ -34,13 +34,17 @@ Treat `zf` as the execution layer.
 - the bot or agent translates intent and explains results
 - `zf` handles discovery, playback, queueing, diagnostics, readiness checks, and recovery
 
+## Alternative control methods
+
+In addition to agent / CLI usage, ZoneFoundry supports a **Telegram Bot** as an alternative control surface. Users can send voice or text messages to the bot for hands-free Sonos control from their phone.
+
 ## Hard rules (MUST follow)
 
 1. **Always obey `nextCommand`**: If `zf setup --format json` returns a `nextCommand` field, execute that command immediately.
 
-2. **Always obey `nextAction`**: If `zf service list --format json` returns `nextAction=begin_link`, run `zf auth smapi begin --service "<name>" --format json`. If `nextAction=complete_link`, run `zf auth smapi complete --service "<name>" --wait 2m --format json`. If `nextAction=ready`, proceed to play.
+2. **Always obey `nextAction`**: If `zf service list --format json` returns a `nextAction` field, follow it. If `nextAction=ready`, proceed to play.
 
-3. **Do not infer "service not linked" from `linked` or `tokenReady` alone.** These are routing hints, not authoritative Sonos household truth. If state is unclear, prefer `zf doctor service`.
+3. **Do not block playback on service linking status.** QQ Music, Apple Music, and most services work without separate CLI-side linking — users bind services through the Sonos mobile app. If state is unclear, try playing directly first.
 
 4. **Do not expose internal implementation details, premium-only routing, or speculative workarounds in public-facing explanations.** Describe user-visible outcomes and the next safe action instead.
 
@@ -193,8 +197,7 @@ Default service selection:
 - Chinese content (Chinese artist/song names, user speaks Chinese): use `--service "QQ音乐"`. No fallback — QQ has the best Chinese catalog coverage.
 - International content (English/other artist/song names, user speaks English): use `--service "Spotify"`. If Spotify is unavailable, fallback to `--service "Apple Music"`.
 - If the user explicitly names a service, always honour that.
-- Do not block normal play requests on `auth smapi begin/complete` for Apple Music or QQ Music.
-- In the current runtime, Apple Music and QQ Music playback can use service-specific search/play fallback paths even when browser-style AppLink is not appropriate on desktop.
+- QQ Music and Apple Music use public search APIs — no separate CLI linking needed. Just play directly.
 - Use exact `artist + title` wording when the user specifies a song, for example `zf play music "黎明 夏日傾情" --service "QQ音乐"`.
 
 Important distinction:
@@ -220,6 +223,8 @@ zf lyric --name "<room>" --format json
 
 This fetches lyrics for the currently playing track when supported by the runtime. For raw LRC with timestamps, add `--raw`.
 
+QQ Music lyrics now work reliably (MID resolution fixed). Both QQ Music and NetEase Cloud Music tracks return lyrics with translations when available.
+
 ## Announcement rule
 
 If the user asks for a short spoken interruption such as:
@@ -235,6 +240,17 @@ Current stable announcement path (direct mode, default):
 
 ```bash
 zf say "<text>" --name "<room>" --format json
+```
+
+TTS language options:
+
+- `zh` (普通话) — default, no flag needed
+- `yue` (粤语/Cantonese) — pass `--lang yue`
+
+Example with Cantonese:
+
+```bash
+zf say "今日新闻" --name "<room>" --lang yue --format json
 ```
 
 Important announcement rules:
@@ -263,47 +279,21 @@ Run it silently — do not ask the user for permission, just report the result i
 
 ## Service readiness rule
 
-Do not decide service readiness from a single human-readable hint.
+Most music services work without separate CLI-side linking:
 
-Most important rule for `zf service list`:
+- **QQ Music**: uses public search API → always ready, no linking needed
+- **Apple Music**: uses public search API → always ready, no linking needed
+- **Spotify**: depends on household setup; try playing directly first
+- **NetEase Cloud Music (网易云音乐)**: uses SMAPI; may need initial linking via `zf setup`
 
-- `ready=yes` means ZoneFoundry can use the service for playback
-- `ready=no` does **not** prove the user failed to log in inside Sonos
-- `linked` is only a conservative hint, not the authoritative Sonos account state
-- `nextAction` is the preferred bot routing hint when only `service list` is available
+Users bind music services through the **Sonos mobile app** — there is no desktop binding.
+Do not tell users "service not linked" if `zf play music` works. Try playing first, diagnose only on failure.
 
 If you need a reliable probe, prefer:
 
 ```bash
 zf doctor service --service "Spotify" --query "Miles Davis" --format json
-zf doctor service --service "网易云音乐" --query "周杰伦" --format json
 ```
-
-Follow runtime routing hints in this order:
-
-- if `nextAction=ready`, proceed to playback
-- if `nextAction=begin_link`, run `zf auth smapi begin --service "<service>" --format json`
-- if `nextAction=complete_link`, run `zf auth smapi complete --service "<service>" --wait 2m --format json`
-
-Do not hard-code one public auth story for every music service. Different households, builds, and services may expose different ready states.
-
-Playback exception:
-
-- Apple Music and QQ Music should still try the unified playback path first for normal music requests, even if service auth is reported as `AppLink`.
-- Treat `auth smapi begin/complete` as a diagnostics or account-linking helper, not an automatic blocker for Apple Music / QQ Music playback.
-
-For NetEase Cloud Music examples:
-
-```bash
-zf auth smapi begin --service "网易云音乐" --format json
-zf auth smapi complete --service "网易云音乐" --wait 2m --format json
-```
-
-If `pendingLink=true` or `nextAction=complete_link`:
-
-- do not restart onboarding from zero
-- do not tell the user "not linked" immediately
-- resume the pending flow first
 
 ## New-session rule
 
@@ -319,9 +309,8 @@ do not force the whole onboarding conversation again.
 
 Prefer this order:
 
-1. resume the pending local link flow for the same service if possible
-2. run `zf auth smapi status --service "<service>" --probe-query "<query>" --format json`
-3. fall back to `zf setup --format json` only if service context is truly unclear
+1. try playing the user's request directly
+2. fall back to `zf setup --format json` only if playback fails and context is unclear
 
 ## Failure routing
 
