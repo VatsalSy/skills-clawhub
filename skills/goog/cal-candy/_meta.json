@@ -1,0 +1,11 @@
+{
+  "owner": "goog",
+  "slug": "cal-candy",
+  "displayName": "cal-candy: Markdown calendar for AI agent",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1774142551841,
+    "commit": null
+  },
+  "history": []
+}
