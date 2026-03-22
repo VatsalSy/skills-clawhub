@@ -1,0 +1,11 @@
+{
+  "owner": "krishnakumarmahadevan-cmd",
+  "slug": "threat-intel-v2",
+  "displayName": "Threat Intel V2",
+  "latest": {
+    "version": "1.0.0",
+    "publishedAt": 1774045028597,
+    "commit": null
+  },
+  "history": []
+}
