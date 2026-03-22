@@ -1,6 +1,6 @@
 {
   "name": "@openclaw/agent-chronicle",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "description": "Chronicle your AI's journey - capture experiences, quotes, curiosities, decisions, and relationships from the agent's perspective",
   "author": "robbyczgw-cla",
   "license": "MIT",
@@ -26,8 +26,17 @@
   },
   "openclaw": {
     "skill": true,
-    "emoji": "📜",
-    "triggers": ["chronicle", "diary", "journal", "daily log", "write entry", "quotes", "curious", "decisions"],
+    "emoji": "\ud83d\udcdc",
+    "triggers": [
+      "chronicle",
+      "diary",
+      "journal",
+      "daily log",
+      "write entry",
+      "quotes",
+      "curious",
+      "decisions"
+    ],
     "capabilities": [
       "journal-generation",
       "quote-tracking",
@@ -35,7 +44,9 @@
       "decision-archaeology"
     ],
     "requirements": {
-      "bins": ["python3"],
+      "bins": [
+        "python3"
+      ],
       "env": {}
     }
   },

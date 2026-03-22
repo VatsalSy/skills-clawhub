@@ -32,7 +32,7 @@
 {{/if}}
 
 {{#if decisions}}
-## Key Decisions Made 🏛️
+## Key Decisions Made 🏛
 {{decisions}}
 {{/if}}
 

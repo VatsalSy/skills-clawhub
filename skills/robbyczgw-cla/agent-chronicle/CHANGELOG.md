@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.6.2] - 2026-03-03
+
+### Changed
+- Synced changelog/docs and aligned package metadata with current release state.
+
+
 ## v0.6.1 — 2026-02-11
 
 - Added `.gitignore` to exclude cache, config, and export files

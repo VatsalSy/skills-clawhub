@@ -69,7 +69,7 @@ Each diary entry includes:
 
 - **Quote of the Day 💬** — Memorable things your human said
 - **Things I'm Curious About 🔮** — Questions to explore later
-- **Key Decisions Made 🏛️** — Judgment calls worth remembering
+- **Key Decisions Made 🏛** — Judgment calls worth remembering
 - **Relationship Notes 🤝** — How your dynamic evolves
 
 ## Features
@@ -91,7 +91,7 @@ Track things you wonder about but can't explore immediately.
 @diary curious done "..."   # Mark as explored
 ```
 
-### Decision Archaeology 🏛️
+### Decision Archaeology 🏛
 Log judgment calls and their reasoning for later review.
 
 ```
